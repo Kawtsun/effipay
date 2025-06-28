@@ -4,14 +4,44 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { BookOpen, ClipboardList, Clock, Folder, LayoutDashboard, ScrollText, Users, Wallet } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: '/dashboard',
-        icon: LayoutGrid,
+        icon: LayoutDashboard,
+    },
+
+    {
+        title: 'Salary',
+        href: '/salary',
+        icon: Wallet,
+    },
+
+    {
+        title: 'Employees',
+        href: '/employees',
+        icon: Users,
+    },
+
+    {
+        title: 'Time Keeping',
+        href: '/time-keeping',
+        icon: Clock,
+    },
+
+    {
+        title: 'Reports',
+        href: '/reports',
+        icon: ClipboardList,
+    },
+
+    {
+        title: 'Audit Logs',
+        href: '/audit-logs',
+        icon: ScrollText,
     },
 ];
 
