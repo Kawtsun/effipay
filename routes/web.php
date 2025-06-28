@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\AuditLogsController;
+use App\Http\Controllers\EmployeesController;
+use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\SalaryController;
+use App\Http\Controllers\TimeKeepingController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -11,6 +16,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
+
+    Route::get('/salary', [SalaryController::class, 'index'])->name('salary.index');
+
+    Route::get('/employees', [EmployeesController::class, 'index'])->name('employees.index');
+
+    Route::get('/time-keeping', [TimeKeepingController::class, 'index'])->name('time-keeping.index');
+
+    Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+
+    Route::get('/audit-logs', [AuditLogsController::class, 'index'])->name('audit-logs.index');
 });
 
 require __DIR__.'/settings.php';
