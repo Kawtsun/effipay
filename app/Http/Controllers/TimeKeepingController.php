@@ -8,6 +8,6 @@ use Inertia\Inertia;
 class TimeKeepingController extends Controller
 {
     public function index() {
-        return Inertia::render('TimeKeeping/Index');
+        return Inertia::render('time-keeping/index');
     }
 }

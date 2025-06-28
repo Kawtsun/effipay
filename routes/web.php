@@ -18,13 +18,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 
     Route::get('/salary', [SalaryController::class, 'index'])->name('salary.index');
-
     Route::get('/employees', [EmployeesController::class, 'index'])->name('employees.index');
-
     Route::get('/time-keeping', [TimeKeepingController::class, 'index'])->name('time-keeping.index');
-
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
-
     Route::get('/audit-logs', [AuditLogsController::class, 'index'])->name('audit-logs.index');
 });
 

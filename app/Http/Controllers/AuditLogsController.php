@@ -8,6 +8,6 @@ use Inertia\Inertia;
 class AuditLogsController extends Controller
 {
     public function index() {
-        return Inertia::render('AuditLogs/Index');
+        return Inertia::render('audit-logs/index');
     }
 }
