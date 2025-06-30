@@ -17,11 +17,13 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
-    Route::get('/salary', [SalaryController::class, 'index'])->name('salary.index');
-    Route::get('/employees', [EmployeesController::class, 'index'])->name('employees.index');
-    Route::get('/time-keeping', [TimeKeepingController::class, 'index'])->name('time-keeping.index');
-    Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
-    Route::get('/audit-logs', [AuditLogsController::class, 'index'])->name('audit-logs.index');
+    Route::resources([
+        'salary' => SalaryController::class,
+        'employees' => EmployeesController::class,
+        'time-keeping' => TimeKeepingController::class,
+        'reports' => ReportsController::class,
+        'audit-logs' => AuditLogsController::class
+    ]);
 });
 
 require __DIR__.'/settings.php';
