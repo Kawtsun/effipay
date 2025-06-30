@@ -17,6 +17,13 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
+    Route::resources([
+        'salary' => SalaryController::class,
+        'employees' => EmployeesController::class,
+        'time-keeping' => TimeKeepingController::class,
+        'reports' => ReportsController::class,
+        'audit-logs' => AuditLogsController::class
+    ]);
 });
 
 require __DIR__.'/settings.php';

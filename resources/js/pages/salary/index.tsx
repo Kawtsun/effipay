@@ -10,7 +10,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Salary() {
+export default function index() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Salary" />
