@@ -5,19 +5,19 @@ import { Head, Link } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Employees',
-        href: '/employees',
+        title: 'Add Employee',
+        href: '/employees/create',
     },
 ];
 
-export default function index() {
+export default function create() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Employees" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 overflow-x-auto">
+            <Head title="Add Employees" />
+            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex justify-end">
-                    <Link href={route('employees.create')}>
-                        <Button>Add Employee</Button>
+                    <Link href={route('employees.index')}>
+                        <Button>Go Back</Button>
                     </Link>
                 </div>
             </div>

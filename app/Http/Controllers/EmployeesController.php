@@ -22,7 +22,7 @@ class EmployeesController extends Controller
      */
     public function create()
     {
-        //
+        return Inertia::render('employees/create');
     }
 
     /**
