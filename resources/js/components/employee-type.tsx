@@ -34,9 +34,14 @@ const employee_type = [
   },
 ]
 
-export function EmployeeType() {
-  const [open, setOpen] = React.useState(false)
-  const [value, setValue] = React.useState("Full Time")
+export function EmployeeType({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -64,8 +69,8 @@ export function EmployeeType() {
                   key={employee_type.value}
                   value={employee_type.value}
                   onSelect={(currentValue) => {
-                    setValue(currentValue === value ? "" : currentValue)
-                    setOpen(false)
+                    onChange(currentValue === value ? "" : currentValue);
+                    setOpen(false);
                   }}
                 >
                   {employee_type.label}
@@ -82,5 +87,5 @@ export function EmployeeType() {
         </Command>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

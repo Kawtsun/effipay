@@ -34,9 +34,14 @@ const employee_status = [
   },
 ]
 
-export function EmployeeStatus() {
-  const [open, setOpen] = React.useState(false)
-  const [value, setValue] = React.useState("Active")
+export function EmployeeStatus({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -64,8 +69,8 @@ export function EmployeeStatus() {
                   key={employee_status.value}
                   value={employee_status.value}
                   onSelect={(currentValue) => {
-                    setValue(currentValue === value ? "" : currentValue)
-                    setOpen(false)
+                    onChange(currentValue === value ? "" : currentValue);
+                    setOpen(false);
                   }}
                 >
                   {employee_status.label}
@@ -82,5 +87,5 @@ export function EmployeeStatus() {
         </Command>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

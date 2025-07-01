@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -14,7 +14,18 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function create() {
+export default function Create() {
+    const { data, setData, post, processing, errors } = useForm({
+        employee_name: '',
+        employee_type: 'Full Time',
+        employee_status: 'Active',
+        base_salary: '',
+        overtime_pay: '',
+        sss: '',
+        philhealt: '',
+        pag_ibig: '',
+        withholding_tax: ''
+    });
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Add Employees" />
@@ -25,32 +36,302 @@ export default function create() {
                     </Link>
                 </div>
                 <div className='w-2/5 p-4'>
-                    <form className='container mx-auto space-y-4'>
-                        <div className="flex flex-col gap-3">
-                            <h1 className='font-bold text-xl'>Employee Information</h1>
-                            <Label htmlFor="employee_name">
-                                Employee Name
-                            </Label>
-                            <Input
-                                id="employee_name"
-                                type="text"
-                                required
-                                tabIndex={1}
-                                placeholder="Name"
-                            />
+                    <form
+                        className='container mx-auto space-y-6'
+                        // ...existing code...
+                        onSubmit={e => {
+                            e.preventDefault();
+                            // Remove commas from relevant fields before submit
+                            const sanitizedData = {
+                                ...data,
+                                base_salary: data.base_salary.replace(/,/g, ''),
+                                overtime_pay: data.overtime_pay.replace(/,/g, ''),
+                                sss: data.sss.replace(/,/g, ''),
+                                philhealt: data.philhealt.replace(/,/g, ''),
+                                pag_ibig: data.pag_ibig.replace(/,/g, ''),
+                                withholding_tax: data.withholding_tax.replace(/,/g, ''),
+                            };
+                            console.log(sanitizedData);
+                            post(route('employees.store'));
+                        }}
+                    // ...existing code...
+                    >
+                        {/* Employee Information */}
+                        <h1 className='font-bold text-xl mb-4'>Employee Information</h1>
+                        <div className='space-y-6'>
+                            <div className="flex flex-col gap-3">
+                                <Label htmlFor="employee_name">
+                                    Employee Name
+                                </Label>
+                                <Input
+                                    id="employee_name"
+                                    type="text"
+                                    required
+                                    placeholder="Name"
+                                    value={data.employee_name}
+                                    onChange={(e) => setData('employee_name', e.target.value)}
+                                />
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <Label htmlFor="employee_type">
+                                    Employee Type
+                                </Label>
+                                <EmployeeType
+                                    value={data.employee_type}
+                                    onChange={val => setData('employee_type', val)}
+                                />
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <Label htmlFor="employee_status">
+                                    Employee Status
+                                </Label>
+                                <EmployeeStatus
+                                    value={data.employee_status}
+                                    onChange={val => setData('employee_status', val)}
+                                />
+                            </div>
                         </div>
-                        <div className="flex flex-col gap-3">
-                            <Label htmlFor="employee_type">
-                                Employee Type
-                            </Label>
-                            <EmployeeType />
+                        {/* Employee Salary */}
+                        <h1 className='font-bold text-xl my-2'>Employee Salary</h1>
+                        <div className='flex flex-row gap-6'>
+                            <div className='earnings space-y-6'>
+                                <h2 className='font-semibold text-lg my-2'>Earnings</h2>
+                                <div className='flex flex-col gap-3'>
+                                    <Label htmlFor="base_salary">
+                                        Base Salary
+                                    </Label>
+                                    <div className='relative'>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                        <Input
+                                            id="base_salary"
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9,]*"
+                                            required
+                                            placeholder="Salary"
+                                            className="pl-8"
+                                            min={0}
+                                            onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
+                                                // Prevent non-numeric and non-comma input
+                                                if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                            onInput={e => {
+                                                const input = e.target as HTMLInputElement;
+                                                let value = input.value.replace(/,/g, '');
+                                                if (value && Number(value) < 0) {
+                                                    value = '0';
+                                                }
+                                                if (value) {
+                                                    input.value = Number(value).toLocaleString();
+                                                } else {
+                                                    input.value = '';
+                                                }
+                                            }}
+                                            value={data.base_salary}
+                                            onChange={(e) => setData('base_salary', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className='flex flex-col gap-3'>
+                                    <Label htmlFor="overtime_pay">
+                                        Overtime Pay
+                                    </Label>
+                                    <div className='relative'>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                        <Input
+                                            id="overtime_pay"
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9,]*"
+                                            required
+                                            placeholder="Overtime Pay"
+                                            className="pl-8"
+                                            min={0}
+                                            onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
+                                                // Prevent non-numeric and non-comma input
+                                                if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                            onInput={e => {
+                                                const input = e.target as HTMLInputElement;
+                                                let value = input.value.replace(/,/g, '');
+                                                if (value && Number(value) < 0) {
+                                                    value = '0';
+                                                }
+                                                if (value) {
+                                                    input.value = Number(value).toLocaleString();
+                                                } else {
+                                                    input.value = '';
+                                                }
+                                            }}
+                                            value={data.overtime_pay}
+                                            onChange={(e) => setData('overtime_pay', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className='contributions space-y-6'>
+                                <h2 className='font-semibold text-lg my-2'>Contributions</h2>
+                                <div className='flex flex-col gap-3'>
+                                    <Label htmlFor="sss">
+                                        SSS
+                                    </Label>
+                                    <div className='relative'>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                        <Input
+                                            id="sss"
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9,]*"
+                                            required
+                                            placeholder="SSS"
+                                            className="pl-8"
+                                            min={0}
+                                            onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
+                                                // Prevent non-numeric and non-comma input
+                                                if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                            onInput={e => {
+                                                const input = e.target as HTMLInputElement;
+                                                let value = input.value.replace(/,/g, '');
+                                                if (value && Number(value) < 0) {
+                                                    value = '0';
+                                                }
+                                                if (value) {
+                                                    input.value = Number(value).toLocaleString();
+                                                } else {
+                                                    input.value = '';
+                                                }
+                                            }}
+                                            value={data.sss}
+                                            onChange={(e) => setData('sss', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className='flex flex-col gap-3'>
+                                    <Label htmlFor="philhealt">
+                                        PhilHealth
+                                    </Label>
+                                    <div className='relative'>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                        <Input
+                                            id="philhealt"
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9,]*"
+                                            required
+                                            placeholder="PhilHealth"
+                                            className="pl-8"
+                                            min={0}
+                                            onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
+                                                // Prevent non-numeric and non-comma input
+                                                if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                            onInput={e => {
+                                                const input = e.target as HTMLInputElement;
+                                                let value = input.value.replace(/,/g, '');
+                                                if (value && Number(value) < 0) {
+                                                    value = '0';
+                                                }
+                                                if (value) {
+                                                    input.value = Number(value).toLocaleString();
+                                                } else {
+                                                    input.value = '';
+                                                }
+                                            }}
+                                            value={data.philhealt}
+                                            onChange={(e) => setData('philhealt', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className='flex flex-col gap-3'>
+                                    <Label htmlFor="pag-ibig">
+                                        Pag-IBIG
+                                    </Label>
+                                    <div className='relative'>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                        <Input
+                                            id="pag-ibig"
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9,]*"
+                                            required
+                                            placeholder="Pag-IBIG"
+                                            className="pl-8"
+                                            min={0}
+                                            onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
+                                                // Prevent non-numeric and non-comma input
+                                                if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                            onInput={e => {
+                                                const input = e.target as HTMLInputElement;
+                                                let value = input.value.replace(/,/g, '');
+                                                if (value && Number(value) < 0) {
+                                                    value = '0';
+                                                }
+                                                if (value) {
+                                                    input.value = Number(value).toLocaleString();
+                                                } else {
+                                                    input.value = '';
+                                                }
+                                            }}
+                                            value={data.pag_ibig}
+                                            onChange={(e) => setData('pag_ibig', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className='flex flex-col gap-3'>
+                                    <Label htmlFor="withholding_tax">
+                                        Withholding Tax
+                                    </Label>
+                                    <div className='relative'>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                        <Input
+                                            id="withholding_tax"
+                                            type="text"
+                                            required
+                                            placeholder="Withholding Tax"
+                                            className="pl-8"
+                                            inputMode="numeric"
+                                            pattern="[0-9,]*"
+                                            min={0}
+                                            onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
+                                                // Prevent non-numeric and non-comma input
+                                                if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                            onInput={e => {
+                                                const input = e.target as HTMLInputElement;
+                                                let value = input.value.replace(/,/g, '');
+                                                if (value && Number(value) < 0) {
+                                                    value = '0';
+                                                }
+                                                if (value) {
+                                                    input.value = Number(value).toLocaleString();
+                                                } else {
+                                                    input.value = '';
+                                                }
+                                            }}
+                                            value={data.withholding_tax}
+                                            onChange={(e) => setData('withholding_tax', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                            </div>
+                            <Button type='submit'>Add Employee</Button>
                         </div>
-                        <div className="flex flex-col gap-3">
-                            <Label htmlFor="employee_status">
-                                Employee Status
-                            </Label>
-                            <EmployeeStatus />
-                        </div>
+
                     </form>
                 </div>
             </div>
