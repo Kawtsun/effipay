@@ -44,5 +44,7 @@ export interface User {
 
 export interface Employees {
     id: number;
-    username: string;
+    name: string;
+    type: string;
+    status: string;
 }

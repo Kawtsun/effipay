@@ -25,7 +25,7 @@ class EmployeesController extends Controller
      */
     public function create()
     {
-        //
+        return Inertia::render('employees/create');
     }
 
     /**
@@ -33,7 +33,9 @@ class EmployeesController extends Controller
      */
     public function store(StoreEmployeesRequest $request)
     {
-        //
+        $validated = $request->validated();
+        Employees::create($validated);
+        return redirect()->route('employees.index')->with('message', 'Employee added successfully');
     }
 
     /**
@@ -47,17 +49,19 @@ class EmployeesController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Employees $employees)
+    public function edit(Employees $employee)
     {
-        //
+        return Inertia::render('employees/edit', compact('employee'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateEmployeesRequest $request, Employees $employees)
+    public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
-        //
+        $validated = $request->validated();
+        $employee->update($validated);
+        return redirect()->route('employees.index')->with('message', 'Employee has been updated successfully');
     }
 
     /**

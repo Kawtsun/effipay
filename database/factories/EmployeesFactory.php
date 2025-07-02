@@ -20,11 +20,9 @@ class EmployeesFactory extends Factory
     public function definition(): array
     {
         return [
-            'username' => fake()->name(),
-            // 'email' => fake()->unique()->safeEmail(),
-            // 'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            // 'remember_token' => Str::random(10),
+            'name' => fake()->name(),
+            'type' => fake()->randomElement(['Full-Time', 'Part-Time', 'Provisionary']),
+            'status' => fake()->randomElement(['Active', 'Maternal Leave', 'Sick']),
         ];
     }
 
