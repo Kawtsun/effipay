@@ -32,12 +32,9 @@ class EmployeesController extends Controller
      */
     public function store(StoreEmployeesRequest $request)
     {
-        // Employees::create($request->validated());
-
-        // return redirect()->route('employees.index');
-
         $validated = $request->validated();
         Employees::create($validated);
+
         return redirect()->route('employees.index')->with('success', 'Employee added successfully!');
     
     }
