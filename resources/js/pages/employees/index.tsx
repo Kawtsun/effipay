@@ -58,7 +58,7 @@ export default function Index({ employees }: EmployeesProps) {
     }, [props.flash]);
 
     const deleteEmployee = (id: number, employee_name: string) => {
-        if (confirm(`Delete employee ${id}. - ${employee_name}`)) {
+        if (confirm(`Are you sure you want to permanently delete employee "${employee_name}" (ID: ${id})? This action cannot be undone.`)) {
             router.delete(route('employees.destroy', { employee: id }))
         }
     }
