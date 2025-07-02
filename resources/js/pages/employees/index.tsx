@@ -1,7 +1,9 @@
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -10,7 +12,24 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+type Flash = {
+    success?: string;
+    // add other flash message types if needed
+};
+
+type PageProps = {
+    flash?: Flash;
+    // add other props if needed
+};
+
 export default function index() {
+    const { props } = usePage<PageProps>();
+
+    useEffect(() => {
+        if (props.flash?.success) {
+            toast.success(props.flash.success);
+        }
+    }, [props.flash?.success]);
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employees" />

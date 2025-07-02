@@ -36,7 +36,7 @@ class EmployeesController extends Controller
 
         $validated = $request->validated();
         Employees::create($validated);
-        return redirect()->route('employees.index');
+        return redirect()->route('employees.index')->with('success', 'Employee added successfully!');
     
     }
 
