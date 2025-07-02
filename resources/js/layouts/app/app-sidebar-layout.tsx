@@ -6,6 +6,10 @@ import { Toaster } from '@/components/ui/sonner';
 import { type BreadcrumbItem } from '@/types';
 import { type PropsWithChildren } from 'react';
 
+// import { initializeTheme } from '@/hooks/use-appearance';
+
+// initializeTheme();
+
 export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWithChildren<{ breadcrumbs?: BreadcrumbItem[] }>) {
     return (
         <AppShell variant="sidebar">
@@ -14,8 +18,7 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 {children}
             </AppContent>
-            {/* Toaster -- richColors */}
-            <Toaster  position={'top-right'} />
+            <Toaster richColors position={'top-right'} />
         </AppShell>
     );
 }
