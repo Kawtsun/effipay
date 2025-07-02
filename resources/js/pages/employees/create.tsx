@@ -50,14 +50,15 @@ export default function Create() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Add Employees" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div>
-                    <Link href={route('employees.index')}>
-                        <Button>Go Back</Button>
-                    </Link>
-                </div>
+
                 <div className='w-2/5 p-4'>
+                    <div>
+                        <Link href={route('employees.index')}>
+                            <Button>Go Back</Button>
+                        </Link>
+                    </div>
                     <form
-                        className='container mx-auto space-y-6'
+                        className='container mx-auto mt-5 space-y-6'
                         onSubmit={handleSubmit}
                     >
                         {/* Employee Information */}

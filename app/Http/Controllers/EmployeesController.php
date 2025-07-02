@@ -14,7 +14,9 @@ class EmployeesController extends Controller
      */
     public function index()
     {
-        return Inertia::render('employees/index');
+        return Inertia::render('employees/index', [
+            'employees' => Employees::all()
+        ]);
     }
 
     /**
@@ -67,8 +69,10 @@ class EmployeesController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Employees $employees)
+    public function destroy(Employees $employee)
     {
-        //
+        $employee->delete();
+
+        return redirect(route('employees.index'))->with('success', 'Employee deleted successfully!');
     }
 }
