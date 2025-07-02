@@ -334,7 +334,9 @@ export default function Create() {
 
                             </div>
                         </div>
-                        <Button type='submit'>Add Employee</Button>
+                        <div className='flex justify-end'>
+                            <Button type='submit'>Add Employee</Button>
+                        </div>
                     </form>
                 </div>
             </div>
