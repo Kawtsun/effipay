@@ -53,17 +53,22 @@ class EmployeesController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Employees $employees)
+    public function edit(Employees $employee)
     {
-        //
+        return Inertia::render('employees/edit', [
+            'employee' => $employee
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateEmployeesRequest $request, Employees $employees)
+    public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
-        //
+        $validated = $request->validated();
+        $employee->update($validated);
+
+        return redirect()->route('employees.index')->with('success', 'Employee updated successfully!');
     }
 
     /**

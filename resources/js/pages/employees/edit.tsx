@@ -4,36 +4,47 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/react';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Employees',
-        href: '/employees',
-    },
-    {
-        title: 'Add Employee',
-        href: '/employees/create',
-    },
-];
+interface Employee {
+    id: number;
+    employee_name: string;
+    employee_type: string;
+    employee_status: string;
+    base_salary: number;
+    overtime_pay: number;
+    sss: number;
+    philhealth: number;
+    pag_ibig: number;
+    withholding_tax: number;
+}
 
-export default function Create() {
-    const { data, setData, post, processing, errors } = useForm({
-        employee_name: '',
-        employee_type: 'Full Time',
-        employee_status: 'Active',
-        base_salary: '',
-        overtime_pay: '',
-        sss: '',
-        philhealth: '',
-        pag_ibig: '',
-        withholding_tax: ''
+export default function Edit({ employee }: { employee: Employee }) {
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: 'Employees',
+            href: '/employees',
+        },
+        {
+            title: `#${employee.id} - ${employee.employee_name}`,
+            href: route('employees.edit', { employee: employee.id }),
+        },
+    ];
+
+    const { data, setData, put, processing, errors } = useForm({
+        employee_name: employee.employee_name ?? '',
+        employee_type: employee.employee_type ?? 'Full Time',
+        employee_status: employee.employee_status ?? 'Active',
+        base_salary: employee.base_salary?.toString() ?? '',
+        overtime_pay: employee.overtime_pay?.toString() ?? '',
+        sss: employee.sss?.toString() ?? '',
+        philhealth: employee.philhealth?.toString() ?? '',
+        pag_ibig: employee.pag_ibig?.toString() ?? '',
+        withholding_tax: employee.withholding_tax?.toString() ?? ''
     });
 
-    // filepath: c:\xampp\htdocs\effipay\resources\js\pages\employees\create.tsx
-    // ...existing code...
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         const cleanedData = {
             employee_name: data.employee_name,
@@ -46,15 +57,13 @@ export default function Create() {
             pag_ibig: data.pag_ibig.replace(/,/g, '') === '' ? 0 : parseInt(data.pag_ibig.replace(/,/g, ''), 10),
             withholding_tax: data.withholding_tax.replace(/,/g, '') === '' ? 0 : parseInt(data.withholding_tax.replace(/,/g, ''), 10),
         };
-        post(route('employees.store'), cleanedData);
+        put(route('employees.update', { employee: employee.id }), cleanedData);
     };
-    // ...existing code...
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Add Employees" />
+            <Head title="Edit Employee" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-
                 <div className='w-2/5 p-4'>
                     <div>
                         <Link href={route('employees.index')}>
@@ -63,7 +72,7 @@ export default function Create() {
                     </div>
                     <form
                         className='container mx-auto mt-5 space-y-6'
-                        onSubmit={handleSubmit}
+                        onSubmit={handleUpdate}
                     >
                         {/* Employee Information */}
                         <h1 className='font-bold text-xl mb-4'>Employee Information</h1>
@@ -340,7 +349,7 @@ export default function Create() {
                             </div>
                         </div>
                         <div className='flex justify-end'>
-                            <Button type='submit'>Add Employee</Button>
+                            <Button type='submit'>Update Employee</Button>
                         </div>
                     </form>
                 </div>
@@ -348,4 +357,3 @@ export default function Create() {
         </AppLayout>
     );
 }
-

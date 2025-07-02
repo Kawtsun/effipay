@@ -11,7 +11,7 @@ class UpdateEmployeesRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,15 @@ class UpdateEmployeesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'employee_name' => 'required|string|max:255',
+            'employee_type' => 'required|string|max:255',
+            'employee_status' => 'required|string|max:255',
+            'base_salary' => 'required|integer|min:0',
+            'overtime_pay' => 'required|integer|min:0',
+            'sss' => 'required|integer|min:0',
+            'philhealth' => 'required|integer|min:0',
+            'pag_ibig' => 'required|integer|min:0',
+            'withholding_tax' => 'required|integer|min:0',
         ];
     }
 }

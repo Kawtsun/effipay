@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -91,14 +91,18 @@ export default function Index({ employees }: EmployeesProps) {
                                     <TableCell>{employee.employee_type}</TableCell>
                                     <TableCell>{employee.employee_status}</TableCell>
                                     <TableCell className='flex gap-4'>
-                                        <Button className=''>Edit</Button>
+                                        <Link
+                                            className={buttonVariants({ variant: 'default' })}
+                                            href={route('employees.edit', { employee: employee.id })}
+                                        >
+                                            Edit
+                                        </Link>
                                         <Button
                                             variant={'destructive'}
                                             onClick={() => deleteEmployee(employee.id, employee.employee_name)}>
                                             Delete
                                         </Button>
                                     </TableCell>
-
                                 </TableRow>
                             ))}
                         </TableBody>
