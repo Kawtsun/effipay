@@ -8,7 +8,7 @@ export function UserInfo({ user }: { user: User;}) {
     return (
         <>
             <Avatar className="h-8 w-8 overflow-hidden rounded-full">
-                <AvatarImage src="/img/setsu3.png" alt={user.username} />
+                <AvatarImage src="https://i.pinimg.com/736x/65/93/24/659324a53937e7e47e2ff13a99f5902f.jpg" alt={user.username} />
                 <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                     {getInitials(user.username)}
                 </AvatarFallback>

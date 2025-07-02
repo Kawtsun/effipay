@@ -39,7 +39,7 @@ export default function Welcome() {
                                 </Link> */}
 
                                 <Link href={route('login')}>
-                                    <Button variant={'outline'} className='px-5 py-1.5'>Log in</Button>
+                                    <Button variant={'outline'} className='px-5 py-1.5 dark:text-gray-300'>Log in</Button>
                                 </Link>
                             </>
                         )}

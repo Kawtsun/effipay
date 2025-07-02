@@ -1,7 +1,19 @@
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import {
+    Table,
+    TableBody,
+    TableCaption,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import { type Employees } from '@/types';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -10,25 +22,40 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Employees() {
+export default function Employees({ employees }: { employees: Employees[] }) {
+
+    const deleteEmployee = (id: number) => {
+        if (confirm('Are you sure you want to delete this employee?')) {
+            router.delete(route('employees.destroy', { id }));
+            toast.success('Employee deleted successfully');
+        };
+    }
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employees" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 overflow-x-auto">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                </div>
-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                </div>
+            <div>
+                <Link className={buttonVariants({ variant: 'outline' })} href="/employees/create">Add Employee</Link>
+                <Table>
+                    <TableCaption>A list of your recent invoices.</TableCaption>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[100px] text-center">Id</TableHead>
+                            <TableHead>Employee Name</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {employees.map((employee) => (
+                            <TableRow key={employee.id}>
+                                <TableCell className='text-center'>{employee.id}</TableCell>
+                                <TableCell>{employee.username}</TableCell>
+                                <TableCell className='text-right'>
+                                    <Link className={buttonVariants({ variant: 'outline' })} href={`/employees/${employee.id}/edit`}>Edit</Link>
+                                    <Button variant='destructive' onClick={() => deleteEmployee(employee.id)}>Delete</Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
             </div>
         </AppLayout>
     );

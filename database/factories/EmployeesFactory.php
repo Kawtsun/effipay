@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Employees>
@@ -14,10 +15,26 @@ class EmployeesFactory extends Factory
      *
      * @return array<string, mixed>
      */
+    protected static ?string $password;
+
     public function definition(): array
     {
         return [
-            //
+            'username' => fake()->name(),
+            // 'email' => fake()->unique()->safeEmail(),
+            // 'email_verified_at' => now(),
+            'password' => static::$password ??= Hash::make('password'),
+            // 'remember_token' => Str::random(10),
         ];
+    }
+
+    /**
+     * Indicate that the model's email address should be unverified.
+     */
+    public function unverified(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'email_verified_at' => null,
+        ]);
     }
 }

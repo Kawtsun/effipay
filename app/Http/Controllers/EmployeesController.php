@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employees;
 use App\Http\Requests\StoreEmployeesRequest;
 use App\Http\Requests\UpdateEmployeesRequest;
+use App\Models\User;
 use Inertia\Inertia;
 
 class EmployeesController extends Controller
@@ -14,7 +15,9 @@ class EmployeesController extends Controller
      */
     public function index()
     {
-        return Inertia::render('employees/index');
+        return Inertia::render('employees/index', [
+            'employees' => Employees::all(),
+        ]);
     }
 
     /**
@@ -60,8 +63,11 @@ class EmployeesController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Employees $employees)
+    public function destroy(Employees $employee)
     {
-        //
+        $employee->delete();
+
+        return redirect()->route('employees.index');
     }
+    //https://youtu.be/I5H-rK3FMz4?si=aLSIKjaxafdR5PFN&t=398
 }
