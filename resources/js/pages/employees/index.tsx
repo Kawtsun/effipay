@@ -22,7 +22,7 @@ type PageProps = {
     // add other props if needed
 };
 
-export default function index() {
+export default function Index() {
     const { props } = usePage<PageProps>();
 
     useEffect(() => {
@@ -30,6 +30,7 @@ export default function index() {
             toast.success(props.flash.success);
         }
     }, [props.flash?.success]);
+    
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employees" />
