@@ -13,6 +13,15 @@ return new class extends Migration
     {
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
+            $table->string('employee_name');
+            $table->string('employee_type');
+            $table->string('employee_status');
+            $table->integer('base_salary');
+            $table->integer('overtime_pay');
+            $table->integer('sss');
+            $table->integer('philhealth');
+            $table->integer('pag_ibig');
+            $table->integer('withholding_tax');
             $table->timestamps();
         });
     }

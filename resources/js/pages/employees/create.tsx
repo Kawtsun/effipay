@@ -22,10 +22,30 @@ export default function Create() {
         base_salary: '',
         overtime_pay: '',
         sss: '',
-        philhealt: '',
+        philhealth: '',
         pag_ibig: '',
         withholding_tax: ''
     });
+
+    // filepath: c:\xampp\htdocs\effipay\resources\js\pages\employees\create.tsx
+    // ...existing code...
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const cleanedData = {
+            employee_name: data.employee_name,
+            employee_type: data.employee_type,
+            employee_status: data.employee_status,
+            base_salary: data.base_salary.replace(/,/g, '') === '' ? 0 : parseInt(data.base_salary.replace(/,/g, ''), 10),
+            overtime_pay: data.overtime_pay.replace(/,/g, '') === '' ? 0 : parseInt(data.overtime_pay.replace(/,/g, ''), 10),
+            sss: data.sss.replace(/,/g, '') === '' ? 0 : parseInt(data.sss.replace(/,/g, ''), 10),
+            philhealth: data.philhealth.replace(/,/g, '') === '' ? 0 : parseInt(data.philhealth.replace(/,/g, ''), 10),
+            pag_ibig: data.pag_ibig.replace(/,/g, '') === '' ? 0 : parseInt(data.pag_ibig.replace(/,/g, ''), 10),
+            withholding_tax: data.withholding_tax.replace(/,/g, '') === '' ? 0 : parseInt(data.withholding_tax.replace(/,/g, ''), 10),
+        };
+        post(route('employees.store'), cleanedData);
+    };
+    // ...existing code...
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Add Employees" />
@@ -38,23 +58,7 @@ export default function Create() {
                 <div className='w-2/5 p-4'>
                     <form
                         className='container mx-auto space-y-6'
-                        // ...existing code...
-                        onSubmit={e => {
-                            e.preventDefault();
-                            // Remove commas from relevant fields before submit
-                            const sanitizedData = {
-                                ...data,
-                                base_salary: data.base_salary.replace(/,/g, ''),
-                                overtime_pay: data.overtime_pay.replace(/,/g, ''),
-                                sss: data.sss.replace(/,/g, ''),
-                                philhealt: data.philhealt.replace(/,/g, ''),
-                                pag_ibig: data.pag_ibig.replace(/,/g, ''),
-                                withholding_tax: data.withholding_tax.replace(/,/g, ''),
-                            };
-                            console.log(sanitizedData);
-                            post(route('employees.store'));
-                        }}
-                    // ...existing code...
+                        onSubmit={handleSubmit}
                     >
                         {/* Employee Information */}
                         <h1 className='font-bold text-xl mb-4'>Employee Information</h1>
@@ -129,8 +133,8 @@ export default function Create() {
                                                     input.value = '';
                                                 }
                                             }}
-                                            value={data.base_salary}
-                                            onChange={(e) => setData('base_salary', e.target.value)}
+                                            value={data.base_salary ? Number(data.base_salary.replace(/,/g, '')).toLocaleString() : ''}
+                                            onChange={(e) => setData('base_salary', e.target.value.replace(/,/g, ''))}
                                         />
                                     </div>
                                 </div>
@@ -167,8 +171,8 @@ export default function Create() {
                                                     input.value = '';
                                                 }
                                             }}
-                                            value={data.overtime_pay}
-                                            onChange={(e) => setData('overtime_pay', e.target.value)}
+                                            value={data.overtime_pay ? Number(data.overtime_pay.replace(/,/g, '')).toLocaleString() : ''}
+                                            onChange={(e) => setData('overtime_pay', e.target.value.replace(/,/g, ''))}
                                         />
                                     </div>
                                 </div>
@@ -208,19 +212,19 @@ export default function Create() {
                                                     input.value = '';
                                                 }
                                             }}
-                                            value={data.sss}
-                                            onChange={(e) => setData('sss', e.target.value)}
+                                            value={data.sss ? Number(data.sss.replace(/,/g, '')).toLocaleString() : ''}
+                                            onChange={(e) => setData('sss', e.target.value.replace(/,/g, ''))}
                                         />
                                     </div>
                                 </div>
                                 <div className='flex flex-col gap-3'>
-                                    <Label htmlFor="philhealt">
+                                    <Label htmlFor="philhealth">
                                         PhilHealth
                                     </Label>
                                     <div className='relative'>
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
                                         <Input
-                                            id="philhealt"
+                                            id="philhealth"
                                             type="text"
                                             inputMode="numeric"
                                             pattern="[0-9,]*"
@@ -246,8 +250,8 @@ export default function Create() {
                                                     input.value = '';
                                                 }
                                             }}
-                                            value={data.philhealt}
-                                            onChange={(e) => setData('philhealt', e.target.value)}
+                                            value={data.philhealth ? Number(data.philhealth.replace(/,/g, '')).toLocaleString() : ''}
+                                            onChange={(e) => setData('philhealth', e.target.value.replace(/,/g, ''))}
                                         />
                                     </div>
                                 </div>
@@ -284,8 +288,8 @@ export default function Create() {
                                                     input.value = '';
                                                 }
                                             }}
-                                            value={data.pag_ibig}
-                                            onChange={(e) => setData('pag_ibig', e.target.value)}
+                                            value={data.pag_ibig ? Number(data.pag_ibig.replace(/,/g, '')).toLocaleString() : ''}
+                                            onChange={(e) => setData('pag_ibig', e.target.value.replace(/,/g, ''))}
                                         />
                                     </div>
                                 </div>
@@ -322,19 +326,19 @@ export default function Create() {
                                                     input.value = '';
                                                 }
                                             }}
-                                            value={data.withholding_tax}
-                                            onChange={(e) => setData('withholding_tax', e.target.value)}
+                                            value={data.withholding_tax ? Number(data.withholding_tax.replace(/,/g, '')).toLocaleString() : ''}
+                                            onChange={(e) => setData('withholding_tax', e.target.value.replace(/,/g, ''))}
                                         />
                                     </div>
                                 </div>
 
                             </div>
-                            <Button type='submit'>Add Employee</Button>
                         </div>
-
+                        <Button type='submit'>Add Employee</Button>
                     </form>
                 </div>
             </div>
         </AppLayout>
     );
 }
+
