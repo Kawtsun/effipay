@@ -12,6 +12,9 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
+Route::get('/employees/hints', [EmployeesController::class, 'hints'])
+     ->name('employees.hints');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
@@ -26,6 +29,7 @@ Route::middleware(['auth'])->group(function () {
     ]);
 
     Route::get('/employees/{page?}', [EmployeesController::class, 'index'])->name('employees.index');
+    Route::get('/{any}', fn() => Inertia::render('App'))->where('any', '.*');
 });
 
 require __DIR__.'/settings.php';

@@ -17,8 +17,7 @@ import {
 
 import EmployeeDelete from "@/components/employee-delete";
 import EmployeePagination from "@/components/employee-pagination";
-import { Input } from '@/components/ui/input';
-import { X } from 'lucide-react';
+import EmployeeSearch from '@/components/employee-search';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -48,8 +47,6 @@ export default function Index({ employees, currentPage, totalPages, search: init
     const { props } = usePage<PageProps>();
     const [open, setOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
-    const [search, setSearch] = useState(initialSearch);
-    const [showHint, setShowHint] = useState(false);
 
     useEffect(() => {
         if (props.flash?.success) {
@@ -62,93 +59,20 @@ export default function Index({ employees, currentPage, totalPages, search: init
         setOpen(true);
     };
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        router.visit(`/employees`, {
-            method: 'get',
-            data: { search },
-            preserveState: true,
-            preserveScroll: true,
-        });
-    };
-
-    const handleClear = () => {
-        setSearch('');
-        router.visit(`/employees`, {
-            method: 'get',
-            data: {},
-            preserveState: true,
-            preserveScroll: true,
-        });
-    };
-
-    // Collect all employee names for hint (client-side, for small lists)
-    const employeeNames = employees.map(e => e.employee_name);
-    const filteredHints = search
-        ? employeeNames
-            .filter(name => name.toLowerCase().includes(search.toLowerCase()))
-            .slice(0, 5)
-        : [];
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employees" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 overflow-x-auto">
                 <div className="p-4 flex flex-col" style={{ height: 600 }}>
-                    <form
-                        onSubmit={handleSearch}
-                        className="mb-2 flex flex-col gap-1 max-w-md"
-                        autoComplete="off"
-                    >
-                        <div className="flex items-center gap-2 relative">
-                            <div className="relative flex-1">
-                                <Input
-                                    type="text"
-                                    placeholder="Search employees..."
-                                    value={search}
-                                    onChange={e => {
-                                        setSearch(e.target.value);
-                                        setShowHint(true);
-                                    }}
-                                    onFocus={() => setShowHint(true)}
-                                    onBlur={() => setTimeout(() => setShowHint(false), 100)}
-                                    className="pr-10"
-                                    autoComplete="off"
-                                />
-                                {search && (
-                                    <button
-                                        type="button"
-                                        onClick={handleClear}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted transition"
-                                        tabIndex={-1}
-                                    >
-                                        <X size={16} />
-                                    </button>
-                                )}
-                                {showHint && filteredHints.length > 0 && (
-                                    <div className="absolute z-10 mt-1 w-full bg-popover border border-border rounded shadow text-sm">
-                                        {filteredHints.map((name, idx) => (
-                                            <div
-                                                key={idx}
-                                                className="px-3 py-1 hover:bg-muted cursor-pointer"
-                                                onMouseDown={() => {
-                                                    setSearch(name);
-                                                    setShowHint(false);
-                                                }}
-                                            >
-                                                {name}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            <Button type="submit">Search</Button>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                            Type a name and press Enter or click Search to filter employees.
-                        </div>
-                    </form>
-
+                    <EmployeeSearch
+                        initialSearch={initialSearch}
+                        onSearch={term => router.visit('/employees', {
+                            method: 'get',
+                            data: { search: term },
+                            preserveState: true,
+                            preserveScroll: true,
+                        })}
+                    />
 
                     <div className="flex justify-end">
                         <Link href={route('employees.create')}>

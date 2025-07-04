@@ -50,7 +50,6 @@ class EmployeesController extends Controller
         Employees::create($validated);
 
         return redirect()->route('employees.index')->with('success', 'Employee added successfully!');
-    
     }
 
     /**
@@ -90,5 +89,15 @@ class EmployeesController extends Controller
         $employee->delete();
 
         return redirect(route('employees.index'))->with('success', 'Employee deleted successfully!');
+    }
+
+    public function hints(Request $request)
+    {
+        $q = $request->query('q', '');
+        $names = Employees::where('employee_name', 'like', "%{$q}%")
+            ->limit(5)
+            ->pluck('employee_name');
+
+        return response()->json($names);
     }
 }
