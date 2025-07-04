@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table"
 
 import EmployeeDelete from "@/components/employee-delete";
+import EmployeePagination from "@/components/employee-pagination";
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -36,9 +37,11 @@ type PageProps = {
 
 interface EmployeesProps {
     employees: Employees[];
+    currentPage: number;
+    totalPages: number;
 }
 
-export default function Index({ employees }: EmployeesProps) {
+export default function Index({ employees, currentPage, totalPages }: EmployeesProps) {
     const { props } = usePage<PageProps>();
     const [open, setOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
@@ -75,7 +78,7 @@ export default function Index({ employees }: EmployeesProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {employees.slice(0, 10).map((employee) => (
+                            {employees.map((employee) => (
                                 <TableRow key={employee.id}>
                                     <TableCell>{employee.id}</TableCell>
                                     <TableCell>{employee.employee_name}</TableCell>
@@ -103,6 +106,9 @@ export default function Index({ employees }: EmployeesProps) {
                         setOpen={setOpen}
                         employee={selectedEmployee}
                     />
+                    <div className="mt-4 flex justify-center">
+                        <EmployeePagination currentPage={currentPage} totalPages={totalPages} />
+                    </div>
                 </div>
             </div>
         </AppLayout>

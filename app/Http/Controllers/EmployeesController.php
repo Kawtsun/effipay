@@ -12,10 +12,15 @@ class EmployeesController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index($page = null)
     {
-        return Inertia::render('employees/index', [
-            'employees' => Employees::all()
+        $perPage = 10;
+        $employees = \App\Models\Employees::orderBy('id')->paginate($perPage, ['*'], 'page', $page);
+
+        return inertia('employees/index', [
+            'employees' => $employees->items(),
+            'currentPage' => $employees->currentPage(),
+            'totalPages' => $employees->lastPage(),
         ]);
     }
 

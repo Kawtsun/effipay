@@ -24,6 +24,8 @@ Route::middleware(['auth'])->group(function () {
         'reports' => ReportsController::class,
         'audit-logs' => AuditLogsController::class
     ]);
+
+    Route::get('/employees/{page?}', [EmployeesController::class, 'index'])->name('employees.index');
 });
 
 require __DIR__.'/settings.php';

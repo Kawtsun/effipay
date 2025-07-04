@@ -28,7 +28,25 @@ class EmployeesSeeder extends Seeder
             'Tamamo Cross',
             'Silent Suzuka',
             'El Condor Pasa',
-            'Manhattan Cafe'
+            'Manhattan Cafe',
+            'Mihono Bourbon',
+            'TM Opera O',
+            'Maruzensky',
+            'Symboli Rudolf',
+            'Grass Wonder',
+            'Haru Urara',
+            'Air Groove',
+            'Sakura Bakushin O',
+            'Narita Top Road',
+            'Jungle Pocket',
+            'Satono Crown',
+            'Sakura Chiyono O',
+            'Narita Taishin',
+            'Seiun Sky',
+            'Eishin Flash',
+            'Fine Motion',
+            'Gold City'
+
         ];
 
         foreach ($employeeNames as $name) {
