@@ -2,7 +2,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -13,6 +13,17 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -50,6 +61,8 @@ interface EmployeesProps {
 
 export default function Index({ employees }: EmployeesProps) {
     const { props } = usePage<PageProps>();
+    const [open, setOpen] = useState(false);
+    const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
 
     useEffect(() => {
         if (props.flash?.success) {
@@ -57,11 +70,18 @@ export default function Index({ employees }: EmployeesProps) {
         }
     }, [props.flash]);
 
-    const deleteEmployee = (id: number, employee_name: string) => {
-        if (confirm(`Are you sure you want to permanently delete employee "${employee_name}" (ID: ${id})? This action cannot be undone.`)) {
-            router.delete(route('employees.destroy', { employee: id }))
+    const handleDeleteClick = (employee: Employees) => {
+        setSelectedEmployee(employee);
+        setOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (selectedEmployee) {
+            router.delete(route('employees.destroy', { employee: selectedEmployee.id }));
+            setOpen(false);
+            setSelectedEmployee(null);
         }
-    }
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -99,7 +119,7 @@ export default function Index({ employees }: EmployeesProps) {
                                         </Link>
                                         <Button
                                             variant={'destructive'}
-                                            onClick={() => deleteEmployee(employee.id, employee.employee_name)}>
+                                            onClick={() => handleDeleteClick(employee)}>
                                             Delete
                                         </Button>
                                     </TableCell>
@@ -107,6 +127,22 @@ export default function Index({ employees }: EmployeesProps) {
                             ))}
                         </TableBody>
                     </Table>
+                    <AlertDialog open={open} onOpenChange={setOpen}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                    Are you absolutely sure?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete employee "{selectedEmployee?.employee_name}" (ID: {selectedEmployee?.id}).
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setOpen(false)}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
             </div>
         </AppLayout>
