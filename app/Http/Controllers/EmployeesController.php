@@ -6,21 +6,30 @@ use App\Models\Employees;
 use App\Http\Requests\StoreEmployeesRequest;
 use App\Http\Requests\UpdateEmployeesRequest;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
 
 class EmployeesController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index($page = null)
+    public function index(Request $request, $page = null)
     {
         $perPage = 10;
-        $employees = \App\Models\Employees::orderBy('id')->paginate($perPage, ['*'], 'page', $page);
+        $query = Employees::query();
+
+        if ($request->search) {
+            $query->where('employee_name', 'like', '%' . $request->search . '%');
+            // Add more fields if you want to search by other columns
+        }
+
+        $employees = $query->orderBy('id')->paginate($perPage)->withQueryString();
 
         return inertia('employees/index', [
             'employees' => $employees->items(),
             'currentPage' => $employees->currentPage(),
             'totalPages' => $employees->lastPage(),
+            'search' => $request->search,
         ]);
     }
 
