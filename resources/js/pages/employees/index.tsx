@@ -75,7 +75,7 @@ export default function Index({ employees }: EmployeesProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {employees.map((employee) => (
+                            {employees.slice(0, 10).map((employee) => (
                                 <TableRow key={employee.id}>
                                     <TableCell>{employee.id}</TableCell>
                                     <TableCell>{employee.employee_name}</TableCell>
