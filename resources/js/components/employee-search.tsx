@@ -13,14 +13,13 @@ export default function EmployeeSearch({
   initialSearch,
   onSearch,
 }: Props) {
-  // coerce null ⇒ ''
   const [search, setSearch] = useState<string>(initialSearch ?? '')
   const [hints, setHints] = useState<string[]>([])
   const [showHint, setShowHint] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const didMount = useRef(false)
 
-  // 1) stable debounced callback (200 ms latency)
+  // Debounced search
   const debouncedSearch = useMemo(
     () =>
       debounce((term: string) => {
@@ -29,7 +28,6 @@ export default function EmployeeSearch({
     [onSearch]
   )
 
-  // 2) call debouncedSearch on user input, skip first mount
   useEffect(() => {
     if (!didMount.current) {
       didMount.current = true
@@ -39,7 +37,7 @@ export default function EmployeeSearch({
     return () => debouncedSearch.cancel()
   }, [search, debouncedSearch])
 
-  // 3) fetch autocomplete hints
+  // Fetch hints
   useEffect(() => {
     const q = search.trim()
     if (!q) {
@@ -52,16 +50,24 @@ export default function EmployeeSearch({
       .catch(() => setHints([]))
   }, [search])
 
-  // clear input + results
   const handleClear = () => {
     setSearch('')
     setHints([])
+    setShowHint(false)
     onSearch('')
-    inputRef.current?.focus()
+    // inputRef.current?.focus()
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const term = search.trim()
+    setShowHint(false)
+    onSearch(term)
+    inputRef.current?.blur() // 👈 blur the input
   }
 
   return (
-    <div className="mb-4 max-w-md relative">
+    <form onSubmit={handleSubmit} className="mb-4 max-w-md relative">
       <div className="relative flex items-center">
         <Input
           ref={inputRef}
@@ -97,6 +103,7 @@ export default function EmployeeSearch({
                 setSearch(h)
                 setShowHint(false)
                 onSearch(h)
+                inputRef.current?.blur() // 👈 blur on hint click too
               }}
             >
               {h}
@@ -104,6 +111,6 @@ export default function EmployeeSearch({
           ))}
         </ul>
       )}
-    </div>
+    </form>
   )
 }
