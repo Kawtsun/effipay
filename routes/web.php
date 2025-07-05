@@ -70,6 +70,8 @@ Route::middleware('auth')->group(function () {
     
 });
 
+require __DIR__.'/settings.php';
+
 /*
 |--------------------------------------------------------------------------
 | SPA Catch-All
@@ -79,12 +81,7 @@ Route::middleware('auth')->group(function () {
 | It captures any URL not matched above and renders your Inertia shell.
 |
 */
+
+
 Route::get('/{any}', fn() => Inertia::render('App'))
      ->where('any', '.*');
-
-/*
-|--------------------------------------------------------------------------
-| Any Remaining Settings
-|--------------------------------------------------------------------------
-*/
-require __DIR__.'/settings.php';
