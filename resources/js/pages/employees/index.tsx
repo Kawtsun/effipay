@@ -100,11 +100,10 @@ export default function Index({
             <Head title="Employees" />
             <div className="flex flex-col h-full gap-4 p-6">
                 <div className="mb-2">
-                    <h1 className="text-2xl font-semibold tracking-tight text-gray-800 flex items-center gap-2">
-                        <Users className="h-6 w-6" />
+                    <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2 text-foreground">
+                        <Users className="h-6 w-6 text-primary" />
                         Employees
                     </h1>
-
                     <p className="text-sm text-muted-foreground">
                         Manage your organization’s employee type, status, and salary.
                     </p>
