@@ -125,11 +125,10 @@ export default function Index({
                 <div className="relative flex-1 flex flex-col overflow-auto">
                     {/* Loading overlay */}
                     {loading && (
-                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 transition-opacity duration-300">
-                            <Loader2 className="h-16 w-16 animate-spin text-blue-600" />
+                        <div className="absolute inset-0 bg-white/80 dark:bg-black/70 flex items-center justify-center z-10 transition-opacity duration-300">
+                            <Loader2 className="h-16 w-16 animate-spin text-green-600 dark:text-green-400" />
                         </div>
                     )}
-
 
                     <Table>
                         <TableHeader>
