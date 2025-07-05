@@ -14,7 +14,7 @@ import {
     TableHead,
     TableCell,
 } from '@/components/ui/table'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { BreadcrumbItem, Employees } from '@/types'
 
@@ -98,18 +98,30 @@ export default function Index({
     return (
         <AppLayout breadcrumbs={crumbs}>
             <Head title="Employees" />
+            <div className="flex flex-col h-full gap-4 p-6">
+                <div className="mb-2">
+                    <h1 className="text-2xl font-semibold tracking-tight text-gray-800 flex items-center gap-2">
+                        <Users className="h-6 w-6" />
+                        Employees
+                    </h1>
 
-            <div className="flex flex-col h-full gap-4 p-4">
-                <EmployeeSearch
-                    initialSearch={searchTerm}
-                    onSearch={handleSearch}
-                />
+                    <p className="text-sm text-muted-foreground">
+                        Manage your organization’s employee type, status, and salary.
+                    </p>
+                </div>
+                <div className="flex items-center justify-between mb-2 gap-4 flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                        <EmployeeSearch
+                            initialSearch={searchTerm}
+                            onSearch={handleSearch}
+                        />
+                    </div>
 
-                <div className="flex justify-end mb-2">
                     <Link href={route('employees.create')}>
-                        <Button>Add Employee</Button>
+                        <Button className="whitespace-nowrap">Add Employee</Button>
                     </Link>
                 </div>
+
 
                 <div className="relative flex-1 flex flex-col overflow-auto">
                     {/* Loading overlay */}
