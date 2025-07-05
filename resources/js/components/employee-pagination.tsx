@@ -18,35 +18,30 @@ export default function EmployeePagination({
   totalPages,
   onPageChange,
 }: Props) {
-  const generatePages = (): (number | string)[] => {
-    if (totalPages <= 5) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1)
-    }
-
-    const pages: (number | string)[] = [1]
-
-    if (currentPage > 3) pages.push('…')
-
-    const start = Math.max(2, currentPage - 1)
-    const end = Math.min(totalPages - 1, currentPage + 1)
-
-    for (let i = start; i <= end; i++) {
-      pages.push(i)
-    }
-
-    if (currentPage < totalPages - 2) pages.push('…')
-
-    pages.push(totalPages)
-
-    return pages
-  }
-
-  const pages = generatePages()
-
   const goToPage = (page: number) => {
     if (page < 1 || page > totalPages || page === currentPage) return
     onPageChange(page)
   }
+
+  const getPages = (): (number | string)[] => {
+    const pages: (number | string)[] = []
+
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+
+    if (currentPage <= 3) {
+      pages.push(1, 2, 3, '…', totalPages)
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1, '…', totalPages - 2, totalPages - 1, totalPages)
+    } else {
+      pages.push(1, '…', currentPage, '…', totalPages)
+    }
+
+    return pages
+  }
+
+  const pages = getPages()
 
   return (
     <Pagination className="select-none">
@@ -54,8 +49,8 @@ export default function EmployeePagination({
         <PaginationItem>
           <PaginationPrevious
             aria-label="Previous page"
-            className={currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}
             disabled={currentPage === 1}
+            className={currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}
             onClick={e => {
               e.preventDefault()
               goToPage(currentPage - 1)
@@ -86,12 +81,11 @@ export default function EmployeePagination({
 
         <PaginationItem>
           <PaginationNext
+            aria-label="Next page"
             disabled={currentPage === totalPages}
-            aria-disabled={currentPage === totalPages}
             className={currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}
             onClick={e => {
               e.preventDefault()
-              if (currentPage === totalPages) return
               goToPage(currentPage + 1)
             }}
           />
