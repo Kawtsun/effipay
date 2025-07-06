@@ -134,9 +134,9 @@ export default function Index({
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[150px]">Employee ID</TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Status</TableHead>
+                                <TableHead>Employee Name</TableHead>
+                                <TableHead>Employee Type</TableHead>
+                                <TableHead>Employee Status</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>

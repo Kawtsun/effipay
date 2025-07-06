@@ -48,8 +48,8 @@ Route::get('/', fn() => Inertia::render('welcome'))
 */
 Route::middleware('auth')->group(function () {
     //Employees JSON Hints Route
-    Route::get('/employees/hints', [EmployeesController::class, 'hints'])
-     ->name('employees.hints');
+//     Route::get('/employees/hints', [EmployeesController::class, 'hints'])
+//      ->name('employees.hints');
 
     Route::get('/dashboard', fn() => Inertia::render('dashboard'))
          ->name('dashboard');
