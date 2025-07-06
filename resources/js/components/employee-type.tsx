@@ -19,19 +19,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-const employee_type = [
-  {
-    value: "Full Time",
-    label: "Full Time",
-  },
-  {
-    value: "Part Time",
-    label: "Part Time",
-  },
-  {
-    value: "Provisionary",
-    label: "Provisionary",
-  },
+export const employee_type = [
+  { value: "Full Time", label: "Full Time" },
+  { value: "Part Time", label: "Part Time" },
+  { value: "Provisionary", label: "Provisionary" },
 ]
 
 export function EmployeeType({

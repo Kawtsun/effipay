@@ -19,19 +19,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-const employee_status = [
-  {
-    value: "Active",
-    label: "Active",
-  },
-  {
-    value: "Paid Leave",
-    label: "Paid Leave",
-  },
-  {
-    value: "Maternity Leave",
-    label: "Maternity Leave",
-  },
+export const employee_status = [
+  { value: "Active", label: "Active" },
+  { value: "Paid Leave", label: "Paid Leave" },
+  { value: "Maternity Leave", label: "Maternity Leave" },
 ]
 
 export function EmployeeStatus({

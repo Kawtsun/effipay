@@ -1,89 +1,117 @@
-import { useState } from 'react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Filter } from 'lucide-react'
+"use client"
+
+import React, { useState, useEffect } from "react"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Filter } from "lucide-react"
+import { employee_type } from "./employee-type"
+import { employee_status } from "./employee-status"
+
+interface FilterState {
+  types: string[]
+  statuses: string[]
+}
 
 interface Props {
   selectedTypes: string[]
   selectedStatuses: string[]
-  onChange: (filters: { types: string[]; statuses: string[] }) => void
+  onChange: (filters: FilterState) => void
 }
-
-const EMPLOYEE_TYPES = ['Full Time', 'Part Time', 'Provisionary']
-const EMPLOYEE_STATUSES = ['Active', 'Paid Leave', 'Maternity Leave']
 
 export default function EmployeeFilter({
   selectedTypes,
   selectedStatuses,
   onChange,
 }: Props) {
+  const [open, setOpen] = useState(false)
+
+  // local draft state
   const [types, setTypes] = useState<string[]>(selectedTypes)
   const [statuses, setStatuses] = useState<string[]>(selectedStatuses)
 
-  const toggle = (list: string[], value: string): string[] =>
-    list.includes(value) ? list.filter(v => v !== value) : [...list, value]
+  // sync draft when parent resets
+  useEffect(() => {
+    setTypes(selectedTypes)
+  }, [selectedTypes])
 
-  const handleApply = () => {
-    onChange({ types, statuses })
+  useEffect(() => {
+    setStatuses(selectedStatuses)
+  }, [selectedStatuses])
+
+  // toggle single value in array
+  function toggle(arr: string[], val: string): string[] {
+    return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
   }
 
+  // apply and close
+  const handleApply = () => {
+    onChange({ types, statuses })
+    setOpen(false)
+  }
+
+  // reset and close
   const handleReset = () => {
     setTypes([])
     setStatuses([])
     onChange({ types: [], statuses: [] })
+    setOpen(false)
   }
 
+  const isActive = selectedTypes.length + selectedStatuses.length > 0
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="flex items-center gap-2">
+        <Button variant="outline" className="relative flex items-center gap-2">
           <Filter className="h-4 w-4" />
           Filter
+          {isActive && (
+            <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center transition-all duration-200">
+              •
+            </span>
+          )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64">
-        <div className="space-y-4">
-          <div>
-            <h4 className="text-sm font-medium mb-2">Employee Type</h4>
-            {EMPLOYEE_TYPES.map(type => (
-              <div key={type} className="flex items-center gap-2 mb-1">
-                <Checkbox
-                  id={`type-${type}`}
-                  checked={types.includes(type)}
-                  onCheckedChange={() => setTypes(toggle(types, type))}
-                />
-                <label htmlFor={`type-${type}`} className="text-sm">
-                  {type}
-                </label>
-              </div>
-            ))}
-          </div>
 
-          <div>
-            <h4 className="text-sm font-medium mb-2">Employee Status</h4>
-            {EMPLOYEE_STATUSES.map(status => (
-              <div key={status} className="flex items-center gap-2 mb-1">
-                <Checkbox
-                  id={`status-${status}`}
-                  checked={statuses.includes(status)}
-                  onCheckedChange={() => setStatuses(toggle(statuses, status))}
-                />
-                <label htmlFor={`status-${status}`} className="text-sm">
-                  {status}
-                </label>
-              </div>
-            ))}
-          </div>
+      <PopoverContent className="w-64 p-4 space-y-4">
+        <div>
+          <h4 className="text-sm font-medium mb-2">Employee Type</h4>
+          {employee_type.map(({ value, label }) => (
+            <label key={value} className="flex items-center gap-2 mb-1 text-sm">
+              <Checkbox
+                checked={types.includes(value)}
+                onCheckedChange={(checked: boolean) =>
+                  setTypes(toggle(types, value))
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </div>
 
-          <div className="flex justify-between pt-2">
-            <Button variant="ghost" size="sm" onClick={handleReset}>
-              Reset
-            </Button>
-            <Button size="sm" onClick={handleApply}>
-              Apply
-            </Button>
-          </div>
+        <div>
+          <h4 className="text-sm font-medium mb-2">Employee Status</h4>
+          {employee_status.map(({ value, label }) => (
+            <label key={value} className="flex items-center gap-2 mb-1 text-sm">
+              <Checkbox
+                checked={statuses.includes(value)}
+                onCheckedChange={(checked: boolean) =>
+                  setStatuses(toggle(statuses, value))
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" size="sm" onClick={handleReset}>
+            Reset
+          </Button>
+          <Button size="sm" onClick={handleApply}>
+            Apply
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
