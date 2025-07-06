@@ -46,8 +46,20 @@ export default function Index({
     const spinnerStart = useRef<number>(0)
 
     useEffect(() => {
-        if (props.flash?.success) toast.success(props.flash.success)
+        if (props.flash?.success) {
+            toast.success(props.flash.success)
+
+            setTimeout(() => {
+                router.visit(window.location.pathname, {
+                    only: [],
+                    preserveState: true,
+                    preserveScroll: true,
+                })
+            }, 100)
+        }
     }, [props.flash])
+
+
 
     const visit = useCallback(
         (params: Record<string, any>, options: { preserve?: boolean } = {}) => {
