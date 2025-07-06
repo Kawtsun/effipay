@@ -17,6 +17,7 @@ import {
 import { Loader2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { BreadcrumbItem, Employees } from '@/types'
+import EmployeeFilter from '@/components/employee-filter'
 
 type Flash = { success?: string }
 type PageProps = { flash?: Flash }
@@ -27,6 +28,8 @@ interface EmployeesProps {
     totalPages: number
     search?: string
 }
+
+type FilterState = { types: string[]; statuses: string[] }
 
 const MIN_SPINNER_MS = 500
 const MAX_ROWS = 10
@@ -44,6 +47,16 @@ export default function Index({
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState(initialSearch)
     const spinnerStart = useRef<number>(0)
+    const [filters, setFilters] = useState<FilterState>({
+        types: [],
+        statuses: [],
+    })
+
+    const handleFilterChange = (newFilters: typeof filters) => {
+        setFilters(newFilters)
+        visit({ search: searchTerm || undefined, page: 1, ...newFilters }, { preserve: true })
+    }
+
 
     useEffect(() => {
         if (props.flash?.success) {
@@ -92,10 +105,11 @@ export default function Index({
 
     const handlePage = useCallback(
         (page: number) => {
-            visit({ search: searchTerm || undefined, page }, { preserve: true }) // 👈 preserve state
+            visit({ search: searchTerm || undefined, page, ...filters }, { preserve: true })
         },
-        [searchTerm, visit]
+        [searchTerm, filters, visit] // 👈 include filters here
     )
+
 
 
     const handleDelete = (emp: Employees) => {
@@ -103,9 +117,16 @@ export default function Index({
         setOpen(true)
     }
 
+
+
+
+
+
     const crumbs: BreadcrumbItem[] = [
         { title: 'Employees', href: '/employees' },
     ]
+
+
 
     return (
         <AppLayout breadcrumbs={crumbs}>
@@ -131,6 +152,13 @@ export default function Index({
                     <Link href={route('employees.create')}>
                         <Button className="whitespace-nowrap">Add Employee</Button>
                     </Link>
+                    <EmployeeFilter
+                        selectedTypes={filters.types}
+                        selectedStatuses={filters.statuses}
+                        onChange={handleFilterChange}
+                    />
+
+
                 </div>
 
 

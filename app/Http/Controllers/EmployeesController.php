@@ -13,25 +13,32 @@ class EmployeesController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request, $page = null)
+    public function index(Request $request)
     {
-        $perPage = 10;
         $query = Employees::query();
 
-        if ($request->search) {
+        if ($request->has('search')) {
             $query->where('employee_name', 'like', '%' . $request->search . '%');
-            // Add more fields if you want to search by other columns
         }
 
-        $employees = $query->orderBy('id')->paginate($perPage)->withQueryString();
+        if ($request->has('types')) {
+            $query->whereIn('employee_type', $request->types);
+        }
 
-        return inertia('employees/index', [
+        if ($request->has('statuses')) {
+            $query->whereIn('employee_status', $request->statuses);
+        }
+
+        $employees = $query->paginate(10)->withQueryString();
+
+        return Inertia::render('employees/index', [
             'employees' => $employees->items(),
             'currentPage' => $employees->currentPage(),
             'totalPages' => $employees->lastPage(),
             'search' => $request->search,
         ]);
     }
+
 
     /**
      * Show the form for creating a new resource.
