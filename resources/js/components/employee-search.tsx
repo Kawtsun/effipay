@@ -88,7 +88,7 @@ export default function EmployeeSearch({
             className={`
             absolute transition-all duration-200 ease-in-out
             ${search ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}
-          text-gray-400 dark:text-gray-500
+          text-gray-500 dark:text-gray-400
           `}
           />
 
