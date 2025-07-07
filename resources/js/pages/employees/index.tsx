@@ -55,18 +55,29 @@ export default function Index({
     const hasFilters = appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0
 
     // Show toast & clear flash on mount
+    // useEffect(() => {
+    //     if (props.flash?.success) {
+    //         toast.success(props.flash.success)
+    //         setTimeout(() => {
+    //             router.visit(window.location.pathname, {
+    //                 only: [],
+    //                 preserveState: true,
+    //                 preserveScroll: true,
+    //             })
+    //         }, 100)
+    //     }
+    // }, [props.flash])
+
     useEffect(() => {
         if (props.flash?.success) {
             toast.success(props.flash.success)
-            setTimeout(() => {
-                router.visit(window.location.pathname, {
-                    only: [],
-                    preserveState: true,
-                    preserveScroll: true,
-                })
-            }, 100)
         }
     }, [props.flash])
+
+
+
+
+
 
     // “visit” helper must be declared before any calls to it
     const visit = useCallback(
@@ -271,11 +282,22 @@ export default function Index({
                                             <TableCell>{emp.employee_status}</TableCell>
                                             <TableCell className="flex gap-4">
                                                 <Link
+                                                    href={route('employees.edit', {
+                                                        employee: emp.id, // ✅ singular
+                                                        search: searchTerm || undefined,
+                                                        types: appliedFilters.types.length ? appliedFilters.types : undefined,
+                                                        statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
+                                                        page: currentPage,
+                                                    })}
+                                                    preserveState
                                                     className={buttonVariants({ variant: 'default' })}
-                                                    href={route('employees.edit', { employee: emp.id })}
                                                 >
                                                     Edit
                                                 </Link>
+
+
+
+
                                                 <Button
                                                     variant="destructive"
                                                     onClick={() => handleDelete(emp)}
@@ -300,7 +322,13 @@ export default function Index({
                         open={open}
                         setOpen={setOpen}
                         employee={sel}
+                        search={searchTerm}
+                        filters={appliedFilters}
+                        page={currentPage}
                     />
+
+
+
 
                     <div className="flex justify-center mt-4 min-h-[56px]">
                         <EmployeePagination

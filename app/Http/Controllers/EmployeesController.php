@@ -35,7 +35,12 @@ class EmployeesController extends Controller
             'employees' => $employees->items(),
             'currentPage' => $employees->currentPage(),
             'totalPages' => $employees->lastPage(),
-            'search' => $request->search,
+            'search' => $request->input('search', ''),
+            'filters' => [
+                'types' => (array) $request->input('types', []),
+                'statuses' => (array) $request->input('statuses', []),
+            ],
+            'flash' => ['success' => session('success')],
         ]);
     }
 
@@ -70,33 +75,50 @@ class EmployeesController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Employees $employee)
+    public function edit(Employees $employee, Request $request)
     {
         return Inertia::render('employees/edit', [
-            'employee' => $employee
+            'employee' => $employee,
+            'search' => $request->input('search', ''),
+            'filters' => [
+                'types' => (array) $request->input('types', []),
+                'statuses' => (array) $request->input('statuses', []),
+            ],
+            'page' => $request->input('page', 1),
         ]);
     }
+
+
+
 
     /**
      * Update the specified resource in storage.
      */
     public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
-        $validated = $request->validated();
-        $employee->update($validated);
+        $employee->update($request->validated());
 
-        return redirect()->route('employees.index')->with('success', 'Employee updated successfully!');
+        return redirect()
+            ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
+            ->with('success', 'Employee updated successfully!');
     }
+
+
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Employees $employee)
+    public function destroy(Request $request, Employees $employee)
     {
         $employee->delete();
 
-        return redirect(route('employees.index'))->with('success', 'Employee deleted successfully!');
+        // “Back” to the exact same /employees?search=...&types[]=... URL
+        return redirect()->back()
+            ->with('success', 'Employee deleted successfully!');
     }
+
+
+
 
     public function hints(Request $request)
     {
