@@ -79,6 +79,7 @@ export default function Index({
 
 
 
+
     // “visit” helper must be declared before any calls to it
     const visit = useCallback(
         (params: Record<string, any>, options: { preserve?: boolean } = {}) => {

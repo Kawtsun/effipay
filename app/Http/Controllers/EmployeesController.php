@@ -79,17 +79,14 @@ class EmployeesController extends Controller
     {
         return Inertia::render('employees/edit', [
             'employee' => $employee,
-            'search' => $request->input('search', ''),
-            'filters' => [
-                'types' => (array) $request->input('types', []),
+            'search'   => $request->input('search', ''),
+            'filters'  => [
+                'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
             ],
-            'page' => $request->input('page', 1),
+            'page'     => $request->input('page', 1),
         ]);
     }
-
-
-
 
     /**
      * Update the specified resource in storage.
@@ -98,11 +95,11 @@ class EmployeesController extends Controller
     {
         $employee->update($request->validated());
 
+        // Explicitly build the /employees?… URL with filters + page
         return redirect()
             ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
             ->with('success', 'Employee updated successfully!');
     }
-
 
 
     /**
@@ -112,8 +109,9 @@ class EmployeesController extends Controller
     {
         $employee->delete();
 
-        // “Back” to the exact same /employees?search=...&types[]=... URL
-        return redirect()->back()
+        // Same here: never use redirect()->back()
+        return redirect()
+            ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
             ->with('success', 'Employee deleted successfully!');
     }
 

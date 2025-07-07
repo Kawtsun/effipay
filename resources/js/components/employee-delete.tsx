@@ -12,18 +12,25 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { buttonVariants } from "@/components/ui/button"
+import { toast } from 'sonner'
 
 interface Props {
   open: boolean
   setOpen: (o: boolean) => void
   employee: Employees | null
+  search: string
+  filters: { types: string[]; statuses: string[] }
+  page: number
   onDeleted?: () => void
 }
 
-export const EmployeeDelete: FC<Props> = ({
+const EmployeeDelete: FC<Props> = ({
   open,
   setOpen,
   employee,
+  search,
+  filters,
+  page,
   onDeleted,
 }) => {
   const form = useForm()
@@ -31,13 +38,24 @@ export const EmployeeDelete: FC<Props> = ({
   function confirmDelete() {
     if (!employee) return
 
-    form.delete(route("employees.destroy", employee.id), {
-      // no preserveState so flash can show
-      onSuccess: () => {
-        setOpen(false)
-        onDeleted?.()
-      },
-    })
+
+    form.delete(
+      route('employees.destroy', {
+        employee: employee.id,
+        search,
+        types: filters.types,
+        statuses: filters.statuses,
+        page,
+      }),
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          setOpen(false)
+          toast.success('Employee deleted successfully!')
+          onDeleted?.()     // still notify parent to reload if you want
+        },
+      }
+    )
   }
 
   return (
@@ -46,7 +64,8 @@ export const EmployeeDelete: FC<Props> = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Confirm delete?</AlertDialogTitle>
           <AlertDialogDescription>
-            Permanently delete <strong>{employee?.employee_name}</strong>?
+            Permanently delete{" "}
+            <strong>{employee?.employee_name}</strong> (ID: {employee?.id})?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -62,4 +81,5 @@ export const EmployeeDelete: FC<Props> = ({
     </AlertDialog>
   )
 }
+
 export default EmployeeDelete
