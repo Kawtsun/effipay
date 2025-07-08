@@ -75,12 +75,12 @@ export default function EmployeeFilter({
       </PopoverTrigger>
       <PopoverContent className="w-64 p-4 space-y-5">
         <div>
-          <h4 className="text-sm font-semibold mb-1">Employee Type</h4>
-          <p className="text-xs text-muted-foreground mb-2">
+          <h4 className="text-sm font-semibold mb-1 select-none">Employee Type</h4>
+          <p className="text-xs text-muted-foreground mb-2 select-none">
             Select one or more types to filter by employment classification.
           </p>
           {employee_type.map(({ value, label }) => (
-            <label key={value} className="flex items-center gap-2 mb-1 text-sm">
+            <label key={value} className="flex items-center gap-2 mb-1 text-sm select-none">
               <Checkbox
                 checked={types.includes(value)}
                 onCheckedChange={() => setTypes(toggle(types, value))}
@@ -93,12 +93,12 @@ export default function EmployeeFilter({
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold mb-1">Employee Status</h4>
-          <p className="text-xs text-muted-foreground mb-2">
+          <h4 className="text-sm font-semibold mb-1 select-none">Employee Status</h4>
+          <p className="text-xs text-muted-foreground mb-2 select-none">
             Filter employees by their current work status.
           </p>
           {employee_status.map(({ value, label }) => (
-            <label key={value} className="flex items-center gap-2 mb-1 text-sm">
+            <label key={value} className="flex items-center gap-2 mb-1 text-sm select-none">
               <Checkbox
                 checked={statuses.includes(value)}
                 onCheckedChange={() => setStatuses(toggle(statuses, value))}

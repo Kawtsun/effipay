@@ -239,7 +239,7 @@ export default function Index({
                         </div>
                     )}
 
-                    <Table>
+                    <Table className='select-none'>
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[150px]">Employee ID</TableHead>
