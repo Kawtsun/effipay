@@ -64,8 +64,8 @@ Route::middleware('auth')->group(function () {
     ]);
 
     // Explicit employees index with optional page
-    Route::get('/employees/{page?}', [EmployeesController::class, 'index'])
-         ->name('employees.index');
+    // Route::get('/employees/{page?}', [EmployeesController::class, 'index'])
+    //      ->name('employees.index');
 
     
 });

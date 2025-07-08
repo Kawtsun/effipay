@@ -5,22 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { type BreadcrumbItem } from '@/types';
+import { Employees, type BreadcrumbItem } from '@/types';
 
-interface Employee {
-    id: number;
-    employee_name: string;
-    employee_type: string;
-    employee_status: string;
-    base_salary: number;
-    overtime_pay: number;
-    sss: number;
-    philhealth: number;
-    pag_ibig: number;
-    withholding_tax: number;
+type Props = {
+    employee: Employees
+    search: string
+    filters: { types: string[]; statuses: string[] }
+    page: number
 }
 
-export default function Edit({ employee }: { employee: Employee }) {
+
+
+export default function Edit({ employee, search, filters, page }: Props) {
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Employees',
@@ -57,7 +53,20 @@ export default function Edit({ employee }: { employee: Employee }) {
             pag_ibig: data.pag_ibig.replace(/,/g, '') === '' ? 0 : parseInt(data.pag_ibig.replace(/,/g, ''), 10),
             withholding_tax: data.withholding_tax.replace(/,/g, '') === '' ? 0 : parseInt(data.withholding_tax.replace(/,/g, ''), 10),
         };
-        put(route('employees.update', { employee: employee.id }), cleanedData);
+        put(
+            route('employees.update', {
+                employee: employee.id,
+                search,
+                types: filters.types,
+                statuses: filters.statuses,
+                page,
+            }),
+            {
+                data: cleanedData,
+                preserveScroll: true,
+            }
+        )
+
     };
 
     return (
@@ -66,9 +75,17 @@ export default function Edit({ employee }: { employee: Employee }) {
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className='w-2/5 p-4'>
                     <div>
-                        <Link href={route('employees.index')}>
+                        <Link
+                            href={route('employees.index', {
+                                search,
+                                types: filters.types,
+                                statuses: filters.statuses,
+                                page,
+                            })}
+                        >
                             <Button>Go Back</Button>
                         </Link>
+
                     </div>
                     <form
                         className='container mx-auto mt-5 space-y-6'

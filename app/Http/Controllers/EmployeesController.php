@@ -17,33 +17,31 @@ class EmployeesController extends Controller
     {
         $query = Employees::query();
 
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $query->where('employee_name', 'like', '%' . $request->search . '%');
         }
 
-        if ($request->has('types')) {
+        if ($request->filled('types')) {
             $query->whereIn('employee_type', $request->types);
         }
 
-        if ($request->has('statuses')) {
+        if ($request->filled('statuses')) {
             $query->whereIn('employee_status', $request->statuses);
         }
 
         $employees = $query->paginate(10)->withQueryString();
 
         return Inertia::render('employees/index', [
-            'employees' => $employees->items(),
+            'employees'   => $employees->items(),
             'currentPage' => $employees->currentPage(),
-            'totalPages' => $employees->lastPage(),
-            'search' => $request->input('search', ''),
-            'filters' => [
-                'types' => (array) $request->input('types', []),
+            'totalPages'  => $employees->lastPage(),
+            'search'      => $request->input('search', ''),
+            'filters'     => [
+                'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
             ],
-            'flash' => ['success' => session('success')],
         ]);
     }
-
 
     /**
      * Show the form for creating a new resource.
