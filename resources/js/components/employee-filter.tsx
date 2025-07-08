@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Filter } from "lucide-react"
 import { employee_type } from "./employee-type"
 import { employee_status } from "./employee-status"
+import { Badge } from "./ui/badge"
 
 interface FilterState {
   types: string[]
@@ -57,8 +58,7 @@ export default function EmployeeFilter({
     onChange({ types: [], statuses: [] })
     setOpen(false)
   }
-
-  const isActive = selectedTypes.length + selectedStatuses.length > 0
+  const activeCount = selectedTypes.length + selectedStatuses.length
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -66,13 +66,18 @@ export default function EmployeeFilter({
         <Button variant="outline" className="relative flex items-center gap-2">
           <Filter className="h-4 w-4" />
           Filter
-          {isActive && (
-            <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center transition-all duration-200">
-              •
-            </span>
+          {activeCount > 0 && (
+            <Badge
+              variant="secondary"
+              className="absolute -top-2 -right-2 bg-green-600 text-white text-[10px] px-1.5 py-0.5 rounded-full"
+            >
+              {activeCount}
+            </Badge>
           )}
         </Button>
       </PopoverTrigger>
+
+
       <PopoverContent className="w-64 p-4 space-y-5">
         <div>
           <h4 className="text-sm font-semibold mb-1 select-none">Employee Type</h4>
