@@ -15,7 +15,7 @@ import AppLayout from '@/layouts/app-layout'
 import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, Link, router, usePage } from '@inertiajs/react'
-import { Loader2, Users } from 'lucide-react'
+import { Loader2, Plus, PlusCircle, PlusSquare, Users } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -214,9 +214,20 @@ export default function Index({
                                 isActive={hasFilters}
                             />
 
-                            <Link href={route('employees.create')}>
-                                <Button className="whitespace-nowrap">Add Employee</Button>
+                            <Link
+                                href={route('employees.create', {
+                                    search: searchTerm || undefined,
+                                    types: appliedFilters.types.length ? appliedFilters.types : undefined,
+                                    statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
+                                    page: currentPage,
+                                })}
+                            >
+                                <Button className="flex items-center gap-2 whitespace-nowrap">
+                                    <Plus className="w-4 h-4" />
+                                    Add Employee
+                                </Button>
                             </Link>
+
                         </div>
                     </div>
 

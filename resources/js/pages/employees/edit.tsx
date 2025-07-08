@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Employees, type BreadcrumbItem } from '@/types';
+import { ArrowLeft } from 'lucide-react';
 
 type Props = {
     employee: Employees
@@ -83,7 +84,10 @@ export default function Edit({ employee, search, filters, page }: Props) {
                                 page,
                             })}
                         >
-                            <Button>Go Back</Button>
+                            <Button variant='outline'>
+                                <ArrowLeft className='w-4 h-4'/>
+                                Go Back
+                            </Button>
                         </Link>
 
                     </div>

@@ -6,19 +6,36 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { ArrowLeft, ArrowLeftCircle, ArrowLeftSquare } from 'lucide-react';
 
-const breadcrumbs: BreadcrumbItem[] = [
+type Props = {
+  search: string
+  filters: { types: string[]; statuses: string[] }
+  page: number
+}
+
+export default function Create({ search, filters, page }: Props) {
+
+    const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Employees',
-        href: '/employees',
+        href: route('employees.index', {
+            search,
+            types: filters.types,
+            statuses: filters.statuses,
+            page,
+        }),
     },
     {
         title: 'Add Employee',
-        href: '/employees/create',
+        href: route('employees.create', {
+            search,
+            types: filters.types,
+            statuses: filters.statuses,
+            page,
+        }),
     },
-];
-
-export default function Create() {
+]
     const { data, setData, post, processing, errors } = useForm({
         employee_name: '',
         employee_type: 'Full Time',
@@ -46,7 +63,19 @@ export default function Create() {
             pag_ibig: data.pag_ibig.replace(/,/g, '') === '' ? 0 : parseInt(data.pag_ibig.replace(/,/g, ''), 10),
             withholding_tax: data.withholding_tax.replace(/,/g, '') === '' ? 0 : parseInt(data.withholding_tax.replace(/,/g, ''), 10),
         };
-        post(route('employees.store'), cleanedData);
+        post(
+            route('employees.store', {
+                search,
+                types: filters.types,
+                statuses: filters.statuses,
+                page,
+            }),
+            {
+                data: cleanedData,
+                preserveScroll: true,
+            }
+        )
+
     };
     // ...existing code...
 
@@ -57,8 +86,18 @@ export default function Create() {
 
                 <div className='w-2/5 p-4'>
                     <div>
-                        <Link href={route('employees.index')}>
-                            <Button>Go Back</Button>
+                        <Link
+                            href={route('employees.index', {
+                                search,
+                                types: filters.types,
+                                statuses: filters.statuses,
+                                page,
+                            })}
+                        >
+                            <Button variant='outline'>
+                                <ArrowLeft className='w-4 h-4'/>
+                                Go Back
+                            </Button>
                         </Link>
                     </div>
                     <form

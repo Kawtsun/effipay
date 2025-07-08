@@ -46,21 +46,31 @@ class EmployeesController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
-        return Inertia::render('employees/create');
+        return Inertia::render('employees/create', [
+            'search' => $request->input('search', ''),
+            'filters' => [
+                'types' => (array) $request->input('types', []),
+                'statuses' => (array) $request->input('statuses', []),
+            ],
+            'page' => $request->input('page', 1),
+        ]);
     }
+
 
     /**
      * Store a newly created resource in storage.
      */
     public function store(StoreEmployeesRequest $request)
     {
-        $validated = $request->validated();
-        Employees::create($validated);
+        Employees::create($request->validated());
 
-        return redirect()->route('employees.index')->with('success', 'Employee added successfully!');
+        return redirect()
+            ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
+            ->with('success', 'Employee created successfully!');
     }
+
 
     /**
      * Display the specified resource.
