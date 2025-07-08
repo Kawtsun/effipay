@@ -51,7 +51,6 @@ const EmployeeDelete: FC<Props> = ({
         preserveScroll: true,
         onSuccess: () => {
           setOpen(false)
-          toast.success('Employee deleted successfully!')
           onDeleted?.()     // still notify parent to reload if you want
         },
       }
