@@ -16,7 +16,7 @@ import AppLayout from '@/layouts/app-layout'
 import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, Link, router, usePage } from '@inertiajs/react'
-import { Loader2, Plus, Users } from 'lucide-react'
+import { Eye, Loader2, Pencil, Plus, Trash, Users } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -253,13 +253,13 @@ export default function Index({
                     )}
 
                     <Table className='select-none'>
-                        <TableHeader className='text-xs font-medium uppercase text-muted-foreground tracking-wide text-left px-4 py-2'>
+                        <TableHeader className=''>
                             <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
-                                <TableHead className="px-4 py-2">Employee ID</TableHead>
-                                <TableHead className='px-4 py-2'>Employee Name</TableHead>
-                                <TableHead className='px-4 py-2'>Employee Type</TableHead>
-                                <TableHead className='px-4 py-2'>Employee Status</TableHead>
-                                <TableHead className='text-right px-4 py-2'>Actions</TableHead>
+                                <TableHead className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
+                                <TableHead className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
+                                <TableHead className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
+                                <TableHead className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
+                                <TableHead className='text-right text-xs font-semibold uppercase  tracking-wide px-4 py-2'>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
 
@@ -284,6 +284,7 @@ export default function Index({
                                             <TableCell className="w-44 px-4 py-2 whitespace-nowrap text-right">
                                                 <div className='flex justify-end items-center gap-2'>
                                                     <Button variant="secondary" onClick={() => setViewing(emp)}>
+                                                        <Eye />
                                                         View
                                                     </Button>
 
@@ -297,11 +298,13 @@ export default function Index({
                                                         })}
                                                         className={buttonVariants({ variant: 'default' })}
                                                     >
+                                                        <Pencil />
                                                         Edit
                                                     </Link>
 
 
                                                     <Button variant="destructive" onClick={() => handleDelete(emp)}>
+                                                        <Trash />
                                                         Delete
                                                     </Button>
                                                 </div>
