@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Employees;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -24,6 +25,10 @@ class DatabaseSeeder extends Seeder
         User::create([
             'username' => 'admin2',
             'password' => Hash::make('admin000')
+        ]);
+
+        $this->call([
+            EmployeesSeeder::class,
         ]);
     }
 }

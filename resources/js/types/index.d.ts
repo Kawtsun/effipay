@@ -41,3 +41,16 @@ export interface User {
     updated_at: string;
     [key: string]: unknown; // This allows for additional properties...
 }
+
+interface Employees {
+    id: number,
+    employee_name: string,
+    employee_type: string,
+    employee_status: string,
+    base_salary: number,
+    overtime_pay: number,
+    sss: number,
+    philhealth: number,
+    pag_ibig: number,
+    withholding_tax: number,
+}
