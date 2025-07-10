@@ -33,7 +33,7 @@ interface EmployeesProps {
 
 type FilterState = { types: string[]; statuses: string[] }
 
-const MIN_SPINNER_MS = 500
+const MIN_SPINNER_MS = 300
 const MAX_ROWS = 10
 const ROW_HEIGHT = 53 // px
 
@@ -178,7 +178,7 @@ export default function Index({
         <AppLayout breadcrumbs={crumbs}>
             <Head title="Employees" />
 
-            <div className="flex h-full flex-col gap-4 overflow-hidden p-6">
+            <div className="flex h-full flex-col gap-4 overflow-hidden py-6 px-8">
                 {/* HEADER */}
                 <div className="flex-none">
                     <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
@@ -253,13 +253,13 @@ export default function Index({
                     )}
 
                     <Table className='select-none'>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[150px]">Employee ID</TableHead>
-                                <TableHead>Employee Name</TableHead>
-                                <TableHead>Employee Type</TableHead>
-                                <TableHead>Employee Status</TableHead>
-                                <TableHead>Actions</TableHead>
+                        <TableHeader className='text-xs font-medium uppercase text-muted-foreground tracking-wide text-left px-4 py-2'>
+                            <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
+                                <TableHead className="px-4 py-2">Employee ID</TableHead>
+                                <TableHead className='px-4 py-2'>Employee Name</TableHead>
+                                <TableHead className='px-4 py-2'>Employee Type</TableHead>
+                                <TableHead className='px-4 py-2'>Employee Status</TableHead>
+                                <TableHead className='text-right px-4 py-2'>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
 
@@ -277,32 +277,35 @@ export default function Index({
                                             key={emp.id}
                                             className={`transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}
                                         >
-                                            <TableCell>{emp.id}</TableCell>
-                                            <TableCell>{emp.employee_name}</TableCell>
-                                            <TableCell>{emp.employee_type}</TableCell>
-                                            <TableCell>{emp.employee_status}</TableCell>
-                                            <TableCell className="flex gap-4">
-                                                <Button variant="secondary" onClick={() => setViewing(emp)}>
-                                                    View
-                                                </Button>
+                                            <TableCell className="w-16 px-4 py-2">{emp.id}</TableCell>
+                                            <TableCell className="w-52 px-4 py-2">{emp.employee_name}</TableCell>
+                                            <TableCell className="w-36 px-4 py-2">{emp.employee_type}</TableCell>
+                                            <TableCell className="w-40 px-4 py-2">{emp.employee_status}</TableCell>
+                                            <TableCell className="w-44 px-4 py-2 whitespace-nowrap text-right">
+                                                <div className='flex justify-end items-center gap-2'>
+                                                    <Button variant="secondary" onClick={() => setViewing(emp)}>
+                                                        View
+                                                    </Button>
 
-                                                <Link
-                                                    href={route('employees.edit', {
-                                                        employee: emp.id,
-                                                        search: searchTerm || undefined,
-                                                        types: appliedFilters.types.length ? appliedFilters.types : undefined,
-                                                        statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
-                                                        page: currentPage,
-                                                    })}
-                                                    className={buttonVariants({ variant: 'default' })}
-                                                >
-                                                    Edit
-                                                </Link>
+                                                    <Link
+                                                        href={route('employees.edit', {
+                                                            employee: emp.id,
+                                                            search: searchTerm || undefined,
+                                                            types: appliedFilters.types.length ? appliedFilters.types : undefined,
+                                                            statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
+                                                            page: currentPage,
+                                                        })}
+                                                        className={buttonVariants({ variant: 'default' })}
+                                                    >
+                                                        Edit
+                                                    </Link>
 
 
-                                                <Button variant="destructive" onClick={() => handleDelete(emp)}>
-                                                    Delete
-                                                </Button>
+                                                    <Button variant="destructive" onClick={() => handleDelete(emp)}>
+                                                        Delete
+                                                    </Button>
+                                                </div>
+
                                             </TableCell>
                                         </TableRow>
                                     ))}
