@@ -123,16 +123,4 @@ class EmployeesController extends Controller
             ->with('success', 'Employee deleted successfully!');
     }
 
-
-
-
-    public function hints(Request $request)
-    {
-        $q = $request->query('q', '');
-        $names = Employees::where('employee_name', 'like', "%{$q}%")
-            ->limit(5)
-            ->pluck('employee_name');
-
-        return response()->json($names);
-    }
 }
