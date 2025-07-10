@@ -2,6 +2,7 @@ import EmployeeDelete from '@/components/employee-delete'
 import EmployeeFilter from '@/components/employee-filter'
 import EmployeePagination from '@/components/employee-pagination'
 import EmployeeSearch from '@/components/employee-search'
+import EmployeeViewDialog from '@/components/employee-view-dialog'
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
     Table,
@@ -15,7 +16,7 @@ import AppLayout from '@/layouts/app-layout'
 import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, Link, router, usePage } from '@inertiajs/react'
-import { Loader2, Plus, PlusCircle, PlusSquare, Users } from 'lucide-react'
+import { Loader2, Plus, Users } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -46,6 +47,7 @@ export default function Index({
     const { props } = usePage<PageProps>()
     const [open, setOpen] = useState(false)
     const [sel, setSel] = useState<Employees | null>(null)
+    const [viewing, setViewing] = useState<Employees | null>(null)
     const [loading, setLoading] = useState(false)
     const spinnerStart = useRef<number>(0)
 
@@ -280,6 +282,10 @@ export default function Index({
                                             <TableCell>{emp.employee_type}</TableCell>
                                             <TableCell>{emp.employee_status}</TableCell>
                                             <TableCell className="flex gap-4">
+                                                <Button variant="secondary" onClick={() => setViewing(emp)}>
+                                                    View
+                                                </Button>
+
                                                 <Link
                                                     href={route('employees.edit', {
                                                         employee: emp.id,
@@ -310,6 +316,7 @@ export default function Index({
                             )}
                         </TableBody>
                     </Table>
+                    <EmployeeViewDialog employee={viewing} onClose={() => setViewing(null)} />
 
                     <EmployeeDelete open={open} setOpen={setOpen} employee={sel} search={searchTerm} filters={appliedFilters} page={currentPage} />
 
