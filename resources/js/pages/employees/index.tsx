@@ -33,7 +33,7 @@ interface EmployeesProps {
 
 type FilterState = { types: string[]; statuses: string[] }
 
-const MIN_SPINNER_MS = 300
+const MIN_SPINNER_MS = 400
 const MAX_ROWS = 10
 const ROW_HEIGHT = 53 // px
 
