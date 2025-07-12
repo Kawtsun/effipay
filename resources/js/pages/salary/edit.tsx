@@ -1,11 +1,11 @@
 import { Head, router, usePage } from '@inertiajs/react'
 import AppLayout from '@/layouts/app-layout'
 import { EmployeeType } from '@/components/employee-type'
-import { EmployeeSalaryEdit } from '@/components/employee-salary-edit'
 import { type BreadcrumbItem } from '@/types'
 import { Wallet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { EmployeeSalaryEdit } from '@/components/employee-salary-edit'
 
 type Defaults = {
   employee_type: string
@@ -28,9 +28,12 @@ export default function Index() {
   const { flash, types, selected, defaults } = usePage<PageProps>().props
   const [type, setType] = useState(selected)
 
+  // sync server‐side change
   useEffect(() => setType(selected), [selected])
+  // flash toast
   useEffect(() => { if (flash) toast.success(flash) }, [flash])
 
+  // on dropdown change → reload defaults
   const onTypeChange = useCallback((val: string) => {
     setType(val)
     router.get(
@@ -44,6 +47,7 @@ export default function Index() {
     { title: 'Salary', href: route('salary.index') },
   ]
 
+  // six default fields as cards
   const cards = [
     { key: 'base_salary',     label: 'Base Salary',     value: defaults.base_salary },
     { key: 'overtime_pay',    label: 'Overtime Pay',    value: defaults.overtime_pay },
@@ -56,8 +60,10 @@ export default function Index() {
   return (
     <>
       <Head title="Salary Defaults" />
+
       <AppLayout breadcrumbs={breadcrumbs}>
         <div className="py-6 px-8 space-y-6">
+          {/* HEADER + TYPE PICKER */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="flex items-center gap-2 text-2xl font-semibold">
@@ -71,6 +77,7 @@ export default function Index() {
             <EmployeeType value={type} onChange={onTypeChange} />
           </div>
 
+          {/* CARDS GRID */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {cards.map(({ key, label, value }) => (
               <div

@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Salary;
 use App\Http\Requests\StoreSalaryRequest;
 use App\Http\Requests\UpdateSalaryRequest;
+use Illuminate\Http\Request;
+use App\Models\Employees;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
 class SalaryController extends Controller
@@ -12,9 +15,30 @@ class SalaryController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return Inertia::render('salary/index');
+        $types    = ['Full Time', 'Part Time', 'Provisionary'];
+        $selected = $request->input('type', $types[0]);
+
+        // firstOrCreate() ensures there’s always a row to edit
+        $defaults = Salary::firstOrCreate(
+            ['employee_type' => $selected],
+            [
+                'base_salary' => 0,
+                'overtime_pay' => 0,
+                'sss' => 0,
+                'philhealth' => 0,
+                'pag_ibig' => 0,
+                'withholding_tax' => 0
+            ]
+        );
+
+        return Inertia::render('salary/index', [
+            'types'     => $types,
+            'selected'  => $selected,
+            'defaults'  => $defaults,
+            'flash'     => session('success'),
+        ]);
     }
 
     /**
@@ -46,15 +70,20 @@ class SalaryController extends Controller
      */
     public function edit(Salary $salary)
     {
-        //
+        return Inertia::render('salary/edit', [
+            'defaults' => $salary,
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateSalaryRequest $request, Salary $salary)
+    public function update(UpdateSalaryRequest $request, Salary $salary): RedirectResponse
     {
-        //
+        $salary->update($request->validated());
+
+        return redirect()
+            ->route('salary.index', ['type' => $salary->employee_type]);
     }
 
     /**

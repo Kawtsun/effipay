@@ -42,7 +42,7 @@ export interface User {
     [key: string]: unknown; // This allows for additional properties...
 }
 
-interface Employees {
+export interface Employees {
     id: number,
     employee_name: string,
     employee_type: string,
@@ -53,4 +53,15 @@ interface Employees {
     philhealth: number,
     pag_ibig: number,
     withholding_tax: number,
+}
+
+export interface Salary {
+    id: number;
+    employee_type: string;
+    base_salary: number;
+    overtime_pay: number;
+    sss: number;
+    philhealth: number;
+    pag_ibig: number;
+    withholding_tax: number;
 }

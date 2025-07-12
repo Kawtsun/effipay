@@ -11,7 +11,7 @@ class UpdateSalaryRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,12 @@ class UpdateSalaryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'base_salary'     => 'sometimes|required|integer|min:0',
+            'overtime_pay'    => 'sometimes|required|integer|min:0',
+            'sss'             => 'sometimes|required|integer|min:0',
+            'philhealth'      => 'sometimes|required|integer|min:0',
+            'pag_ibig'        => 'sometimes|required|integer|min:0',
+            'withholding_tax' => 'sometimes|required|integer|min:0',
         ];
     }
 }

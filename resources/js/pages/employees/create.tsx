@@ -7,62 +7,98 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, ArrowLeftCircle, ArrowLeftSquare } from 'lucide-react';
+import { useEffect } from 'react';
 
 type Props = {
-  search: string
-  filters: { types: string[]; statuses: string[] }
-  page: number
-}
+    search: string;
+    filters: { types: string[]; statuses: string[] };
+    page: number;
 
-export default function Create({ search, filters, page }: Props) {
+    // ← NEW props from controller
+    employeeTypes: string[];
+    salaryDefaults: Record<
+        string,
+        {
+            base_salary: number;
+            overtime_pay: number;
+            sss: number;
+            philhealth: number;
+            pag_ibig: number;
+            withholding_tax: number;
+        }
+    >;
+};
 
+export default function Create({
+    search,
+    filters,
+    page,
+    employeeTypes,
+    salaryDefaults,
+}: Props) {
     const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Employees',
-        href: route('employees.index', {
-            search,
-            types: filters.types,
-            statuses: filters.statuses,
-            page,
-        }),
-    },
-    {
-        title: 'Add Employee',
-        href: route('employees.create', {
-            search,
-            types: filters.types,
-            statuses: filters.statuses,
-            page,
-        }),
-    },
-]
+        {
+            title: 'Employees',
+            href: route('employees.index', {
+                search,
+                types: filters.types,
+                statuses: filters.statuses,
+                page,
+            }),
+        },
+        {
+            title: 'Add Employee',
+            href: route('employees.create', {
+                search,
+                types: filters.types,
+                statuses: filters.statuses,
+                page,
+            }),
+        },
+    ];
+
+    // ← Initialize form, defaulting employee_type to first in list
+    const defaultType = employeeTypes[0] ?? 'Full Time';
     const { data, setData, post, processing, errors } = useForm({
         employee_name: '',
-        employee_type: 'Full Time',
+        employee_type: defaultType,
         employee_status: 'Active',
-        base_salary: '',
-        overtime_pay: '',
-        sss: '',
-        philhealth: '',
-        pag_ibig: '',
-        withholding_tax: ''
+        base_salary: salaryDefaults[defaultType]?.base_salary.toString() ?? '',
+        overtime_pay: salaryDefaults[defaultType]?.overtime_pay.toString() ?? '',
+        sss: salaryDefaults[defaultType]?.sss.toString() ?? '',
+        philhealth: salaryDefaults[defaultType]?.philhealth.toString() ?? '',
+        pag_ibig: salaryDefaults[defaultType]?.pag_ibig.toString() ?? '',
+        withholding_tax: salaryDefaults[defaultType]?.withholding_tax.toString() ?? '',
     });
 
-    // filepath: c:\xampp\htdocs\effipay\resources\js\pages\employees\create.tsx
-    // ...existing code...
+    // ← NEW: whenever employee_type changes, refill the six salary fields
+    useEffect(() => {
+        const def = salaryDefaults[data.employee_type];
+        if (def) {
+            setData('base_salary', def.base_salary.toString());
+            setData('overtime_pay', def.overtime_pay.toString());
+            setData('sss', def.sss.toString());
+            setData('philhealth', def.philhealth.toString());
+            setData('pag_ibig', def.pag_ibig.toString());
+            setData('withholding_tax', def.withholding_tax.toString());
+        }
+    }, [data.employee_type]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         const cleanedData = {
             employee_name: data.employee_name,
             employee_type: data.employee_type,
             employee_status: data.employee_status,
-            base_salary: data.base_salary.replace(/,/g, '') === '' ? 0 : parseInt(data.base_salary.replace(/,/g, ''), 10),
-            overtime_pay: data.overtime_pay.replace(/,/g, '') === '' ? 0 : parseInt(data.overtime_pay.replace(/,/g, ''), 10),
-            sss: data.sss.replace(/,/g, '') === '' ? 0 : parseInt(data.sss.replace(/,/g, ''), 10),
-            philhealth: data.philhealth.replace(/,/g, '') === '' ? 0 : parseInt(data.philhealth.replace(/,/g, ''), 10),
-            pag_ibig: data.pag_ibig.replace(/,/g, '') === '' ? 0 : parseInt(data.pag_ibig.replace(/,/g, ''), 10),
-            withholding_tax: data.withholding_tax.replace(/,/g, '') === '' ? 0 : parseInt(data.withholding_tax.replace(/,/g, ''), 10),
+            base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
+            overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
+            sss: Number(data.sss.replace(/,/g, '')) || 0,
+            philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
+            pag_ibig: Number(data.pag_ibig.replace(/,/g, '')) || 0,
+            withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
         };
+
         post(
             route('employees.store', {
                 search,
@@ -74,10 +110,8 @@ export default function Create({ search, filters, page }: Props) {
                 data: cleanedData,
                 preserveScroll: true,
             }
-        )
-
+        );
     };
-    // ...existing code...
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -95,7 +129,7 @@ export default function Create({ search, filters, page }: Props) {
                             })}
                         >
                             <Button variant='outline'>
-                                <ArrowLeft className='w-4 h-4'/>
+                                <ArrowLeft className='w-4 h-4' />
                                 Go Back
                             </Button>
                         </Link>
