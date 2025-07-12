@@ -1,3 +1,5 @@
+// resources/js/components/employee-status.tsx
+
 "use client"
 
 import * as React from "react"
@@ -7,9 +9,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Command,
-//   CommandEmpty,
   CommandGroup,
-//   CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
@@ -29,10 +29,10 @@ export function EmployeeStatus({
   value,
   onChange,
 }: {
-  value: string;
-  onChange: (val: string) => void;
+  value: string
+  onChange: (val: string) => void
 }) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = React.useState(false)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -43,32 +43,33 @@ export function EmployeeStatus({
           aria-expanded={open}
           className="w-[200px] justify-between"
         >
-          {value
-            ? employee_status.find((employee_status) => employee_status.value === value)?.label
-            : "Select employee status"}
-          <ChevronsUpDown className="opacity-50" />
+          <span className="text-gray-900 dark:text-gray-100">
+            {employee_status.find((es) => es.value === value)?.label ??
+              "Select status"}
+          </span>
+          <ChevronsUpDown className="opacity-50 dark:text-gray-400" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
+
+      <PopoverContent className="w-[200px] p-0 shadow-md dark:bg-gray-800">
         <Command>
-          {/* <CommandInput placeholder="Search employee type..." className="h-9" /> */}
           <CommandList>
-            {/* <CommandEmpty>No employee type found.</CommandEmpty> */}
             <CommandGroup>
-              {employee_status.map((employee_status) => (
+              {employee_status.map((es) => (
                 <CommandItem
-                  key={employee_status.value}
-                  value={employee_status.value}
-                  onSelect={(currentValue) => {
-                    onChange(currentValue === value ? "" : currentValue);
-                    setOpen(false);
+                  key={es.value}
+                  value={es.value}
+                  onSelect={(current) => {
+                    onChange(current)  // always select, never deselect
+                    setOpen(false)
                   }}
+                  className="dark:text-gray-100"
                 >
-                  {employee_status.label}
+                  {es.label}
                   <Check
                     className={cn(
                       "ml-auto",
-                      value === employee_status.value ? "opacity-100" : "opacity-0"
+                      value === es.value ? "opacity-100" : "opacity-0"
                     )}
                   />
                 </CommandItem>
@@ -78,5 +79,5 @@ export function EmployeeStatus({
         </Command>
       </PopoverContent>
     </Popover>
-  );
+  )
 }

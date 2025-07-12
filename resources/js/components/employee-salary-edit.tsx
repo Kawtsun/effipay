@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Pencil } from "lucide-react"
 
 interface Props {
   employeeType: string
@@ -64,8 +65,7 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
         data: { [field]: numeric },
         preserveScroll: true,
 
-        // onFinish always fires, even if Inertia decides not to re-render
-        onFinish: () => {
+        onSuccess: () => {
           toast.success(`${label} updated`)
           setOpen(false)
         },
@@ -76,7 +76,8 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline">
+          <Pencil />
           Edit
         </Button>
       </DialogTrigger>
@@ -114,7 +115,7 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
                   const raw = e.target.value.replace(/\D/g, "")
                   setData(field as any, raw)
                 }}
-                // no autoFocus here
+              // no autoFocus here
               />
             </div>
             {errors[field as keyof typeof errors] && (
@@ -126,6 +127,7 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
 
           <DialogFooter className="flex justify-end gap-2">
             <Button
+              type="button"                // ← prevent this from submitting the form
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={processing}
