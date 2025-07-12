@@ -93,7 +93,7 @@ export default function Index() {
                 <Card
                   key={key}
                   variant="ghost"
-                  className="h-full shadow-none hover:shadow-lg transition-shadow rounded-lg"
+                  className="h-full shadow-none hover:shadow-lg transition-shadow rounded-lg select-none"
                 >
                   <CardHeader className="flex items-center justify-between pb-2">
                     <CardTitle className="text-base">{label}</CardTitle>
@@ -126,7 +126,7 @@ export default function Index() {
                 <Card
                   key={key}
                   variant="ghost"
-                  className="h-full shadow-none hover:shadow-lg transition-shadow rounded-lg"
+                  className="h-full shadow-none hover:shadow-lg transition-shadow rounded-lg select-none"
                 >
                   <CardHeader className="flex items-center justify-between pb-2">
                     <CardTitle className="text-base">{label}</CardTitle>
