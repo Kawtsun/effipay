@@ -44,12 +44,12 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
                                 <DialogTitle>Employee Details</DialogTitle>
                             </DialogHeader>
 
-                            <Card className="border rounded-md shadow-sm bg-white">
-                                <CardHeader className="text-lg font-semibold tracking-tight border-b pb-2">
+                            <Card className="border rounded-md shadow-sm bg-white dark:bg-card dark:border-border dark:text-card-foreground p-0">
+                                <CardHeader className="text-lg font-semibold tracking-tight border-b bg-muted dark:bg-muted dark:border-border dark:text-foreground rounded-t-md px-6 py-3">
                                     #{employee.id} - {employee.employee_name}
                                 </CardHeader>
 
-                                <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm pt-4">
+                                <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm pt-4 pb-6 px-6">
                                     <Info label="Status" value={employee.employee_status} />
                                     <Info label="Type" value={employee.employee_type} />
                                     <Info
