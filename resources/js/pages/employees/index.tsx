@@ -185,7 +185,7 @@ export default function Index({
                         <Users className="h-6 w-6 text-primary" />
                         Employees
                     </h1>
-                    <p className="text-sm text-muted-foreground">Manage your organization’s employee type, status, and salary.</p>
+                    <p className="text-sm text-muted-foreground">Manage your organization's employee type, status, and salary.</p>
                 </div>
 
                 {/* SEARCH & CONTROLS */}
@@ -248,7 +248,7 @@ export default function Index({
                 <div className="relative flex flex-1 flex-col overflow-auto">
                     {loading && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 transition-opacity duration-300 dark:bg-black/70">
-                            <Loader2 className="h-16 w-16 animate-spin text-green-600 dark:text-green-400" />
+                            <Loader2 className="h-16 w-16 animate-spin text-primary" />
                         </div>
                     )}
 
