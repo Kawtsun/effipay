@@ -3,6 +3,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Head } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
+import AppLogoIcon from '@/components/app-logo-icon';
 
 export default function Welcome() {
     const [loading, setLoading] = useState(false);
@@ -35,7 +36,7 @@ export default function Welcome() {
                 {/* Effipay Card using shadcn Card */}
                 <Card className="relative z-10 w-full max-w-lg rounded-2xl border border-primary/30 shadow-2xl bg-white/80 dark:bg-neutral-900/90 backdrop-blur-lg p-0 select-none">
                     <CardHeader className="flex flex-col items-center pt-10 pb-0">
-                        <img src="/img/tcc_logo.png" alt="Tomas Claudio Colleges Logo" className="h-20 w-20 object-contain mb-5 mx-auto" />
+                        <AppLogoIcon className="h-30 w-30 rounded-full object-cover mx-auto" />
                         <h1 className="text-4xl font-extrabold text-primary mb-3 text-center drop-shadow-md tracking-tight">Effipay</h1>
                         <h2 className="text-xl font-semibold text-foreground mb-4 text-center drop-shadow-lg">A Web-Based Payroll Management System</h2>
                         <p className="text-lg text-muted-foreground mb-8 text-center max-w-md">

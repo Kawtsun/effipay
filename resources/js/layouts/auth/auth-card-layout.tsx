@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
+import AppLogoIcon from '@/components/app-logo-icon';
 
 export default function AuthCardLayout({
     children,
@@ -32,8 +33,8 @@ export default function AuthCardLayout({
                     <Card className="rounded-2xl w-full">
                         <CardHeader className="pt-8 pb-0 text-center flex flex-col items-center w-full">
                             {/* TCC Logo inside the card, linking to welcome page */}
-                            <Link href={route('home')} className="mb-4">
-                                <img src="/img/tcc_logo.png" alt="Tomas Claudio Colleges Logo" className="h-20 w-20 object-contain mx-auto" />
+                            <Link href={route('home')}>
+                                <AppLogoIcon className="h-30 w-30 rounded-full object-cover mx-auto" />
                             </Link>
                             <CardTitle className="text-xl">{title}</CardTitle>
                             <CardDescription>{description}</CardDescription>
