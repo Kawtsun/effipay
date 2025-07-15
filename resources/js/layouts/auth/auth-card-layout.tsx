@@ -28,7 +28,7 @@ export default function AuthCardLayout({
             <div className="fixed inset-0 bg-black/80 dark:bg-black/90 z-0" />
             {/* Card content */}
             <div className="relative z-10 flex min-h-svh flex-col items-center justify-center p-6 md:p-10 w-full">
-                <div className="w-full max-w-lg p-10">
+                <div className="w-full max-w-xl p-10">
                     <Card className="rounded-2xl w-full">
                         <CardHeader className="pt-8 pb-0 text-center flex flex-col items-center w-full">
                             {/* TCC Logo inside the card, linking to welcome page */}
