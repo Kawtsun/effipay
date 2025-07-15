@@ -32,7 +32,7 @@ export default function Welcome() {
                     }}
                 />
                 {/* Overlay for extra contrast */}
-                <div className="fixed inset-0 bg-black/80 dark:bg-black/90 z-0" />
+                <div className="fixed inset-0 bg-black/60 dark:bg-black/70 z-0" />
                 {/* Effipay Card using shadcn Card */}
                 <Card className="relative z-10 w-full max-w-lg rounded-2xl border border-primary/30 shadow-2xl bg-white/80 dark:bg-neutral-900/90 backdrop-blur-lg p-0 select-none">
                     <CardHeader className="flex flex-col items-center pt-10 pb-0">

@@ -26,7 +26,7 @@ export default function AuthCardLayout({
                 }}
             />
             {/* Overlay */}
-            <div className="fixed inset-0 bg-black/80 dark:bg-black/90 z-0" />
+            <div className="fixed inset-0 bg-black/60 dark:bg-black/70 z-0" />
             {/* Card content */}
             <div className="relative z-10 flex min-h-svh flex-col items-center justify-center p-6 md:p-10 w-full">
                 <div className="w-full max-w-xl p-10 select-none">
