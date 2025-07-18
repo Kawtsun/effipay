@@ -1,23 +1,28 @@
 import { EmployeeStatus } from '@/components/employee-status';
-import { EmployeeType } from '@/components/employee-type';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { Employees, type BreadcrumbItem } from '@/types';
 import { ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { EmployeeCategory } from '@/components/employee-category';
+import { EmployeeType } from '@/components/employee-type';
 
 type Props = {
     employee: Employees
     search: string
-    filters: { types: string[]; statuses: string[] }
+    filters: { types: string[]; statuses: string[]; category?: string }
     page: number
+    employeeCategory?: string
 }
 
-
-
-export default function Edit({ employee, search, filters, page }: Props) {
+export default function Edit({ employee, search, filters, page, employeeCategory = 'Teaching' }: Props) {
+    const [category, setCategory] = useState<string>(employeeCategory);
+    const teachingTypes = ['Full Time', 'Part Time', 'Provisionary'];
+    const nonTeachingTypes = ['Regular', 'Provisionary'];
+    const availableTypes = category === 'Non-Teaching' ? nonTeachingTypes : teachingTypes;
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Employees',
@@ -29,9 +34,10 @@ export default function Edit({ employee, search, filters, page }: Props) {
         },
     ];
 
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, put } = useForm({
         employee_name: employee.employee_name ?? '',
-        employee_type: employee.employee_type ?? 'Full Time',
+        employee_category: category,
+        employee_type: employee.employee_type ?? availableTypes[0],
         employee_status: employee.employee_status ?? 'Active',
         base_salary: employee.base_salary?.toString() ?? '',
         overtime_pay: employee.overtime_pay?.toString() ?? '',
@@ -41,12 +47,17 @@ export default function Edit({ employee, search, filters, page }: Props) {
         withholding_tax: employee.withholding_tax?.toString() ?? ''
     });
 
+    useEffect(() => {
+        setData('employee_category', category);
+        if (!availableTypes.includes(data.employee_type)) {
+            setData('employee_type', availableTypes[0]);
+        }
+    }, [category]);
+
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         const cleanedData = {
-            employee_name: data.employee_name,
-            employee_type: data.employee_type,
-            employee_status: data.employee_status,
+            ...data,
             base_salary: data.base_salary.replace(/,/g, '') === '' ? 0 : parseInt(data.base_salary.replace(/,/g, ''), 10),
             overtime_pay: data.overtime_pay.replace(/,/g, '') === '' ? 0 : parseInt(data.overtime_pay.replace(/,/g, ''), 10),
             sss: data.sss.replace(/,/g, '') === '' ? 0 : parseInt(data.sss.replace(/,/g, ''), 10),
@@ -58,16 +69,14 @@ export default function Edit({ employee, search, filters, page }: Props) {
             route('employees.update', {
                 employee: employee.id,
                 search,
+                category,
                 types: filters.types,
                 statuses: filters.statuses,
                 page,
             }),
-            {
-                data: cleanedData,
-                preserveScroll: true,
-            }
-        )
-
+            cleanedData,
+            { preserveScroll: true }
+        );
     };
 
     return (
@@ -99,6 +108,13 @@ export default function Edit({ employee, search, filters, page }: Props) {
                         <h1 className='font-bold text-xl mb-4'>Employee Information</h1>
                         <div className='space-y-6'>
                             <div className="flex flex-col gap-3">
+                                <Label htmlFor="employee_category">Employee Category</Label>
+                                <EmployeeCategory
+                                    value={category}
+                                    onChange={val => setCategory(val)}
+                                />
+                            </div>
+                            <div className="flex flex-col gap-3">
                                 <Label htmlFor="employee_name">
                                     Employee Name
                                 </Label>
@@ -118,6 +134,7 @@ export default function Edit({ employee, search, filters, page }: Props) {
                                 <EmployeeType
                                     value={data.employee_type}
                                     onChange={val => setData('employee_type', val)}
+                                    types={availableTypes.map(type => ({ value: type, label: type }))}
                                 />
                             </div>
                             <div className="flex flex-col gap-3">

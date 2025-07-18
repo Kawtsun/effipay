@@ -18,8 +18,14 @@ class EmployeesController extends Controller
     {
         $query = Employees::query();
 
+        $category = $request->input('category', 'Teaching');
+
         if ($request->filled('search')) {
             $query->where('employee_name', 'like', '%' . $request->search . '%');
+        }
+
+        if ($category) {
+            $query->where('employee_category', $category);
         }
 
         if ($request->filled('types')) {
@@ -38,6 +44,7 @@ class EmployeesController extends Controller
             'totalPages'  => $employees->lastPage(),
             'search'      => $request->input('search', ''),
             'filters'     => [
+                'category' => $category,
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
             ],
@@ -49,17 +56,19 @@ class EmployeesController extends Controller
      */
     public function create(Request $request)
     {
-        // preserve existing query data
         $search   = $request->input('search', '');
         $types    = (array) $request->input('types', []);
         $statuses = (array) $request->input('statuses', []);
         $page     = $request->input('page', 1);
+        $category = $request->input('category', 'Teaching');
 
-        // ← NEW: pull all types (must match your salaries table)
-        $employeeTypes = \App\Models\Salary::pluck('employee_type')->all();
+        // Employee types by category
+        $teachingTypes = ['Full Time', 'Part Time', 'Provisionary'];
+        $nonTeachingTypes = ['Regular', 'Provisionary'];
+        $employeeTypes = $category === 'Non-Teaching' ? $nonTeachingTypes : $teachingTypes;
 
-        // ← NEW: build a map: [ 'Full Time' => [ base_salary => 50000, … ], … ]
-        $salaryDefaults = \App\Models\Salary::all()
+        $salaryDefaults = \App\Models\Salary::whereIn('employee_type', $employeeTypes)
+            ->get()
             ->mapWithKeys(fn($row) => [
                 $row->employee_type => [
                     'base_salary'     => $row->base_salary,
@@ -74,16 +83,13 @@ class EmployeesController extends Controller
 
         return Inertia::render('employees/create', [
             'search'          => $search,
-            'filters'         => ['types' => $types, 'statuses' => $statuses],
+            'filters'         => ['category' => $category, 'types' => $types, 'statuses' => $statuses],
             'page'            => $page,
-            // ← NEW props
             'employeeTypes'   => $employeeTypes,
             'salaryDefaults'  => $salaryDefaults,
+            'employeeCategory'=> $category,
         ]);
     }
-
-
-
 
     /**
      * Store a newly created resource in storage.
@@ -93,10 +99,15 @@ class EmployeesController extends Controller
         Employees::create($request->validated());
 
         return redirect()
-            ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
+            ->route('employees.index', [
+                'search' => $request['search'] ?? '',
+                'category' => $request['category'] ?? 'Teaching',
+                'types' => $request['types'] ?? [],
+                'statuses' => $request['statuses'] ?? [],
+                'page' => $request['page'] ?? 1,
+            ])
             ->with('success', 'Employee created successfully!');
     }
-
 
     /**
      * Display the specified resource.
@@ -111,14 +122,22 @@ class EmployeesController extends Controller
      */
     public function edit(Employees $employee, Request $request)
     {
+        $category = $employee->employee_category ?? 'Teaching';
+        $teachingTypes = ['Full Time', 'Part Time', 'Provisionary'];
+        $nonTeachingTypes = ['Regular', 'Provisionary'];
+        $employeeTypes = $category === 'Non-Teaching' ? $nonTeachingTypes : $teachingTypes;
+
         return Inertia::render('employees/edit', [
             'employee' => $employee,
             'search'   => $request->input('search', ''),
             'filters'  => [
+                'category' => $category,
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
             ],
             'page'     => $request->input('page', 1),
+            'employeeTypes' => $employeeTypes,
+            'employeeCategory' => $category,
         ]);
     }
 
@@ -129,12 +148,16 @@ class EmployeesController extends Controller
     {
         $employee->update($request->validated());
 
-        // Explicitly build the /employees?… URL with filters + page
         return redirect()
-            ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
+            ->route('employees.index', [
+                'search' => $request['search'] ?? '',
+                'category' => $request['category'] ?? 'Teaching',
+                'types' => $request['types'] ?? [],
+                'statuses' => $request['statuses'] ?? [],
+                'page' => $request['page'] ?? 1,
+            ])
             ->with('success', 'Employee updated successfully!');
     }
-
 
     /**
      * Remove the specified resource from storage.
@@ -145,7 +168,13 @@ class EmployeesController extends Controller
 
         // Same here: never use redirect()->back()
         return redirect()
-            ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
+            ->route('employees.index', [
+                'search' => $request['search'] ?? '',
+                'category' => $request['category'] ?? 'Teaching',
+                'types' => $request['types'] ?? [],
+                'statuses' => $request['statuses'] ?? [],
+                'page' => $request['page'] ?? 1,
+            ])
             ->with('success', 'Employee deleted successfully!');
     }
 }

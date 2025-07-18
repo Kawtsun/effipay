@@ -53,6 +53,7 @@ export interface Employees {
     philhealth: number,
     pag_ibig: number,
     withholding_tax: number,
+    employee_category: string,
 }
 
 export interface Salary {

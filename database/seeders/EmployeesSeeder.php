@@ -118,9 +118,14 @@ class EmployeesSeeder extends Seeder
         $shuffled = collect($employeeNames)->shuffle();
 
         foreach ($shuffled as $name) {
+            $category = fake()->randomElement(['Teaching', 'Non-Teaching']);
+            $type = $category === 'Teaching'
+                ? fake()->randomElement(['Full Time', 'Part Time', 'Provisionary'])
+                : fake()->randomElement(['Regular', 'Provisionary']);
             Employees::create([
                 'employee_name' => $name,
-                'employee_type' => fake()->randomElement(['Full Time', 'Part Time', 'Provisionary']),
+                'employee_category' => $category,
+                'employee_type' => $type,
                 'employee_status' => fake()->randomElement(['Active', 'Paid Leave','Maternity Leave']),
                 'base_salary' => fake()->numberBetween(10000, 999999),
                 'overtime_pay' => fake()->numberBetween(2000, 5000),

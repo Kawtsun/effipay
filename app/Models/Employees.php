@@ -19,6 +19,7 @@ class Employees extends Model
         'sss',
         'philhealth',
         'pag_ibig',
-        'withholding_tax'
+        'withholding_tax',
+        'employee_category',
     ];
 }

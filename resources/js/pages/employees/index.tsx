@@ -19,6 +19,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react'
 import { Eye, Loader2, Pencil, Plus, Trash, Users } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { EmployeeCategory } from '@/components/employee-category'
 
 type Flash = { success?: string }
 type PageProps = { flash?: Flash }
@@ -31,7 +32,7 @@ interface EmployeesProps {
     filters: { types: string[]; statuses: string[] }
 }
 
-type FilterState = { types: string[]; statuses: string[] }
+type FilterState = { category?: string; types: string[]; statuses: string[] }
 
 const MIN_SPINNER_MS = 400
 const MAX_ROWS = 10
@@ -43,7 +44,7 @@ export default function Index({
     totalPages,
     search: initialSearch = '',
     filters: initialFilters,
-}: EmployeesProps) {
+}: EmployeesProps & { filters: FilterState }) {
     const { props } = usePage<PageProps>()
     const [open, setOpen] = useState(false)
     const [sel, setSel] = useState<Employees | null>(null)
@@ -55,7 +56,7 @@ export default function Index({
     const [searchTerm, setSearchTerm] = useState(initialSearch)
     const [filters, setFilters] = useState<FilterState>(initialFilters)
     const [appliedFilters, setAppliedFilters] = useState<FilterState>(initialFilters)
-    const hasFilters = appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0
+    const hasFilters = !!appliedFilters.category || appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0
 
     // Sync local state when props change (e.g. after delete or redirect)
     const isFirstLoad = useRef(true)
@@ -78,7 +79,7 @@ export default function Index({
     }, [props.flash])
 
     // Visit helper
-    const visit = useCallback((params: Record<string, any>, options: { preserve?: boolean } = {}) => {
+    const visit = useCallback((params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[] }>, options: { preserve?: boolean } = {}) => {
         spinnerStart.current = Date.now()
         setLoading(true)
 
@@ -104,6 +105,7 @@ export default function Index({
                 {
                     search: term || undefined,
                     page: 1,
+                    category: hasFilters ? appliedFilters.category : undefined,
                     types: hasFilters ? appliedFilters.types : undefined,
                     statuses: hasFilters ? appliedFilters.statuses : undefined,
                 },
@@ -122,6 +124,7 @@ export default function Index({
                 {
                     search: searchTerm || undefined,
                     page: 1,
+                    category: newFilters.category || undefined,
                     types: newFilters.types.length ? newFilters.types : undefined,
                     statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
                 },
@@ -133,11 +136,12 @@ export default function Index({
 
     // Reset filters
     const resetFilters = useCallback(() => {
-        const empty = { types: [], statuses: [] }
-        setFilters(empty)
-        setAppliedFilters(empty)
-        visit({ search: searchTerm || undefined, page: 1 }, { preserve: true })
-    }, [visit, searchTerm])
+        const category = filters.category;
+        const empty = { category, types: [], statuses: [] };
+        setFilters(empty);
+        setAppliedFilters(empty);
+        visit({ search: searchTerm || undefined, page: 1, category }, { preserve: true });
+    }, [visit, searchTerm, filters.category])
 
     // Pagination
     const handlePage = useCallback(
@@ -146,6 +150,7 @@ export default function Index({
                 {
                     search: searchTerm || undefined,
                     page,
+                    category: appliedFilters.category || undefined,
                     types: appliedFilters.types.length ? appliedFilters.types : undefined,
                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                 },
@@ -195,30 +200,22 @@ export default function Index({
                         <div className="min-w-[200px] flex-1">
                             <EmployeeSearch initialSearch={searchTerm} onSearch={handleSearch} />
                         </div>
-
                         {/* Reset / Filter / Add */}
                         <div className="flex items-center gap-2">
-                            <div
-                                className={cn(
-                                    'transition-all duration-200 ease-in-out',
-                                    hasFilters ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0',
-                                )}
-                            >
+                            {(filters.types.length > 0 || filters.statuses.length > 0) && (
                                 <Button variant="ghost" size="sm" onClick={resetFilters}>
                                     Reset Filters
                                 </Button>
-                            </div>
-
+                            )}
                             <EmployeeFilter
                                 selectedTypes={filters.types}
                                 selectedStatuses={filters.statuses}
-                                onChange={handleFilterChange}
-                                isActive={hasFilters}
+                                onChange={newFilters => handleFilterChange({ ...filters, types: newFilters.types, statuses: newFilters.statuses })}
                             />
-
                             <Link
                                 href={route('employees.create', {
                                     search: searchTerm || undefined,
+                                    category: appliedFilters.category || undefined,
                                     types: appliedFilters.types.length ? appliedFilters.types : undefined,
                                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                                     page: currentPage,
@@ -229,18 +226,25 @@ export default function Index({
                                     Add Employee
                                 </Button>
                             </Link>
-
                         </div>
                     </div>
-
-                    {/* Active Filters Preview */}
-                    <div
-                        className={cn(
-                            'text-right text-xs text-muted-foreground transition-all duration-200 ease-in-out',
-                            hasFilters ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0',
-                        )}
-                    >
-                        Showing: {appliedFilters.types.join(', ') || 'All Types'} / {appliedFilters.statuses.join(', ') || 'All Statuses'}
+                    {/* Category filter and Active Filters Preview in one line */}
+                    <div className="flex items-center justify-between w-full">
+                        <div>
+                            <EmployeeCategory
+                                value={filters.category || 'Teaching'}
+                                onChange={val => handleFilterChange({ ...filters, category: val })}
+                                disableActive={true}
+                            />
+                        </div>
+                        <div
+                            className={cn(
+                                'text-right text-xs text-muted-foreground transition-all duration-200 ease-in-out',
+                                (appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0) ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0',
+                            )}
+                        >
+                            Showing: {appliedFilters.types.join(', ') || 'All Types'} / {appliedFilters.statuses.join(', ') || 'All Statuses'}
+                        </div>
                     </div>
                 </div>
 
@@ -257,6 +261,7 @@ export default function Index({
                             <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
                                 <TableHead className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
                                 <TableHead className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
+                                <TableHead className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Category</TableHead>
                                 <TableHead className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
                                 <TableHead className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
                                 <TableHead className='text-right text-xs font-semibold uppercase  tracking-wide px-4 py-2'>Actions</TableHead>
@@ -266,7 +271,7 @@ export default function Index({
                         <TableBody>
                             {employees.length === 0 && !loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                                         No employees found.
                                     </TableCell>
                                 </TableRow>
@@ -279,6 +284,7 @@ export default function Index({
                                         >
                                             <TableCell className="w-16 px-4 py-2">{emp.id}</TableCell>
                                             <TableCell className="w-52 px-4 py-2">{emp.employee_name}</TableCell>
+                                            <TableCell className="w-36 px-4 py-2">{emp.employee_category}</TableCell>
                                             <TableCell className="w-36 px-4 py-2">{emp.employee_type}</TableCell>
                                             <TableCell className="w-40 px-4 py-2">{emp.employee_status}</TableCell>
                                             <TableCell className="w-44 px-4 py-2 whitespace-nowrap text-right">
@@ -292,6 +298,7 @@ export default function Index({
                                                         href={route('employees.edit', {
                                                             employee: emp.id,
                                                             search: searchTerm || undefined,
+                                                            category: appliedFilters.category || undefined,
                                                             types: appliedFilters.types.length ? appliedFilters.types : undefined,
                                                             statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                                                             page: currentPage,
@@ -315,7 +322,7 @@ export default function Index({
 
                                     {Array.from({ length: Math.max(0, MAX_ROWS - employees.length) }).map((_, i) => (
                                         <TableRow key={`empty-${i}`}>
-                                            <TableCell colSpan={5} style={{ height: ROW_HEIGHT }} />
+                                            <TableCell colSpan={6} style={{ height: ROW_HEIGHT }} />
                                         </TableRow>
                                     ))}
                                 </>
@@ -324,13 +331,15 @@ export default function Index({
                     </Table>
                     <EmployeeViewDialog employee={viewing} onClose={() => setViewing(null)} />
 
-                    <EmployeeDelete open={open} setOpen={setOpen} employee={sel} search={searchTerm} filters={appliedFilters} page={currentPage} />
+                    <EmployeeDelete open={open} setOpen={setOpen} employee={sel} search={searchTerm} filters={{ ...appliedFilters, category: filters.category }} page={currentPage} />
 
                     <div className="mt-4 flex min-h-[56px] justify-center">
-                        <EmployeePagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePage} searchTerm={searchTerm} />
+                        <EmployeePagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePage} />
                     </div>
                 </div>
             </div>
         </AppLayout>
     );
 }
+
+

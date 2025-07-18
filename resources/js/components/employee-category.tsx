@@ -1,5 +1,3 @@
-// resources/js/components/employee-type.tsx
-
 import * as React from "react"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -12,20 +10,19 @@ import {
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-export const employee_type = [
-  { value: "Full Time", label: "Full Time" },
-  { value: "Part Time", label: "Part Time" },
-  { value: "Provisionary", label: "Provisionary" },
+export const employee_category = [
+  { value: "Teaching", label: "Teaching" },
+  { value: "Non-Teaching", label: "Non-Teaching" },
 ]
 
-export function EmployeeType({
+export function EmployeeCategory({
   value,
   onChange,
-  types = employee_type,
+  disableActive = false,
 }: {
   value: string
   onChange: (val: string) => void
-  types?: { value: string; label: string }[]
+  disableActive?: boolean
 }) {
   const [open, setOpen] = React.useState(false)
 
@@ -39,8 +36,8 @@ export function EmployeeType({
           className="w-[200px] justify-between"
         >
           <span className="text-gray-900 dark:text-gray-100">
-            {types.find((et) => et.value === value)?.label ||
-              "Select type"}
+            {employee_category.find((ec) => ec.value === value)?.label ||
+              "Select category"}
           </span>
           <ChevronsUpDown className="opacity-50 dark:text-gray-400" />
         </Button>
@@ -50,21 +47,22 @@ export function EmployeeType({
         <Command>
           <CommandList>
             <CommandGroup>
-              {types.map((et) => (
+              {employee_category.map((ec) => (
                 <CommandItem
-                  key={et.value}
-                  value={et.value}
+                  key={ec.value}
+                  value={ec.value}
                   onSelect={(current) => {
-                    onChange(current)  // always pick—never clear to ""
+                    if (disableActive && current === value) return;
+                    onChange(current)
                     setOpen(false)
                   }}
-                  className="dark:text-gray-100"
+                  className={`dark:text-gray-100 ${disableActive && ec.value === value ? 'pointer-events-none opacity-60' : ''}`}
                 >
-                  {et.label}
+                  {ec.label}
                   <Check
                     className={cn(
                       "ml-auto",
-                      value === et.value ? "opacity-100" : "opacity-0"
+                      value === ec.value ? "opacity-100" : "opacity-0"
                     )}
                   />
                 </CommandItem>
@@ -75,4 +73,4 @@ export function EmployeeType({
       </PopoverContent>
     </Popover>
   )
-}
+} 

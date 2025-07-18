@@ -12,14 +12,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { buttonVariants } from "@/components/ui/button"
-import { toast } from 'sonner'
 
 interface Props {
   open: boolean
   setOpen: (o: boolean) => void
   employee: Employees | null
   search: string
-  filters: { types: string[]; statuses: string[] }
+  filters: { category?: string; types: string[]; statuses: string[] }
   page: number
   onDeleted?: () => void
 }
@@ -43,6 +42,7 @@ const EmployeeDelete: FC<Props> = ({
       route('employees.destroy', {
         employee: employee.id,
         search,
+        category: filters.category,
         types: filters.types,
         statuses: filters.statuses,
         page,

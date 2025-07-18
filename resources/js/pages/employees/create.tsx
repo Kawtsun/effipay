@@ -1,21 +1,21 @@
 import { EmployeeStatus } from '@/components/employee-status';
-import { EmployeeType } from '@/components/employee-type';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ArrowLeftCircle, ArrowLeftSquare } from 'lucide-react';
-import { useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { EmployeeCategory } from '@/components/employee-category';
+import { EmployeeType } from '@/components/employee-type';
 
 type Props = {
     search: string;
-    filters: { types: string[]; statuses: string[] };
+    filters: { types: string[]; statuses: string[]; category?: string };
     page: number;
 
     // ← NEW props from controller
-    employeeTypes: string[];
     salaryDefaults: Record<
         string,
         {
@@ -27,15 +27,75 @@ type Props = {
             withholding_tax: number;
         }
     >;
+    employeeCategory?: string;
 };
 
 export default function Create({
     search,
     filters,
     page,
-    employeeTypes,
     salaryDefaults,
+    employeeCategory = 'Teaching',
 }: Props) {
+    const [category, setCategory] = useState<string>(employeeCategory);
+    const teachingTypes = ['Full Time', 'Part Time', 'Provisionary'];
+    const nonTeachingTypes = ['Regular', 'Provisionary'];
+    const availableTypes = category === 'Non-Teaching' ? nonTeachingTypes : teachingTypes;
+    const defaultType = availableTypes[0];
+    const { data, setData, post } = useForm({
+        employee_name: '',
+        employee_category: category,
+        employee_type: defaultType,
+        employee_status: 'Active',
+        base_salary: salaryDefaults[defaultType]?.base_salary.toString() ?? '',
+        overtime_pay: salaryDefaults[defaultType]?.overtime_pay.toString() ?? '',
+        sss: salaryDefaults[defaultType]?.sss.toString() ?? '',
+        philhealth: salaryDefaults[defaultType]?.philhealth.toString() ?? '',
+        pag_ibig: salaryDefaults[defaultType]?.pag_ibig.toString() ?? '',
+        withholding_tax: salaryDefaults[defaultType]?.withholding_tax.toString() ?? '',
+    });
+
+    useEffect(() => {
+        setData('employee_category', category);
+        setData('employee_type', availableTypes[0]);
+    }, [category]);
+
+    useEffect(() => {
+        const def = salaryDefaults[data.employee_type];
+        if (def) {
+            setData('base_salary', def.base_salary.toString());
+            setData('overtime_pay', def.overtime_pay.toString());
+            setData('sss', def.sss.toString());
+            setData('philhealth', def.philhealth.toString());
+            setData('pag_ibig', def.pag_ibig.toString());
+            setData('withholding_tax', def.withholding_tax.toString());
+        }
+    }, [data.employee_type]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const cleanedData = {
+            ...data,
+            base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
+            overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
+            sss: Number(data.sss.replace(/,/g, '')) || 0,
+            philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
+            pag_ibig: Number(data.pag_ibig.replace(/,/g, '')) || 0,
+            withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
+        };
+        post(
+            route('employees.store', {
+                search,
+                category,
+                types: filters.types,
+                statuses: filters.statuses,
+                page,
+            }),
+            cleanedData,
+            { preserveScroll: true }
+        );
+    };
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Employees',
@@ -56,62 +116,6 @@ export default function Create({
             }),
         },
     ];
-
-    // ← Initialize form, defaulting employee_type to first in list
-    const defaultType = employeeTypes[0] ?? 'Full Time';
-    const { data, setData, post, processing, errors } = useForm({
-        employee_name: '',
-        employee_type: defaultType,
-        employee_status: 'Active',
-        base_salary: salaryDefaults[defaultType]?.base_salary.toString() ?? '',
-        overtime_pay: salaryDefaults[defaultType]?.overtime_pay.toString() ?? '',
-        sss: salaryDefaults[defaultType]?.sss.toString() ?? '',
-        philhealth: salaryDefaults[defaultType]?.philhealth.toString() ?? '',
-        pag_ibig: salaryDefaults[defaultType]?.pag_ibig.toString() ?? '',
-        withholding_tax: salaryDefaults[defaultType]?.withholding_tax.toString() ?? '',
-    });
-
-    // ← NEW: whenever employee_type changes, refill the six salary fields
-    useEffect(() => {
-        const def = salaryDefaults[data.employee_type];
-        if (def) {
-            setData('base_salary', def.base_salary.toString());
-            setData('overtime_pay', def.overtime_pay.toString());
-            setData('sss', def.sss.toString());
-            setData('philhealth', def.philhealth.toString());
-            setData('pag_ibig', def.pag_ibig.toString());
-            setData('withholding_tax', def.withholding_tax.toString());
-        }
-    }, [data.employee_type]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        const cleanedData = {
-            employee_name: data.employee_name,
-            employee_type: data.employee_type,
-            employee_status: data.employee_status,
-            base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
-            overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
-            sss: Number(data.sss.replace(/,/g, '')) || 0,
-            philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
-            pag_ibig: Number(data.pag_ibig.replace(/,/g, '')) || 0,
-            withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
-        };
-
-        post(
-            route('employees.store', {
-                search,
-                types: filters.types,
-                statuses: filters.statuses,
-                page,
-            }),
-            {
-                data: cleanedData,
-                preserveScroll: true,
-            }
-        );
-    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -142,6 +146,13 @@ export default function Create({
                         <h1 className='font-bold text-xl mb-4'>Employee Information</h1>
                         <div className='space-y-6'>
                             <div className="flex flex-col gap-3">
+                                <Label htmlFor="employee_category">Employee Category</Label>
+                                <EmployeeCategory
+                                    value={category}
+                                    onChange={val => setCategory(val)}
+                                />
+                            </div>
+                            <div className="flex flex-col gap-3">
                                 <Label htmlFor="employee_name">
                                     Employee Name
                                 </Label>
@@ -161,6 +172,7 @@ export default function Create({
                                 <EmployeeType
                                     value={data.employee_type}
                                     onChange={val => setData('employee_type', val)}
+                                    types={availableTypes.map(type => ({ value: type, label: type }))}
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
