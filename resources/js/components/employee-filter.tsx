@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Filter } from "lucide-react"
 import { employee_type } from "./employee-type"
-import { employee_status } from "./employee-status"
+import { employee_status, leave_statuses } from "./employee-status"
 import { Badge } from "./ui/badge"
 
 interface FilterState {
@@ -109,7 +109,17 @@ export default function EmployeeFilter({
                 onCheckedChange={() => setStatuses(toggle(statuses, value))}
                 className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
               />
-
+              {label}
+            </label>
+          ))}
+          <div className="mt-2 mb-1 text-xs font-semibold text-muted-foreground select-none">Leave</div>
+          {leave_statuses.map(({ value, label }) => (
+            <label key={value} className="flex items-center gap-2 mb-1 text-sm select-none">
+              <Checkbox
+                checked={statuses.includes(value)}
+                onCheckedChange={() => setStatuses(toggle(statuses, value))}
+                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+              />
               {label}
             </label>
           ))}

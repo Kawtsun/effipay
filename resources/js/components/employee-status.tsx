@@ -21,9 +21,14 @@ import {
 
 export const employee_status = [
   { value: "Active", label: "Active" },
+];
+
+export const leave_statuses = [
   { value: "Paid Leave", label: "Paid Leave" },
   { value: "Maternity Leave", label: "Maternity Leave" },
-]
+  { value: "Sick Leave", label: "Sick Leave" },
+  { value: "Study Leave", label: "Study Leave" },
+];
 
 export function EmployeeStatus({
   value,
@@ -44,7 +49,7 @@ export function EmployeeStatus({
           className="w-[200px] justify-between"
         >
           <span className="text-gray-900 dark:text-gray-100">
-            {employee_status.find((es) => es.value === value)?.label ??
+            {employee_status.concat(leave_statuses).find((es) => es.value === value)?.label ??
               "Select status"}
           </span>
           <ChevronsUpDown className="opacity-50 dark:text-gray-400" />
@@ -61,6 +66,27 @@ export function EmployeeStatus({
                   value={es.value}
                   onSelect={(current) => {
                     onChange(current)  // always select, never deselect
+                    setOpen(false)
+                  }}
+                  className="dark:text-gray-100"
+                >
+                  {es.label}
+                  <Check
+                    className={cn(
+                      "ml-auto",
+                      value === es.value ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandGroup heading="Leave">
+              {leave_statuses.map((es) => (
+                <CommandItem
+                  key={es.value}
+                  value={es.value}
+                  onSelect={(current) => {
+                    onChange(current)
                     setOpen(false)
                   }}
                   className="dark:text-gray-100"

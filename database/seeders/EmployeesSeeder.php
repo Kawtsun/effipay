@@ -126,7 +126,7 @@ class EmployeesSeeder extends Seeder
                 'employee_name' => $name,
                 'employee_category' => $category,
                 'employee_type' => $type,
-                'employee_status' => fake()->randomElement(['Active', 'Paid Leave','Maternity Leave']),
+                'employee_status' => fake()->randomElement(['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave']),
                 'base_salary' => fake()->numberBetween(10000, 999999),
                 'overtime_pay' => fake()->numberBetween(2000, 5000),
                 'sss' => fake()->numberBetween(1000, 5000),
