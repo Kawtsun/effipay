@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employees;
 use App\Http\Requests\StoreEmployeesRequest;
 use App\Http\Requests\UpdateEmployeesRequest;
+use App\Models\Salary;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 
@@ -48,15 +49,40 @@ class EmployeesController extends Controller
      */
     public function create(Request $request)
     {
+        // preserve existing query data
+        $search   = $request->input('search', '');
+        $types    = (array) $request->input('types', []);
+        $statuses = (array) $request->input('statuses', []);
+        $page     = $request->input('page', 1);
+
+        // ← NEW: pull all types (must match your salaries table)
+        $employeeTypes = \App\Models\Salary::pluck('employee_type')->all();
+
+        // ← NEW: build a map: [ 'Full Time' => [ base_salary => 50000, … ], … ]
+        $salaryDefaults = \App\Models\Salary::all()
+            ->mapWithKeys(fn($row) => [
+                $row->employee_type => [
+                    'base_salary'     => $row->base_salary,
+                    'overtime_pay'    => $row->overtime_pay,
+                    'sss'             => $row->sss,
+                    'philhealth'      => $row->philhealth,
+                    'pag_ibig'        => $row->pag_ibig,
+                    'withholding_tax' => $row->withholding_tax,
+                ],
+            ])
+            ->toArray();
+
         return Inertia::render('employees/create', [
-            'search' => $request->input('search', ''),
-            'filters' => [
-                'types' => (array) $request->input('types', []),
-                'statuses' => (array) $request->input('statuses', []),
-            ],
-            'page' => $request->input('page', 1),
+            'search'          => $search,
+            'filters'         => ['types' => $types, 'statuses' => $statuses],
+            'page'            => $page,
+            // ← NEW props
+            'employeeTypes'   => $employeeTypes,
+            'salaryDefaults'  => $salaryDefaults,
         ]);
     }
+
+
 
 
     /**
@@ -122,5 +148,4 @@ class EmployeesController extends Controller
             ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
             ->with('success', 'Employee deleted successfully!');
     }
-
 }

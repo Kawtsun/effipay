@@ -1,23 +1,16 @@
-"use client"
+// resources/js/components/employee-type.tsx
 
 import * as React from "react"
 import { Check, ChevronsUpDown } from "lucide-react"
-
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Command,
-//   CommandEmpty,
   CommandGroup,
-//   CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 export const employee_type = [
   { value: "Full Time", label: "Full Time" },
@@ -29,10 +22,10 @@ export function EmployeeType({
   value,
   onChange,
 }: {
-  value: string;
-  onChange: (val: string) => void;
+  value: string
+  onChange: (val: string) => void
 }) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = React.useState(false)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -43,32 +36,33 @@ export function EmployeeType({
           aria-expanded={open}
           className="w-[200px] justify-between"
         >
-          {value
-            ? employee_type.find((employee_type) => employee_type.value === value)?.label
-            : "Select employee type"}
-          <ChevronsUpDown className="opacity-50" />
+          <span className="text-gray-900 dark:text-gray-100">
+            {employee_type.find((et) => et.value === value)?.label ||
+              "Select type"}
+          </span>
+          <ChevronsUpDown className="opacity-50 dark:text-gray-400" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
+
+      <PopoverContent className="w-[200px] p-0 shadow-md dark:bg-gray-800">
         <Command>
-          {/* <CommandInput placeholder="Search employee type..." className="h-9" /> */}
           <CommandList>
-            {/* <CommandEmpty>No employee type found.</CommandEmpty> */}
             <CommandGroup>
-              {employee_type.map((employee_type) => (
+              {employee_type.map((et) => (
                 <CommandItem
-                  key={employee_type.value}
-                  value={employee_type.value}
-                  onSelect={(currentValue) => {
-                    onChange(currentValue === value ? "" : currentValue);
-                    setOpen(false);
+                  key={et.value}
+                  value={et.value}
+                  onSelect={(current) => {
+                    onChange(current)  // always pick—never clear to ""
+                    setOpen(false)
                   }}
+                  className="dark:text-gray-100"
                 >
-                  {employee_type.label}
+                  {et.label}
                   <Check
                     className={cn(
                       "ml-auto",
-                      value === employee_type.value ? "opacity-100" : "opacity-0"
+                      value === et.value ? "opacity-100" : "opacity-0"
                     )}
                   />
                 </CommandItem>
@@ -78,5 +72,5 @@ export function EmployeeType({
         </Command>
       </PopoverContent>
     </Popover>
-  );
+  )
 }
