@@ -65,6 +65,21 @@ export default function Create({
     useEffect(() => {
         setData('employee_category', category);
         setData('employee_type', availableTypes[0]);
+        if (category === 'Non-Teaching') {
+            let rolesArr = data.roles ? data.roles.split(',') : [];
+            // Remove teaching roles
+            rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
+            // If admin is not selected, auto-select it
+            if (!rolesArr.includes('administrator')) {
+                rolesArr = ['administrator'];
+            }
+            setData('roles', rolesArr.join(','));
+        } else if (category === 'Teaching') {
+            let rolesArr = data.roles ? data.roles.split(',') : [];
+            // Remove admin
+            rolesArr = rolesArr.filter(r => r !== 'administrator');
+            setData('roles', rolesArr.join(','));
+        }
     }, [category]);
 
     useEffect(() => {
@@ -133,6 +148,12 @@ export default function Create({
             }),
         },
     ];
+
+    // Validation for roles selection
+    const isTeaching = category === 'Teaching';
+    const rolesArr = data.roles ? data.roles.split(',') : [];
+    const hasTeachingRole = rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor');
+    const canSubmit = isTeaching ? hasTeachingRole : rolesArr.includes('administrator');
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -458,7 +479,7 @@ export default function Create({
                             </div>
                         </div>
                         <div className='flex justify-end'>
-                            <Button type='submit'>Add Employee</Button>
+                            <Button type='submit' disabled={!canSubmit}>Add Employee</Button>
                         </div>
                     </form>
                 </div>

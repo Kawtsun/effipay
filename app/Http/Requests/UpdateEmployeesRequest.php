@@ -32,6 +32,7 @@ class UpdateEmployeesRequest extends FormRequest
             'pag_ibig' => 'required|integer|min:0',
             'withholding_tax' => 'required|integer|min:0',
             'employee_category' => 'required|string|in:Teaching,Non-Teaching',
+            'roles' => 'nullable|string',
         ];
     }
 }
