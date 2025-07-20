@@ -9,19 +9,41 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Employees } from "@/types"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "./ui/button"
+import { Badge } from "./ui/badge"
 
 interface Props {
     employee: Employees | null
     onClose: () => void
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value }: { label: string; value: string | number }) {
     return (
         <div>
             <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="font-medium">{value}</p>
+            <p className="font-medium break-words">{value}</p>
         </div>
     )
+}
+
+function RolesBadges({ roles }: { roles: string }) {
+    if (!roles) return null;
+    const rolesArr = roles.split(',').map(r => r.trim()).filter(Boolean);
+    const badge = (role: string) => {
+        let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
+        if (role === 'administrator') color = 'info';
+        else if (role === 'college instructor') color = 'purple';
+        else if (role === 'basic education instructor') color = 'warning';
+        return (
+            <Badge key={role} variant={color} className="mr-1 capitalize">
+                {role}
+            </Badge>
+        );
+    };
+    return (
+        <div className="flex flex-wrap gap-1 mt-1">
+            {rolesArr.map(role => badge(role))}
+        </div>
+    );
 }
 
 export default function EmployeeViewDialog({ employee, onClose }: Props) {
@@ -49,30 +71,33 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
                                     #{employee.id} - {employee.employee_name}
                                 </CardHeader>
 
-                                <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm pt-4 pb-6 px-6">
-                                    <Info label="Status" value={employee.employee_status} />
-                                    <Info label="Type" value={employee.employee_type} />
-                                    <Info
-                                        label="Base Salary"
-                                        value={`₱${Number(employee.base_salary).toLocaleString()}`}
-                                    />
-                                    <Info
-                                        label="Overtime Pay"
-                                        value={`₱${Number(employee.overtime_pay).toLocaleString()}`}
-                                    />
-                                    <Info label="SSS" value={`₱${Number(employee.sss).toLocaleString()}`} />
-                                    <Info
-                                        label="PhilHealth"
-                                        value={`₱${Number(employee.philhealth).toLocaleString()}`}
-                                    />
-                                    <Info
-                                        label="Pag-IBIG"
-                                        value={`₱${Number(employee.pag_ibig).toLocaleString()}`}
-                                    />
-                                    <Info
-                                        label="Withholding Tax"
-                                        value={`₱${Number(employee.withholding_tax).toLocaleString()}`}
-                                    />
+                                <CardContent className="grid grid-cols-1 gap-y-6 text-sm pt-4 pb-6 px-6">
+                                    {/* General Info */}
+                                    <div>
+                                        <h4 className="font-semibold text-base mb-2">General Information</h4>
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                                            <Info label="Status" value={employee.employee_status} />
+                                            <Info label="Type" value={employee.employee_type} />
+                                            <Info label="Category" value={employee.employee_category} />
+                                        </div>
+                                    </div>
+                                    {/* Roles */}
+                                    <div>
+                                        <h4 className="font-semibold text-base mb-2">Roles</h4>
+                                        <RolesBadges roles={employee.roles} />
+                                    </div>
+                                    {/* Salary & Contributions */}
+                                    <div>
+                                        <h4 className="font-semibold text-base mb-2">Salary & Contributions</h4>
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                                            <Info label="Base Salary" value={`₱${Number(employee.base_salary).toLocaleString()}`} />
+                                            <Info label="Overtime Pay" value={`₱${Number(employee.overtime_pay).toLocaleString()}`} />
+                                            <Info label="SSS" value={`₱${Number(employee.sss).toLocaleString()}`} />
+                                            <Info label="PhilHealth" value={`₱${Number(employee.philhealth).toLocaleString()}`} />
+                                            <Info label="Pag-IBIG" value={`₱${Number(employee.pag_ibig).toLocaleString()}`} />
+                                            <Info label="Withholding Tax" value={`₱${Number(employee.withholding_tax).toLocaleString()}`} />
+                                        </div>
+                                    </div>
                                 </CardContent>
                             </Card>
                             <DialogFooter> <Button onClick={onClose}>Close</Button> </DialogFooter>
