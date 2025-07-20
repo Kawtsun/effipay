@@ -295,7 +295,17 @@ export default function Index({
                                                     if (!emp.roles) return '';
                                                     const rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
                                                     if (rolesArr.length === 0) return '';
-                                                    const badge = (role: string) => <Badge key={role} variant="secondary" className="mr-1">{role.charAt(0).toUpperCase() + role.slice(1)}</Badge>;
+                                                    const badge = (role: string) => {
+                                                        let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
+                                                        if (role === 'administrator') color = 'info';
+                                                        else if (role === 'college instructor') color = 'purple';
+                                                        else if (role === 'basic education instructor') color = 'warning';
+                                                        return (
+                                                            <Badge key={role} variant={color} className="mr-1 capitalize">
+                                                                {role}
+                                                            </Badge>
+                                                        );
+                                                    };
                                                     if (rolesArr.length === 1) return badge(rolesArr[0]);
                                                     return (
                                                         <TooltipProvider>
@@ -303,7 +313,7 @@ export default function Index({
                                                                 <TooltipTrigger asChild>
                                                                     <span className="inline-flex items-center gap-1 cursor-pointer">
                                                                         {badge(rolesArr[0])}
-                                                                        <Badge variant="secondary" className="bg-muted text-muted-foreground cursor-pointer">+{rolesArr.length - 1} more</Badge>
+                                                                        <Badge variant="success" className="cursor-pointer">+{rolesArr.length - 1}</Badge>
                                                                     </span>
                                                                 </TooltipTrigger>
                                                                 <TooltipContent side="top">
