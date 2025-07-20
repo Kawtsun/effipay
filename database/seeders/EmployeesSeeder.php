@@ -118,12 +118,20 @@ class EmployeesSeeder extends Seeder
         $shuffled = collect($employeeNames)->shuffle();
 
         foreach ($shuffled as $name) {
-            $category = fake()->randomElement(['Teaching', 'Non-Teaching']);
+            $possibleRoles = ['administrator', 'college instructor', 'basic education instructor'];
+            $rolesArr = collect($possibleRoles)->random(fake()->numberBetween(1, 3))->all();
+            $roles = implode(',', $rolesArr);
+            // Determine category based on roles
+            if (count($rolesArr) === 1 && $rolesArr[0] === 'administrator') {
+                $category = 'Non-Teaching';
+            } else if (in_array('college instructor', $rolesArr) || in_array('basic education instructor', $rolesArr)) {
+                $category = 'Teaching';
+            } else {
+                $category = 'Non-Teaching';
+            }
             $type = $category === 'Teaching'
                 ? fake()->randomElement(['Full Time', 'Part Time', 'Provisionary'])
                 : fake()->randomElement(['Regular', 'Provisionary']);
-            $possibleRoles = ['administrator', 'college instructor', 'basic education instructor'];
-            $roles = collect($possibleRoles)->random(fake()->numberBetween(1, 3))->implode(',');
             Employees::create([
                 'employee_name' => $name,
                 'employee_category' => $category,
