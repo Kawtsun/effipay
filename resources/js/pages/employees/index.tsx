@@ -293,7 +293,15 @@ export default function Index({
                                             <TableCell className="w-52 px-4 py-2">
                                                 {(() => {
                                                     if (!emp.roles) return '';
-                                                    const rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
+                                                    let rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
+                                                    // Custom order: college instructor, basic education instructor, administrator
+                                                    if (emp.employee_category === 'Teaching') {
+                                                        const order = ['college instructor', 'basic education instructor', 'administrator'];
+                                                        rolesArr = order.filter(r => rolesArr.includes(r));
+                                                    } else {
+                                                        // For Non-Teaching, only show administrator if present
+                                                        rolesArr = rolesArr.includes('administrator') ? ['administrator'] : [];
+                                                    }
                                                     if (rolesArr.length === 0) return '';
                                                     const badge = (role: string) => {
                                                         let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
