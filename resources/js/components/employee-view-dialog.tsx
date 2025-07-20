@@ -10,6 +10,7 @@ import { Employees } from "@/types"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
+import { Shield, GraduationCap, Book } from 'lucide-react'
 
 interface Props {
     employee: Employees | null
@@ -30,12 +31,20 @@ function RolesBadges({ roles }: { roles: string }) {
     const rolesArr = roles.split(',').map(r => r.trim()).filter(Boolean);
     const badge = (role: string) => {
         let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
-        if (role === 'administrator') color = 'info';
-        else if (role === 'college instructor') color = 'purple';
-        else if (role === 'basic education instructor') color = 'warning';
+        let icon = null;
+        if (role === 'administrator') {
+            color = 'info';
+            icon = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+        } else if (role === 'college instructor') {
+            color = 'purple';
+            icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+        } else if (role === 'basic education instructor') {
+            color = 'warning';
+            icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+        }
         return (
-            <Badge key={role} variant={color} className="mr-1 capitalize">
-                {role}
+            <Badge key={role} variant={color} className="mr-1 capitalize flex items-center">
+                {icon}{role}
             </Badge>
         );
     };
@@ -74,21 +83,19 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
                                 <CardContent className="grid grid-cols-1 gap-y-6 text-sm pt-4 pb-6 px-6">
                                     {/* General Info */}
                                     <div>
-                                        <h4 className="font-semibold text-base mb-2">General Information</h4>
+                                        <h4 className="font-semibold text-base mb-2 border-b pb-1">General Information</h4>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                                             <Info label="Status" value={employee.employee_status} />
                                             <Info label="Type" value={employee.employee_type} />
                                             <Info label="Category" value={employee.employee_category} />
                                         </div>
                                     </div>
-                                    {/* Roles */}
-                                    <div>
-                                        <h4 className="font-semibold text-base mb-2">Roles</h4>
+                                    <div className="border-t pt-4">
+                                        <h4 className="font-semibold text-base mb-2 border-b pb-1">Roles</h4>
                                         <RolesBadges roles={employee.roles} />
                                     </div>
-                                    {/* Salary & Contributions */}
-                                    <div>
-                                        <h4 className="font-semibold text-base mb-2">Salary & Contributions</h4>
+                                    <div className="border-t pt-4">
+                                        <h4 className="font-semibold text-base mb-2 border-b pb-1">Salary & Contributions</h4>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                                             <Info label="Base Salary" value={`₱${Number(employee.base_salary).toLocaleString()}`} />
                                             <Info label="Overtime Pay" value={`₱${Number(employee.overtime_pay).toLocaleString()}`} />

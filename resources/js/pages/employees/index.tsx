@@ -16,7 +16,7 @@ import AppLayout from '@/layouts/app-layout'
 import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, Link, router, usePage } from '@inertiajs/react'
-import { Eye, Loader2, Pencil, Plus, Trash, Users } from 'lucide-react'
+import { Eye, Loader2, Pencil, Plus, Trash, Users, Shield, GraduationCap, Book } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { EmployeeCategory } from '@/components/employee-category'
@@ -297,12 +297,20 @@ export default function Index({
                                                     if (rolesArr.length === 0) return '';
                                                     const badge = (role: string) => {
                                                         let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
-                                                        if (role === 'administrator') color = 'info';
-                                                        else if (role === 'college instructor') color = 'purple';
-                                                        else if (role === 'basic education instructor') color = 'warning';
+                                                        let icon = null;
+                                                        if (role === 'administrator') {
+                                                            color = 'info';
+                                                            icon = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                        } else if (role === 'college instructor') {
+                                                            color = 'purple';
+                                                            icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                        } else if (role === 'basic education instructor') {
+                                                            color = 'warning';
+                                                            icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                        }
                                                         return (
-                                                            <Badge key={role} variant={color} className="mr-1 capitalize">
-                                                                {role}
+                                                            <Badge key={role} variant={color} className="mr-1 capitalize flex items-center">
+                                                                {icon}{role}
                                                             </Badge>
                                                         );
                                                     };
