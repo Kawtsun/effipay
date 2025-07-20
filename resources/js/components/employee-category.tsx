@@ -56,7 +56,7 @@ export function EmployeeCategory({
                     onChange(current)
                     setOpen(false)
                   }}
-                  className={`dark:text-gray-100 ${disableActive && ec.value === value ? 'pointer-events-none opacity-60' : ''}`}
+                  className="dark:text-gray-100"
                 >
                   {ec.label}
                   <Check

@@ -122,11 +122,14 @@ class EmployeesSeeder extends Seeder
             $type = $category === 'Teaching'
                 ? fake()->randomElement(['Full Time', 'Part Time', 'Provisionary'])
                 : fake()->randomElement(['Regular', 'Provisionary']);
+            $possibleRoles = ['administrator', 'college instructor', 'basic education instructor'];
+            $roles = collect($possibleRoles)->random(fake()->numberBetween(1, 3))->implode(',');
             Employees::create([
                 'employee_name' => $name,
                 'employee_category' => $category,
                 'employee_type' => $type,
                 'employee_status' => fake()->randomElement(['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave']),
+                'roles' => $roles,
                 'base_salary' => fake()->numberBetween(10000, 999999),
                 'overtime_pay' => fake()->numberBetween(2000, 5000),
                 'sss' => fake()->numberBetween(1000, 5000),

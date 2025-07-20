@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { EmployeeCategory } from '@/components/employee-category';
 import { EmployeeType } from '@/components/employee-type';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Props = {
     search: string;
@@ -42,11 +43,17 @@ export default function Create({
     const nonTeachingTypes = ['Regular', 'Provisionary'];
     const availableTypes = category === 'Non-Teaching' ? nonTeachingTypes : teachingTypes;
     const defaultType = availableTypes[0];
+    const roleOptions = [
+        { value: 'administrator', label: 'Administrator' },
+        { value: 'college instructor', label: 'College Instructor' },
+        { value: 'basic education instructor', label: 'Basic Education Instructor' },
+    ];
     const { data, setData, post } = useForm({
         employee_name: '',
         employee_category: category,
         employee_type: defaultType,
         employee_status: 'Active',
+        roles: '',
         base_salary: salaryDefaults[defaultType]?.base_salary.toString() ?? '',
         overtime_pay: salaryDefaults[defaultType]?.overtime_pay.toString() ?? '',
         sss: salaryDefaults[defaultType]?.sss.toString() ?? '',
@@ -84,16 +91,26 @@ export default function Create({
             withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
         };
         post(
-            route('employees.store', {
+            route('employees.store'),
+            {
+                ...cleanedData,
                 search,
                 category,
                 types: filters.types,
                 statuses: filters.statuses,
                 page,
-            }),
-            cleanedData,
+            },
             { preserveScroll: true }
         );
+    };
+
+    const handleRoleChange = (role: string) => {
+        const rolesArr = data.roles ? data.roles.split(',') : [];
+        if (rolesArr.includes(role)) {
+            setData('roles', rolesArr.filter(r => r !== role).join(','));
+        } else {
+            setData('roles', [...rolesArr, role].join(','));
+        }
     };
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -183,6 +200,21 @@ export default function Create({
                                     value={data.employee_status}
                                     onChange={val => setData('employee_status', val)}
                                 />
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <Label>Roles</Label>
+                                <div className="flex flex-col gap-2">
+                                    {roleOptions.map(opt => (
+                                        <label key={opt.value} className="flex items-center gap-2 text-sm select-none">
+                                            <Checkbox
+                                                checked={data.roles.split(',').includes(opt.value)}
+                                                onCheckedChange={() => handleRoleChange(opt.value)}
+                                                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                                            />
+                                            {opt.label}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                         {/* Employee Salary */}

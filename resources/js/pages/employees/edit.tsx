@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { EmployeeCategory } from '@/components/employee-category';
 import { EmployeeType } from '@/components/employee-type';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Props = {
     employee: Employees
@@ -23,6 +24,11 @@ export default function Edit({ employee, search, filters, page, employeeCategory
     const teachingTypes = ['Full Time', 'Part Time', 'Provisionary'];
     const nonTeachingTypes = ['Regular', 'Provisionary'];
     const availableTypes = category === 'Non-Teaching' ? nonTeachingTypes : teachingTypes;
+    const roleOptions = [
+        { value: 'administrator', label: 'Administrator' },
+        { value: 'college instructor', label: 'College Instructor' },
+        { value: 'basic education instructor', label: 'Basic Education Instructor' },
+    ];
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Employees',
@@ -39,6 +45,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
         employee_category: category,
         employee_type: employee.employee_type ?? availableTypes[0],
         employee_status: employee.employee_status ?? 'Active',
+        roles: employee.roles ?? '',
         base_salary: employee.base_salary?.toString() ?? '',
         overtime_pay: employee.overtime_pay?.toString() ?? '',
         sss: employee.sss?.toString() ?? '',
@@ -66,17 +73,26 @@ export default function Edit({ employee, search, filters, page, employeeCategory
             withholding_tax: data.withholding_tax.replace(/,/g, '') === '' ? 0 : parseInt(data.withholding_tax.replace(/,/g, ''), 10),
         };
         put(
-            route('employees.update', {
-                employee: employee.id,
+            route('employees.update', { employee: employee.id }),
+            {
+                ...cleanedData,
                 search,
                 category,
                 types: filters.types,
                 statuses: filters.statuses,
                 page,
-            }),
-            cleanedData,
+            },
             { preserveScroll: true }
         );
+    };
+
+    const handleRoleChange = (role: string) => {
+        const rolesArr = data.roles ? data.roles.split(',') : [];
+        if (rolesArr.includes(role)) {
+            setData('roles', rolesArr.filter(r => r !== role).join(','));
+        } else {
+            setData('roles', [...rolesArr, role].join(','));
+        }
     };
 
     return (
@@ -145,6 +161,21 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                     value={data.employee_status}
                                     onChange={val => setData('employee_status', val)}
                                 />
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <Label>Roles</Label>
+                                <div className="flex flex-col gap-2">
+                                    {roleOptions.map(opt => (
+                                        <label key={opt.value} className="flex items-center gap-2 text-sm select-none">
+                                            <Checkbox
+                                                checked={data.roles.split(',').includes(opt.value)}
+                                                onCheckedChange={() => handleRoleChange(opt.value)}
+                                                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                                            />
+                                            {opt.label}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                         {/* Employee Salary */}
