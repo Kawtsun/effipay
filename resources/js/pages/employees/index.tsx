@@ -20,6 +20,8 @@ import { Eye, Loader2, Pencil, Plus, Trash, Users } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { EmployeeCategory } from '@/components/employee-category'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Badge } from '@/components/ui/badge'
 
 type Flash = { success?: string }
 type PageProps = { flash?: Flash }
@@ -264,6 +266,7 @@ export default function Index({
                                 <TableHead className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Category</TableHead>
                                 <TableHead className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
                                 <TableHead className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
+                                <TableHead className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Roles</TableHead>
                                 <TableHead className='text-right text-xs font-semibold uppercase  tracking-wide px-4 py-2'>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -271,7 +274,7 @@ export default function Index({
                         <TableBody>
                             {employees.length === 0 && !loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                                         No employees found.
                                     </TableCell>
                                 </TableRow>
@@ -287,6 +290,32 @@ export default function Index({
                                             <TableCell className="w-36 px-4 py-2">{emp.employee_category}</TableCell>
                                             <TableCell className="w-36 px-4 py-2">{emp.employee_type}</TableCell>
                                             <TableCell className="w-40 px-4 py-2">{emp.employee_status}</TableCell>
+                                            <TableCell className="w-52 px-4 py-2">
+                                                {(() => {
+                                                    if (!emp.roles) return '';
+                                                    const rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
+                                                    if (rolesArr.length === 0) return '';
+                                                    const badge = (role: string) => <Badge key={role} variant="secondary" className="mr-1">{role.charAt(0).toUpperCase() + role.slice(1)}</Badge>;
+                                                    if (rolesArr.length === 1) return badge(rolesArr[0]);
+                                                    return (
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <span className="inline-flex items-center gap-1 cursor-pointer">
+                                                                        {badge(rolesArr[0])}
+                                                                        <Badge variant="secondary" className="bg-muted text-muted-foreground cursor-pointer">+{rolesArr.length - 1} more</Badge>
+                                                                    </span>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="top">
+                                                                    <div className="flex flex-col gap-1">
+                                                                        {rolesArr.map(role => badge(role))}
+                                                                    </div>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    );
+                                                })()}
+                                            </TableCell>
                                             <TableCell className="w-44 px-4 py-2 whitespace-nowrap text-right">
                                                 <div className='flex justify-end items-center gap-2'>
                                                     <Button variant="secondary" onClick={() => setViewing(emp)}>
@@ -322,7 +351,7 @@ export default function Index({
 
                                     {Array.from({ length: Math.max(0, MAX_ROWS - employees.length) }).map((_, i) => (
                                         <TableRow key={`empty-${i}`}>
-                                            <TableCell colSpan={6} style={{ height: ROW_HEIGHT }} />
+                                            <TableCell colSpan={7} style={{ height: ROW_HEIGHT }} />
                                         </TableRow>
                                     ))}
                                 </>
