@@ -171,6 +171,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                                 checked={data.roles.split(',').includes(opt.value)}
                                                 onCheckedChange={() => handleRoleChange(opt.value)}
                                                 className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                                                disabled={category === 'Non-Teaching' && opt.value !== 'administrator'}
                                             />
                                             {opt.label}
                                         </label>
