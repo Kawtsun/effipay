@@ -256,15 +256,15 @@ export default function Index({
                         </div>
                     )}
 
-                    <Table className='select-none'>
+                    <Table className="select-none" style={{ tableLayout: 'fixed', width: '100%' }}>
                         <TableHeader className=''>
                             <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
-                                <TableHead className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
-                                <TableHead className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
-                                <TableHead className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
-                                <TableHead className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
-                                <TableHead className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Roles</TableHead>
-                                <TableHead className='text-right text-xs font-semibold uppercase  tracking-wide px-4 py-2'>Actions</TableHead>
+                                <TableHead style={{ width: 80 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
+                                <TableHead style={{ width: 200 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
+                                <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
+                                <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
+                                <TableHead style={{ width: 220 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Roles</TableHead>
+                                <TableHead style={{ width: 180 }} className='text-right text-xs font-semibold uppercase  tracking-wide px-4 py-2'>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
 
@@ -282,11 +282,11 @@ export default function Index({
                                             key={emp.id}
                                             className={`transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}
                                         >
-                                            <TableCell className="w-16 px-4 py-2">{emp.id}</TableCell>
-                                            <TableCell className="w-52 px-4 py-2">{emp.employee_name}</TableCell>
-                                            <TableCell className="w-36 px-4 py-2">{emp.employee_type}</TableCell>
-                                            <TableCell className="w-40 px-4 py-2">{emp.employee_status}</TableCell>
-                                            <TableCell className="w-52 px-4 py-2">
+                                            <TableCell style={{ width: 80 }} className="px-4 py-2">{emp.id}</TableCell>
+                                            <TableCell style={{ width: 200 }} className="px-4 py-2">{emp.employee_name}</TableCell>
+                                            <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
+                                            <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
+                                            <TableCell style={{ width: 220 }} className="px-4 py-2">
                                                 {(() => {
                                                     if (!emp.roles) return '';
                                                     let rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
@@ -351,7 +351,7 @@ export default function Index({
                                                     );
                                                 })()}
                                             </TableCell>
-                                            <TableCell className="w-44 px-4 py-2 whitespace-nowrap text-right">
+                                            <TableCell style={{ width: 180 }} className="px-4 py-2 whitespace-nowrap text-right">
                                                 <div className='flex justify-end items-center gap-2'>
                                                     <Button variant="secondary" onClick={() => setViewing(emp)}>
                                                         <Eye />
