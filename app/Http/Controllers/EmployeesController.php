@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateEmployeesRequest;
 use App\Models\Salary;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 class EmployeesController extends Controller
 {
@@ -95,14 +96,22 @@ class EmployeesController extends Controller
     {
         Employees::create($request->validated());
 
+        // Restore previous filters from referer
+        $redirectParams = [];
+        $referer = $request->headers->get('referer');
+        if ($referer) {
+            $query = parse_url($referer, PHP_URL_QUERY);
+            if ($query) {
+                parse_str($query, $params);
+                foreach (['search', 'types', 'statuses', 'roles', 'page'] as $key) {
+                    if (isset($params[$key]) && $params[$key] !== '') {
+                        $redirectParams[$key] = $params[$key];
+                    }
+                }
+            }
+        }
         return redirect()
-            ->route('employees.index', [
-                'search' => $request['search'] ?? '',
-                'types' => $request['types'] ?? [],
-                'statuses' => $request['statuses'] ?? [],
-                'roles' => $request['roles'] ?? [],
-                'page' => $request['page'] ?? 1,
-            ])
+            ->route('employees.index', $redirectParams)
             ->with('success', 'Employee created successfully!');
     }
 
@@ -144,14 +153,22 @@ class EmployeesController extends Controller
     {
         $employee->update($request->validated());
 
+        // Restore previous filters from referer
+        $redirectParams = [];
+        $referer = $request->headers->get('referer');
+        if ($referer) {
+            $query = parse_url($referer, PHP_URL_QUERY);
+            if ($query) {
+                parse_str($query, $params);
+                foreach (['search', 'types', 'statuses', 'roles', 'page'] as $key) {
+                    if (isset($params[$key]) && $params[$key] !== '') {
+                        $redirectParams[$key] = $params[$key];
+                    }
+                }
+            }
+        }
         return redirect()
-            ->route('employees.index', [
-                'search' => $request['search'] ?? '',
-                'types' => $request['types'] ?? [],
-                'statuses' => $request['statuses'] ?? [],
-                'roles' => $request['roles'] ?? [],
-                'page' => $request['page'] ?? 1,
-            ])
+            ->route('employees.index', $redirectParams)
             ->with('success', 'Employee updated successfully!');
     }
 

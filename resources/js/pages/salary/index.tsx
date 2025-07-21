@@ -36,19 +36,20 @@ type PageProps = {
 
 export default function Index() {
   const { flash, types, selected, defaults } = usePage<PageProps>().props
-  const [type, setType] = useState(selected)
+  const [type, setType] = useState(selected || types[0])
 
-  useEffect(() => setType(selected), [selected])
+  useEffect(() => setType(selected || types[0]), [selected, types])
   useEffect(() => { if (flash) toast.success(flash) }, [flash])
 
   const onTypeChange = useCallback((val: string) => {
     setType(val)
+    if (!val && types[0]) setType(types[0])
     router.get(
       route('salary.index'),
-      { type: val },
+      { type: val || types[0] },
       { preserveState: true, preserveScroll: true }
     )
-  }, [])
+  }, [types])
 
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Salary', href: route('salary.index') },
@@ -66,6 +67,13 @@ export default function Index() {
   const earningsCards = cards.filter(c => c.isEarning)
   const deductionCards = cards.filter(c => !c.isEarning)
 
+  const allTypes = [
+    { value: 'Full Time', label: 'Full Time' },
+    { value: 'Part Time', label: 'Part Time' },
+    { value: 'Provisionary', label: 'Provisionary' },
+    { value: 'Regular', label: 'Regular' },
+  ];
+
   return (
     <>
       <Head title="Salary Defaults" />
@@ -82,7 +90,7 @@ export default function Index() {
                 Set default payroll values by employee type.
               </p>
             </div>
-            <EmployeeType value={type} onChange={onTypeChange} />
+            <EmployeeType value={type} onChange={onTypeChange} types={allTypes} />
           </div>
 
           {/* EARNINGS */}

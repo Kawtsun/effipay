@@ -82,17 +82,47 @@ export default function Edit({ employee, search, filters, page, employeeCategory
         }
     };
 
-    const teachingStatuses = ['Full Time', 'Part Time', 'Provisionary'];
-    const adminStatuses = ['Regular', 'Provisionary'];
-    let availableStatuses = teachingStatuses;
     const rolesArr = data.roles ? data.roles.split(',') : [];
+    const teachingTypes = [
+        { value: 'Full Time', label: 'Full Time' },
+        { value: 'Part Time', label: 'Part Time' },
+        { value: 'Provisionary', label: 'Provisionary' },
+    ];
+    const adminTypes = [
+        { value: 'Regular', label: 'Regular' },
+        { value: 'Provisionary', label: 'Provisionary' },
+    ];
+    let availableTypes = teachingTypes;
     if (rolesArr.includes('administrator') && (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor'))) {
-        availableStatuses = [...teachingStatuses, ...adminStatuses.filter(s => s === 'Provisionary')];
+        // Merge and deduplicate by value
+        const merged = [...teachingTypes, ...adminTypes];
+        const seen = new Set();
+        availableTypes = merged.filter(t => {
+            if (seen.has(t.value)) return false;
+            seen.add(t.value);
+            return true;
+        });
     } else if (rolesArr.includes('administrator')) {
-        availableStatuses = adminStatuses;
+        availableTypes = adminTypes;
     } else if (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor')) {
-        availableStatuses = teachingStatuses;
+        availableTypes = teachingTypes;
     }
+    const availableStatuses = ['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave'];
+
+    useEffect(() => {
+        const rolesArr = data.roles ? data.roles.split(',') : [];
+        if (rolesArr.length > 0) {
+            if (!data.employee_type && availableTypes[0]?.value) {
+                setData('employee_type', availableTypes[0].value);
+            }
+            // Only set to 'Active' if there is no current value
+            if (!data.employee_status) {
+                setData('employee_status', 'Active');
+            }
+        }
+        // Only run when roles change
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data.roles]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -143,6 +173,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                     value={data.employee_type}
                                     onChange={val => setData('employee_type', val)}
                                     roles={data.roles ? data.roles.split(',') : []}
+                                    disabled={data.roles === ''}
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
@@ -153,6 +184,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                     value={data.employee_status}
                                     onChange={val => setData('employee_status', val)}
                                     statuses={availableStatuses}
+                                    disabled={data.roles === ''}
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
