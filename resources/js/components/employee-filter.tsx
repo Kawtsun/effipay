@@ -5,24 +5,33 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Filter } from "lucide-react"
-import { employee_type } from "./employee-type"
 import { employee_status, leave_statuses } from "./employee-status"
 import { Badge } from "./ui/badge"
 
 interface FilterState {
   types: string[]
   statuses: string[]
+  roles: string[]
 }
 
 interface Props {
   selectedTypes: string[]
   selectedStatuses: string[]
+  selectedRoles: string[]
   onChange: (filters: FilterState) => void
 }
+
+const employee_type = [
+  { value: "Full Time", label: "Full Time" },
+  { value: "Part Time", label: "Part Time" },
+  { value: "Provisionary", label: "Provisionary" },
+  { value: "Regular", label: "Regular" },
+];
 
 export default function EmployeeFilter({
   selectedTypes,
   selectedStatuses,
+  selectedRoles,
   onChange,
 }: Props) {
   const [open, setOpen] = useState(false)
@@ -30,6 +39,7 @@ export default function EmployeeFilter({
   // local draft state
   const [types, setTypes] = useState<string[]>(selectedTypes)
   const [statuses, setStatuses] = useState<string[]>(selectedStatuses)
+  const [roles, setRoles] = useState<string[]>(selectedRoles)
 
   // sync draft when parent resets
   useEffect(() => {
@@ -40,6 +50,10 @@ export default function EmployeeFilter({
     setStatuses(selectedStatuses)
   }, [selectedStatuses])
 
+  useEffect(() => {
+    setRoles(selectedRoles)
+  }, [selectedRoles])
+
   // toggle single value in array
   function toggle(arr: string[], val: string): string[] {
     return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
@@ -47,7 +61,7 @@ export default function EmployeeFilter({
 
   // apply and close
   const handleApply = () => {
-    onChange({ types, statuses })
+    onChange({ types, statuses, roles })
     setOpen(false)
   }
 
@@ -55,10 +69,11 @@ export default function EmployeeFilter({
   const handleReset = () => {
     setTypes([])
     setStatuses([])
-    onChange({ types: [], statuses: [] })
+    setRoles([])
+    onChange({ types: [], statuses: [], roles: [] })
     setOpen(false)
   }
-  const activeCount = selectedTypes.length + selectedStatuses.length
+  const activeCount = selectedTypes.length + selectedStatuses.length + selectedRoles.length
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -121,6 +136,23 @@ export default function EmployeeFilter({
                 className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
               />
               {label}
+            </label>
+          ))}
+        </div>
+
+        <div>
+          <h4 className="text-sm font-semibold mb-1 select-none">Roles</h4>
+          <p className="text-xs text-muted-foreground mb-2 select-none">
+            Select one or more roles to filter by role.
+          </p>
+          {['administrator', 'college instructor', 'basic education instructor'].map((role) => (
+            <label key={role} className="flex items-center gap-2 mb-1 text-sm select-none">
+              <Checkbox
+                checked={roles.includes(role)}
+                onCheckedChange={() => setRoles(roles.includes(role) ? roles.filter(r => r !== role) : [...roles, role])}
+                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+              />
+              {role.charAt(0).toUpperCase() + role.slice(1)}
             </label>
           ))}
         </div>

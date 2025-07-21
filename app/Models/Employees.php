@@ -21,6 +21,5 @@ class Employees extends Model
         'philhealth',
         'pag_ibig',
         'withholding_tax',
-        'employee_category',
     ];
 }

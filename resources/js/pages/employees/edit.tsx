@@ -7,7 +7,6 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { Employees, type BreadcrumbItem } from '@/types';
 import { ArrowLeft } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { EmployeeCategory } from '@/components/employee-category';
 import { EmployeeType } from '@/components/employee-type';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -20,10 +19,6 @@ type Props = {
 }
 
 export default function Edit({ employee, search, filters, page, employeeCategory = 'Teaching' }: Props) {
-    const [category, setCategory] = useState<string>(employeeCategory);
-    const teachingTypes = ['Full Time', 'Part Time', 'Provisionary'];
-    const nonTeachingTypes = ['Regular', 'Provisionary'];
-    const availableTypes = category === 'Non-Teaching' ? nonTeachingTypes : teachingTypes;
     const roleOptions = [
         { value: 'administrator', label: 'Administrator' },
         { value: 'college instructor', label: 'College Instructor' },
@@ -42,8 +37,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
 
     const { data, setData, put } = useForm({
         employee_name: employee.employee_name ?? '',
-        employee_category: category,
-        employee_type: employee.employee_type ?? availableTypes[0],
+        employee_type: employee.employee_type ?? 'Full Time',
         employee_status: employee.employee_status ?? 'Active',
         roles: employee.roles ?? '',
         base_salary: employee.base_salary?.toString() ?? '',
@@ -53,28 +47,6 @@ export default function Edit({ employee, search, filters, page, employeeCategory
         pag_ibig: employee.pag_ibig?.toString() ?? '',
         withholding_tax: employee.withholding_tax?.toString() ?? ''
     });
-
-    useEffect(() => {
-        setData('employee_category', category);
-        if (!availableTypes.includes(data.employee_type)) {
-            setData('employee_type', availableTypes[0]);
-        }
-        if (category === 'Non-Teaching') {
-            let rolesArr = data.roles ? data.roles.split(',') : [];
-            // Remove teaching roles
-            rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
-            // If admin is not selected, auto-select it
-            if (!rolesArr.includes('administrator')) {
-                rolesArr = ['administrator'];
-            }
-            setData('roles', rolesArr.join(','));
-        } else if (category === 'Teaching') {
-            let rolesArr = data.roles ? data.roles.split(',') : [];
-            // Remove admin
-            rolesArr = rolesArr.filter(r => r !== 'administrator');
-            setData('roles', rolesArr.join(','));
-        }
-    }, [category]);
 
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -92,7 +64,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
             {
                 ...cleanedData,
                 search,
-                category,
+                category: employeeCategory,
                 types: filters.types,
                 statuses: filters.statuses,
                 page,
@@ -109,6 +81,18 @@ export default function Edit({ employee, search, filters, page, employeeCategory
             setData('roles', [...rolesArr, role].join(','));
         }
     };
+
+    const teachingStatuses = ['Full Time', 'Part Time', 'Provisionary'];
+    const adminStatuses = ['Regular', 'Provisionary'];
+    let availableStatuses = teachingStatuses;
+    const rolesArr = data.roles ? data.roles.split(',') : [];
+    if (rolesArr.includes('administrator') && (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor'))) {
+        availableStatuses = [...teachingStatuses, ...adminStatuses.filter(s => s === 'Provisionary')];
+    } else if (rolesArr.includes('administrator')) {
+        availableStatuses = adminStatuses;
+    } else if (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor')) {
+        availableStatuses = teachingStatuses;
+    }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -139,13 +123,6 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                         <h1 className='font-bold text-xl mb-4'>Employee Information</h1>
                         <div className='space-y-6'>
                             <div className="flex flex-col gap-3">
-                                <Label htmlFor="employee_category">Employee Category</Label>
-                                <EmployeeCategory
-                                    value={category}
-                                    onChange={val => setCategory(val)}
-                                />
-                            </div>
-                            <div className="flex flex-col gap-3">
                                 <Label htmlFor="employee_name">
                                     Employee Name
                                 </Label>
@@ -165,7 +142,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                 <EmployeeType
                                     value={data.employee_type}
                                     onChange={val => setData('employee_type', val)}
-                                    types={availableTypes.map(type => ({ value: type, label: type }))}
+                                    roles={data.roles ? data.roles.split(',') : []}
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
@@ -175,6 +152,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                 <EmployeeStatus
                                     value={data.employee_status}
                                     onChange={val => setData('employee_status', val)}
+                                    statuses={availableStatuses}
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
@@ -186,7 +164,6 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                                 checked={data.roles.split(',').includes(opt.value)}
                                                 onCheckedChange={() => handleRoleChange(opt.value)}
                                                 className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-                                                disabled={category === 'Non-Teaching' && opt.value !== 'administrator'}
                                             />
                                             {opt.label}
                                         </label>

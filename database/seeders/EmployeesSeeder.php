@@ -116,25 +116,25 @@ class EmployeesSeeder extends Seeder
         ];
 
         $shuffled = collect($employeeNames)->shuffle();
-
+        $employeeTypesTeaching = ['Full Time', 'Part Time', 'Provisionary'];
+        $employeeTypesAdmin = ['Regular', 'Provisionary'];
         foreach ($shuffled as $name) {
             $possibleRoles = ['administrator', 'college instructor', 'basic education instructor'];
             $rolesArr = collect($possibleRoles)->random(fake()->numberBetween(1, 3))->all();
             $roles = implode(',', $rolesArr);
-            // Determine category based on roles
             if (count($rolesArr) === 1 && $rolesArr[0] === 'administrator') {
-                $category = 'Non-Teaching';
+                $type = fake()->randomElement($employeeTypesAdmin);
             } else if (in_array('college instructor', $rolesArr) || in_array('basic education instructor', $rolesArr)) {
-                $category = 'Teaching';
+                if (in_array('administrator', $rolesArr)) {
+                    $type = fake()->randomElement(array_merge($employeeTypesTeaching, ['Provisionary']));
+                } else {
+                    $type = fake()->randomElement($employeeTypesTeaching);
+                }
             } else {
-                $category = 'Non-Teaching';
+                $type = fake()->randomElement($employeeTypesTeaching);
             }
-            $type = $category === 'Teaching'
-                ? fake()->randomElement(['Full Time', 'Part Time', 'Provisionary'])
-                : fake()->randomElement(['Regular', 'Provisionary']);
             Employees::create([
                 'employee_name' => $name,
-                'employee_category' => $category,
                 'employee_type' => $type,
                 'employee_status' => fake()->randomElement(['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave']),
                 'roles' => $roles,
@@ -143,7 +143,7 @@ class EmployeesSeeder extends Seeder
                 'sss' => fake()->numberBetween(1000, 5000),
                 'philhealth' => fake()->numberBetween(1000, 5000),
                 'pag_ibig' => fake()->numberBetween(1000, 5000),
-                'withholding_tax' => fake()->numberBetween(5000, 10000)
+                'withholding_tax' => fake()->numberBetween(5000, 10000),
             ]);
         }
     }

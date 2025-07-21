@@ -11,10 +11,12 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { Shield, GraduationCap, Book } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface Props {
     employee: Employees | null
     onClose: () => void
+    activeRoles?: string[]
 }
 
 function Info({ label, value }: { label: string; value: string | number }) {
@@ -26,9 +28,28 @@ function Info({ label, value }: { label: string; value: string | number }) {
     )
 }
 
-function RolesBadges({ roles }: { roles: string }) {
+function RolesBadges({ roles, activeRoles }: { roles: string; activeRoles?: string[] }) {
     if (!roles) return null;
-    const rolesArr = roles.split(',').map(r => r.trim()).filter(Boolean);
+    let rolesArr = roles.split(',').map(r => r.trim()).filter(Boolean);
+    const order = ['college instructor', 'basic education instructor', 'administrator'];
+    rolesArr = order.filter(r => rolesArr.includes(r));
+    // If activeRoles prop is provided, order roles so filtered roles come first
+    const activeRolesArr = activeRoles || [];
+    if (activeRolesArr.length > 0) {
+        const filtered = activeRolesArr.filter(r => rolesArr.includes(r));
+        const rest = rolesArr.filter(r => !filtered.includes(r));
+        rolesArr = [...filtered, ...rest];
+    }
+    let mainRole = rolesArr[0];
+    if (activeRolesArr.length > 0) {
+        if (activeRolesArr.includes('administrator') && rolesArr.includes('administrator')) {
+            mainRole = 'administrator';
+        } else {
+            const match = rolesArr.find(r => activeRolesArr.includes(r));
+            if (match) mainRole = match;
+        }
+    }
+    const restRoles = rolesArr.filter(r => r !== mainRole);
     const badge = (role: string) => {
         let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
         let icon = null;
@@ -44,18 +65,31 @@ function RolesBadges({ roles }: { roles: string }) {
         }
         return (
             <Badge key={role} variant={color} className="mr-1 capitalize flex items-center">
-                {icon}{role}
+                {icon}{role.replace(/\b\w/g, c => c.toUpperCase())}
             </Badge>
         );
     };
+    if (restRoles.length === 0) return badge(mainRole);
     return (
-        <div className="flex flex-wrap gap-1 mt-1">
-            {rolesArr.map(role => badge(role))}
-        </div>
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-1 cursor-pointer">
+                        {badge(mainRole)}
+                        <Badge variant="success" className="cursor-pointer">+{restRoles.length}</Badge>
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                    <div className="flex flex-col gap-1">
+                        {[mainRole, ...restRoles].map(role => badge(role))}
+                    </div>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
     );
 }
 
-export default function EmployeeViewDialog({ employee, onClose }: Props) {
+export default function EmployeeViewDialog({ employee, onClose, activeRoles }: Props) {
 
     return (
         <Dialog open={!!employee} onOpenChange={(open) => !open && onClose()}>
@@ -92,7 +126,7 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
                                     </div>
                                     <div className="border-t pt-4">
                                         <h4 className="font-semibold text-base mb-2 border-b pb-1">Roles</h4>
-                                        <RolesBadges roles={employee.roles} />
+                                        <RolesBadges roles={employee.roles} activeRoles={activeRoles} />
                                     </div>
                                     <div className="border-t pt-4">
                                         <h4 className="font-semibold text-base mb-2 border-b pb-1">Salary & Contributions</h4>

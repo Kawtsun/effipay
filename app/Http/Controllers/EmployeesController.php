@@ -18,14 +18,8 @@ class EmployeesController extends Controller
     {
         $query = Employees::query();
 
-        $category = $request->input('category', 'Teaching');
-
         if ($request->filled('search')) {
             $query->where('employee_name', 'like', '%' . $request->search . '%');
-        }
-
-        if ($category) {
-            $query->where('employee_category', $category);
         }
 
         if ($request->filled('types')) {
@@ -36,6 +30,14 @@ class EmployeesController extends Controller
             $query->whereIn('employee_status', $request->statuses);
         }
 
+        if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
+            $query->where(function($q) use ($request) {
+                foreach ($request->roles as $role) {
+                    $q->orWhere('roles', 'like', '%' . $role . '%');
+                }
+            });
+        }
+
         $employees = $query->paginate(10)->withQueryString();
 
         return Inertia::render('employees/index', [
@@ -44,9 +46,9 @@ class EmployeesController extends Controller
             'totalPages'  => $employees->lastPage(),
             'search'      => $request->input('search', ''),
             'filters'     => [
-                'category' => $category,
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
+                'roles'    => (array) $request->input('roles', []),
             ],
         ]);
     }
@@ -59,14 +61,10 @@ class EmployeesController extends Controller
         $search   = $request->input('search', '');
         $types    = (array) $request->input('types', []);
         $statuses = (array) $request->input('statuses', []);
+        $roles    = (array) $request->input('roles', []);
         $page     = $request->input('page', 1);
-        $category = $request->input('category', 'Teaching');
 
-        // Employee types by category
-        $teachingTypes = ['Full Time', 'Part Time', 'Provisionary'];
-        $nonTeachingTypes = ['Regular', 'Provisionary'];
-        $employeeTypes = $category === 'Non-Teaching' ? $nonTeachingTypes : $teachingTypes;
-
+        $employeeTypes = ['Full Time', 'Part Time', 'Provisionary', 'Regular'];
         $salaryDefaults = \App\Models\Salary::whereIn('employee_type', $employeeTypes)
             ->get()
             ->mapWithKeys(fn($row) => [
@@ -83,11 +81,10 @@ class EmployeesController extends Controller
 
         return Inertia::render('employees/create', [
             'search'          => $search,
-            'filters'         => ['category' => $category, 'types' => $types, 'statuses' => $statuses],
+            'filters'         => ['types' => $types, 'statuses' => $statuses, 'roles' => $roles],
             'page'            => $page,
             'employeeTypes'   => $employeeTypes,
             'salaryDefaults'  => $salaryDefaults,
-            'employeeCategory'=> $category,
         ]);
     }
 
@@ -101,9 +98,9 @@ class EmployeesController extends Controller
         return redirect()
             ->route('employees.index', [
                 'search' => $request['search'] ?? '',
-                'category' => $request['category'] ?? 'Teaching',
                 'types' => $request['types'] ?? [],
                 'statuses' => $request['statuses'] ?? [],
+                'roles' => $request['roles'] ?? [],
                 'page' => $request['page'] ?? 1,
             ])
             ->with('success', 'Employee created successfully!');
@@ -122,22 +119,21 @@ class EmployeesController extends Controller
      */
     public function edit(Employees $employee, Request $request)
     {
-        $category = $employee->employee_category ?? 'Teaching';
-        $teachingTypes = ['Full Time', 'Part Time', 'Provisionary'];
-        $nonTeachingTypes = ['Regular', 'Provisionary'];
-        $employeeTypes = $category === 'Non-Teaching' ? $nonTeachingTypes : $teachingTypes;
-
+        $types    = (array) $request->input('types', []);
+        $statuses = (array) $request->input('statuses', []);
+        $roles    = (array) $request->input('roles', []);
+        $page     = $request->input('page', 1);
+        $employeeTypes = ['Full Time', 'Part Time', 'Provisionary', 'Regular'];
         return Inertia::render('employees/edit', [
             'employee' => $employee,
             'search'   => $request->input('search', ''),
             'filters'  => [
-                'category' => $category,
-                'types'    => (array) $request->input('types', []),
-                'statuses' => (array) $request->input('statuses', []),
+                'types'    => $types,
+                'statuses' => $statuses,
+                'roles'    => $roles,
             ],
-            'page'     => $request->input('page', 1),
+            'page'     => $page,
             'employeeTypes' => $employeeTypes,
-            'employeeCategory' => $category,
         ]);
     }
 
@@ -151,9 +147,9 @@ class EmployeesController extends Controller
         return redirect()
             ->route('employees.index', [
                 'search' => $request['search'] ?? '',
-                'category' => $request['category'] ?? 'Teaching',
                 'types' => $request['types'] ?? [],
                 'statuses' => $request['statuses'] ?? [],
+                'roles' => $request['roles'] ?? [],
                 'page' => $request['page'] ?? 1,
             ])
             ->with('success', 'Employee updated successfully!');
@@ -165,14 +161,12 @@ class EmployeesController extends Controller
     public function destroy(Request $request, Employees $employee)
     {
         $employee->delete();
-
-        // Same here: never use redirect()->back()
         return redirect()
             ->route('employees.index', [
                 'search' => $request['search'] ?? '',
-                'category' => $request['category'] ?? 'Teaching',
                 'types' => $request['types'] ?? [],
                 'statuses' => $request['statuses'] ?? [],
+                'roles' => $request['roles'] ?? [],
                 'page' => $request['page'] ?? 1,
             ])
             ->with('success', 'Employee deleted successfully!');

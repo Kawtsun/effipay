@@ -33,11 +33,26 @@ export const leave_statuses = [
 export function EmployeeStatus({
   value,
   onChange,
+  statuses,
 }: {
   value: string
   onChange: (val: string) => void
+  statuses?: string[]
 }) {
   const [open, setOpen] = React.useState(false)
+
+  const allStatuses = [
+    { value: 'Full Time', label: 'Full Time' },
+    { value: 'Part Time', label: 'Part Time' },
+    { value: 'Provisionary', label: 'Provisionary' },
+    { value: 'Regular', label: 'Regular' },
+    { value: 'Active', label: 'Active' },
+    { value: 'Paid Leave', label: 'Paid Leave' },
+    { value: 'Maternity Leave', label: 'Maternity Leave' },
+    { value: 'Sick Leave', label: 'Sick Leave' },
+    { value: 'Study Leave', label: 'Study Leave' },
+  ];
+  const options = statuses ? allStatuses.filter(s => statuses.includes(s.value)) : allStatuses;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -49,7 +64,7 @@ export function EmployeeStatus({
           className="w-[200px] justify-between"
         >
           <span className="text-gray-900 dark:text-gray-100">
-            {employee_status.concat(leave_statuses).find((es) => es.value === value)?.label ??
+            {options.find((es) => es.value === value)?.label ??
               "Select status"}
           </span>
           <ChevronsUpDown className="opacity-50 dark:text-gray-400" />
@@ -60,33 +75,12 @@ export function EmployeeStatus({
         <Command>
           <CommandList>
             <CommandGroup>
-              {employee_status.map((es) => (
+              {options.map((es) => (
                 <CommandItem
                   key={es.value}
                   value={es.value}
                   onSelect={(current) => {
                     onChange(current)  // always select, never deselect
-                    setOpen(false)
-                  }}
-                  className="dark:text-gray-100"
-                >
-                  {es.label}
-                  <Check
-                    className={cn(
-                      "ml-auto",
-                      value === es.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-            <CommandGroup heading="Leave">
-              {leave_statuses.map((es) => (
-                <CommandItem
-                  key={es.value}
-                  value={es.value}
-                  onSelect={(current) => {
-                    onChange(current)
                     setOpen(false)
                   }}
                   className="dark:text-gray-100"

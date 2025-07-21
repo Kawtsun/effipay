@@ -12,22 +12,26 @@ import {
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-export const employee_type = [
-  { value: "Full Time", label: "Full Time" },
-  { value: "Part Time", label: "Part Time" },
-  { value: "Provisionary", label: "Provisionary" },
-]
-
-export function EmployeeType({
-  value,
-  onChange,
-  types = employee_type,
-}: {
-  value: string
-  onChange: (val: string) => void
-  types?: { value: string; label: string }[]
-}) {
+export function EmployeeType({ value, onChange, roles = [] }: { value: string; onChange: (val: string) => void; roles?: string[] }) {
   const [open, setOpen] = React.useState(false)
+
+  const teachingTypes = [
+    { value: 'Full Time', label: 'Full Time' },
+    { value: 'Part Time', label: 'Part Time' },
+    { value: 'Provisionary', label: 'Provisionary' },
+  ];
+  const adminTypes = [
+    { value: 'Regular', label: 'Regular' },
+    { value: 'Provisionary', label: 'Provisionary' },
+  ];
+  let availableTypes = teachingTypes;
+  if (roles.includes('administrator') && (roles.includes('college instructor') || roles.includes('basic education instructor'))) {
+    availableTypes = [...teachingTypes, ...adminTypes.filter(t => t.value === 'Provisionary')];
+  } else if (roles.includes('administrator')) {
+    availableTypes = adminTypes;
+  } else if (roles.includes('college instructor') || roles.includes('basic education instructor')) {
+    availableTypes = teachingTypes;
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -39,8 +43,7 @@ export function EmployeeType({
           className="w-[200px] justify-between"
         >
           <span className="text-gray-900 dark:text-gray-100">
-            {types.find((et) => et.value === value)?.label ||
-              "Select type"}
+            {availableTypes.find((et) => et.value === value)?.label || 'Select type'}
           </span>
           <ChevronsUpDown className="opacity-50 dark:text-gray-400" />
         </Button>
@@ -50,12 +53,12 @@ export function EmployeeType({
         <Command>
           <CommandList>
             <CommandGroup>
-              {types.map((et) => (
+              {availableTypes.map((et) => (
                 <CommandItem
                   key={et.value}
                   value={et.value}
                   onSelect={(current) => {
-                    onChange(current)  // always pick—never clear to ""
+                    onChange(current)
                     setOpen(false)
                   }}
                   className="dark:text-gray-100"
