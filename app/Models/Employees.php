@@ -14,11 +14,12 @@ class Employees extends Model
         'employee_name',
         'employee_type',
         'employee_status',
+        'roles',
         'base_salary',
         'overtime_pay',
         'sss',
         'philhealth',
         'pag_ibig',
-        'withholding_tax'
+        'withholding_tax',
     ];
 }

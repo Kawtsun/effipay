@@ -48,6 +48,14 @@ class SalarySeeder extends Seeder
                 'pag_ibig'        => 150,
                 'withholding_tax' => 3000,
             ],
+            'Regular' => [
+                'base_salary'     => 40000,
+                'overtime_pay'    => 180,
+                'sss'             => 700,
+                'philhealth'      => 250,
+                'pag_ibig'        => 180,
+                'withholding_tax' => 4000,
+            ],
         ];
 
         // 2) Loop and upsert each type

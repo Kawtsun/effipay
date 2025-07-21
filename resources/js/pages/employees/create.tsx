@@ -1,21 +1,21 @@
 import { EmployeeStatus } from '@/components/employee-status';
-import { EmployeeType } from '@/components/employee-type';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ArrowLeftCircle, ArrowLeftSquare } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useEffect } from 'react';
+import { EmployeeType } from '@/components/employee-type';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Props = {
     search: string;
-    filters: { types: string[]; statuses: string[] };
+    filters: { types: string[]; statuses: string[]; category?: string };
     page: number;
 
     // ← NEW props from controller
-    employeeTypes: string[];
     salaryDefaults: Record<
         string,
         {
@@ -27,15 +27,61 @@ type Props = {
             withholding_tax: number;
         }
     >;
+    employeeCategory?: string;
 };
 
 export default function Create({
     search,
     filters,
     page,
-    employeeTypes,
     salaryDefaults,
+    employeeCategory = 'Teaching',
 }: Props) {
+    const roleOptions = [
+        { value: 'administrator', label: 'Administrator' },
+        { value: 'college instructor', label: 'College Instructor' },
+        { value: 'basic education instructor', label: 'Basic Education Instructor' },
+    ];
+    const { data, setData, post } = useForm({
+        employee_name: '',
+        employee_type: 'Full Time',
+        employee_status: 'Active',
+        roles: '',
+        base_salary: salaryDefaults['Full Time']?.base_salary.toString() ?? '',
+        overtime_pay: salaryDefaults['Full Time']?.overtime_pay.toString() ?? '',
+        sss: salaryDefaults['Full Time']?.sss.toString() ?? '',
+        philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
+        pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
+        withholding_tax: salaryDefaults['Full Time']?.withholding_tax.toString() ?? '',
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!data.employee_type) {
+            setData('employee_type', 'Full Time');
+            return;
+        }
+        const cleanedData = {
+            ...data,
+            base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
+            overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
+            sss: Number(data.sss.replace(/,/g, '')) || 0,
+            philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
+            pag_ibig: Number(data.pag_ibig.replace(/,/g, '')) || 0,
+            withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
+        };
+        post(route('employees.store'), cleanedData);
+    };
+
+    const handleRoleChange = (role: string) => {
+        const rolesArr = data.roles ? data.roles.split(',') : [];
+        if (rolesArr.includes(role)) {
+            setData('roles', rolesArr.filter(r => r !== role).join(','));
+        } else {
+            setData('roles', [...rolesArr, role].join(','));
+        }
+    };
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Employees',
@@ -57,21 +103,58 @@ export default function Create({
         },
     ];
 
-    // ← Initialize form, defaulting employee_type to first in list
-    const defaultType = employeeTypes[0] ?? 'Full Time';
-    const { data, setData, post, processing, errors } = useForm({
-        employee_name: '',
-        employee_type: defaultType,
-        employee_status: 'Active',
-        base_salary: salaryDefaults[defaultType]?.base_salary.toString() ?? '',
-        overtime_pay: salaryDefaults[defaultType]?.overtime_pay.toString() ?? '',
-        sss: salaryDefaults[defaultType]?.sss.toString() ?? '',
-        philhealth: salaryDefaults[defaultType]?.philhealth.toString() ?? '',
-        pag_ibig: salaryDefaults[defaultType]?.pag_ibig.toString() ?? '',
-        withholding_tax: salaryDefaults[defaultType]?.withholding_tax.toString() ?? '',
-    });
+    // Validation for roles selection
+    const isTeaching = employeeCategory === 'Teaching';
+    const rolesArr = data.roles ? data.roles.split(',') : [];
+    const hasTeachingRole = rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor');
+    const canSubmit = rolesArr.includes('administrator') || hasTeachingRole;
 
-    // ← NEW: whenever employee_type changes, refill the six salary fields
+    // For EmployeeType, filter options based on roles
+    const teachingTypes = [
+        { value: 'Full Time', label: 'Full Time' },
+        { value: 'Part Time', label: 'Part Time' },
+        { value: 'Provisionary', label: 'Provisionary' },
+    ];
+    const adminTypes = [
+        { value: 'Regular', label: 'Regular' },
+        { value: 'Provisionary', label: 'Provisionary' },
+    ];
+    let availableTypes = teachingTypes;
+    if (rolesArr.includes('administrator') && (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor'))) {
+        // Merge and deduplicate by value
+        const merged = [...teachingTypes, ...adminTypes];
+        const seen = new Set();
+        availableTypes = merged.filter(t => {
+            if (seen.has(t.value)) return false;
+            seen.add(t.value);
+            return true;
+        });
+    } else if (rolesArr.includes('administrator')) {
+        availableTypes = adminTypes;
+    } else if (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor')) {
+        availableTypes = teachingTypes;
+    }
+
+    const availableStatuses = ['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave'];
+
+    // useEffect: When roles change and not empty, set type and status to first available
+    useEffect(() => {
+        const rolesArr = data.roles ? data.roles.split(',') : [];
+        if (rolesArr.length > 0) {
+            // Set type to first available if not set
+            if (!data.employee_type && availableTypes[0]?.value) {
+                setData('employee_type', availableTypes[0].value);
+            }
+            // Set status to 'Active' as default if not already
+            if (data.employee_status !== 'Active') {
+                setData('employee_status', 'Active');
+            }
+        }
+        // Only run when roles change
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data.roles]);
+
+    // useEffect: When employee_type changes, set salary fields to defaults
     useEffect(() => {
         const def = salaryDefaults[data.employee_type];
         if (def) {
@@ -82,36 +165,7 @@ export default function Create({
             setData('pag_ibig', def.pag_ibig.toString());
             setData('withholding_tax', def.withholding_tax.toString());
         }
-    }, [data.employee_type]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        const cleanedData = {
-            employee_name: data.employee_name,
-            employee_type: data.employee_type,
-            employee_status: data.employee_status,
-            base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
-            overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
-            sss: Number(data.sss.replace(/,/g, '')) || 0,
-            philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
-            pag_ibig: Number(data.pag_ibig.replace(/,/g, '')) || 0,
-            withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
-        };
-
-        post(
-            route('employees.store', {
-                search,
-                types: filters.types,
-                statuses: filters.statuses,
-                page,
-            }),
-            {
-                data: cleanedData,
-                preserveScroll: true,
-            }
-        );
-    };
+    }, [data.employee_type, salaryDefaults]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -155,21 +209,39 @@ export default function Create({
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
-                                <Label htmlFor="employee_type">
-                                    Employee Type
-                                </Label>
+                                <Label>Roles</Label>
+                                <div className="flex flex-col gap-2">
+                                    {roleOptions.map(opt => (
+                                        <label key={opt.value} className="flex items-center gap-2 text-sm select-none">
+                                            <Checkbox
+                                                checked={data.roles.split(',').includes(opt.value)}
+                                                onCheckedChange={() => handleRoleChange(opt.value)}
+                                                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                                            />
+                                            {opt.label}
+                                        </label>
+                                    ))}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    Please select at least one role before choosing employee type or status.
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <Label htmlFor="employee_type">Employee Type</Label>
                                 <EmployeeType
                                     value={data.employee_type}
                                     onChange={val => setData('employee_type', val)}
+                                    roles={data.roles ? data.roles.split(',') : []}
+                                    disabled={data.roles === ''}
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
-                                <Label htmlFor="employee_status">
-                                    Employee Status
-                                </Label>
+                                <Label htmlFor="employee_status">Employee Status</Label>
                                 <EmployeeStatus
                                     value={data.employee_status}
                                     onChange={val => setData('employee_status', val)}
+                                    statuses={availableStatuses}
+                                    disabled={data.roles === ''}
                                 />
                             </div>
                         </div>
@@ -413,7 +485,7 @@ export default function Create({
                             </div>
                         </div>
                         <div className='flex justify-end'>
-                            <Button type='submit'>Add Employee</Button>
+                            <Button type='submit' disabled={!canSubmit}>Add Employee</Button>
                         </div>
                     </form>
                 </div>

@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateEmployeesRequest;
 use App\Models\Salary;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 class EmployeesController extends Controller
 {
@@ -30,6 +31,14 @@ class EmployeesController extends Controller
             $query->whereIn('employee_status', $request->statuses);
         }
 
+        if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
+            $query->where(function($q) use ($request) {
+                foreach ($request->roles as $role) {
+                    $q->orWhere('roles', 'like', '%' . $role . '%');
+                }
+            });
+        }
+
         $employees = $query->paginate(10)->withQueryString();
 
         return Inertia::render('employees/index', [
@@ -40,6 +49,7 @@ class EmployeesController extends Controller
             'filters'     => [
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
+                'roles'    => (array) $request->input('roles', []),
             ],
         ]);
     }
@@ -49,17 +59,15 @@ class EmployeesController extends Controller
      */
     public function create(Request $request)
     {
-        // preserve existing query data
         $search   = $request->input('search', '');
         $types    = (array) $request->input('types', []);
         $statuses = (array) $request->input('statuses', []);
+        $roles    = (array) $request->input('roles', []);
         $page     = $request->input('page', 1);
 
-        // ← NEW: pull all types (must match your salaries table)
-        $employeeTypes = \App\Models\Salary::pluck('employee_type')->all();
-
-        // ← NEW: build a map: [ 'Full Time' => [ base_salary => 50000, … ], … ]
-        $salaryDefaults = \App\Models\Salary::all()
+        $employeeTypes = ['Full Time', 'Part Time', 'Provisionary', 'Regular'];
+        $salaryDefaults = \App\Models\Salary::whereIn('employee_type', $employeeTypes)
+            ->get()
             ->mapWithKeys(fn($row) => [
                 $row->employee_type => [
                     'base_salary'     => $row->base_salary,
@@ -74,16 +82,12 @@ class EmployeesController extends Controller
 
         return Inertia::render('employees/create', [
             'search'          => $search,
-            'filters'         => ['types' => $types, 'statuses' => $statuses],
+            'filters'         => ['types' => $types, 'statuses' => $statuses, 'roles' => $roles],
             'page'            => $page,
-            // ← NEW props
             'employeeTypes'   => $employeeTypes,
             'salaryDefaults'  => $salaryDefaults,
         ]);
     }
-
-
-
 
     /**
      * Store a newly created resource in storage.
@@ -92,11 +96,24 @@ class EmployeesController extends Controller
     {
         Employees::create($request->validated());
 
+        // Restore previous filters from referer
+        $redirectParams = [];
+        $referer = $request->headers->get('referer');
+        if ($referer) {
+            $query = parse_url($referer, PHP_URL_QUERY);
+            if ($query) {
+                parse_str($query, $params);
+                foreach (['search', 'types', 'statuses', 'roles', 'page'] as $key) {
+                    if (isset($params[$key]) && $params[$key] !== '') {
+                        $redirectParams[$key] = $params[$key];
+                    }
+                }
+            }
+        }
         return redirect()
-            ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
+            ->route('employees.index', $redirectParams)
             ->with('success', 'Employee created successfully!');
     }
-
 
     /**
      * Display the specified resource.
@@ -111,14 +128,21 @@ class EmployeesController extends Controller
      */
     public function edit(Employees $employee, Request $request)
     {
+        $types    = (array) $request->input('types', []);
+        $statuses = (array) $request->input('statuses', []);
+        $roles    = (array) $request->input('roles', []);
+        $page     = $request->input('page', 1);
+        $employeeTypes = ['Full Time', 'Part Time', 'Provisionary', 'Regular'];
         return Inertia::render('employees/edit', [
             'employee' => $employee,
             'search'   => $request->input('search', ''),
             'filters'  => [
-                'types'    => (array) $request->input('types', []),
-                'statuses' => (array) $request->input('statuses', []),
+                'types'    => $types,
+                'statuses' => $statuses,
+                'roles'    => $roles,
             ],
-            'page'     => $request->input('page', 1),
+            'page'     => $page,
+            'employeeTypes' => $employeeTypes,
         ]);
     }
 
@@ -129,12 +153,24 @@ class EmployeesController extends Controller
     {
         $employee->update($request->validated());
 
-        // Explicitly build the /employees?… URL with filters + page
+        // Restore previous filters from referer
+        $redirectParams = [];
+        $referer = $request->headers->get('referer');
+        if ($referer) {
+            $query = parse_url($referer, PHP_URL_QUERY);
+            if ($query) {
+                parse_str($query, $params);
+                foreach (['search', 'types', 'statuses', 'roles', 'page'] as $key) {
+                    if (isset($params[$key]) && $params[$key] !== '') {
+                        $redirectParams[$key] = $params[$key];
+                    }
+                }
+            }
+        }
         return redirect()
-            ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
+            ->route('employees.index', $redirectParams)
             ->with('success', 'Employee updated successfully!');
     }
-
 
     /**
      * Remove the specified resource from storage.
@@ -142,10 +178,14 @@ class EmployeesController extends Controller
     public function destroy(Request $request, Employees $employee)
     {
         $employee->delete();
-
-        // Same here: never use redirect()->back()
         return redirect()
-            ->route('employees.index', $request->only(['search', 'types', 'statuses', 'page']))
+            ->route('employees.index', [
+                'search' => $request['search'] ?? '',
+                'types' => $request['types'] ?? [],
+                'statuses' => $request['statuses'] ?? [],
+                'roles' => $request['roles'] ?? [],
+                'page' => $request['page'] ?? 1,
+            ])
             ->with('success', 'Employee deleted successfully!');
     }
 }

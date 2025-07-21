@@ -1,23 +1,29 @@
 import { EmployeeStatus } from '@/components/employee-status';
-import { EmployeeType } from '@/components/employee-type';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { Employees, type BreadcrumbItem } from '@/types';
 import { ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { EmployeeType } from '@/components/employee-type';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Props = {
     employee: Employees
     search: string
-    filters: { types: string[]; statuses: string[] }
+    filters: { types: string[]; statuses: string[]; category?: string }
     page: number
+    employeeCategory?: string
 }
 
-
-
-export default function Edit({ employee, search, filters, page }: Props) {
+export default function Edit({ employee, search, filters, page, employeeCategory = 'Teaching' }: Props) {
+    const roleOptions = [
+        { value: 'administrator', label: 'Administrator' },
+        { value: 'college instructor', label: 'College Instructor' },
+        { value: 'basic education instructor', label: 'Basic Education Instructor' },
+    ];
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Employees',
@@ -29,10 +35,11 @@ export default function Edit({ employee, search, filters, page }: Props) {
         },
     ];
 
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, put } = useForm({
         employee_name: employee.employee_name ?? '',
         employee_type: employee.employee_type ?? 'Full Time',
         employee_status: employee.employee_status ?? 'Active',
+        roles: employee.roles ?? '',
         base_salary: employee.base_salary?.toString() ?? '',
         overtime_pay: employee.overtime_pay?.toString() ?? '',
         sss: employee.sss?.toString() ?? '',
@@ -44,9 +51,7 @@ export default function Edit({ employee, search, filters, page }: Props) {
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         const cleanedData = {
-            employee_name: data.employee_name,
-            employee_type: data.employee_type,
-            employee_status: data.employee_status,
+            ...data,
             base_salary: data.base_salary.replace(/,/g, '') === '' ? 0 : parseInt(data.base_salary.replace(/,/g, ''), 10),
             overtime_pay: data.overtime_pay.replace(/,/g, '') === '' ? 0 : parseInt(data.overtime_pay.replace(/,/g, ''), 10),
             sss: data.sss.replace(/,/g, '') === '' ? 0 : parseInt(data.sss.replace(/,/g, ''), 10),
@@ -55,20 +60,69 @@ export default function Edit({ employee, search, filters, page }: Props) {
             withholding_tax: data.withholding_tax.replace(/,/g, '') === '' ? 0 : parseInt(data.withholding_tax.replace(/,/g, ''), 10),
         };
         put(
-            route('employees.update', {
-                employee: employee.id,
+            route('employees.update', { employee: employee.id }),
+            {
+                ...cleanedData,
                 search,
+                category: employeeCategory,
                 types: filters.types,
                 statuses: filters.statuses,
                 page,
-            }),
-            {
-                data: cleanedData,
-                preserveScroll: true,
-            }
-        )
-
+            },
+            { preserveScroll: true }
+        );
     };
+
+    const handleRoleChange = (role: string) => {
+        const rolesArr = data.roles ? data.roles.split(',') : [];
+        if (rolesArr.includes(role)) {
+            setData('roles', rolesArr.filter(r => r !== role).join(','));
+        } else {
+            setData('roles', [...rolesArr, role].join(','));
+        }
+    };
+
+    const rolesArr = data.roles ? data.roles.split(',') : [];
+    const teachingTypes = [
+        { value: 'Full Time', label: 'Full Time' },
+        { value: 'Part Time', label: 'Part Time' },
+        { value: 'Provisionary', label: 'Provisionary' },
+    ];
+    const adminTypes = [
+        { value: 'Regular', label: 'Regular' },
+        { value: 'Provisionary', label: 'Provisionary' },
+    ];
+    let availableTypes = teachingTypes;
+    if (rolesArr.includes('administrator') && (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor'))) {
+        // Merge and deduplicate by value
+        const merged = [...teachingTypes, ...adminTypes];
+        const seen = new Set();
+        availableTypes = merged.filter(t => {
+            if (seen.has(t.value)) return false;
+            seen.add(t.value);
+            return true;
+        });
+    } else if (rolesArr.includes('administrator')) {
+        availableTypes = adminTypes;
+    } else if (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor')) {
+        availableTypes = teachingTypes;
+    }
+    const availableStatuses = ['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave'];
+
+    useEffect(() => {
+        const rolesArr = data.roles ? data.roles.split(',') : [];
+        if (rolesArr.length > 0) {
+            if (!data.employee_type && availableTypes[0]?.value) {
+                setData('employee_type', availableTypes[0].value);
+            }
+            // Only set to 'Active' if there is no current value
+            if (!data.employee_status) {
+                setData('employee_status', 'Active');
+            }
+        }
+        // Only run when roles change
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data.roles]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -118,6 +172,8 @@ export default function Edit({ employee, search, filters, page }: Props) {
                                 <EmployeeType
                                     value={data.employee_type}
                                     onChange={val => setData('employee_type', val)}
+                                    roles={data.roles ? data.roles.split(',') : []}
+                                    disabled={data.roles === ''}
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
@@ -127,7 +183,24 @@ export default function Edit({ employee, search, filters, page }: Props) {
                                 <EmployeeStatus
                                     value={data.employee_status}
                                     onChange={val => setData('employee_status', val)}
+                                    statuses={availableStatuses}
+                                    disabled={data.roles === ''}
                                 />
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <Label>Roles</Label>
+                                <div className="flex flex-col gap-2">
+                                    {roleOptions.map(opt => (
+                                        <label key={opt.value} className="flex items-center gap-2 text-sm select-none">
+                                            <Checkbox
+                                                checked={data.roles.split(',').includes(opt.value)}
+                                                onCheckedChange={() => handleRoleChange(opt.value)}
+                                                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                                            />
+                                            {opt.label}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                         {/* Employee Salary */}

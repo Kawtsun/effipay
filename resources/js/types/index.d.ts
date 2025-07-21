@@ -43,16 +43,17 @@ export interface User {
 }
 
 export interface Employees {
-    id: number,
-    employee_name: string,
-    employee_type: string,
-    employee_status: string,
-    base_salary: number,
-    overtime_pay: number,
-    sss: number,
-    philhealth: number,
-    pag_ibig: number,
-    withholding_tax: number,
+    id: number;
+    employee_name: string;
+    employee_type: string;
+    employee_status: string;
+    roles: string;
+    base_salary: number;
+    overtime_pay: number;
+    sss: number;
+    philhealth: number;
+    pag_ibig: number;
+    withholding_tax: number;
 }
 
 export interface Salary {

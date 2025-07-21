@@ -31,6 +31,7 @@ class UpdateEmployeesRequest extends FormRequest
             'philhealth' => 'required|integer|min:0',
             'pag_ibig' => 'required|integer|min:0',
             'withholding_tax' => 'required|integer|min:0',
+            'roles' => 'nullable|string',
         ];
     }
 }
