@@ -382,7 +382,12 @@ export default function Index({
 
                                     {Array.from({ length: Math.max(0, MAX_ROWS - employees.length) }).map((_, i) => (
                                         <TableRow key={`empty-${i}`}>
-                                            <TableCell colSpan={7} style={{ height: ROW_HEIGHT }} />
+                                            <TableCell style={{ width: 80, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                            <TableCell style={{ width: 200, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                            <TableCell style={{ width: 160, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                            <TableCell style={{ width: 160, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                            <TableCell style={{ width: 220, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                            <TableCell style={{ width: 180, height: ROW_HEIGHT }} className="px-4 py-2" />
                                         </TableRow>
                                     ))}
                                 </>
