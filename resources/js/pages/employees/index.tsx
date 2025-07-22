@@ -264,7 +264,7 @@ export default function Index({
                                     <TableHead style={{ width: 200 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
                                     <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
                                     <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
-                                    <TableHead style={{ width: 320 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Roles</TableHead>
+                                    <TableHead style={{ width: 350 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Roles</TableHead>
                                     <TableHead style={{ width: 180 }} className='text-right text-xs font-semibold uppercase  tracking-wide px-4 py-2'>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -287,7 +287,7 @@ export default function Index({
                                                 <TableCell style={{ width: 200 }} className="px-4 py-2">{emp.employee_name}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
-                                                <TableCell style={{ width: 320 }} className="px-4 py-2 min-w-[160px]">
+                                                <TableCell style={{ width: 350 }} className="px-4 py-2 min-w-[160px]">
                                                     {(() => {
                                                         if (!emp.roles) return '';
                                                         let rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
