@@ -272,7 +272,7 @@ export default function Index({
                             <TableBody>
                                 {employees.length === 0 && !loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center text-muted-foreground">
+                                        <TableCell colSpan={6} className="text-center text-muted-foreground" style={{ width: '100%' }}>
                                             No employees found.
                                         </TableCell>
                                     </TableRow>
