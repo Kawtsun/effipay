@@ -6,7 +6,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Employees, type BreadcrumbItem } from '@/types';
 import { ArrowLeft } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { EmployeeType } from '@/components/employee-type';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -62,14 +62,16 @@ export default function Edit({ employee, search, filters, page, employeeCategory
         put(
             route('employees.update', { employee: employee.id }),
             {
-                ...cleanedData,
-                search,
-                category: employeeCategory,
-                types: filters.types,
-                statuses: filters.statuses,
-                page,
-            },
-            { preserveScroll: true }
+                data: {
+                    ...cleanedData,
+                    search,
+                    category: employeeCategory,
+                    types: filters.types,
+                    statuses: filters.statuses,
+                    page,
+                },
+                preserveScroll: true
+            }
         );
     };
 
@@ -166,6 +168,24 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
+                                <Label>Roles</Label>
+                                <div className="flex flex-col gap-2">
+                                    {roleOptions.map(opt => (
+                                        <label key={opt.value} className="flex items-center gap-2 text-sm select-none">
+                                            <Checkbox
+                                                checked={data.roles.split(',').includes(opt.value)}
+                                                onCheckedChange={() => handleRoleChange(opt.value)}
+                                                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                                            />
+                                            {opt.label}
+                                        </label>
+                                    ))}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    Please select at least one role before choosing employee type or status.
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-3">
                                 <Label htmlFor="employee_type">
                                     Employee Type
                                 </Label>
@@ -186,21 +206,6 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                     statuses={availableStatuses}
                                     disabled={data.roles === ''}
                                 />
-                            </div>
-                            <div className="flex flex-col gap-3">
-                                <Label>Roles</Label>
-                                <div className="flex flex-col gap-2">
-                                    {roleOptions.map(opt => (
-                                        <label key={opt.value} className="flex items-center gap-2 text-sm select-none">
-                                            <Checkbox
-                                                checked={data.roles.split(',').includes(opt.value)}
-                                                onCheckedChange={() => handleRoleChange(opt.value)}
-                                                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-                                            />
-                                            {opt.label}
-                                        </label>
-                                    ))}
-                                </div>
                             </div>
                         </div>
                         {/* Employee Salary */}
