@@ -188,7 +188,7 @@ export default function Index({
         <AppLayout breadcrumbs={crumbs}>
             <Head title="Employees" />
 
-            <div className="flex h-full flex-col gap-4 overflow-hidden py-6 px-8">
+            <div className="flex h-full flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
                 {/* HEADER */}
                 <div className="flex-none">
                     <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
@@ -249,151 +249,153 @@ export default function Index({
                 </div>
 
                 {/* TABLE & PAGINATION */}
-                <div className="relative flex flex-1 flex-col overflow-auto">
+                <div className="relative flex flex-1 flex-col">
                     {loading && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 transition-opacity duration-300 dark:bg-black/70">
                             <Loader2 className="h-16 w-16 animate-spin text-primary" />
                         </div>
                     )}
 
-                    <Table className="select-none" style={{ tableLayout: 'fixed', width: '100%' }}>
-                        <TableHeader className=''>
-                            <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
-                                <TableHead style={{ width: 80 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
-                                <TableHead style={{ width: 200 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
-                                <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
-                                <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
-                                <TableHead style={{ width: 220 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Roles</TableHead>
-                                <TableHead style={{ width: 180 }} className='text-right text-xs font-semibold uppercase  tracking-wide px-4 py-2'>Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-
-                        <TableBody>
-                            {employees.length === 0 && !loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                                        No employees found.
-                                    </TableCell>
+                    <div className="w-full overflow-x-auto">
+                        <Table className="select-none min-w-[900px]" style={{ tableLayout: 'fixed', width: '100%' }}>
+                            <TableHeader className=''>
+                                <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
+                                    <TableHead style={{ width: 120 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
+                                    <TableHead style={{ width: 200 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
+                                    <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
+                                    <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
+                                    <TableHead style={{ width: 320 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Roles</TableHead>
+                                    <TableHead style={{ width: 180 }} className='text-right text-xs font-semibold uppercase  tracking-wide px-4 py-2'>Actions</TableHead>
                                 </TableRow>
-                            ) : (
-                                <>
-                                    {employees.map((emp) => (
-                                        <TableRow
-                                            key={emp.id}
-                                            className={`transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}
-                                        >
-                                            <TableCell style={{ width: 80 }} className="px-4 py-2">{emp.id}</TableCell>
-                                            <TableCell style={{ width: 200 }} className="px-4 py-2">{emp.employee_name}</TableCell>
-                                            <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
-                                            <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
-                                            <TableCell style={{ width: 220 }} className="px-4 py-2">
-                                                {(() => {
-                                                    if (!emp.roles) return '';
-                                                    let rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
-                                                    const order = ['college instructor', 'basic education instructor', 'administrator'];
-                                                    rolesArr = order.filter(r => rolesArr.includes(r));
-                                                    if (appliedFilters.roles.length > 0) {
-                                                        // Filtered roles first, then the rest
-                                                        const filtered = appliedFilters.roles.filter(r => rolesArr.includes(r));
-                                                        const rest = rolesArr.filter(r => !filtered.includes(r));
-                                                        rolesArr = [...filtered, ...rest];
-                                                    }
-                                                    if (rolesArr.length === 0) return '';
-                                                    // Determine which role to show based on active filter
-                                                    let mainRole = rolesArr[0];
-                                                    if (appliedFilters.roles.length > 0) {
-                                                        // If admin is in filter and employee has admin, show admin
-                                                        if (appliedFilters.roles.includes('administrator') && rolesArr.includes('administrator')) {
-                                                            mainRole = 'administrator';
-                                                        } else {
-                                                            // Otherwise, show the first matching filtered role
-                                                            const match = rolesArr.find(r => appliedFilters.roles.includes(r));
-                                                            if (match) mainRole = match;
-                                                        }
-                                                    }
-                                                    const restRoles = rolesArr.filter(r => r !== mainRole);
-                                                    const badge = (role: string) => {
-                                                        let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
-                                                        let icon = null;
-                                                        if (role === 'administrator') {
-                                                            color = 'info';
-                                                            icon = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                        } else if (role === 'college instructor') {
-                                                            color = 'purple';
-                                                            icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                        } else if (role === 'basic education instructor') {
-                                                            color = 'warning';
-                                                            icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                        }
-                                                        return (
-                                                            <Badge key={role} variant={color} className="mr-1 capitalize flex items-center">
-                                                                {icon}{capitalizeWords(role)}
-                                                            </Badge>
-                                                        );
-                                                    };
-                                                    if (restRoles.length === 0) return badge(mainRole);
-                                                    return (
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <span className="inline-flex items-center gap-1 cursor-pointer">
-                                                                        {badge(mainRole)}
-                                                                        <Badge variant="success" className="cursor-pointer">+{restRoles.length}</Badge>
-                                                                    </span>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent side="top">
-                                                                    <div className="flex flex-col gap-1">
-                                                                        {[mainRole, ...restRoles].map(role => badge(role))}
-                                                                    </div>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    );
-                                                })()}
-                                            </TableCell>
-                                            <TableCell style={{ width: 180 }} className="px-4 py-2 whitespace-nowrap text-right">
-                                                <div className='flex justify-end items-center gap-2'>
-                                                    <Button variant="secondary" onClick={() => setViewing(emp)}>
-                                                        <Eye />
-                                                        View
-                                                    </Button>
-                                                    <Link
-                                                        href={route('employees.edit', {
-                                                            employee: emp.id,
-                                                            search: searchTerm || undefined,
-                                                            types: appliedFilters.types.length ? appliedFilters.types : undefined,
-                                                            statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
-                                                            roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
-                                                            page: currentPage,
-                                                        })}
-                                                        className={buttonVariants({ variant: 'default' })}
-                                                    >
-                                                        <Pencil />
-                                                        Edit
-                                                    </Link>
-                                                    <Button variant="destructive" onClick={() => handleDelete(emp)}>
-                                                        <Trash />
-                                                        Delete
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                            </TableHeader>
 
-                                    {Array.from({ length: Math.max(0, MAX_ROWS - employees.length) }).map((_, i) => (
-                                        <TableRow key={`empty-${i}`}>
-                                            <TableCell style={{ width: 80, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                            <TableCell style={{ width: 200, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                            <TableCell style={{ width: 160, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                            <TableCell style={{ width: 160, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                            <TableCell style={{ width: 220, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                            <TableCell style={{ width: 180, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                        </TableRow>
-                                    ))}
-                                </>
-                            )}
-                        </TableBody>
-                    </Table>
+                            <TableBody>
+                                {employees.length === 0 && !loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center text-muted-foreground">
+                                            No employees found.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    <>
+                                        {employees.map((emp) => (
+                                            <TableRow
+                                                key={emp.id}
+                                                className={`transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}
+                                            >
+                                                <TableCell style={{ width: 120 }} className="px-4 py-2">{emp.id}</TableCell>
+                                                <TableCell style={{ width: 200 }} className="px-4 py-2">{emp.employee_name}</TableCell>
+                                                <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
+                                                <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
+                                                <TableCell style={{ width: 320 }} className="px-4 py-2 min-w-[160px]">
+                                                    {(() => {
+                                                        if (!emp.roles) return '';
+                                                        let rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
+                                                        const order = ['college instructor', 'basic education instructor', 'administrator'];
+                                                        rolesArr = order.filter(r => rolesArr.includes(r));
+                                                        if (appliedFilters.roles.length > 0) {
+                                                            // Filtered roles first, then the rest
+                                                            const filtered = appliedFilters.roles.filter(r => rolesArr.includes(r));
+                                                            const rest = rolesArr.filter(r => !filtered.includes(r));
+                                                            rolesArr = [...filtered, ...rest];
+                                                        }
+                                                        if (rolesArr.length === 0) return '';
+                                                        // Determine which role to show based on active filter
+                                                        let mainRole = rolesArr[0];
+                                                        if (appliedFilters.roles.length > 0) {
+                                                            // If admin is in filter and employee has admin, show admin
+                                                            if (appliedFilters.roles.includes('administrator') && rolesArr.includes('administrator')) {
+                                                                mainRole = 'administrator';
+                                                            } else {
+                                                                // Otherwise, show the first matching filtered role
+                                                                const match = rolesArr.find(r => appliedFilters.roles.includes(r));
+                                                                if (match) mainRole = match;
+                                                            }
+                                                        }
+                                                        const restRoles = rolesArr.filter(r => r !== mainRole);
+                                                        const badge = (role: string) => {
+                                                            let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
+                                                            let icon = null;
+                                                            if (role === 'administrator') {
+                                                                color = 'info';
+                                                                icon = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                            } else if (role === 'college instructor') {
+                                                                color = 'purple';
+                                                                icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                            } else if (role === 'basic education instructor') {
+                                                                color = 'warning';
+                                                                icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                            }
+                                                            return (
+                                                                <Badge key={role} variant={color} className="mr-1 capitalize flex items-center">
+                                                                    {icon}{capitalizeWords(role)}
+                                                                </Badge>
+                                                            );
+                                                        };
+                                                        if (restRoles.length === 0) return badge(mainRole);
+                                                        return (
+                                                            <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <span className="inline-flex items-center gap-1 cursor-pointer">
+                                                                            {badge(mainRole)}
+                                                                            <Badge variant="success" className="cursor-pointer">+{restRoles.length}</Badge>
+                                                                        </span>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent side="top">
+                                                                        <div className="flex flex-col gap-1">
+                                                                            {[mainRole, ...restRoles].map(role => badge(role))}
+                                                                        </div>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        );
+                                                    })()}
+                                                </TableCell>
+                                                <TableCell style={{ width: 180 }} className="px-4 py-2 whitespace-nowrap text-right">
+                                                    <div className='flex justify-end items-center gap-2'>
+                                                        <Button variant="secondary" onClick={() => setViewing(emp)}>
+                                                            <Eye />
+                                                            View
+                                                        </Button>
+                                                        <Link
+                                                            href={route('employees.edit', {
+                                                                employee: emp.id,
+                                                                search: searchTerm || undefined,
+                                                                types: appliedFilters.types.length ? appliedFilters.types : undefined,
+                                                                statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
+                                                                roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
+                                                                page: currentPage,
+                                                            })}
+                                                            className={buttonVariants({ variant: 'default' })}
+                                                        >
+                                                            <Pencil />
+                                                            Edit
+                                                        </Link>
+                                                        <Button variant="destructive" onClick={() => handleDelete(emp)}>
+                                                            <Trash />
+                                                            Delete
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+
+                                        {Array.from({ length: Math.max(0, MAX_ROWS - employees.length) }).map((_, i) => (
+                                            <TableRow key={`empty-${i}`}>
+                                                <TableCell style={{ width: 120, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                                <TableCell style={{ width: 200, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                                <TableCell style={{ width: 160, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                                <TableCell style={{ width: 160, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                                <TableCell style={{ width: 240, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                                <TableCell style={{ width: 180, height: ROW_HEIGHT }} className="px-4 py-2" />
+                                            </TableRow>
+                                        ))}
+                                    </>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                     <EmployeeViewDialog employee={viewing} onClose={() => setViewing(null)} />
 
                     <EmployeeDelete open={open} setOpen={setOpen} employee={sel} search={searchTerm} filters={appliedFilters} page={currentPage} />
