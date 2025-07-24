@@ -18,7 +18,7 @@ interface Props {
   setOpen: (o: boolean) => void
   employee: Employees | null
   search: string
-  filters: { category?: string; types: string[]; statuses: string[]; collegeProgram?: string }
+  filters: { category?: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string }
   page: number
   onDeleted?: () => void
 }
@@ -45,7 +45,8 @@ const EmployeeDelete: FC<Props> = ({
         category: filters.category,
         types: filters.types,
         statuses: filters.statuses,
-        collegeProgram: filters.collegeProgram, // preserve college program filter
+        roles: Array.isArray(filters.roles) ? filters.roles : filters.roles ? [filters.roles] : [],
+        collegeProgram: filters.collegeProgram,
         page,
       }),
       {

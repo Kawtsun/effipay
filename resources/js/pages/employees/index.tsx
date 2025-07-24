@@ -75,12 +75,15 @@ export default function Index({
 
     // Local state seeded from props
     const [searchTerm, setSearchTerm] = useState(initialSearch)
+    const toArray = (val: any) => Array.isArray(val) ? val : val ? [val] : [];
     const [filters, setFilters] = useState<FilterState & { collegeProgram?: string }>({
         ...initialFilters,
+        roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
     })
     const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string }>({
         ...initialFilters,
+        roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
     })
     const hasFilters = appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0 || appliedFilters.roles.length > 0
@@ -521,7 +524,21 @@ export default function Index({
                     </div>
                     <EmployeeViewDialog employee={viewing} onClose={() => setViewing(null)} activeRoles={appliedFilters.roles} />
 
-                    <EmployeeDelete open={open} setOpen={setOpen} employee={sel} search={searchTerm} filters={appliedFilters} page={currentPage} />
+                    <EmployeeDelete
+                        open={open}
+                        setOpen={setOpen}
+                        employee={sel}
+                        search={searchTerm}
+                        filters={{
+                            ...appliedFilters,
+                            roles: Array.isArray(appliedFilters.roles)
+                                ? appliedFilters.roles
+                                : appliedFilters.roles
+                                    ? [appliedFilters.roles]
+                                    : [],
+                        }}
+                        page={currentPage}
+                    />
 
                     <div className="mt-4 flex min-h-[56px] justify-center">
                         <EmployeePagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePage} />

@@ -54,8 +54,8 @@ class EmployeesController extends Controller
             'filters'     => [
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
-                'roles'    => (array) $request->input('roles', []),
-                'collegeProgram' => $request->input('collegeProgram', ''), // preserve college program
+                'roles'    => array_values((array) $request->input('roles', [])),
+                'collegeProgram' => $request->input('collegeProgram', ''),
             ],
         ]);
     }
@@ -199,7 +199,7 @@ class EmployeesController extends Controller
                 'search' => $request['search'] ?? '',
                 'types' => $request['types'] ?? [],
                 'statuses' => $request['statuses'] ?? [],
-                'roles' => (array)($request['roles'] ?? []),
+                'roles' => array_values((array) ($request['roles'] ?? [])),
                 'collegeProgram' => $request['collegeProgram'] ?? '',
                 'page' => $request['page'] ?? 1,
             ])
