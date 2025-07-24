@@ -31,6 +31,9 @@ const employee_type = [
   { value: "Regular", label: "Regular" },
 ];
 
+// Add a capitalizeWords utility
+const capitalizeWords = (str: string) => str.replace(/\b\w/g, c => c.toUpperCase());
+
 export default function EmployeeFilter({
   selectedTypes,
   selectedStatuses,
@@ -103,82 +106,83 @@ export default function EmployeeFilter({
       </PopoverTrigger>
 
 
-      <PopoverContent className="w-64 p-4 space-y-5">
-        <div>
-          <h4 className="text-sm font-semibold mb-1 select-none">Employee Type</h4>
-          <p className="text-xs text-muted-foreground mb-2 select-none">
-            Select one or more types to filter by employment classification.
-          </p>
-          {employee_type.map(({ value, label }) => (
-            <label key={value} className="flex items-center gap-2 mb-1 text-sm select-none">
-              <Checkbox
-                checked={types.includes(value)}
-                onCheckedChange={() => setTypes(toggle(types, value))}
-                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-              />
+      <PopoverContent className="w-64 p-0 flex flex-col h-[480px]">
+        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+          <div>
+            <h4 className="text-sm font-semibold mb-1 select-none">Employee Type</h4>
+            <p className="text-xs text-muted-foreground mb-2 select-none">
+              Select one or more types to filter by employment classification.
+            </p>
+            {employee_type.map(({ value, label }) => (
+              <label key={value} className="flex items-center gap-2 mb-1 text-sm select-none">
+                <Checkbox
+                  checked={types.includes(value)}
+                  onCheckedChange={() => setTypes(toggle(types, value))}
+                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                />
 
-              {label}
-            </label>
-          ))}
+                {label}
+              </label>
+            ))}
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold mb-1 select-none">Employee Status</h4>
+            <p className="text-xs text-muted-foreground mb-2 select-none">
+              Filter employees by their current work status.
+            </p>
+            {employee_status.map(({ value, label }) => (
+              <label key={value} className="flex items-center gap-2 mb-1 text-sm select-none">
+                <Checkbox
+                  checked={statuses.includes(value)}
+                  onCheckedChange={() => setStatuses(toggle(statuses, value))}
+                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                />
+                {label}
+              </label>
+            ))}
+            <div className="mt-2 mb-1 text-xs font-semibold text-muted-foreground select-none">Leave</div>
+            {leave_statuses.map(({ value, label }) => (
+              <label key={value} className="flex items-center gap-2 mb-1 text-sm select-none">
+                <Checkbox
+                  checked={statuses.includes(value)}
+                  onCheckedChange={() => setStatuses(toggle(statuses, value))}
+                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold mb-1 select-none">Roles</h4>
+            <p className="text-xs text-muted-foreground mb-2 select-none">
+              Select one or more roles to filter by role.
+            </p>
+            {['administrator', 'college instructor', 'basic education instructor'].map((role) => (
+              <label key={role} className="flex items-center gap-2 mb-1 text-sm select-none">
+                <Checkbox
+                  checked={roles.includes(role)}
+                  onCheckedChange={() => setRoles(roles.includes(role) ? roles.filter(r => r !== role) : [...roles, role])}
+                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                />
+                {capitalizeWords(role)}
+              </label>
+            ))}
+            {/* College program radio group, only show if college instructor is checked */}
+            {roles.includes('college instructor') && (
+              <div className="pl-4 mt-2">
+                <div className="text-xs font-semibold mb-1">College Department</div>
+                <EmployeeCollegeRadioDepartment
+                  value={collegeProgram}
+                  onChange={setCollegeProgram}
+                  className="max-h-40 overflow-y-auto pr-2"
+                />
+              </div>
+            )}
+          </div>
         </div>
-
-        <div>
-          <h4 className="text-sm font-semibold mb-1 select-none">Employee Status</h4>
-          <p className="text-xs text-muted-foreground mb-2 select-none">
-            Filter employees by their current work status.
-          </p>
-          {employee_status.map(({ value, label }) => (
-            <label key={value} className="flex items-center gap-2 mb-1 text-sm select-none">
-              <Checkbox
-                checked={statuses.includes(value)}
-                onCheckedChange={() => setStatuses(toggle(statuses, value))}
-                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-              />
-              {label}
-            </label>
-          ))}
-          <div className="mt-2 mb-1 text-xs font-semibold text-muted-foreground select-none">Leave</div>
-          {leave_statuses.map(({ value, label }) => (
-            <label key={value} className="flex items-center gap-2 mb-1 text-sm select-none">
-              <Checkbox
-                checked={statuses.includes(value)}
-                onCheckedChange={() => setStatuses(toggle(statuses, value))}
-                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-              />
-              {label}
-            </label>
-          ))}
-        </div>
-
-        <div>
-          <h4 className="text-sm font-semibold mb-1 select-none">Roles</h4>
-          <p className="text-xs text-muted-foreground mb-2 select-none">
-            Select one or more roles to filter by role.
-          </p>
-          {['administrator', 'college instructor', 'basic education instructor'].map((role) => (
-            <label key={role} className="flex items-center gap-2 mb-1 text-sm select-none">
-              <Checkbox
-                checked={roles.includes(role)}
-                onCheckedChange={() => setRoles(roles.includes(role) ? roles.filter(r => r !== role) : [...roles, role])}
-                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-              />
-              {role.charAt(0).toUpperCase() + role.slice(1)}
-            </label>
-          ))}
-          {/* College program radio group, only show if college instructor is checked */}
-          {roles.includes('college instructor') && (
-            <div className="pl-4 mt-2">
-              <div className="text-xs font-semibold mb-1">College Department</div>
-              <EmployeeCollegeRadioDepartment
-                value={collegeProgram}
-                onChange={setCollegeProgram}
-                className="max-h-40 overflow-y-auto pr-2"
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="flex justify-end gap-2 pt-3 border-t mt-2">
+        <div className="flex justify-end gap-2 pt-3 border-t mt-2 bg-white sticky bottom-0 z-10 p-4">
           <Button variant="ghost" size="sm" onClick={handleReset}>
             Reset
           </Button>

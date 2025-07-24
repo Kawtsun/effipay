@@ -75,22 +75,18 @@ export default function Index({
 
     // Local state seeded from props
     const [searchTerm, setSearchTerm] = useState(initialSearch)
-    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string }>(initialFilters)
-    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string }>(initialFilters)
+    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string }>({
+        ...initialFilters,
+        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+    })
+    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string }>({
+        ...initialFilters,
+        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+    })
     const hasFilters = appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0 || appliedFilters.roles.length > 0
 
     // Sync local state when props change (e.g. after delete or redirect)
     const isFirstLoad = useRef(true)
-
-    useEffect(() => {
-        if (isFirstLoad.current) {
-            setSearchTerm(initialSearch)
-            setFilters(initialFilters)
-            setAppliedFilters(initialFilters)
-            isFirstLoad.current = false
-        }
-    }, [initialSearch, initialFilters])
-
 
     // Show toast on success
     useEffect(() => {

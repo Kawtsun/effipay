@@ -39,6 +39,11 @@ class EmployeesController extends Controller
             });
         }
 
+        // Filter by college program if set
+        if ($request->filled('collegeProgram')) {
+            $query->where('college_program', $request->collegeProgram);
+        }
+
         $employees = $query->paginate(10)->withQueryString();
 
         return Inertia::render('employees/index', [
@@ -50,6 +55,7 @@ class EmployeesController extends Controller
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
                 'roles'    => (array) $request->input('roles', []),
+                'collegeProgram' => $request->input('collegeProgram', ''), // preserve college program
             ],
         ]);
     }
@@ -103,9 +109,14 @@ class EmployeesController extends Controller
             $query = parse_url($referer, PHP_URL_QUERY);
             if ($query) {
                 parse_str($query, $params);
-                foreach (['search', 'types', 'statuses', 'roles', 'page'] as $key) {
-                    if (isset($params[$key]) && $params[$key] !== '') {
-                        $redirectParams[$key] = $params[$key];
+                // In store and update, always preserve all filters, and ensure roles is always an array if present
+                foreach (['search', 'types', 'statuses', 'roles', 'collegeProgram', 'page'] as $key) {
+                    if (isset($params[$key])) {
+                        if ($key === 'roles') {
+                            $redirectParams[$key] = (array)$params[$key];
+                        } else {
+                            $redirectParams[$key] = $params[$key];
+                        }
                     }
                 }
             }
@@ -160,9 +171,14 @@ class EmployeesController extends Controller
             $query = parse_url($referer, PHP_URL_QUERY);
             if ($query) {
                 parse_str($query, $params);
-                foreach (['search', 'types', 'statuses', 'roles', 'page'] as $key) {
-                    if (isset($params[$key]) && $params[$key] !== '') {
-                        $redirectParams[$key] = $params[$key];
+                // In store and update, always preserve all filters, and ensure roles is always an array if present
+                foreach (['search', 'types', 'statuses', 'roles', 'collegeProgram', 'page'] as $key) {
+                    if (isset($params[$key])) {
+                        if ($key === 'roles') {
+                            $redirectParams[$key] = (array)$params[$key];
+                        } else {
+                            $redirectParams[$key] = $params[$key];
+                        }
                     }
                 }
             }
@@ -183,7 +199,8 @@ class EmployeesController extends Controller
                 'search' => $request['search'] ?? '',
                 'types' => $request['types'] ?? [],
                 'statuses' => $request['statuses'] ?? [],
-                'roles' => $request['roles'] ?? [],
+                'roles' => (array)($request['roles'] ?? []),
+                'collegeProgram' => $request['collegeProgram'] ?? '',
                 'page' => $request['page'] ?? 1,
             ])
             ->with('success', 'Employee deleted successfully!');

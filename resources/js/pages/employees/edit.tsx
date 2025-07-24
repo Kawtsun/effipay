@@ -75,6 +75,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                     category: employeeCategory,
                     types: filters.types,
                     statuses: filters.statuses,
+                    collegeProgram: filters.collegeProgram, // preserve college program filter
                     page,
                 },
                 preserveScroll: true
