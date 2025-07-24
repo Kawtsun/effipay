@@ -182,7 +182,7 @@ export default function EmployeeFilter({
             )}
           </div>
         </div>
-        <div className="flex justify-end gap-2 pt-3 border-t mt-2 bg-white sticky bottom-0 z-10 p-4">
+        <div className="flex justify-end gap-2 pt-3 border-t mt-2 bg-background sticky bottom-0 z-10 p-4">
           <Button variant="ghost" size="sm" onClick={handleReset}>
             Reset
           </Button>
