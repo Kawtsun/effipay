@@ -6,9 +6,10 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { EmployeeType } from '@/components/employee-type';
 import { Checkbox } from '@/components/ui/checkbox';
+import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-department';
 
 type Props = {
     search: string;
@@ -35,7 +36,6 @@ export default function Create({
     filters,
     page,
     salaryDefaults,
-    employeeCategory = 'Teaching',
 }: Props) {
     const roleOptions = [
         { value: 'administrator', label: 'Administrator' },
@@ -53,7 +53,10 @@ export default function Create({
         philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
         pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
         withholding_tax: salaryDefaults['Full Time']?.withholding_tax.toString() ?? '',
+        college_program: '', // NEW
     });
+
+    const [collegeProgram, setCollegeProgram] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -104,7 +107,6 @@ export default function Create({
     ];
 
     // Validation for roles selection
-    const isTeaching = employeeCategory === 'Teaching';
     const rolesArr = data.roles ? data.roles.split(',') : [];
     const hasTeachingRole = rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor');
     const canSubmit = rolesArr.includes('administrator') || hasTeachingRole;
@@ -167,6 +169,11 @@ export default function Create({
         }
     }, [data.employee_type, salaryDefaults]);
 
+    // When collegeProgram changes, sync to form state
+    useEffect(() => {
+        setData('college_program', collegeProgram);
+    }, [collegeProgram]);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Add Employees" />
@@ -221,6 +228,17 @@ export default function Create({
                                             {opt.label}
                                         </label>
                                     ))}
+                                    {/* College department radio group */}
+                                    {data.roles.split(',').includes('college instructor') && (
+                                        <div className="pl-4 mt-2">
+                                            <div className="text-xs font-semibold mb-1">College Department</div>
+                                            <EmployeeCollegeRadioDepartment
+                                                value={collegeProgram}
+                                                onChange={setCollegeProgram}
+                                                className="max-h-40 overflow-y-auto pr-2"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-1">
                                     Please select at least one role before choosing employee type or status.

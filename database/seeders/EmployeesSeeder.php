@@ -118,6 +118,9 @@ class EmployeesSeeder extends Seeder
         $shuffled = collect($employeeNames)->shuffle();
         $employeeTypesTeaching = ['Full Time', 'Part Time', 'Provisionary'];
         $employeeTypesAdmin = ['Regular', 'Provisionary'];
+        $collegePrograms = [
+            'BSBA', 'BSA', 'COELA', 'BSCRIM', 'BSCS', 'JD', 'BSN', 'RLE', 'CG', 'BSPT', 'GSP', 'MBA'
+        ];
         foreach ($shuffled as $name) {
             $possibleRoles = ['administrator', 'college instructor', 'basic education instructor'];
             $rolesArr = collect($possibleRoles)->random(fake()->numberBetween(1, 3))->all();
@@ -133,11 +136,16 @@ class EmployeesSeeder extends Seeder
             } else {
                 $type = fake()->randomElement($employeeTypesTeaching);
             }
+            $collegeProgram = null;
+            if (in_array('college instructor', $rolesArr)) {
+                $collegeProgram = fake()->randomElement($collegePrograms);
+            }
             Employees::create([
                 'employee_name' => $name,
                 'employee_type' => $type,
                 'employee_status' => fake()->randomElement(['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave']),
                 'roles' => $roles,
+                'college_program' => $collegeProgram,
                 'base_salary' => fake()->numberBetween(10000, 999999),
                 'overtime_pay' => fake()->numberBetween(2000, 5000),
                 'sss' => fake()->numberBetween(1000, 5000),

@@ -53,7 +53,7 @@ export interface Employees {
     sss: number;
     philhealth: number;
     pag_ibig: number;
-    withholding_tax: number;
+    college_program?: string;
 }
 
 export interface Salary {

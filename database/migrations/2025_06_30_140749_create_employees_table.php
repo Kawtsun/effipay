@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('employee_type');
             $table->string('employee_status');
             $table->string('roles')->nullable();
+            $table->string('college_program')->nullable();
             $table->integer('base_salary');
             $table->integer('overtime_pay');
             $table->integer('sss');

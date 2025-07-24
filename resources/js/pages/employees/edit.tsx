@@ -6,9 +6,10 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Employees, type BreadcrumbItem } from '@/types';
 import { ArrowLeft } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { EmployeeType } from '@/components/employee-type';
 import { Checkbox } from '@/components/ui/checkbox';
+import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-department';
 
 type Props = {
     employee: Employees
@@ -45,8 +46,14 @@ export default function Edit({ employee, search, filters, page, employeeCategory
         sss: employee.sss?.toString() ?? '',
         philhealth: employee.philhealth?.toString() ?? '',
         pag_ibig: employee.pag_ibig?.toString() ?? '',
-        withholding_tax: employee.withholding_tax?.toString() ?? ''
+        withholding_tax: employee.withholding_tax?.toString() ?? '',
+        college_program: employee.college_program ?? '', // NEW
     });
+    const [collegeProgram, setCollegeProgram] = useState(data.college_program);
+    // When collegeProgram changes, sync to form state
+    useEffect(() => {
+        setData('college_program', collegeProgram);
+    }, [collegeProgram]);
 
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -181,6 +188,17 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                         </label>
                                     ))}
                                 </div>
+                                {/* College department radio group */}
+                                {data.roles.split(',').includes('college instructor') && (
+                                    <div className="pl-4 mt-2">
+                                        <div className="text-xs font-semibold mb-1">College Department</div>
+                                        <EmployeeCollegeRadioDepartment
+                                            value={collegeProgram}
+                                            onChange={setCollegeProgram}
+                                            className="max-h-40 overflow-y-auto pr-2"
+                                        />
+                                    </div>
+                                )}
                                 <div className="text-xs text-muted-foreground mt-1">
                                     Please select at least one role before choosing employee type or status.
                                 </div>

@@ -17,6 +17,7 @@ interface Props {
     employee: Employees | null
     onClose: () => void
     activeRoles?: string[]
+    collegeProgram?: string // NEW
 }
 
 function Info({ label, value }: { label: string; value: string | number }) {
@@ -28,68 +29,69 @@ function Info({ label, value }: { label: string; value: string | number }) {
     )
 }
 
-function RolesBadges({ roles, activeRoles }: { roles: string; activeRoles?: string[] }) {
+const COLLEGE_PROGRAMS = [
+  { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
+  { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
+  { value: 'COELA', label: 'College of Education and Liberal Arts' },
+  { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
+  { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
+  { value: 'JD', label: 'Juris Doctor' },
+  { value: 'BSN', label: 'Bachelor of Science in Nursing' },
+  { value: 'RLE', label: 'Related Learning Experience' },
+  { value: 'CG', label: 'Career Guidance or Computer Graphics' },
+  { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
+  { value: 'GSP', label: 'GSIS Scholarship' },
+  { value: 'MBA', label: 'Master of Business Administration' },
+];
+function getCollegeProgramLabel(acronym: string) {
+  const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
+  return found ? found.label : acronym;
+}
+
+function RolesBadges({ roles, activeRoles, employee }: { roles: string; activeRoles?: string[]; employee: Employees }) {
     if (!roles) return null;
     let rolesArr = roles.split(',').map(r => r.trim()).filter(Boolean);
     const order = ['college instructor', 'basic education instructor', 'administrator'];
-    rolesArr = order.filter(r => rolesArr.includes(r));
     // If activeRoles prop is provided, order roles so filtered roles come first
     const activeRolesArr = activeRoles || [];
     if (activeRolesArr.length > 0) {
         const filtered = activeRolesArr.filter(r => rolesArr.includes(r));
         const rest = rolesArr.filter(r => !filtered.includes(r));
         rolesArr = [...filtered, ...rest];
+    } else {
+        rolesArr = order.filter(r => rolesArr.includes(r));
     }
-    let mainRole = rolesArr[0];
-    if (activeRolesArr.length > 0) {
-        if (activeRolesArr.includes('administrator') && rolesArr.includes('administrator')) {
-            mainRole = 'administrator';
-        } else {
-            const match = rolesArr.find(r => activeRolesArr.includes(r));
-            if (match) mainRole = match;
-        }
-    }
-    const restRoles = rolesArr.filter(r => r !== mainRole);
-    const badge = (role: string) => {
-        let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
-        let icon = null;
-        if (role === 'administrator') {
-            color = 'info';
-            icon = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-        } else if (role === 'college instructor') {
-            color = 'purple';
-            icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-        } else if (role === 'basic education instructor') {
-            color = 'warning';
-            icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-        }
-        return (
-            <Badge key={role} variant={color} className="mr-1 capitalize flex items-center">
-                {icon}{role.replace(/\b\w/g, c => c.toUpperCase())}
-            </Badge>
-        );
-    };
-    if (restRoles.length === 0) return badge(mainRole);
+    // Render all roles as badges, no tooltip
     return (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1 cursor-pointer">
-                        {badge(mainRole)}
-                        <Badge variant="success" className="cursor-pointer">+{restRoles.length}</Badge>
-                    </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                    <div className="flex flex-col gap-1">
-                        {[mainRole, ...restRoles].map(role => badge(role))}
-                    </div>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
+        <div className="flex flex-wrap gap-2">
+            {rolesArr.map(role => {
+                let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
+                let icon = null;
+                let extra = null;
+                if (role === 'administrator') {
+                    color = 'info';
+                    icon = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                } else if (role === 'college instructor') {
+                    color = 'purple';
+                    icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                    if (employee && employee.college_program) {
+                        extra = <span className="ml-1 text-xs font-semibold text-white">[{employee.college_program}]</span>;
+                    }
+                } else if (role === 'basic education instructor') {
+                    color = 'warning';
+                    icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                }
+                return (
+                    <Badge key={role} variant={color} className="capitalize flex items-center">
+                        {icon}{role.replace(/\b\w/g, c => c.toUpperCase())}{extra}
+                    </Badge>
+                );
+            })}
+        </div>
     );
 }
 
-export default function EmployeeViewDialog({ employee, onClose, activeRoles }: Props) {
+export default function EmployeeViewDialog({ employee, onClose, activeRoles, collegeProgram }: Props) {
 
     return (
         <Dialog open={!!employee} onOpenChange={(open) => !open && onClose()}>
@@ -121,12 +123,11 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                                             <Info label="Status" value={employee.employee_status} />
                                             <Info label="Type" value={employee.employee_type} />
-                                            <Info label="Category" value={employee.employee_category} />
                                         </div>
                                     </div>
                                     <div className="border-t pt-4">
                                         <h4 className="font-semibold text-base mb-2 border-b pb-1">Roles</h4>
-                                        <RolesBadges roles={employee.roles} activeRoles={activeRoles} />
+                                        <RolesBadges roles={employee.roles} activeRoles={activeRoles} employee={employee} />
                                     </div>
                                     <div className="border-t pt-4">
                                         <h4 className="font-semibold text-base mb-2 border-b pb-1">Salary & Contributions</h4>

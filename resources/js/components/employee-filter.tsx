@@ -7,17 +7,20 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Filter } from "lucide-react"
 import { employee_status, leave_statuses } from "./employee-status"
 import { Badge } from "./ui/badge"
+import EmployeeCollegeRadioDepartment from './employee-college-radio-department';
 
 interface FilterState {
   types: string[]
   statuses: string[]
   roles: string[]
+  collegeProgram?: string // NEW
 }
 
 interface Props {
   selectedTypes: string[]
   selectedStatuses: string[]
   selectedRoles: string[]
+  collegeProgram?: string // NEW
   onChange: (filters: FilterState) => void
 }
 
@@ -32,6 +35,7 @@ export default function EmployeeFilter({
   selectedTypes,
   selectedStatuses,
   selectedRoles,
+  collegeProgram: selectedCollegeProgram = '', // NEW
   onChange,
 }: Props) {
   const [open, setOpen] = useState(false)
@@ -40,6 +44,7 @@ export default function EmployeeFilter({
   const [types, setTypes] = useState<string[]>(selectedTypes)
   const [statuses, setStatuses] = useState<string[]>(selectedStatuses)
   const [roles, setRoles] = useState<string[]>(selectedRoles)
+  const [collegeProgram, setCollegeProgram] = useState<string>(selectedCollegeProgram)
 
   // sync draft when parent resets
   useEffect(() => {
@@ -54,6 +59,10 @@ export default function EmployeeFilter({
     setRoles(selectedRoles)
   }, [selectedRoles])
 
+  useEffect(() => {
+    setCollegeProgram(selectedCollegeProgram)
+  }, [selectedCollegeProgram])
+
   // toggle single value in array
   function toggle(arr: string[], val: string): string[] {
     return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
@@ -61,7 +70,7 @@ export default function EmployeeFilter({
 
   // apply and close
   const handleApply = () => {
-    onChange({ types, statuses, roles })
+    onChange({ types, statuses, roles, collegeProgram })
     setOpen(false)
   }
 
@@ -70,7 +79,8 @@ export default function EmployeeFilter({
     setTypes([])
     setStatuses([])
     setRoles([])
-    onChange({ types: [], statuses: [], roles: [] })
+    setCollegeProgram('')
+    onChange({ types: [], statuses: [], roles: [], collegeProgram: '' })
     setOpen(false)
   }
   const activeCount = selectedTypes.length + selectedStatuses.length + selectedRoles.length
@@ -155,6 +165,17 @@ export default function EmployeeFilter({
               {role.charAt(0).toUpperCase() + role.slice(1)}
             </label>
           ))}
+          {/* College program radio group, only show if college instructor is checked */}
+          {roles.includes('college instructor') && (
+            <div className="pl-4 mt-2">
+              <div className="text-xs font-semibold mb-1">College Department</div>
+              <EmployeeCollegeRadioDepartment
+                value={collegeProgram}
+                onChange={setCollegeProgram}
+                className="max-h-40 overflow-y-auto pr-2"
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-3 border-t mt-2">

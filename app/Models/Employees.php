@@ -15,6 +15,7 @@ class Employees extends Model
         'employee_type',
         'employee_status',
         'roles',
+        'college_program',
         'base_salary',
         'overtime_pay',
         'sss',
