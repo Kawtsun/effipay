@@ -8,6 +8,7 @@ import { Filter } from "lucide-react"
 import { employee_status, leave_statuses } from "./employee-status"
 import { Badge } from "./ui/badge"
 import EmployeeCollegeRadioDepartment from './employee-college-radio-department';
+import EmployeeInstructorRadioRole from './employee-instructor-radio-role';
 
 interface FilterState {
   types: string[]
@@ -157,29 +158,46 @@ export default function EmployeeFilter({
           <div>
             <h4 className="text-sm font-semibold mb-1 select-none">Roles</h4>
             <p className="text-xs text-muted-foreground mb-2 select-none">
-              Select one or more roles to filter by role.
+              Filter by instructor type and/or administrator role.
             </p>
-            {['administrator', 'college instructor', 'basic education instructor'].map((role) => (
-              <label key={role} className="flex items-center gap-2 mb-1 text-sm select-none">
-                <Checkbox
-                  checked={roles.includes(role)}
-                  onCheckedChange={() => setRoles(roles.includes(role) ? roles.filter(r => r !== role) : [...roles, role])}
-                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-                />
-                {capitalizeWords(role)}
-              </label>
-            ))}
-            {/* College program radio group, only show if college instructor is checked */}
-            {roles.includes('college instructor') && (
-              <div className="pl-4 mt-2">
-                <div className="text-xs font-semibold mb-1">College Department</div>
-                <EmployeeCollegeRadioDepartment
-                  value={collegeProgram}
-                  onChange={setCollegeProgram}
-                  className="max-h-40 overflow-y-auto pr-2"
-                />
+            <div className="flex flex-col gap-2">
+              <EmployeeInstructorRadioRole
+                value={roles.find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
+                onChange={val => {
+                  // Remove any instructor role, add the new one
+                  const newRoles = roles.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
+                  setRoles(val ? [val, ...newRoles] : [...newRoles]);
+                }}
+              />
+              {/* College program radio group, only show if college instructor is selected */}
+              {roles.includes('college instructor') && (
+                <div className="pl-4 mt-2">
+                  <div className="text-xs font-semibold mb-1">College Department</div>
+                  <EmployeeCollegeRadioDepartment
+                    value={collegeProgram}
+                    onChange={setCollegeProgram}
+                    className="max-h-40 overflow-y-auto pr-2"
+                  />
+                </div>
+              )}
+              <div className="mt-2">
+                <label className="flex items-center gap-2 text-sm select-none">
+                  <Checkbox
+                    checked={roles.includes('administrator')}
+                    onCheckedChange={() => {
+                      const newRoles = roles.filter(r => r !== 'administrator');
+                      if (roles.includes('administrator')) {
+                        setRoles(newRoles);
+                      } else {
+                        setRoles([...newRoles, 'administrator']);
+                      }
+                    }}
+                    className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                  />
+                  Administrator
+                </label>
               </div>
-            )}
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-3 border-t mt-2 bg-background sticky bottom-0 z-10 p-4">

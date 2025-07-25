@@ -122,24 +122,24 @@ class EmployeesSeeder extends Seeder
             'BSBA', 'BSA', 'COELA', 'BSCRIM', 'BSCS', 'JD', 'BSN', 'RLE', 'CG', 'BSPT', 'GSP', 'MBA'
         ];
         foreach ($shuffled as $name) {
-            $possibleRoles = ['administrator', 'college instructor', 'basic education instructor'];
-            $rolesArr = collect($possibleRoles)->random(fake()->numberBetween(1, 3))->all();
+            // Assign at most one instructor type, and optionally administrator
+            $instructor = fake()->randomElement(['college instructor', 'basic education instructor', null]);
+            $rolesArr = [];
+            if ($instructor) {
+                $rolesArr[] = $instructor;
+            }
+            if (fake()->boolean(40)) { // 40% chance to be admin too
+                $rolesArr[] = 'administrator';
+            }
             $roles = implode(',', $rolesArr);
-            if (count($rolesArr) === 1 && $rolesArr[0] === 'administrator') {
-                $type = fake()->randomElement($employeeTypesAdmin);
-            } else if (in_array('college instructor', $rolesArr) || in_array('basic education instructor', $rolesArr)) {
-                if (in_array('administrator', $rolesArr)) {
-                    $type = fake()->randomElement(array_merge($employeeTypesTeaching, ['Provisionary']));
-                } else {
-                    $type = fake()->randomElement($employeeTypesTeaching);
-                }
-            } else {
-                $type = fake()->randomElement($employeeTypesTeaching);
-            }
-            $collegeProgram = null;
-            if (in_array('college instructor', $rolesArr)) {
+            if ($instructor === 'college instructor') {
                 $collegeProgram = fake()->randomElement($collegePrograms);
+            } else {
+                $collegeProgram = null;
             }
+            $type = ($instructor === 'administrator' || (!$instructor && in_array('administrator', $rolesArr)))
+                ? fake()->randomElement($employeeTypesAdmin)
+                : fake()->randomElement($employeeTypesTeaching);
             Employees::create([
                 'employee_name' => $name,
                 'employee_type' => $type,
