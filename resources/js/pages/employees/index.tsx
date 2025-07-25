@@ -264,8 +264,10 @@ export default function Index({
                             )}
                         >
                             Showing: {appliedFilters.types.length ? appliedFilters.types.map(capitalizeWords).join(', ') : 'All Types'} /
-                            {appliedFilters.statuses.length ? appliedFilters.statuses.map(capitalizeWords).join(', ') : 'All Statuses'} /
-                            {appliedFilters.roles.length ? appliedFilters.roles.map(capitalizeWords).join(', ') : 'All Roles'}
+                            {appliedFilters.statuses.length ? ' ' + appliedFilters.statuses.map(capitalizeWords).join(', ') : ' All Statuses'} /
+                            {appliedFilters.roles.length ? ' ' + appliedFilters.roles.map(capitalizeWords).join(', ') : ' All Roles'}
+                            {appliedFilters.roles.includes('college instructor') && appliedFilters.collegeProgram ?
+                                ` / ${' '}${appliedFilters.collegeProgram} - ${getCollegeProgramLabel(appliedFilters.collegeProgram)}` : ''}
                         </div>
                     </div>
                 </div>
