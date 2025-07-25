@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -9,6 +9,7 @@ import { employee_status, leave_statuses } from "./employee-status"
 import { Badge } from "./ui/badge"
 import EmployeeCollegeRadioDepartment from './employee-college-radio-department';
 import EmployeeInstructorRadioRole from './employee-instructor-radio-role';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface FilterState {
   types: string[]
@@ -49,6 +50,8 @@ export default function EmployeeFilter({
   const [statuses, setStatuses] = useState<string[]>(selectedStatuses)
   const [roles, setRoles] = useState<string[]>(selectedRoles)
   const [collegeProgram, setCollegeProgram] = useState<string>(selectedCollegeProgram)
+
+  const collegeDeptRef = useRef<HTMLDivElement>(null);
 
   // sync draft when parent resets
   useEffect(() => {
@@ -183,19 +186,33 @@ export default function EmployeeFilter({
                   // Remove any instructor role, add the new one
                   const newRoles = roles.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
                   setRoles(val ? [val, ...newRoles] : [...newRoles]);
+                  if (val === 'college instructor') {
+                    setTimeout(() => {
+                      collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                  }
                 }}
               />
               {/* College program radio group, only show if college instructor is selected */}
-              {roles.includes('college instructor') && (
-                <div className="pl-4 mt-2">
-                  <div className="text-xs font-semibold mb-1">College Department</div>
-                  <EmployeeCollegeRadioDepartment
-                    value={collegeProgram}
-                    onChange={setCollegeProgram}
-                    className="max-h-40 overflow-y-auto pr-2"
-                  />
-                </div>
-              )}
+              <AnimatePresence>
+                {roles.includes('college instructor') && (
+                  <motion.div
+                    ref={collegeDeptRef}
+                    initial={{ opacity: 0, y: -20, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    className="pl-4 mt-2"
+                  >
+                    <div className="text-xs font-semibold mb-1">College Department</div>
+                    <EmployeeCollegeRadioDepartment
+                      value={collegeProgram}
+                      onChange={setCollegeProgram}
+                      className="max-h-40 overflow-y-auto pr-2"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>

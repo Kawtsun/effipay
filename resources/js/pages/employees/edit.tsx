@@ -6,11 +6,12 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Employees, type BreadcrumbItem } from '@/types';
 import { ArrowLeft } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { EmployeeType } from '@/components/employee-type';
 import { Checkbox } from '@/components/ui/checkbox';
 import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-department';
 import EmployeeInstructorRadioRole from '@/components/employee-instructor-radio-role';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type Props = {
     employee: Employees
@@ -128,6 +129,8 @@ export default function Edit({ employee, search, filters, page, employeeCategory
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.roles]);
 
+    const collegeDeptRef = useRef<HTMLDivElement>(null);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Edit Employee" />
@@ -170,22 +173,47 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
-                                <Label>Roles</Label>
-                                <div className="flex flex-col gap-6">
-                                    <div className="rounded-lg border bg-muted/30 p-4">
-                                        <span className="block text-base font-semibold text-primary mb-1">Instructor Role</span>
-                                        <span className="block text-xs text-muted-foreground mb-2">Select the type of instructor for this employee. Only one can be chosen.</span>
-                                        <EmployeeInstructorRadioRole
-                                            value={data.roles.split(',').find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
-                                            onChange={val => {
-                                                // Remove any instructor role, add the new one
-                                                const rolesArr = data.roles.split(',').filter(r => r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
-                                                setData('roles', [val, ...rolesArr].filter(Boolean).join(','));
+                                <Label>Employee Roles</Label>
+                                <div className="flex flex-col gap-2">
+                                    <label className="flex items-center gap-2 text-sm select-none">
+                                        <Checkbox
+                                            checked={data.roles.split(',').includes('administrator')}
+                                            onCheckedChange={() => {
+                                                const rolesArr = data.roles.split(',').filter(r => r !== 'administrator' && r !== '');
+                                                if (data.roles.split(',').includes('administrator')) {
+                                                    setData('roles', rolesArr.join(','));
+                                                } else {
+                                                    setData('roles', [...rolesArr, 'administrator'].filter(Boolean).join(','));
+                                                }
                                             }}
+                                            className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
                                         />
-                                        {/* College department radio group */}
+                                        Administrator
+                                    </label>
+                                    <div className="mt-2 mb-1 text-xs font-semibold text-muted-foreground select-none">Instructor</div>
+                                    <EmployeeInstructorRadioRole
+                                        value={data.roles.split(',').find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
+                                        onChange={val => {
+                                            // Remove any instructor role, add the new one
+                                            const rolesArr = data.roles.split(',').filter(r => r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
+                                            setData('roles', [val, ...rolesArr].filter(Boolean).join(','));
+                                            if (val === 'college instructor') {
+                                                setTimeout(() => {
+                                                    collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                }, 100);
+                                            }
+                                        }}
+                                    />
+                                    <AnimatePresence>
                                         {data.roles.split(',').includes('college instructor') && (
-                                            <div className="pl-4 mt-2">
+                                            <motion.div
+                                                ref={collegeDeptRef}
+                                                initial={{ opacity: 0, y: -20, scale: 0.98 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                                                transition={{ duration: 0.35, ease: 'easeOut' }}
+                                                className="pl-4 mt-2"
+                                            >
                                                 <div className="text-xs font-semibold mb-1">College Department</div>
                                                 <EmployeeCollegeRadioDepartment
                                                     value={collegeProgram}
@@ -195,29 +223,9 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                                 {collegeProgramError && (
                                                     <div className="text-xs text-red-500 mt-1">{collegeProgramError}</div>
                                                 )}
-                                            </div>
+                                            </motion.div>
                                         )}
-                                    </div>
-                                    <div className="h-2" />
-                                    <div className="rounded-lg border bg-muted/30 p-4">
-                                        <span className="block text-base font-semibold text-primary mb-1">Administrative Role</span>
-                                        <span className="block text-xs text-muted-foreground mb-2">Check if this employee is an administrator. An employee can be administrator only, or both administrator and instructor.</span>
-                                        <label className="flex items-center gap-2 text-sm select-none">
-                                            <Checkbox
-                                                checked={data.roles.split(',').includes('administrator')}
-                                                onCheckedChange={() => {
-                                                    const rolesArr = data.roles.split(',').filter(r => r !== 'administrator' && r !== '');
-                                                    if (data.roles.split(',').includes('administrator')) {
-                                                        setData('roles', rolesArr.join(','));
-                                                    } else {
-                                                        setData('roles', [...rolesArr, 'administrator'].filter(Boolean).join(','));
-                                                    }
-                                                }}
-                                                className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-                                            />
-                                            Administrator
-                                        </label>
-                                    </div>
+                                    </AnimatePresence>
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-1">
                                     Please select at least one role before choosing employee type or status.
