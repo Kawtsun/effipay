@@ -54,6 +54,7 @@ export interface Employees {
     philhealth: number;
     pag_ibig: number;
     college_program?: string;
+    withholding_tax: number;
 }
 
 export interface Salary {

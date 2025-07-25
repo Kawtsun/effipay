@@ -11,13 +11,11 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { Shield, GraduationCap, Book } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface Props {
     employee: Employees | null
     onClose: () => void
     activeRoles?: string[]
-    collegeProgram?: string // NEW
 }
 
 function Info({ label, value }: { label: string; value: string | number }) {
@@ -75,7 +73,7 @@ function RolesBadges({ roles, activeRoles, employee }: { roles: string; activeRo
                     color = 'purple';
                     icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                     if (employee && employee.college_program) {
-                        extra = <span className="ml-1 text-xs font-semibold text-white">[{employee.college_program}]</span>;
+                        extra = <span className="ml-1 text-xs font-semibold text-white">[{getCollegeProgramLabel(employee.college_program)}]</span>;
                     }
                 } else if (role === 'basic education instructor') {
                     color = 'warning';
@@ -91,7 +89,7 @@ function RolesBadges({ roles, activeRoles, employee }: { roles: string; activeRo
     );
 }
 
-export default function EmployeeViewDialog({ employee, onClose, activeRoles, collegeProgram }: Props) {
+export default function EmployeeViewDialog({ employee, onClose, activeRoles }: Props) {
 
     return (
         <Dialog open={!!employee} onOpenChange={(open) => !open && onClose()}>
