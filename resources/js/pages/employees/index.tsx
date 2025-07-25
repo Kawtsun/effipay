@@ -407,6 +407,7 @@ export default function Index({
                                                                 statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                                                                 roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
                                                                 page: currentPage,
+                                                                collegeProgram: appliedFilters.collegeProgram || undefined,
                                                             })}
                                                             className={buttonVariants({ variant: 'default' })}
                                                         >

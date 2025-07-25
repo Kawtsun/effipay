@@ -161,6 +161,7 @@ export default function EmployeeFilter({
               Filter by instructor type and/or administrator role.
             </p>
             <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold mb-1 select-none">Instructor</span>
               <EmployeeInstructorRadioRole
                 value={roles.find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
                 onChange={val => {
@@ -180,23 +181,23 @@ export default function EmployeeFilter({
                   />
                 </div>
               )}
-              <div className="mt-2">
-                <label className="flex items-center gap-2 text-sm select-none">
-                  <Checkbox
-                    checked={roles.includes('administrator')}
-                    onCheckedChange={() => {
-                      const newRoles = roles.filter(r => r !== 'administrator');
-                      if (roles.includes('administrator')) {
-                        setRoles(newRoles);
-                      } else {
-                        setRoles([...newRoles, 'administrator']);
-                      }
-                    }}
-                    className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-                  />
-                  Administrator
-                </label>
-              </div>
+              <div className="my-2 h-px bg-muted-foreground/20" />
+              <span className="text-xs font-semibold mb-1 select-none">Administrative</span>
+              <label className="flex items-center gap-2 text-sm select-none">
+                <Checkbox
+                  checked={roles.includes('administrator')}
+                  onCheckedChange={() => {
+                    const newRoles = roles.filter(r => r !== 'administrator');
+                    if (roles.includes('administrator')) {
+                      setRoles(newRoles);
+                    } else {
+                      setRoles([...newRoles, 'administrator']);
+                    }
+                  }}
+                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                />
+                Administrator
+              </label>
             </div>
           </div>
         </div>
