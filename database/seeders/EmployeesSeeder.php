@@ -128,16 +128,17 @@ class EmployeesSeeder extends Seeder
             if ($instructor) {
                 $rolesArr[] = $instructor;
             }
-            if (fake()->boolean(40)) { // 40% chance to be admin too
+            if (!$instructor || fake()->boolean(40)) { // If no instructor, must be admin; else 40% chance to add admin
                 $rolesArr[] = 'administrator';
             }
+            $rolesArr = array_unique($rolesArr);
             $roles = implode(',', $rolesArr);
             if ($instructor === 'college instructor') {
                 $collegeProgram = fake()->randomElement($collegePrograms);
             } else {
                 $collegeProgram = null;
             }
-            $type = ($instructor === 'administrator' || (!$instructor && in_array('administrator', $rolesArr)))
+            $type = (in_array('administrator', $rolesArr) && !$instructor)
                 ? fake()->randomElement($employeeTypesAdmin)
                 : fake()->randomElement($employeeTypesTeaching);
             Employees::create([
