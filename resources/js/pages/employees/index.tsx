@@ -75,7 +75,7 @@ export default function Index({
 
     // Local state seeded from props
     const [searchTerm, setSearchTerm] = useState(initialSearch)
-    const toArray = (val: any) => Array.isArray(val) ? val : val ? [val] : [];
+    const toArray = (val: unknown) => Array.isArray(val) ? val : val ? [val] : [];
     const [filters, setFilters] = useState<FilterState & { collegeProgram?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
@@ -89,7 +89,6 @@ export default function Index({
     const hasFilters = appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0 || appliedFilters.roles.length > 0
 
     // Sync local state when props change (e.g. after delete or redirect)
-    const isFirstLoad = useRef(true)
 
     // Show toast on success
     useEffect(() => {
@@ -206,76 +205,6 @@ export default function Index({
         return str.replace(/\b\w/g, c => c.toUpperCase());
     }
 
-    const badge = (role: string, emp: Employees, restRoles: string[] = []) => {
-        let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
-        let icon = null;
-        let extra = null;
-        let tooltip = undefined;
-        if (role === 'administrator') {
-            color = 'info';
-            icon = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-        } else if (role === 'college instructor') {
-            color = 'purple';
-            icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-            const program = emp.college_program;
-            if (program) {
-                extra = <span className="ml-1 text-xs font-semibold text-white">[{program}]</span>;
-                // Tooltip: full program name + extra roles
-                tooltip = (
-                    <div className="min-w-[220px]">
-                        <div className="font-semibold text-base mb-2 text-gray-900 flex items-center gap-2">
-                            <GraduationCap className="w-4 h-4" />
-                            {getCollegeProgramLabel(program)}
-                        </div>
-                        {restRoles.length > 0 && (
-                            <>
-                                <div className="my-2 h-px bg-muted-foreground/20" />
-                                <div className="text-xs text-muted-foreground font-semibold mb-1">Other Roles:</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {restRoles.map(r => {
-                                        let i = null;
-                                        let pillColor = 'bg-gray-200 text-gray-800';
-                                        if (r === 'administrator') {
-                                            i = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom text-blue-600" />;
-                                            pillColor = 'bg-blue-100 text-blue-800';
-                                        } else if (r === 'college instructor') {
-                                            i = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom text-purple-600" />;
-                                            pillColor = 'bg-purple-100 text-purple-800';
-                                        } else if (r === 'basic education instructor') {
-                                            i = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom text-orange-600" />;
-                                            pillColor = 'bg-orange-100 text-orange-800';
-                                        }
-                                        return (
-                                            <span key={r} className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${pillColor}`}>
-                                                {i}{capitalizeWords(r)}
-                                            </span>
-                                        );
-                                    })}
-                                </div>
-                            </>
-                        )}
-                    </div>
-                );
-            }
-        } else if (role === 'basic education instructor') {
-            color = 'warning';
-            icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-        }
-        const badgeContent = (
-            <Badge key={role} variant={color} className="mr-1 capitalize flex items-center">
-                {icon}{capitalizeWords(role)}{extra}
-            </Badge>
-        );
-        return tooltip ? (
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>{badgeContent}</TooltipTrigger>
-                    <TooltipContent side="top">{tooltip}</TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        ) : badgeContent;
-    };
-
     return (
         <AppLayout breadcrumbs={crumbs}>
             <Head title="Employees" />
@@ -383,99 +312,85 @@ export default function Index({
                                                 <TableCell style={{ width: 350 }} className="px-4 py-2 min-w-[160px]">
                                                     {(() => {
                                                         if (!emp.roles) return '';
-                                                        let rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
+                                                        const rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
                                                         const order = ['college instructor', 'basic education instructor', 'administrator'];
-                                                        rolesArr = order.filter(r => rolesArr.includes(r));
-                                                        if (appliedFilters.roles.length > 0) {
-                                                            // Filtered roles first, then the rest
-                                                            const filtered = appliedFilters.roles.filter(r => rolesArr.includes(r));
-                                                            const rest = rolesArr.filter(r => !filtered.includes(r));
-                                                            rolesArr = [...filtered, ...rest];
-                                                        }
-                                                        if (rolesArr.length === 0) return '';
+                                                        // Prioritize filtered role if applied
                                                         let displayRoles = rolesArr;
                                                         if (appliedFilters.roles.length > 0) {
                                                             const filtered = appliedFilters.roles.filter(r => rolesArr.includes(r));
                                                             const rest = rolesArr.filter(r => !filtered.includes(r));
                                                             displayRoles = [...filtered, ...rest];
                                                         } else {
-                                                            const order = ['college instructor', 'basic education instructor', 'administrator'];
                                                             displayRoles = order.filter(r => rolesArr.includes(r));
                                                         }
+                                                        if (displayRoles.length === 0) return '';
                                                         const mainRole = displayRoles[0];
+                                                        const additionalRolesCount = displayRoles.length - 1;
                                                         let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
                                                         let icon = null;
-                                                        let extra = null;
-                                                        let tooltip = null;
                                                         if (mainRole === 'administrator') {
                                                             color = 'info';
                                                             icon = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                         } else if (mainRole === 'college instructor') {
                                                             color = 'purple';
                                                             icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                            if (emp.college_program) {
-                                                                extra = <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}]</span>;
-                                                            }
                                                         } else if (mainRole === 'basic education instructor') {
                                                             color = 'warning';
                                                             icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                         }
-                                                        // Tooltip content: all roles as badges, and if mainRole is college instructor, show full program name
-                                                        if (displayRoles.length > 1 || mainRole === 'college instructor') {
-                                                            tooltip = (
-                                                                <div className="min-w-[220px]">
-                                                                    {mainRole === 'college instructor' && emp.college_program && (
-                                                                        <div className="font-semibold text-base mb-2 text-gray-900 flex items-center gap-2">
-                                                                            <GraduationCap className="w-4 h-4" />
-                                                                            {getCollegeProgramLabel(emp.college_program)}
-                                                                        </div>
-                                                                    )}
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {displayRoles.map(role => {
-                                                                            let c: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
-                                                                            let i = null;
-                                                                            let e = null;
-                                                                            if (role === 'administrator') {
-                                                                                c = 'info';
-                                                                                i = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                                            } else if (role === 'college instructor') {
-                                                                                c = 'purple';
-                                                                                i = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                                                if (emp.college_program) {
-                                                                                    e = <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}]</span>;
-                                                                                }
-                                                                            } else if (role === 'basic education instructor') {
-                                                                                c = 'warning';
-                                                                                i = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                                            }
-                                                                            return (
-                                                                                <Badge key={role} variant={c} className="capitalize flex items-center">
-                                                                                    {i}{capitalizeWords(role)}{e}
-                                                                                </Badge>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        }
+                                                        // Tooltip: all roles as badges, with full program name for college instructor
+                                                        const tooltipContent = (
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {displayRoles.map(role => {
+                                                                    let c: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
+                                                                    let i = null;
+                                                                    let e = null;
+                                                                    if (role === 'administrator') {
+                                                                        c = 'info';
+                                                                        i = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                                    } else if (role === 'college instructor') {
+                                                                        c = 'purple';
+                                                                        i = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                                        if (emp.college_program) {
+                                                                            e = <span className="ml-1 text-xs font-semibold text-white">[{getCollegeProgramLabel(emp.college_program)}]</span>;
+                                                                        }
+                                                                    } else if (role === 'basic education instructor') {
+                                                                        c = 'warning';
+                                                                        i = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                                    }
+                                                                    return (
+                                                                        <Badge key={role} variant={c} className="capitalize flex items-center">
+                                                                            {i}{capitalizeWords(role)}{e}
+                                                                        </Badge>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        );
+                                                        // Main badge: show acronym for college instructor, +N for additional roles
                                                         const badgeContent = (
-                                                            <span className="inline-flex items-center gap-1 cursor-pointer">
+                                                            <span className="inline-flex items-center gap-1">
                                                                 <Badge key={mainRole} variant={color} className="capitalize flex items-center">
-                                                                    {icon}{capitalizeWords(mainRole)}{extra}
+                                                                    {icon}{capitalizeWords(mainRole)}{mainRole === 'college instructor' && emp.college_program ? <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}]</span> : null}
                                                                 </Badge>
-                                                                {displayRoles.length > 1 && (
-                                                                    <Badge variant="success" className="cursor-pointer">+{displayRoles.length - 1}</Badge>
+                                                                {additionalRolesCount > 0 && (
+                                                                    <Badge variant="success" className="cursor-pointer">+{additionalRolesCount}</Badge>
                                                                 )}
                                                             </span>
                                                         );
-                                                        return tooltip ? (
+                                                        // Tooltip logic
+                                                        // Only one role and not college instructor: no tooltip
+                                                        if (displayRoles.length === 1 && mainRole !== 'college instructor') {
+                                                            return badgeContent;
+                                                        }
+                                                        // Otherwise, show tooltip (for college instructor or multiple roles)
+                                                        return (
                                                             <TooltipProvider>
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>{badgeContent}</TooltipTrigger>
-                                                                    <TooltipContent side="top">{tooltip}</TooltipContent>
+                                                                    <TooltipContent side="top" className="max-w-md px-4 py-3 whitespace-pre-line break-words">{tooltipContent}</TooltipContent>
                                                                 </Tooltip>
                                                             </TooltipProvider>
-                                                        ) : badgeContent;
+                                                        );
                                                     })()}
                                                 </TableCell>
                                                 <TableCell style={{ width: 180 }} className="px-4 py-2 whitespace-nowrap text-right">
