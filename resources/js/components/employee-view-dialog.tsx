@@ -49,7 +49,7 @@ function getCollegeProgramLabel(acronym: string) {
 function RolesBadges({ roles, activeRoles, employee }: { roles: string; activeRoles?: string[]; employee: Employees }) {
     if (!roles) return null;
     let rolesArr = roles.split(',').map(r => r.trim()).filter(Boolean);
-    const order = ['college instructor', 'basic education instructor', 'administrator'];
+    const order = ['administrator', 'college instructor', 'basic education instructor'];
     // If activeRoles prop is provided, order roles so filtered roles come first
     const activeRolesArr = activeRoles || [];
     if (activeRolesArr.length > 0) {
@@ -61,7 +61,7 @@ function RolesBadges({ roles, activeRoles, employee }: { roles: string; activeRo
     }
     // Render all roles as badges, no tooltip
     return (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 max-w-lg px-4 py-2 break-words whitespace-pre-line">
             {rolesArr.map(role => {
                 let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
                 let icon = null;
@@ -73,7 +73,7 @@ function RolesBadges({ roles, activeRoles, employee }: { roles: string; activeRo
                     color = 'purple';
                     icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                     if (employee && employee.college_program) {
-                        extra = <span className="ml-1 text-xs font-semibold text-white">[{getCollegeProgramLabel(employee.college_program)}]</span>;
+                        extra = <span className="ml-1 text-xs font-semibold text-white">[{employee.college_program}] {getCollegeProgramLabel(employee.college_program)}</span>;
                     }
                 } else if (role === 'basic education instructor') {
                     color = 'warning';

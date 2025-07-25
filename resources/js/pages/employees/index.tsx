@@ -313,7 +313,7 @@ export default function Index({
                                                     {(() => {
                                                         if (!emp.roles) return '';
                                                         const rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
-                                                        const order = ['college instructor', 'basic education instructor', 'administrator'];
+                                                        const order = ['administrator', 'college instructor', 'basic education instructor'];
                                                         // Prioritize filtered role if applied
                                                         let displayRoles = rolesArr;
                                                         if (appliedFilters.roles.length > 0) {
@@ -352,7 +352,7 @@ export default function Index({
                                                                         c = 'purple';
                                                                         i = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                                         if (emp.college_program) {
-                                                                            e = <span className="ml-1 text-xs font-semibold text-white">[{getCollegeProgramLabel(emp.college_program)}]</span>;
+                                                                            e = <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}] {getCollegeProgramLabel(emp.college_program)}</span>;
                                                                         }
                                                                     } else if (role === 'basic education instructor') {
                                                                         c = 'warning';
@@ -387,7 +387,7 @@ export default function Index({
                                                             <TooltipProvider>
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>{badgeContent}</TooltipTrigger>
-                                                                    <TooltipContent side="top" className="max-w-md px-4 py-3 whitespace-pre-line break-words">{tooltipContent}</TooltipContent>
+                                                                    <TooltipContent side="top" className="max-w-lg px-4 py-3 whitespace-pre-line break-words">{tooltipContent}</TooltipContent>
                                                                 </Tooltip>
                                                             </TooltipProvider>
                                                         );
