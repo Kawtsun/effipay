@@ -16,15 +16,19 @@ class EmployeesFactory extends Factory
      */
     public function definition(): array
     {
+        $baseSalary = fake()->numberBetween(10000, 999999);
+        $calculatedPhilHealth = ($baseSalary * 0.05) / 4;
+        $philhealth = max(250, min(2500, $calculatedPhilHealth));
+        
         return [
             'employee_name' => fake()->name(),
             'employee_type' => fake()->randomElement(['Full Time', 'Part Time', 'Provisionary']),
             'employee_status' => fake()->randomElement(['Active', 'Paid Leave','Maternity Leave']),
 
-            'base_salary' => fake()->numberBetween(10000, 999999),
+            'base_salary' => $baseSalary,
             'overtime_pay' => fake()->numberBetween(2000, 5000),
             'sss' => fake()->numberBetween(1000, 5000),
-            'philhealth' => fake()->numberBetween(250, 2500),
+            'philhealth' => $philhealth,
             'pag_ibig' => fake()->numberBetween(1000, 5000),
             'withholding_tax' => fake()->numberBetween(5000, 10000)
         ];

@@ -141,16 +141,24 @@ class EmployeesSeeder extends Seeder
             $type = (in_array('administrator', $rolesArr) && !$instructor)
                 ? fake()->randomElement($employeeTypesAdmin)
                 : fake()->randomElement($employeeTypesTeaching);
+            
+            // Generate base salary first
+            $baseSalary = fake()->numberBetween(10000, 999999);
+            
+            // Calculate PhilHealth based on base salary
+            $calculatedPhilHealth = ($baseSalary * 0.05) / 4;
+            $philhealth = max(250, min(2500, $calculatedPhilHealth));
+            
             Employees::create([
                 'employee_name' => $name,
                 'employee_type' => $type,
                 'employee_status' => fake()->randomElement(['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave']),
                 'roles' => $roles,
                 'college_program' => $collegeProgram,
-                'base_salary' => fake()->numberBetween(10000, 999999),
+                'base_salary' => $baseSalary,
                 'overtime_pay' => fake()->numberBetween(2000, 5000),
                 'sss' => fake()->numberBetween(1000, 5000),
-                'philhealth' => fake()->numberBetween(1000, 5000),
+                'philhealth' => $philhealth,
                 'pag_ibig' => fake()->numberBetween(1000, 5000),
                 'withholding_tax' => fake()->numberBetween(5000, 10000),
             ]);

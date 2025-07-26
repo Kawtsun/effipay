@@ -48,6 +48,9 @@ export default function Edit({ employee, search, filters, page, employeeCategory
     });
     const [collegeProgram, setCollegeProgram] = useState(data.college_program);
     const [collegeProgramError, setCollegeProgramError] = useState('');
+    
+
+    
     // When collegeProgram changes, sync to form state
     useEffect(() => {
         setData('college_program', collegeProgram);
@@ -293,7 +296,14 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                                 }
                                             }}
                                             value={data.base_salary ? Number(data.base_salary.replace(/,/g, '')).toLocaleString() : ''}
-                                            onChange={(e) => setData('base_salary', e.target.value.replace(/,/g, ''))}
+                                            onChange={(e) => {
+                                                const newBaseSalary = e.target.value.replace(/,/g, '');
+                                                setData('base_salary', newBaseSalary);
+                                                // Auto-calculate PhilHealth based on base salary
+                                                const baseSalaryNum = Number(newBaseSalary) || 0;
+                                                const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 4));
+                                                setData('philhealth', calculatedPhilHealth.toString());
+                                            }}
                                         />
                                     </div>
                                 </div>
@@ -381,7 +391,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                         PhilHealth
                                     </Label>
                                     <div className='relative'>
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10">₱</span>
                                         <Input
                                             id="philhealth"
                                             type="text"
@@ -389,9 +399,11 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                             pattern="[0-9,]*"
                                             required
                                             placeholder="PhilHealth"
-                                            className="pl-8"
+                                            className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
+                                            style={{ lineHeight: '1.5rem' }}
                                             min={250}
                                             max={2500}
+                                            disabled
                                             onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
                                                 // Prevent non-numeric and non-comma input
                                                 if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
@@ -416,9 +428,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                             value={data.philhealth ? Number(data.philhealth.replace(/,/g, '')).toLocaleString() : ''}
                                             onChange={(e) => setData('philhealth', e.target.value.replace(/,/g, ''))}
                                         />
-                                        <p className="text-xs text-muted-foreground">
-                                            Must be between ₱250 and ₱2,500
-                                        </p>
+
                                     </div>
                                 </div>
                                 <div className='flex flex-col gap-3'>

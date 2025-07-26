@@ -27,7 +27,7 @@ class SalaryController extends Controller
                 'base_salary' => 0,
                 'overtime_pay' => 0,
                 'sss' => 0,
-                'philhealth' => 250,
+                'philhealth' => 250, // Default minimum when base_salary is 0
                 'pag_ibig' => 0,
                 'withholding_tax' => 0
             ]
@@ -80,10 +80,19 @@ class SalaryController extends Controller
      */
     public function update(UpdateSalaryRequest $request, Salary $salary): RedirectResponse
     {
-        $salary->update($request->validated());
+        $data = $request->validated();
+        
+        // If base_salary is being updated, automatically calculate PhilHealth
+        if (isset($data['base_salary'])) {
+            $calculatedPhilHealth = ($data['base_salary'] * 0.05) / 4;
+            $data['philhealth'] = max(250, min(2500, $calculatedPhilHealth));
+        }
+        
+        $salary->update($data);
 
         return redirect()
-            ->route('salary.index', ['type' => $salary->employee_type]);
+            ->route('salary.index', ['type' => $salary->employee_type])
+            ->with('success', 'Salary updated successfully!');
     }
 
     /**

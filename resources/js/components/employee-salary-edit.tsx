@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Pencil } from "lucide-react"
+import { router } from "@inertiajs/react"
 
 interface Props {
   employeeType: string
@@ -39,6 +40,12 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
   const { data, setData, put, processing, reset, errors } = useForm({
     [field]: value.toString(),
   })
+
+  // Calculate PhilHealth based on base salary
+  const calculatePhilHealth = (baseSalary: number): number => {
+    const calculated = (baseSalary * 0.05) / 4
+    return Math.max(250, Math.min(2500, calculated))
+  }
 
   // reset to the latest server value any time the dialog closes
   React.useEffect(() => {
@@ -67,13 +74,26 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
       }
     }
 
+    // If updating base salary, also update PhilHealth automatically
+    let updateData = { [field]: numeric }
+    if (field === 'base_salary') {
+      const calculatedPhilHealth = calculatePhilHealth(numeric)
+      updateData = {
+        [field]: numeric,
+        philhealth: calculatedPhilHealth
+      }
+    }
+
     put(
       route("salary.update", { salary: employeeType }),
       {
+        ...updateData,
         preserveScroll: true,
         onSuccess: () => {
           toast.success(`${label} updated`)
           setOpen(false)
+          // Refresh the page to show updated values
+          router.reload({ only: ['defaults'] })
         },
       }
     )
