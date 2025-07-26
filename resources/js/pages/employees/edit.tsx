@@ -7,6 +7,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { Employees, type BreadcrumbItem } from '@/types';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
+import { toast } from 'sonner';
 import { EmployeeType } from '@/components/employee-type';
 import { Checkbox } from '@/components/ui/checkbox';
 import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-department';
@@ -64,13 +65,20 @@ export default function Edit({ employee, search, filters, page, employeeCategory
         } else {
             setCollegeProgramError('');
         }
+        // Validate Pag-IBIG minimum
+        const pagIbigValue = data.pag_ibig.replace(/,/g, '') === '' ? 0 : parseInt(data.pag_ibig.replace(/,/g, ''), 10);
+        if (pagIbigValue < 200) {
+            toast.error('Pag-IBIG must be at least ₱200');
+            return;
+        }
+
         const cleanedData = {
             ...data,
             base_salary: data.base_salary.replace(/,/g, '') === '' ? 0 : parseInt(data.base_salary.replace(/,/g, ''), 10),
             overtime_pay: data.overtime_pay.replace(/,/g, '') === '' ? 0 : parseInt(data.overtime_pay.replace(/,/g, ''), 10),
             sss: data.sss.replace(/,/g, '') === '' ? 0 : parseInt(data.sss.replace(/,/g, ''), 10),
             philhealth: data.philhealth.replace(/,/g, '') === '' ? 0 : parseInt(data.philhealth.replace(/,/g, ''), 10),
-            pag_ibig: data.pag_ibig.replace(/,/g, '') === '' ? 0 : parseInt(data.pag_ibig.replace(/,/g, ''), 10),
+            pag_ibig: pagIbigValue,
             withholding_tax: data.withholding_tax.replace(/,/g, '') === '' ? 0 : parseInt(data.withholding_tax.replace(/,/g, ''), 10),
         };
         put(
@@ -430,6 +438,9 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                         />
 
                                     </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        💡 Auto-calculated based on base salary
+                                    </p>
                                 </div>
                                 <div className='flex flex-col gap-3'>
                                     <Label htmlFor="pag-ibig">
@@ -445,7 +456,7 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                             required
                                             placeholder="Pag-IBIG"
                                             className="pl-8"
-                                            min={0}
+                                            min={200}
                                             onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
                                                 // Prevent non-numeric and non-comma input
                                                 if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
@@ -468,6 +479,9 @@ export default function Edit({ employee, search, filters, page, employeeCategory
                                             onChange={(e) => setData('pag_ibig', e.target.value.replace(/,/g, ''))}
                                         />
                                     </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Must be at least ₱200
+                                    </p>
                                 </div>
                                 <div className='flex flex-col gap-3'>
                                     <Label htmlFor="withholding_tax">

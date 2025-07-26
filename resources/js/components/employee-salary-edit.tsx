@@ -74,6 +74,14 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
       }
     }
 
+    // Validate Pag-IBIG minimum
+    if (field === 'pag_ibig') {
+      if (numeric < 200) {
+        toast.error('Pag-IBIG must be at least ₱200')
+        return
+      }
+    }
+
     // If updating base salary, also update PhilHealth automatically
     let updateData = { [field]: numeric }
     if (field === 'base_salary') {
@@ -126,7 +134,7 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
                 inputMode="numeric"
                 pattern="[0-9,]*"
                 className="pl-8"
-                min={field === 'philhealth' ? 250 : undefined}
+                min={field === 'philhealth' ? 250 : field === 'pag_ibig' ? 200 : undefined}
                 max={field === 'philhealth' ? 2500 : undefined}
                 value={formatDisplay(data[field])}
                 onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
@@ -149,6 +157,11 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
             {field === 'philhealth' && (
               <p className="text-xs text-muted-foreground">
                 Must be between ₱250 and ₱2,500
+              </p>
+            )}
+            {field === 'pag_ibig' && (
+              <p className="text-xs text-muted-foreground">
+                Must be at least ₱200
               </p>
             )}
             {errors[field as keyof typeof errors] && (

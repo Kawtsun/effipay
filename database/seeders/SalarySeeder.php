@@ -37,7 +37,7 @@ class SalarySeeder extends Seeder
                 'overtime_pay'    => 150,
                 'sss'             => 400,
                 'philhealth'      => max(250, min(2500, (20000 * 0.05) / 4)), // 250
-                'pag_ibig'        => 100,
+                'pag_ibig'        => 200,
                 'withholding_tax' => 1500,
             ],
             'Provisionary' => [
@@ -45,7 +45,7 @@ class SalarySeeder extends Seeder
                 'overtime_pay'    => 175,
                 'sss'             => 600,
                 'philhealth'      => max(250, min(2500, (30000 * 0.05) / 4)), // 375
-                'pag_ibig'        => 150,
+                'pag_ibig'        => 200,
                 'withholding_tax' => 3000,
             ],
             'Regular' => [
@@ -53,7 +53,7 @@ class SalarySeeder extends Seeder
                 'overtime_pay'    => 180,
                 'sss'             => 700,
                 'philhealth'      => max(250, min(2500, (40000 * 0.05) / 4)), // 500
-                'pag_ibig'        => 180,
+                'pag_ibig'        => 200,
                 'withholding_tax' => 4000,
             ],
         ];

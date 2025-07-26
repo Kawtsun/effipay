@@ -7,6 +7,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
+import { toast } from 'sonner';
 import { EmployeeType } from '@/components/employee-type';
 import { Checkbox } from '@/components/ui/checkbox';
 import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-department';
@@ -71,13 +72,20 @@ export default function Create({
             setData('employee_type', 'Full Time');
             return;
         }
+        // Validate Pag-IBIG minimum
+        const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
+        if (pagIbigValue < 200) {
+            toast.error('Pag-IBIG must be at least ₱200');
+            return;
+        }
+
         const cleanedData = {
             ...data,
             base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
             overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
             sss: Number(data.sss.replace(/,/g, '')) || 0,
             philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
-            pag_ibig: Number(data.pag_ibig.replace(/,/g, '')) || 0,
+            pag_ibig: pagIbigValue,
             withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
         };
         post(route('employees.store'), cleanedData);
@@ -464,6 +472,9 @@ export default function Create({
                                         />
 
                                     </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        💡 Auto-calculated based on base salary
+                                    </p>
                                 </div>
                                 <div className='flex flex-col gap-3'>
                                     <Label htmlFor="pag-ibig">
@@ -479,7 +490,7 @@ export default function Create({
                                             required
                                             placeholder="Pag-IBIG"
                                             className="pl-8"
-                                            min={0}
+                                            min={200}
                                             onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
                                                 // Prevent non-numeric and non-comma input
                                                 if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
@@ -502,6 +513,9 @@ export default function Create({
                                             onChange={(e) => setData('pag_ibig', e.target.value.replace(/,/g, ''))}
                                         />
                                     </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Must be at least ₱200
+                                    </p>
                                 </div>
                                 <div className='flex flex-col gap-3'>
                                     <Label htmlFor="withholding_tax">

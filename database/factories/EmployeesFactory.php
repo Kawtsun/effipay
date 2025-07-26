@@ -29,7 +29,7 @@ class EmployeesFactory extends Factory
             'overtime_pay' => fake()->numberBetween(2000, 5000),
             'sss' => fake()->numberBetween(1000, 5000),
             'philhealth' => $philhealth,
-            'pag_ibig' => fake()->numberBetween(1000, 5000),
+            'pag_ibig' => fake()->numberBetween(200, 5000),
             'withholding_tax' => fake()->numberBetween(5000, 10000)
         ];
     }
