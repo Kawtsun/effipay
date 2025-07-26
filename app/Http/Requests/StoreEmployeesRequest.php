@@ -29,7 +29,7 @@ class StoreEmployeesRequest extends FormRequest
             'base_salary' => 'required|integer|min:0',
             'overtime_pay' => 'required|integer|min:0',
             'sss' => 'required|integer|min:0',
-            'philhealth' => 'required|integer|min:0',
+            'philhealth' => 'required|integer|min:250|max:2500',
             'pag_ibig' => 'required|integer|min:0',
             'withholding_tax' => 'required|integer|min:0',
             'roles' => [

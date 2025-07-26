@@ -28,7 +28,7 @@ class SalarySeeder extends Seeder
                 'base_salary'     => 50000,
                 'overtime_pay'    => 200,    // per hour
                 'sss'             => 800,
-                'philhealth'      => 300,
+                'philhealth'      => 250,
                 'pag_ibig'        => 200,
                 'withholding_tax' => 5000,
             ],
@@ -36,7 +36,7 @@ class SalarySeeder extends Seeder
                 'base_salary'     => 20000,
                 'overtime_pay'    => 150,
                 'sss'             => 400,
-                'philhealth'      => 150,
+                'philhealth'      => 250,
                 'pag_ibig'        => 100,
                 'withholding_tax' => 1500,
             ],
@@ -44,7 +44,7 @@ class SalarySeeder extends Seeder
                 'base_salary'     => 30000,
                 'overtime_pay'    => 175,
                 'sss'             => 600,
-                'philhealth'      => 225,
+                'philhealth'      => 250,
                 'pag_ibig'        => 150,
                 'withholding_tax' => 3000,
             ],
@@ -59,10 +59,10 @@ class SalarySeeder extends Seeder
         ];
 
         // 2) Loop and upsert each type
-        foreach ($defaults as $type => $attrs) {
+        foreach ($defaults as $type => $values) {
             Salary::updateOrCreate(
                 ['employee_type' => $type],
-                $attrs
+                $values
             );
         }
     }

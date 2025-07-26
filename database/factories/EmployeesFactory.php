@@ -24,7 +24,7 @@ class EmployeesFactory extends Factory
             'base_salary' => fake()->numberBetween(10000, 999999),
             'overtime_pay' => fake()->numberBetween(2000, 5000),
             'sss' => fake()->numberBetween(1000, 5000),
-            'philhealth' => fake()->numberBetween(1000, 5000),
+            'philhealth' => fake()->numberBetween(250, 2500),
             'pag_ibig' => fake()->numberBetween(1000, 5000),
             'withholding_tax' => fake()->numberBetween(5000, 10000)
         ];

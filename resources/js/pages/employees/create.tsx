@@ -425,7 +425,8 @@ export default function Create({
                                             required
                                             placeholder="PhilHealth"
                                             className="pl-8"
-                                            min={0}
+                                            min={250}
+                                            max={2500}
                                             onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
                                                 // Prevent non-numeric and non-comma input
                                                 if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
@@ -435,8 +436,11 @@ export default function Create({
                                             onInput={e => {
                                                 const input = e.target as HTMLInputElement;
                                                 let value = input.value.replace(/,/g, '');
-                                                if (value && Number(value) < 0) {
-                                                    value = '0';
+                                                if (value && Number(value) < 250) {
+                                                    value = '250';
+                                                }
+                                                if (value && Number(value) > 2500) {
+                                                    value = '2500';
                                                 }
                                                 if (value) {
                                                     input.value = Number(value).toLocaleString();
@@ -447,6 +451,9 @@ export default function Create({
                                             value={data.philhealth ? Number(data.philhealth.replace(/,/g, '')).toLocaleString() : ''}
                                             onChange={(e) => setData('philhealth', e.target.value.replace(/,/g, ''))}
                                         />
+                                        <p className="text-xs text-muted-foreground">
+                                            Must be between ₱250 and ₱2,500
+                                        </p>
                                     </div>
                                 </div>
                                 <div className='flex flex-col gap-3'>

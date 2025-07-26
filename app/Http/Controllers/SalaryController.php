@@ -20,14 +20,14 @@ class SalaryController extends Controller
         $types    = ['Full Time', 'Part Time', 'Provisionary'];
         $selected = $request->input('type', $types[0]);
 
-        // firstOrCreate() ensures there’s always a row to edit
+        // firstOrCreate() ensures there's always a row to edit
         $defaults = Salary::firstOrCreate(
             ['employee_type' => $selected],
             [
                 'base_salary' => 0,
                 'overtime_pay' => 0,
                 'sss' => 0,
-                'philhealth' => 0,
+                'philhealth' => 250,
                 'pag_ibig' => 0,
                 'withholding_tax' => 0
             ]

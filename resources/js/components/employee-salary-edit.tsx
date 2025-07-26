@@ -43,8 +43,8 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
   // reset to the latest server value any time the dialog closes
   React.useEffect(() => {
     if (!open) {
-      reset(field as any)
-      setData(field as any, value.toString())
+      reset(field as keyof typeof data)
+      setData(field as keyof typeof data, value.toString())
     }
   }, [open, value])
 
@@ -59,12 +59,18 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
 
     const numeric = data[field] === "" ? 0 : parseInt(data[field], 10)
 
+    // Validate PhilHealth range
+    if (field === 'philhealth') {
+      if (numeric < 250 || numeric > 2500) {
+        toast.error('PhilHealth must be between ₱250 and ₱2,500')
+        return
+      }
+    }
+
     put(
       route("salary.update", { salary: employeeType }),
       {
-        data: { [field]: numeric },
         preserveScroll: true,
-
         onSuccess: () => {
           toast.success(`${label} updated`)
           setOpen(false)
@@ -100,6 +106,8 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
                 inputMode="numeric"
                 pattern="[0-9,]*"
                 className="pl-8"
+                min={field === 'philhealth' ? 250 : undefined}
+                max={field === 'philhealth' ? 2500 : undefined}
                 value={formatDisplay(data[field])}
                 onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
                   if (!/[\d]/.test((e as InputEvent).data ?? "")) {
@@ -113,11 +121,16 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
                 }}
                 onChange={(e) => {
                   const raw = e.target.value.replace(/\D/g, "")
-                  setData(field as any, raw)
+                  setData(field as keyof typeof data, raw)
                 }}
               // no autoFocus here
               />
             </div>
+            {field === 'philhealth' && (
+              <p className="text-xs text-muted-foreground">
+                Must be between ₱250 and ₱2,500
+              </p>
+            )}
             {errors[field as keyof typeof errors] && (
               <p className="text-sm text-red-600">
                 {errors[field as keyof typeof errors]}
