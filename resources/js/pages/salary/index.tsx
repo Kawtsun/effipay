@@ -5,7 +5,7 @@ import AppLayout from '@/layouts/app-layout'
 import { EmployeeType } from '@/components/employee-type'
 import { EmployeeSalaryEdit } from '@/components/employee-salary-edit'
 import { type BreadcrumbItem } from '@/types'
-import { Wallet } from 'lucide-react'
+import { Wallet, Pencil } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -16,6 +16,7 @@ import {
   CardTitle,
   CardContent,
 } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 type Defaults = {
   employee_type: string
@@ -100,7 +101,6 @@ export default function Index() {
               {earningsCards.map(({ key, label, value }) => (
                 <Card
                   key={key}
-                  variant="ghost"
                   className="h-full shadow-none hover:shadow-lg transition-shadow rounded-lg select-none"
                 >
                   <CardHeader className="flex items-center justify-between pb-2">
@@ -133,7 +133,6 @@ export default function Index() {
               {deductionCards.map(({ key, label, value }) => (
                 <Card
                   key={key}
-                  variant="ghost"
                   className="h-full shadow-none hover:shadow-lg transition-shadow rounded-lg select-none"
                 >
                   <CardHeader className="flex items-center justify-between pb-2">
@@ -144,15 +143,34 @@ export default function Index() {
                   </CardHeader>
 
                   <CardContent className="flex items-center justify-between">
-                    <p className="text-3xl font-bold text-red-600">
-                      ₱{value.toLocaleString()}
-                    </p>
-                    <EmployeeSalaryEdit
-                      employeeType={type}
-                      field={key}
-                      label={label}
-                      value={value}
-                    />
+                    <div className="flex flex-col">
+                      <p className="text-3xl font-bold text-red-600">
+                        ₱{value.toLocaleString()}
+                      </p>
+                      {key === 'philhealth' && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Auto-calculated based on base salary
+                        </p>
+                      )}
+                    </div>
+                    {key === 'philhealth' ? (
+                      <div className="flex flex-col items-end">
+                        <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
+                          <Pencil className="w-4 h-4" />
+                          Edit
+                        </Button>
+                        <p className="text-xs text-muted-foreground mt-1 text-right">
+                          Auto-calculated
+                        </p>
+                      </div>
+                    ) : (
+                      <EmployeeSalaryEdit
+                        employeeType={type}
+                        field={key}
+                        label={label}
+                        value={value}
+                      />
+                    )}
                   </CardContent>
                 </Card>
               ))}
