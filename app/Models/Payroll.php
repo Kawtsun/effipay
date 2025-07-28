@@ -5,27 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Employees extends Model
+class Payroll extends Model
 {
-    /** @use HasFactory<\Database\Factories\EmployeesFactory> */
     use HasFactory;
 
     protected $fillable = [
-        'employee_name',
-        'employee_type',
-        'employee_status',
-        'roles',
-        'college_program',
+        'employee_id',
+        'month',
+        'payroll_date',
         'base_salary',
         'overtime_pay',
         'sss',
         'philhealth',
         'pag_ibig',
         'withholding_tax',
+        'gross_pay',
+        'total_deductions',
+        'net_pay',
     ];
 
-    public function payrolls()
+    public function employee()
     {
-        return $this->hasMany(Payroll::class);
+        return $this->belongsTo(Employees::class);
     }
 }

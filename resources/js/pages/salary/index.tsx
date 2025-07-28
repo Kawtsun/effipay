@@ -5,7 +5,7 @@ import AppLayout from '@/layouts/app-layout'
 import { EmployeeType } from '@/components/employee-type'
 import { EmployeeSalaryEdit } from '@/components/employee-salary-edit'
 import { type BreadcrumbItem } from '@/types'
-import { Wallet, Pencil } from 'lucide-react'
+import { Wallet, Pencil, Calculator } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -17,6 +17,7 @@ import {
   CardContent,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { PayrollDatePicker } from '@/components/ui/payroll-date-picker'
 
 type Defaults = {
   employee_type: string
@@ -38,6 +39,8 @@ type PageProps = {
 export default function Index() {
   const { flash, types, selected, defaults } = usePage<PageProps>().props
   const [type, setType] = useState(selected || types[0])
+  const [selectedDate, setSelectedDate] = useState('')
+  const [isRunningPayroll, setIsRunningPayroll] = useState(false)
 
   useEffect(() => setType(selected || types[0]), [selected, types])
   useEffect(() => { if (flash) toast.success(flash) }, [flash])
@@ -51,6 +54,38 @@ export default function Index() {
       { preserveState: true, preserveScroll: true }
     )
   }, [types])
+
+  const handleRunPayroll = useCallback(async () => {
+    if (!selectedDate) {
+      toast.error('Please select a date first')
+      return
+    }
+
+    setIsRunningPayroll(true)
+    try {
+      const response = await fetch(route('payroll.run'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({ payroll_date: selectedDate }),
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        toast.success(result.message)
+      } else {
+        toast.error('Failed to run payroll')
+      }
+    } catch (error) {
+      toast.error('Error running payroll')
+      console.error('Payroll error:', error)
+    } finally {
+      setIsRunningPayroll(false)
+    }
+  }, [selectedDate])
 
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Salary', href: route('salary.index') },
@@ -91,7 +126,24 @@ export default function Index() {
                 Set default payroll values by employee type.
               </p>
             </div>
-            <EmployeeType value={type} onChange={onTypeChange} types={allTypes} />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <PayrollDatePicker
+                  value={selectedDate}
+                  onValueChange={setSelectedDate}
+                  placeholder="Select payroll date"
+                />
+                <Button 
+                  onClick={handleRunPayroll}
+                  disabled={!selectedDate || isRunningPayroll}
+                  className="flex items-center gap-2"
+                >
+                  <Calculator className="w-4 h-4" />
+                  {isRunningPayroll ? 'Running...' : 'Run Payroll'}
+                </Button>
+              </div>
+              <EmployeeType value={type} onChange={onTypeChange} types={allTypes} />
+            </div>
           </div>
 
           {/* EARNINGS */}
