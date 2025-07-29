@@ -141,11 +141,9 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
 
     const fetchAvailableMonths = async () => {
         if (!employee) return
-        
         try {
             const response = await fetch(route('payroll.employee.months', { employee_id: employee.id }))
             const result = await response.json()
-            
             if (result.success) {
                 setAvailableMonths(result.months)
                 // Auto-select the most recent month if available
@@ -214,16 +212,16 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                 </div>
                                 {/* Header Row */}
                                 <div className="grid grid-cols-2 gap-10 items-start mb-6">
-                                    {/* General Info */}
-                                    <div>
+                                        {/* General Info */}
+                                        <div>
                                         <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
                                         <div className="space-y-2 text-sm">
-                                            <Info label="Status" value={employee.employee_status} />
-                                            <Info label="Type" value={employee.employee_type} />
+                                                <Info label="Status" value={employee.employee_status} />
+                                                <Info label="Type" value={employee.employee_type} />
+                                            </div>
                                         </div>
-                                    </div>
-                                    {/* Roles Section */}
-                                    <div>
+                                        {/* Roles Section */}
+                                        <div>
                                         <h4 className="font-semibold text-base mb-4 border-b pb-2">Roles & Responsibilities</h4>
                                         <div className="flex flex-wrap gap-2 max-w-full px-2 py-2 break-words whitespace-pre-line min-h-[2.5rem] text-sm">
                                             <RolesBadges roles={employee.roles} activeRoles={activeRoles} employee={employee} />
@@ -251,21 +249,21 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>
-                                        <MonthPicker
-                                            value={selectedMonth}
+                                                <MonthPicker
+                                                    value={selectedMonth}
                                             onValueChange={handleMonthChange}
-                                            placeholder="Select month"
+                                                    placeholder="Select month"
                                             className="w-36 min-w-0 px-2 py-1 text-sm"
-                                            availableMonths={availableMonths}
-                                        />
-                                    </div>
+                                                    availableMonths={availableMonths}
+                                                />
+                                                    </div>
                                     {/* Summary Cards: Only Gross Pay, Deductions, Net Pay, Per Payroll (with dates) */}
                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                         {/* Gross Pay */}
                                         <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
                                             <div className="text-xs text-gray-600 font-medium mb-2">Gross Pay</div>
                                             <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay : employee.base_salary + employee.overtime_pay)).toLocaleString()}</div>
-                                        </div>
+                                            </div>
                                         {/* Deductions */}
                                         <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
                                             <div className="text-xs text-orange-600 font-medium mb-2">Total Deductions</div>
@@ -275,7 +273,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                         <div className="bg-green-50 dark:bg-green-900/20 p-5 rounded-2xl border border-green-200 dark:border-green-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
                                             <div className="text-xs text-green-600 font-medium mb-2">Net Pay</div>
                                             <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">₱{Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions : employee.base_salary + employee.overtime_pay - employee.sss - employee.philhealth - employee.pag_ibig - employee.withholding_tax)).toLocaleString()}</div>
-                                        </div>
+                                    </div>
                                         {/* Per Payroll */}
                                         <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
                                             <div className="text-xs text-blue-600 font-medium mb-2">Per Payroll</div>
@@ -283,45 +281,45 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                                 <>
                                                     <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">₱{Number((monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions) / monthlyPayrollData.payrolls.length).toLocaleString()}</div>
                                                     <div className="flex flex-wrap gap-1 mt-2 overflow-x-auto max-w-full text-xs">
-                                                        {monthlyPayrollData.payrolls.map((payroll, index) => (
+                                                            {monthlyPayrollData.payrolls.map((payroll, index) => (
                                                             <div key={payroll.id} className="flex items-center gap-1 whitespace-nowrap">
-                                                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                                                {new Date(payroll.payroll_date).toLocaleDateString('en-US', {
-                                                                    month: 'short',
-                                                                    day: 'numeric'
-                                                                })}
-                                                                {index < monthlyPayrollData.payrolls.length - 1 && <span className="text-blue-400">•</span>}
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                                    {new Date(payroll.payroll_date).toLocaleDateString('en-US', {
+                                                                        month: 'short',
+                                                                        day: 'numeric'
+                                                                    })}
+                                                                    {index < monthlyPayrollData.payrolls.length - 1 && <span className="text-blue-400">•</span>}
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                 </>
                                             ) : (
                                                 <div className="flex flex-col items-center justify-center h-full min-h-[48px]">
                                                     <span className="text-xl font-bold text-blue-300">No payrolls</span>
                                                 </div>
                                             )}
-                                        </div>
-                                    </div>
+                                                        </div>
+                                                    </div>
                                     {/* Detailed Breakdown and Totals remain as before */}
                                     <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
-                                        <div>
+                                                    <div>
                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                             <div className="space-y-3 text-sm">
                                                 <Info label="Base Salary" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].base_salary : employee.base_salary).toLocaleString()}`} />
                                                 <Info label="Overtime Pay" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].overtime_pay : employee.overtime_pay).toLocaleString()}`} />
-                                            </div>
-                                        </div>
-                                        <div>
+                                                        </div>
+                                                    </div>
+                                                    <div>
                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
                                             <div className="space-y-3 text-sm">
                                                 <Info label="SSS" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].sss : employee.sss).toLocaleString()}`} />
                                                 <Info label="PhilHealth" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].philhealth : employee.philhealth).toLocaleString()}`} />
                                                 <Info label="Pag-IBIG" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].pag_ibig : employee.pag_ibig).toLocaleString()}`} />
                                                 <Info label="Withholding Tax" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].withholding_tax : employee.withholding_tax).toLocaleString()}`} />
-                                            </div>
-                                        </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                     </div>
-                                </div>
                             </div>
                             <DialogFooter> <Button onClick={onClose}>Close</Button> </DialogFooter>
                         </DialogContent>

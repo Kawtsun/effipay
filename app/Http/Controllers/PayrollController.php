@@ -174,19 +174,46 @@ class PayrollController extends Controller
             'employee_id' => 'required|exists:employees,id',
         ]);
 
-        // Get all months for this employee
+        // Get all unique months with payroll data for this employee
         $allMonths = Payroll::where('employee_id', $request->employee_id)
             ->orderBy('month', 'desc')
             ->pluck('month')
             ->unique()
             ->values();
 
-        // Limit to 2-3 months before the first payroll calculation
-        $limitedMonths = $allMonths->take(2);
+        // If there are no payroll months, return empty
+        if ($allMonths->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'months' => [],
+            ]);
+        }
+
+        // Find the earliest month with payroll data
+        $earliestMonth = $allMonths->last(); // since it's descending order
+        $monthsToAdd = [];
+        if ($earliestMonth) {
+            // Parse the earliest month (Y-m)
+            $date = \DateTime::createFromFormat('Y-m', $earliestMonth);
+            if ($date) {
+                // Add the 2 months before the earliest
+                for ($i = 1; $i <= 2; $i++) {
+                    $date->modify('-1 month');
+                    $prevMonth = $date->format('Y-m');
+                    $monthsToAdd[] = $prevMonth;
+                }
+            }
+        }
+
+        // Merge and deduplicate, then sort descending
+        $finalMonths = $allMonths->merge($monthsToAdd)
+            ->unique()
+            ->sortDesc()
+            ->values();
 
         return response()->json([
             'success' => true,
-            'months' => $limitedMonths,
+            'months' => $finalMonths,
         ]);
     }
 }
