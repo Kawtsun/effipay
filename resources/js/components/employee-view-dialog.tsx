@@ -171,7 +171,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
             const result = await response.json()
             if (result.success) {
                 setMonthlyPayrollData(result)
-                setSelectedMonth(pendingMonth) // update visible month after data loads
+                // Do not update selectedMonth here; it's already set in handleMonthChange
             } else {
                 setMonthlyPayrollData(null)
                 toast.error('No payroll data found for this month')
@@ -184,9 +184,10 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
         }
     }
 
-    // When user picks a month, set pendingMonth (not selectedMonth)
+    // When user picks a month, set both selectedMonth and pendingMonth
     const handleMonthChange = (month: string) => {
         if (month !== selectedMonth) {
+            setSelectedMonth(month)
             setPendingMonth(month)
         }
     }
@@ -201,7 +202,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                         exit={{ opacity: 0, scale: 0.98 }}
                         transition={{ duration: 0.2 }}
                     >
-                        <DialogContent className="max-w-5xl w-full px-8 py-4 sm:px-12 sm:py-6">
+                        <DialogContent className="max-w-5xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100]">
                             <DialogHeader>
                                 <DialogTitle className="text-2xl font-bold mb-2">Employee Details</DialogTitle>
                             </DialogHeader>
@@ -249,14 +250,21 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>
-                                                <MonthPicker
-                                                    value={selectedMonth}
+                                        {/* MonthPicker dropdown must render in a portal with high z-index */}
+                                        <MonthPicker
+                                            value={selectedMonth}
                                             onValueChange={handleMonthChange}
-                                                    placeholder="Select month"
+                                            placeholder="Select month"
                                             className="w-36 min-w-0 px-2 py-1 text-sm"
-                                                    availableMonths={availableMonths}
-                                                />
-                                                    </div>
+                                            availableMonths={availableMonths}
+                                            dropdownClassName="z-[200] pointer-events-auto"
+                                            // Ensure MonthPicker's dropdown/popover is rendered in a portal:
+                                            // If MonthPicker supports a 'portal', 'container', or 'appendTo' prop, set it to document.body
+                                            portal // <-- If supported, add this prop
+                                            // container={document.body} // <-- Or this, if supported
+                                            // appendTo={document.body} // <-- Or this, if supported
+                                        />
+                                    </div>
                                     {/* Summary Cards: Only Gross Pay, Deductions, Net Pay, Per Payroll (with dates) */}
                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                         {/* Gross Pay */}
