@@ -12,7 +12,7 @@ import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { Shield, GraduationCap, Book } from 'lucide-react'
 import { MonthPicker } from "./ui/month-picker"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 
 interface PayrollData {
@@ -115,9 +115,12 @@ function RolesBadges({ roles, activeRoles, employee }: { roles: string; activeRo
 
 export default function EmployeeViewDialog({ employee, onClose, activeRoles }: Props) {
     const [selectedMonth, setSelectedMonth] = useState('')
+    const [pendingMonth, setPendingMonth] = useState('') // for delayed update
     const [monthlyPayrollData, setMonthlyPayrollData] = useState<MonthlyPayrollData | null>(null)
     const [availableMonths, setAvailableMonths] = useState<string[]>([])
     const [loadingPayroll, setLoadingPayroll] = useState(false)
+    const [minLoading, setMinLoading] = useState(false)
+    const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null)
 
     // Fetch available months when employee changes
     useEffect(() => {
@@ -128,12 +131,13 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
 
     // Fetch monthly payroll data when month changes
     useEffect(() => {
-        if (employee && selectedMonth) {
+        if (employee && pendingMonth) {
             fetchMonthlyPayrollData()
         } else {
             setMonthlyPayrollData(null)
         }
-    }, [employee, selectedMonth])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [employee, pendingMonth])
 
     const fetchAvailableMonths = async () => {
         if (!employee) return
@@ -147,6 +151,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                 // Auto-select the most recent month if available
                 if (result.months.length > 0 && !selectedMonth) {
                     setSelectedMonth(result.months[0])
+                    setPendingMonth(result.months[0]) // trigger payroll fetch on first load
                 }
             }
         } catch (error) {
@@ -155,20 +160,20 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
     }
 
     const fetchMonthlyPayrollData = async () => {
-        if (!employee || !selectedMonth) return
-        
+        if (!employee || !pendingMonth) return
         setLoadingPayroll(true)
+        setMinLoading(true)
+        if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current)
+        minLoadingTimeout.current = setTimeout(() => setMinLoading(false), 400)
         try {
-            console.log('Fetching monthly payroll data for:', { employee_id: employee.id, month: selectedMonth })
             const response = await fetch(route('payroll.employee.monthly', { 
                 employee_id: employee.id, 
-                month: selectedMonth 
+                month: pendingMonth 
             }))
             const result = await response.json()
-            console.log('Monthly payroll API response:', result)
-            
             if (result.success) {
                 setMonthlyPayrollData(result)
+                setSelectedMonth(pendingMonth) // update visible month after data loads
             } else {
                 setMonthlyPayrollData(null)
                 toast.error('No payroll data found for this month')
@@ -177,7 +182,14 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
             console.error('Error fetching monthly payroll data:', error)
             setMonthlyPayrollData(null)
         } finally {
-            setLoadingPayroll(false)
+            setTimeout(() => setLoadingPayroll(false), 100) // allow animation to finish
+        }
+    }
+
+    // When user picks a month, set pendingMonth (not selectedMonth)
+    const handleMonthChange = (month: string) => {
+        if (month !== selectedMonth) {
+            setPendingMonth(month)
         }
     }
 
@@ -191,200 +203,125 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                         exit={{ opacity: 0, scale: 0.98 }}
                         transition={{ duration: 0.2 }}
                     >
-                        <DialogContent className="max-w-[98vw] w-[98vw]">
+                        <DialogContent className="max-w-5xl w-full px-8 py-4 sm:px-12 sm:py-6">
                             <DialogHeader>
-                                <DialogTitle>Employee Details</DialogTitle>
+                                <DialogTitle className="text-2xl font-bold mb-2">Employee Details</DialogTitle>
                             </DialogHeader>
-
-                                                        <div className="space-y-6 text-sm">
+                            <div className="space-y-8 text-base">
                                 {/* Employee Header */}
-                                <div className="border-b pb-4">
-                                    <h3 className="text-lg font-semibold">#{employee.id} - {employee.employee_name}</h3>
+                                <div className="border-b pb-6 mb-2">
+                                    <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {employee.employee_name}</h3>
                                 </div>
-                                
                                 {/* Header Row */}
-                                <div className="grid grid-cols-3 gap-6">
-                                        {/* General Info */}
-                                        <div>
-                                            <h4 className="font-semibold text-base mb-3 border-b pb-2">General Information</h4>
-                                            <div className="space-y-2">
-                                                <Info label="Status" value={employee.employee_status} />
-                                                <Info label="Type" value={employee.employee_type} />
-                                            </div>
+                                <div className="grid grid-cols-2 gap-10 items-start mb-6">
+                                    {/* General Info */}
+                                    <div>
+                                        <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
+                                        <div className="space-y-2 text-sm">
+                                            <Info label="Status" value={employee.employee_status} />
+                                            <Info label="Type" value={employee.employee_type} />
                                         </div>
-                                        
-                                        {/* Roles Section */}
-                                        <div>
-                                            <h4 className="font-semibold text-base mb-3 border-b pb-2">Roles & Responsibilities</h4>
+                                    </div>
+                                    {/* Roles Section */}
+                                    <div>
+                                        <h4 className="font-semibold text-base mb-4 border-b pb-2">Roles & Responsibilities</h4>
+                                        <div className="flex flex-wrap gap-2 max-w-full px-2 py-2 break-words whitespace-pre-line min-h-[2.5rem] text-sm">
                                             <RolesBadges roles={employee.roles} activeRoles={activeRoles} employee={employee} />
                                         </div>
-
-                                        {/* Month Selector */}
-                                        <div>
-                                            <h4 className="font-semibold text-base mb-3 border-b pb-2">Payroll Period</h4>
-                                            <div className="flex items-center gap-3">
-                                                <MonthPicker
-                                                    value={selectedMonth}
-                                                    onValueChange={setSelectedMonth}
-                                                    placeholder="Select month"
-                                                    className="w-full"
-                                                    availableMonths={availableMonths}
-                                                />
-                                                {loadingPayroll && (
-                                                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                                        <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                                        Loading...
+                                    </div>
+                                </div>
+                                {/* Divider */}
+                                <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                                {/* Salary & Contributions Section */}
+                                <div className="pt-2">
+                                    <h4 className="font-semibold text-lg mb-4">Salary & Contributions</h4>
+                                    {/* Payroll Month Selector aligned right above cards, no label */}
+                                    <div className="flex justify-end mb-4 items-center gap-2">
+                                        <AnimatePresence>
+                                            {(loadingPayroll || minLoading) && (
+                                                <motion.div
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="text-xs text-muted-foreground flex items-center gap-1"
+                                                >
+                                                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                                    Loading...
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                        <MonthPicker
+                                            value={selectedMonth}
+                                            onValueChange={handleMonthChange}
+                                            placeholder="Select month"
+                                            className="w-36 min-w-0 px-2 py-1 text-sm"
+                                            availableMonths={availableMonths}
+                                        />
+                                    </div>
+                                    {/* Summary Cards: Only Gross Pay, Deductions, Net Pay, Per Payroll (with dates) */}
+                                    <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
+                                        {/* Gross Pay */}
+                                        <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                            <div className="text-xs text-gray-600 font-medium mb-2">Gross Pay</div>
+                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay : employee.base_salary + employee.overtime_pay)).toLocaleString()}</div>
+                                        </div>
+                                        {/* Deductions */}
+                                        <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                            <div className="text-xs text-orange-600 font-medium mb-2">Total Deductions</div>
+                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">₱{Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].total_deductions : employee.sss + employee.philhealth + employee.pag_ibig + employee.withholding_tax)).toLocaleString()}</div>
+                                        </div>
+                                        {/* Net Pay */}
+                                        <div className="bg-green-50 dark:bg-green-900/20 p-5 rounded-2xl border border-green-200 dark:border-green-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                            <div className="text-xs text-green-600 font-medium mb-2">Net Pay</div>
+                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">₱{Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions : employee.base_salary + employee.overtime_pay - employee.sss - employee.philhealth - employee.pag_ibig - employee.withholding_tax)).toLocaleString()}</div>
+                                        </div>
+                                        {/* Per Payroll */}
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                            <div className="text-xs text-blue-600 font-medium mb-2">Per Payroll</div>
+                                            {monthlyPayrollData && monthlyPayrollData.payrolls.length > 0 ? (
+                                                <>
+                                                    <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">₱{Number((monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions) / monthlyPayrollData.payrolls.length).toLocaleString()}</div>
+                                                    <div className="flex flex-wrap gap-1 mt-2 overflow-x-auto max-w-full text-xs">
+                                                        {monthlyPayrollData.payrolls.map((payroll, index) => (
+                                                            <div key={payroll.id} className="flex items-center gap-1 whitespace-nowrap">
+                                                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                                {new Date(payroll.payroll_date).toLocaleDateString('en-US', {
+                                                                    month: 'short',
+                                                                    day: 'numeric'
+                                                                })}
+                                                                {index < monthlyPayrollData.payrolls.length - 1 && <span className="text-blue-400">•</span>}
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                )}
+                                                </>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center h-full min-h-[48px]">
+                                                    <span className="text-xl font-bold text-blue-300">No payrolls</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {/* Detailed Breakdown and Totals remain as before */}
+                                    <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
+                                        <div>
+                                            <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
+                                            <div className="space-y-3 text-sm">
+                                                <Info label="Base Salary" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].base_salary : employee.base_salary).toLocaleString()}`} />
+                                                <Info label="Overtime Pay" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].overtime_pay : employee.overtime_pay).toLocaleString()}`} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
+                                            <div className="space-y-3 text-sm">
+                                                <Info label="SSS" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].sss : employee.sss).toLocaleString()}`} />
+                                                <Info label="PhilHealth" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].philhealth : employee.philhealth).toLocaleString()}`} />
+                                                <Info label="Pag-IBIG" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].pag_ibig : employee.pag_ibig).toLocaleString()}`} />
+                                                <Info label="Withholding Tax" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].withholding_tax : employee.withholding_tax).toLocaleString()}`} />
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Salary & Contributions Section */}
-                                    <div className="border-t pt-4">
-                                        <h4 className="font-semibold text-base mb-4">Salary & Contributions</h4>
-                                        
-                                        {monthlyPayrollData ? (
-                                            <div className="space-y-6">
-                                                {/* Summary Cards */}
-                                                <div className="grid grid-cols-3 gap-4">
-                                                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                                                        <div className="text-xs text-gray-600 font-medium mb-1">Gross Pay</div>
-                                                        <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                                            ₱{Number(monthlyPayrollData.payrolls[0].gross_pay).toLocaleString()}
-                                                        </div>
-                                                    </div>
-                                                    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                                                        <div className="text-xs text-green-600 font-medium mb-1">Total Net Pay</div>
-                                                        <div className="text-lg font-bold text-green-700 dark:text-green-300">
-                                                            ₱{Number(monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions).toLocaleString()}
-                                                        </div>
-                                                    </div>
-                                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                                                        <div className="text-xs text-blue-600 font-medium mb-1">Per Payroll</div>
-                                                        <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                                                            ₱{Number((monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions) / monthlyPayrollData.payrolls.length).toLocaleString()}
-                                                        </div>
-                                                        <div className="text-xs text-blue-600 mt-1">
-                                                            {monthlyPayrollData.payrolls.map((payroll, index) => (
-                                                                <div key={payroll.id} className="flex items-center gap-1">
-                                                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                                                    {new Date(payroll.payroll_date).toLocaleDateString('en-US', {
-                                                                        month: 'short',
-                                                                        day: 'numeric'
-                                                                    })}
-                                                                    {index < monthlyPayrollData.payrolls.length - 1 && <span className="text-blue-400">•</span>}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Detailed Breakdown */}
-                                                <div className="grid grid-cols-2 gap-6">
-                                                    <div>
-                                                        <h5 className="font-medium text-sm mb-3 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
-                                                        <div className="space-y-3">
-                                                            <Info label="Base Salary" value={`₱${Number(monthlyPayrollData.payrolls[0].base_salary).toLocaleString()}`} />
-                                                            <Info label="Overtime Pay" value={`₱${Number(monthlyPayrollData.payrolls[0].overtime_pay).toLocaleString()}`} />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h5 className="font-medium text-sm mb-3 text-gray-700 dark:text-gray-300">Deductions</h5>
-                                                        <div className="space-y-3">
-                                                            <Info label="SSS" value={`₱${Number(monthlyPayrollData.payrolls[0].sss).toLocaleString()}`} />
-                                                            <Info label="PhilHealth" value={`₱${Number(monthlyPayrollData.payrolls[0].philhealth).toLocaleString()}`} />
-                                                            <Info label="Pag-IBIG" value={`₱${Number(monthlyPayrollData.payrolls[0].pag_ibig).toLocaleString()}`} />
-                                                            <Info label="Withholding Tax" value={`₱${Number(monthlyPayrollData.payrolls[0].withholding_tax).toLocaleString()}`} />
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-
-                                                
-                                                
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-6">
-                                                {/* Default Summary Cards */}
-                                                <div className="grid grid-cols-3 gap-4">
-                                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                                                        <div className="text-xs text-blue-600 font-medium mb-1">Monthly Net Pay</div>
-                                                        <div className="text-xl font-bold text-blue-700 dark:text-blue-300">
-                                                            ₱{Number(employee.base_salary + employee.overtime_pay - employee.sss - employee.philhealth - employee.pag_ibig - employee.withholding_tax).toLocaleString()}
-                                                        </div>
-                                                    </div>
-                                                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                                                        <div className="text-xs text-gray-600 font-medium mb-1">Base Salary</div>
-                                                        <div className="text-lg font-bold text-gray-700 dark:text-gray-300">
-                                                            ₱{Number(employee.base_salary).toLocaleString()}
-                                                        </div>
-                                                    </div>
-                                                    <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
-                                                        <div className="text-xs text-orange-600 font-medium mb-1">Total Deductions</div>
-                                                        <div className="text-lg font-bold text-orange-700 dark:text-orange-300">
-                                                            ₱{Number(employee.sss + employee.philhealth + employee.pag_ibig + employee.withholding_tax).toLocaleString()}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Detailed Breakdown */}
-                                                <div className="grid grid-cols-2 gap-6">
-                                                    <div>
-                                                        <h5 className="font-medium text-sm mb-3 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
-                                                        <div className="space-y-3">
-                                                            <Info label="Base Salary" value={`₱${Number(employee.base_salary).toLocaleString()}`} />
-                                                            <Info label="Overtime Pay" value={`₱${Number(employee.overtime_pay).toLocaleString()}`} />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h5 className="font-medium text-sm mb-3 text-gray-700 dark:text-gray-300">Deductions</h5>
-                                                        <div className="space-y-3">
-                                                            <Info label="SSS" value={`₱${Number(employee.sss).toLocaleString()}`} />
-                                                            <Info label="PhilHealth" value={`₱${Number(employee.philhealth).toLocaleString()}`} />
-                                                            <Info label="Pag-IBIG" value={`₱${Number(employee.pag_ibig).toLocaleString()}`} />
-                                                            <Info label="Withholding Tax" value={`₱${Number(employee.withholding_tax).toLocaleString()}`} />
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Summary Totals */}
-                                                <div className="border-t pt-4">
-                                                    <div className="grid grid-cols-3 gap-4">
-                                                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                                                            <div className="text-xs text-gray-600 font-medium mb-1">Gross Pay</div>
-                                                            <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                                                ₱{Number(employee.base_salary + employee.overtime_pay).toLocaleString()}
-                                                            </div>
-                                                        </div>
-                                                        <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                                                            <div className="text-xs text-red-600 font-medium mb-1">Total Deductions</div>
-                                                            <div className="text-lg font-bold text-red-700 dark:text-red-300">
-                                                                ₱{Number(employee.sss + employee.philhealth + employee.pag_ibig + employee.withholding_tax).toLocaleString()}
-                                                            </div>
-                                                        </div>
-                                                        <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
-                                                            <div className="text-xs text-green-600 font-medium mb-1">Net Pay</div>
-                                                            <div className="text-lg font-bold text-green-700 dark:text-green-300">
-                                                                ₱{Number(employee.base_salary + employee.overtime_pay - employee.sss - employee.philhealth - employee.pag_ibig - employee.withholding_tax).toLocaleString()}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {availableMonths.length === 0 && (
-                                                    <div className="border-t pt-4">
-                                                        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                                                            <div className="text-center text-sm text-yellow-700 dark:text-yellow-300">
-                                                                <div className="font-medium mb-1">No payroll data available</div>
-                                                                <div className="text-xs">Run payroll first to see calculated values for specific months.</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                                </div>
                             </div>
                             <DialogFooter> <Button onClick={onClose}>Close</Button> </DialogFooter>
                         </DialogContent>
