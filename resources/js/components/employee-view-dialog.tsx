@@ -255,7 +255,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                             value={selectedMonth}
                                             onValueChange={handleMonthChange}
                                             placeholder="Select month"
-                                            className="w-36 min-w-0 px-2 py-1 text-sm"
+                                            className="w-46 min-w-0 px-2 py-1 text-sm"
                                             availableMonths={availableMonths}
                                             dropdownClassName="z-[200] pointer-events-auto"
                                             // Ensure MonthPicker's dropdown/popover is rendered in a portal:

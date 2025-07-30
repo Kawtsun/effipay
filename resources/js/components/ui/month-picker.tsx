@@ -43,7 +43,7 @@ export function MonthPicker({
 
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className={cn("w-[180px]", className)}>
+      <SelectTrigger className={cn("w-[200px]", className)}>
         <CalendarIcon className="mr-2 h-4 w-4" />
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
