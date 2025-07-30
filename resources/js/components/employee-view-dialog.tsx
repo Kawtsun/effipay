@@ -16,6 +16,7 @@ import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { Skeleton } from "./ui/skeleton"
 
+
 interface PayrollData {
     id: number
     employee_id: number
@@ -114,133 +115,7 @@ function RolesBadges({ roles, activeRoles, employee }: { roles: string; activeRo
     );
 }
 
-// Skeleton for the entire Employee View Dialog
-function EmployeeViewSkeleton() {
-  return (
-    <div className="space-y-8 text-base">
-      {/* Employee Header */}
-      <div className="border-b pb-6 mb-2">
-        <Skeleton className="h-8 w-72 mb-1" />
-      </div>
-      
-      {/* Header Row */}
-      <div className="grid grid-cols-2 gap-10 items-start mb-6">
-        {/* General Info */}
-        <div>
-          <Skeleton className="h-6 w-44 mb-4" />
-          <div className="space-y-4 text-sm">
-            <div>
-              <Skeleton className="h-3 w-20 mb-2" />
-              <Skeleton className="h-4 w-36" />
-            </div>
-            <div>
-              <Skeleton className="h-3 w-16 mb-2" />
-              <Skeleton className="h-4 w-28" />
-            </div>
-          </div>
-        </div>
-        
-        {/* Roles Section */}
-        <div>
-          <Skeleton className="h-6 w-48 mb-4" />
-          <div className="flex flex-wrap gap-2 max-w-full px-2 py-2 min-h-[2.5rem]">
-            <Skeleton className="h-6 w-32 rounded-full" />
-            <Skeleton className="h-6 w-28 rounded-full" />
-            <Skeleton className="h-6 w-36 rounded-full" />
-          </div>
-        </div>
-      </div>
-      
-      {/* Divider */}
-      <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
-      
-      {/* Salary & Contributions Section */}
-      <div className="pt-2">
-        <Skeleton className="h-7 w-56 mb-4" />
-        
-        {/* Month Picker and loading spinner */}
-        <div className="flex justify-end mb-4 items-center gap-2">
-          <Skeleton className="h-8 w-40" />
-        </div>
-        
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-          {/* Gross Pay Card */}
-          <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-            <Skeleton className="h-3 w-24 mb-2" />
-            <Skeleton className="h-8 w-32" />
-          </div>
-          
-          {/* Deductions Card */}
-          <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-            <Skeleton className="h-3 w-36 mb-2" />
-            <Skeleton className="h-8 w-32" />
-          </div>
-          
-          {/* Net Pay Card */}
-          <div className="bg-green-50 dark:bg-green-900/20 p-5 rounded-2xl border border-green-200 dark:border-green-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-            <Skeleton className="h-3 w-20 mb-2" />
-            <Skeleton className="h-8 w-32" />
-          </div>
-          
-          {/* Per Payroll Card */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-            <Skeleton className="h-3 w-28 mb-2" />
-            <Skeleton className="h-8 w-32 mb-3" />
-            <div className="flex flex-wrap gap-1 mt-2">
-              <Skeleton className="h-3 w-10 rounded-full" />
-              <Skeleton className="h-3 w-2 rounded-full" />
-              <Skeleton className="h-3 w-10 rounded-full" />
-              <Skeleton className="h-3 w-2 rounded-full" />
-              <Skeleton className="h-3 w-10 rounded-full" />
-            </div>
-          </div>
-        </div>
-        
-        {/* Detailed Breakdown */}
-        <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
-          {/* Income & Benefits */}
-          <div>
-            <Skeleton className="h-6 w-36 mb-4" />
-            <div className="space-y-4 text-sm">
-              <div>
-                <Skeleton className="h-3 w-28 mb-2" />
-                <Skeleton className="h-4 w-40" />
-              </div>
-              <div>
-                <Skeleton className="h-3 w-26 mb-2" />
-                <Skeleton className="h-4 w-36" />
-              </div>
-            </div>
-          </div>
-          
-          {/* Deductions */}
-          <div>
-            <Skeleton className="h-6 w-24 mb-4" />
-            <div className="space-y-4 text-sm">
-              <div>
-                <Skeleton className="h-3 w-12 mb-2" />
-                <Skeleton className="h-4 w-32" />
-              </div>
-              <div>
-                <Skeleton className="h-3 w-20 mb-2" />
-                <Skeleton className="h-4 w-36" />
-              </div>
-              <div>
-                <Skeleton className="h-3 w-16 mb-2" />
-                <Skeleton className="h-4 w-32" />
-              </div>
-              <div>
-                <Skeleton className="h-3 w-32 mb-2" />
-                <Skeleton className="h-4 w-40" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+
 
 export default function EmployeeViewDialog({ employee, onClose, activeRoles }: Props) {
     const [selectedMonth, setSelectedMonth] = useState('')
@@ -339,93 +214,150 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                 <DialogTitle className="text-2xl font-bold mb-2">Employee Details</DialogTitle>
                             </DialogHeader>
                             {/* Show skeleton if loading, else show real data */}
-                            <AnimatePresence mode="wait">
-                                {(loadingPayroll || minLoading) ? (
-                                    <motion.div
-                                        key="skeleton"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ duration: 0.15 }}
-                                    >
-                                        <EmployeeViewSkeleton />
-                                    </motion.div>
-                                ) : (
-                                    <motion.div
-                                        key="content"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ duration: 0.2 }}
-                                        className="space-y-8 text-base"
-                                    >
-                                        {/* Employee Header */}
-                                        <div className="border-b pb-6 mb-2">
-                                            <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {employee.employee_name}</h3>
+                            <div className="space-y-8 text-base">
+                                {/* Employee Header */}
+                                <div className="border-b pb-6 mb-2">
+                                    <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {employee.employee_name}</h3>
+                                </div>
+                                {/* Header Row */}
+                                <div className="grid grid-cols-2 gap-10 items-start mb-6">
+                                    {/* General Info */}
+                                    <div>
+                                        <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
+                                        <div className="space-y-2 text-sm">
+                                            <Info label="Status" value={employee.employee_status} />
+                                            <Info label="Type" value={employee.employee_type} />
                                         </div>
-                                        {/* Header Row */}
-                                        <div className="grid grid-cols-2 gap-10 items-start mb-6">
-                                            {/* General Info */}
-                                            <div>
-                                                <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
-                                                <div className="space-y-2 text-sm">
-                                                    <Info label="Status" value={employee.employee_status} />
-                                                    <Info label="Type" value={employee.employee_type} />
+                                    </div>
+                                    {/* Roles Section */}
+                                    <div>
+                                        <h4 className="font-semibold text-base mb-4 border-b pb-2">Roles & Responsibilities</h4>
+                                        <div className="flex flex-wrap gap-2 max-w-full px-2 py-2 break-words whitespace-pre-line min-h-[2.5rem] text-sm">
+                                            <RolesBadges roles={employee.roles} activeRoles={activeRoles} employee={employee} />
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Divider */}
+                                <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+                                {/* Salary & Contributions Section */}
+                                <div className="pt-2">
+                                    <h4 className="font-semibold text-lg mb-4">Salary & Contributions</h4>
+                                    {/* Payroll Month Selector aligned right above cards, no label */}
+                                    <div className="flex justify-end mb-4 items-center gap-2">
+                                        {/* MonthPicker dropdown must render in a portal with high z-index */}
+                                        <MonthPicker
+                                            value={selectedMonth}
+                                            onValueChange={handleMonthChange}
+                                            placeholder="Select month"
+                                            className="w-46 min-w-0 px-2 py-1 text-sm"
+                                            availableMonths={availableMonths}
+                                            // Ensure MonthPicker's dropdown/popover is rendered in a portal:
+                                            // If MonthPicker supports a 'portal', 'container', or 'appendTo' prop, set it to document.body
+                                            // container={document.body} // <-- Or this, if supported
+                                            // appendTo={document.body} // <-- Or this, if supported
+                                        />
+                                    </div>
+                                    {/* Summary Cards with Skeleton/Content */}
+                                    <AnimatePresence mode="wait">
+                                        {(loadingPayroll || minLoading) ? (
+                                                                                    <motion.div
+                                            key="skeleton"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                        >
+                                            <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
+                                                {/* Gross Pay Card */}
+                                                <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                    <Skeleton className="h-3 w-24 mb-2" />
+                                                    <Skeleton className="h-8 w-32" />
+                                                </div>
+                                                
+                                                {/* Deductions Card */}
+                                                <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                    <Skeleton className="h-3 w-36 mb-2" />
+                                                    <Skeleton className="h-8 w-32" />
+                                                </div>
+                                                
+                                                {/* Net Pay Card */}
+                                                <div className="bg-green-50 dark:bg-green-900/20 p-5 rounded-2xl border border-green-200 dark:border-green-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                    <Skeleton className="h-3 w-20 mb-2" />
+                                                    <Skeleton className="h-8 w-32" />
+                                                </div>
+                                                
+                                                {/* Per Payroll Card */}
+                                                <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                    <Skeleton className="h-3 w-28 mb-2" />
+                                                    <Skeleton className="h-8 w-32 mb-3" />
+                                                    <div className="flex flex-wrap gap-1 mt-2">
+                                                        <Skeleton className="h-3 w-10 rounded-full" />
+                                                        <Skeleton className="h-3 w-2 rounded-full" />
+                                                        <Skeleton className="h-3 w-10 rounded-full" />
+                                                        <Skeleton className="h-3 w-2 rounded-full" />
+                                                        <Skeleton className="h-3 w-10 rounded-full" />
+                                                    </div>
                                                 </div>
                                             </div>
-                                            {/* Roles Section */}
-                                            <div>
-                                                <h4 className="font-semibold text-base mb-4 border-b pb-2">Roles & Responsibilities</h4>
-                                                <div className="flex flex-wrap gap-2 max-w-full px-2 py-2 break-words whitespace-pre-line min-h-[2.5rem] text-sm">
-                                                    <RolesBadges roles={employee.roles} activeRoles={activeRoles} employee={employee} />
+                                            
+                                            {/* Detailed Breakdown Skeleton */}
+                                            <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
+                                                {/* Earnings */}
+                                                <div>
+                                                    <Skeleton className="h-6 w-36 mb-4" />
+                                                    <div className="space-y-3 text-sm">
+                                                        <div>
+                                                            <Skeleton className="h-3 w-28 mb-1" />
+                                                            <Skeleton className="h-4 w-40" />
+                                                        </div>
+                                                        <div>
+                                                            <Skeleton className="h-3 w-26 mb-1" />
+                                                            <Skeleton className="h-4 w-36" />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                        {/* Divider */}
-                                        <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
-                                        {/* Salary & Contributions Section */}
-                                        <div className="pt-2">
-                                            <h4 className="font-semibold text-lg mb-4">Salary & Contributions</h4>
-                                            {/* Payroll Month Selector aligned right above cards, no label */}
-                                            <div className="flex justify-end mb-4 items-center gap-2">
-                                                <AnimatePresence>
-                                                    {(loadingPayroll || minLoading) && (
-                                                        <motion.div
-                                                            initial={{ opacity: 0 }}
-                                                            animate={{ opacity: 1 }}
-                                                            exit={{ opacity: 0 }}
-                                                            transition={{ duration: 0.15 }}
-                                                            className="text-xs text-muted-foreground flex items-center gap-1"
-                                                        >
-                                                            <motion.div 
-                                                                className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full"
-                                                                animate={{ rotate: 360 }}
-                                                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                                            />
-                                                            Loading...
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                                {/* MonthPicker dropdown must render in a portal with high z-index */}
-                                                <MonthPicker
-                                                    value={selectedMonth}
-                                                    onValueChange={handleMonthChange}
-                                                    placeholder="Select month"
-                                                    className="w-46 min-w-0 px-2 py-1 text-sm"
-                                                    availableMonths={availableMonths}
-                                                    // Ensure MonthPicker's dropdown/popover is rendered in a portal:
-                                                    // If MonthPicker supports a 'portal', 'container', or 'appendTo' prop, set it to document.body
-                                                    // container={document.body} // <-- Or this, if supported
-                                                    // appendTo={document.body} // <-- Or this, if supported
-                                                />
-                                            </div>
+                                                
+                                                {/* Deductions */}
+                                                <div>
+                                                    <Skeleton className="h-6 w-24 mb-4" />
+                                                    <div className="space-y-3 text-sm">
+                                                        <div>
+                                                            <Skeleton className="h-3 w-12 mb-1" />
+                                                            <Skeleton className="h-4 w-32" />
+                                                        </div>
+                                                        <div>
+                                                            <Skeleton className="h-3 w-20 mb-1" />
+                                                            <Skeleton className="h-4 w-36" />
+                                                        </div>
+                                                        <div>
+                                                            <Skeleton className="h-3 w-16 mb-1" />
+                                                            <Skeleton className="h-4 w-32" />
+                                                        </div>
+                                                        <div>
+                                                            <Skeleton className="h-3 w-32 mb-1" />
+                                                            <Skeleton className="h-4 w-40" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                                                        </div>
+                                        </motion.div>
+                                    ) : (
+                                        <motion.div
+                                            key="content"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.25 }}
+                                        >
                                             {/* Summary Cards: Only Gross Pay, Deductions, Net Pay, Per Payroll (with dates) */}
                                             <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                                 {/* Gross Pay */}
                                                 <motion.div 
                                                     className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
-                                                    whileHover={{ scale: 1.01 }}
-                                                    transition={{ duration: 0.15 }}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    whileHover={{ scale: 1.02 }}
+                                                    transition={{ duration: 0.3, delay: 0.1 }}
                                                 >
                                                     <div className="text-xs text-gray-600 font-medium mb-2">Gross Pay</div>
                                                     <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay : employee.base_salary + employee.overtime_pay)).toLocaleString()}</div>
@@ -433,8 +365,10 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                                 {/* Deductions */}
                                                 <motion.div 
                                                     className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
-                                                    whileHover={{ scale: 1.01 }}
-                                                    transition={{ duration: 0.15 }}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    whileHover={{ scale: 1.02 }}
+                                                    transition={{ duration: 0.3, delay: 0.2 }}
                                                 >
                                                     <div className="text-xs text-orange-600 font-medium mb-2">Total Deductions</div>
                                                     <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">₱{Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].total_deductions : employee.sss + employee.philhealth + employee.pag_ibig + employee.withholding_tax)).toLocaleString()}</div>
@@ -442,8 +376,10 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                                 {/* Net Pay */}
                                                 <motion.div 
                                                     className="bg-green-50 dark:bg-green-900/20 p-5 rounded-2xl border border-green-200 dark:border-green-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
-                                                    whileHover={{ scale: 1.01 }}
-                                                    transition={{ duration: 0.15 }}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    whileHover={{ scale: 1.02 }}
+                                                    transition={{ duration: 0.3, delay: 0.3 }}
                                                 >
                                                     <div className="text-xs text-green-600 font-medium mb-2">Net Pay</div>
                                                     <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">₱{Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions : employee.base_salary + employee.overtime_pay - employee.sss - employee.philhealth - employee.pag_ibig - employee.withholding_tax)).toLocaleString()}</div>
@@ -451,8 +387,10 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                                 {/* Per Payroll */}
                                                 <motion.div 
                                                     className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
-                                                    whileHover={{ scale: 1.01 }}
-                                                    transition={{ duration: 0.15 }}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    whileHover={{ scale: 1.02 }}
+                                                    transition={{ duration: 0.3, delay: 0.4 }}
                                                 >
                                                     <div className="text-xs text-blue-600 font-medium mb-2">Per Payroll</div>
                                                     {monthlyPayrollData && monthlyPayrollData.payrolls.length > 0 ? (
@@ -479,7 +417,12 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                                 </motion.div>
                                             </div>
                                             {/* Detailed Breakdown and Totals remain as before */}
-                                            <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
+                                            <motion.div 
+                                                className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                transition={{ duration: 0.3, delay: 0.5 }}
+                                            >
                                                 <div>
                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                     <div className="space-y-3 text-sm">
@@ -496,11 +439,12 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                                         <Info label="Withholding Tax" value={`₱${Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].withholding_tax : employee.withholding_tax).toLocaleString()}`} />
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                            </motion.div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                            </div>
                             <DialogFooter> 
                                 <Button onClick={onClose}>Close</Button> 
                             </DialogFooter>
