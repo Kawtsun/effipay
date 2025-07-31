@@ -31,6 +31,7 @@ class SalarySeeder extends Seeder
                 'philhealth'      => max(250, min(2500, (50000 * 0.05) / 4)), // 625
                 'pag_ibig'        => 200,
                 'withholding_tax' => 5000,
+                'work_hours_per_day' => 8,
             ],
             'Part Time' => [
                 'base_salary'     => 20000,
@@ -39,6 +40,7 @@ class SalarySeeder extends Seeder
                 'philhealth'      => max(250, min(2500, (20000 * 0.05) / 4)), // 250
                 'pag_ibig'        => 200,
                 'withholding_tax' => 1500,
+                'work_hours_per_day' => 6,
             ],
             'Provisionary' => [
                 'base_salary'     => 30000,
@@ -47,6 +49,7 @@ class SalarySeeder extends Seeder
                 'philhealth'      => max(250, min(2500, (30000 * 0.05) / 4)), // 375
                 'pag_ibig'        => 200,
                 'withholding_tax' => 3000,
+                'work_hours_per_day' => 8,
             ],
             'Regular' => [
                 'base_salary'     => 40000,
@@ -55,6 +58,7 @@ class SalarySeeder extends Seeder
                 'philhealth'      => max(250, min(2500, (40000 * 0.05) / 4)), // 500
                 'pag_ibig'        => 200,
                 'withholding_tax' => 4000,
+                'work_hours_per_day' => 8,
             ],
         ];
 

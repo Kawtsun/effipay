@@ -175,42 +175,52 @@ class PayrollController extends Controller
         ]);
 
         // Get all unique months with payroll data for this employee
-        $allMonths = Payroll::where('employee_id', $request->employee_id)
+        $employeeMonths = Payroll::where('employee_id', $request->employee_id)
             ->orderBy('month', 'desc')
             ->pluck('month')
             ->unique()
             ->values();
 
-        // If there are no payroll months, return empty
-        if ($allMonths->isEmpty()) {
-            return response()->json([
-                'success' => true,
-                'months' => [],
-            ]);
-        }
+        // If this employee has no payroll data, get months from all employees
+        if ($employeeMonths->isEmpty()) {
+            $allMonths = Payroll::orderBy('month', 'desc')
+                ->pluck('month')
+                ->unique()
+                ->values();
 
-        // Find the earliest month with payroll data
-        $earliestMonth = $allMonths->last(); // since it's descending order
-        $monthsToAdd = [];
-        if ($earliestMonth) {
-            // Parse the earliest month (Y-m) and create a date on the 1st of that month
-            [$year, $month] = explode('-', $earliestMonth);
-            $date = \Carbon\Carbon::create((int)$year, (int)$month, 1);
-            if ($date) {
-                // Add the 2 months before the earliest using Carbon's subMonths method
-                $prevMonth1 = $date->copy()->subMonths(1)->format('Y-m');
-                $prevMonth2 = $date->copy()->subMonths(2)->format('Y-m');
-                
-                $monthsToAdd[] = $prevMonth1;
-                $monthsToAdd[] = $prevMonth2;
+            if ($allMonths->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'months' => [],
+                ]);
             }
-        }
 
-        // Merge and deduplicate, then sort descending
-        $finalMonths = $allMonths->merge($monthsToAdd)
-            ->unique()
-            ->sortDesc()
-            ->values();
+            // Return the most recent 6 months from all employees
+            $finalMonths = $allMonths->take(6)->values();
+        } else {
+            // Find the earliest month with payroll data for this employee
+            $earliestMonth = $employeeMonths->last(); // since it's descending order
+            $monthsToAdd = [];
+            if ($earliestMonth) {
+                // Parse the earliest month (Y-m) and create a date on the 1st of that month
+                [$year, $month] = explode('-', $earliestMonth);
+                $date = \Carbon\Carbon::create((int)$year, (int)$month, 1);
+                if ($date) {
+                    // Add the 2 months before the earliest using Carbon's subMonths method
+                    $prevMonth1 = $date->copy()->subMonths(1)->format('Y-m');
+                    $prevMonth2 = $date->copy()->subMonths(2)->format('Y-m');
+                    
+                    $monthsToAdd[] = $prevMonth1;
+                    $monthsToAdd[] = $prevMonth2;
+                }
+            }
+
+            // Merge and deduplicate, then sort descending
+            $finalMonths = $employeeMonths->merge($monthsToAdd)
+                ->unique()
+                ->sortDesc()
+                ->values();
+        }
 
         return response()->json([
             'success' => true,

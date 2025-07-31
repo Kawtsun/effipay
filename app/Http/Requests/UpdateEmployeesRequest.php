@@ -32,6 +32,9 @@ class UpdateEmployeesRequest extends FormRequest
             'philhealth' => 'required|integer|min:250|max:2500',
             'pag_ibig' => 'required|integer|min:200',
             'withholding_tax' => 'required|integer|min:0',
+            'work_hours_per_day' => 'required|integer|min:1|max:24',
+            'work_start_time' => 'required|date_format:H:i',
+            'work_end_time' => 'required|date_format:H:i|after:work_start_time',
             'roles' => [
                 'required',
                 'string',

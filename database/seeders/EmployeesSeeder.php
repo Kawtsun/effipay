@@ -149,6 +149,18 @@ class EmployeesSeeder extends Seeder
             $calculatedPhilHealth = ($baseSalary * 0.05) / 4;
             $philhealth = max(250, min(2500, $calculatedPhilHealth));
             
+            // Generate work schedule based on employee type
+            $workHoursPerDay = $type === 'Part Time' ? fake()->randomElement([4, 6]) : 8;
+            $workStartTime = $type === 'Part Time' 
+                ? fake()->randomElement(['08:00:00', '09:00:00', '10:00:00', '13:00:00', '14:00:00'])
+                : '08:00:00';
+            
+            // Calculate end time based on start time and work hours
+            $startDateTime = \DateTime::createFromFormat('H:i:s', $workStartTime);
+            $endDateTime = clone $startDateTime;
+            $endDateTime->add(new \DateInterval("PT{$workHoursPerDay}H"));
+            $workEndTime = $endDateTime->format('H:i:s');
+
             Employees::create([
                 'employee_name' => $name,
                 'employee_type' => $type,
@@ -161,6 +173,9 @@ class EmployeesSeeder extends Seeder
                 'philhealth' => $philhealth,
                 'pag_ibig' => fake()->numberBetween(1000, 5000),
                 'withholding_tax' => fake()->numberBetween(5000, 10000),
+                'work_hours_per_day' => $workHoursPerDay,
+                'work_start_time' => $workStartTime,
+                'work_end_time' => $workEndTime,
             ]);
         }
     }

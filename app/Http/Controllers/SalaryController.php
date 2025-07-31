@@ -29,7 +29,8 @@ class SalaryController extends Controller
                 'sss' => 0,
                 'philhealth' => 250, // Default minimum when base_salary is 0
                 'pag_ibig' => 0,
-                'withholding_tax' => 0
+                'withholding_tax' => 0,
+                'work_hours_per_day' => 8
             ]
         );
 

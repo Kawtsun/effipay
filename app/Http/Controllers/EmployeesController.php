@@ -82,6 +82,7 @@ class EmployeesController extends Controller
                     'philhealth'      => $row->philhealth,
                     'pag_ibig'        => $row->pag_ibig,
                     'withholding_tax' => $row->withholding_tax,
+                    'work_hours_per_day' => $row->work_hours_per_day,
                 ],
             ])
             ->toArray();

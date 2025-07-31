@@ -2,6 +2,7 @@ import { EmployeeStatus } from '@/components/employee-status';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TimePicker } from '@/components/ui/time-picker';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
@@ -29,6 +30,7 @@ type Props = {
             philhealth: number;
             pag_ibig: number;
             withholding_tax: number;
+            work_hours_per_day: number;
         }
     >;
     employeeCategory?: string;
@@ -51,12 +53,24 @@ export default function Create({
         philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
         pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
         withholding_tax: salaryDefaults['Full Time']?.withholding_tax.toString() ?? '',
+        work_hours_per_day: salaryDefaults['Full Time']?.work_hours_per_day.toString() ?? '8',
+        work_start_time: '08:00',
+        work_end_time: '17:00',
         college_program: '', // NEW
     });
 
     const [collegeProgram, setCollegeProgram] = useState('');
     const [collegeProgramError, setCollegeProgramError] = useState('');
     const collegeDeptRef = useRef<HTMLDivElement>(null);
+
+    // Helper function to format time to 12-hour format
+    const formatTime12Hour = (time: string) => {
+        if (!time) return '';
+        const [hours, minutes] = time.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    };
 
 
 
@@ -72,11 +86,39 @@ export default function Create({
             setData('employee_type', 'Full Time');
             return;
         }
+        
         // Validate Pag-IBIG minimum
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
         if (pagIbigValue < 200) {
             toast.error('Pag-IBIG must be at least ₱200');
             return;
+        }
+
+        // Validate work hours consistency
+        const workHours = Number(data.work_hours_per_day) || 8;
+        const startTime = data.work_start_time;
+        const endTime = data.work_end_time;
+        
+        if (startTime && endTime) {
+            const [startHour, startMinute] = startTime.split(':').map(Number);
+            const [endHour, endMinute] = endTime.split(':').map(Number);
+            
+            // Convert to minutes for easier calculation
+            const startMinutes = startHour * 60 + startMinute;
+            const endMinutes = endHour * 60 + endMinute;
+            
+            // Handle overnight shifts (end time is next day)
+            let actualWorkMinutes = endMinutes - startMinutes;
+            if (actualWorkMinutes <= 0) {
+                actualWorkMinutes += 24 * 60; // Add 24 hours
+            }
+            
+            const actualWorkHours = actualWorkMinutes / 60;
+            
+            if (Math.abs(actualWorkHours - workHours) > 0.5) { // Allow 30 minutes tolerance
+                toast.error(`Work hours (${workHours}h) don't match the time range (${startTime} - ${endTime}). Expected approximately ${workHours} hours.`);
+                return;
+            }
         }
 
         const cleanedData = {
@@ -87,6 +129,7 @@ export default function Create({
             philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
             pag_ibig: pagIbigValue,
             withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
+            work_hours_per_day: workHours,
         };
         post(route('employees.store'), cleanedData);
     };
@@ -172,8 +215,47 @@ export default function Create({
             setData('philhealth', def.philhealth.toString());
             setData('pag_ibig', def.pag_ibig.toString());
             setData('withholding_tax', def.withholding_tax.toString());
+            setData('work_hours_per_day', def.work_hours_per_day.toString());
+            
+            // Update work times based on work hours
+            const workHours = def.work_hours_per_day;
+            if (workHours === 6) {
+                setData('work_start_time', '09:00');
+                setData('work_end_time', '16:00');
+            } else {
+                setData('work_start_time', '08:00');
+                setData('work_end_time', '17:00');
+            }
         }
     }, [data.employee_type, salaryDefaults]);
+
+    // Auto-calculate work hours when start/end times change
+    useEffect(() => {
+        const startTime = data.work_start_time;
+        const endTime = data.work_end_time;
+        
+        if (startTime && endTime) {
+            const [startHour, startMinute] = startTime.split(':').map(Number);
+            const [endHour, endMinute] = endTime.split(':').map(Number);
+            
+            // Convert to minutes for easier calculation
+            const startMinutes = startHour * 60 + startMinute;
+            const endMinutes = endHour * 60 + endMinute;
+            
+            // Handle overnight shifts (end time is next day)
+            let actualWorkMinutes = endMinutes - startMinutes;
+            if (actualWorkMinutes <= 0) {
+                actualWorkMinutes += 24 * 60; // Add 24 hours
+            }
+            
+            const actualWorkHours = Math.round(actualWorkMinutes / 60);
+            
+            // Only update if the calculated hours are reasonable (1-24 hours)
+            if (actualWorkHours >= 1 && actualWorkHours <= 24) {
+                setData('work_hours_per_day', actualWorkHours.toString());
+            }
+        }
+    }, [data.work_start_time, data.work_end_time]);
 
     // When collegeProgram changes, sync to form state
     useEffect(() => {
@@ -298,6 +380,55 @@ export default function Create({
                                     disabled={data.roles === ''}
                                 />
                             </div>
+                        </div>
+                        {/* Work Schedule */}
+                        <h1 className='font-bold text-xl my-2'>Work Schedule</h1>
+                        <div className='space-y-6'>
+                            <div className='flex flex-col gap-3'>
+                                <Label htmlFor="work_hours_per_day">
+                                    Work Hours per Day
+                                </Label>
+                                <Input
+                                    id="work_hours_per_day"
+                                    type="number"
+                                    required
+                                    placeholder="8"
+                                    min={1}
+                                    max={24}
+                                    value={data.work_hours_per_day}
+                                    onChange={(e) => setData('work_hours_per_day', e.target.value)}
+                                    disabled
+                                    className="bg-gray-50 cursor-not-allowed"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    💡 Hours will auto-calculate based on start and end times
+                                </p>
+                            </div>
+                            <div className='flex flex-row gap-6'>
+                                <div className='flex flex-col gap-3'>
+                                    <TimePicker
+                                        value={data.work_start_time}
+                                        onChange={(value) => setData('work_start_time', value)}
+                                        label="Work Start Time"
+                                        placeholder="Select start time"
+                                    />
+                                </div>
+                                <div className='flex flex-col gap-3'>
+                                    <TimePicker
+                                        value={data.work_end_time}
+                                        onChange={(value) => setData('work_end_time', value)}
+                                        label="Work End Time"
+                                        placeholder="Select end time"
+                                    />
+                                </div>
+                            </div>
+                            {data.work_start_time && data.work_end_time && (
+                                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                                        📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({data.work_hours_per_day} hours)
+                                    </p>
+                                </div>
+                            )}
                         </div>
                         {/* Employee Salary */}
                         <h1 className='font-bold text-xl my-2'>Employee Salary</h1>

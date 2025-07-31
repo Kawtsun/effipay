@@ -18,6 +18,7 @@ class Salary extends Model
         'philhealth',
         'pag_ibig',
         'withholding_tax',
+        'work_hours_per_day',
     ];
 
     public function getRouteKeyName(): string

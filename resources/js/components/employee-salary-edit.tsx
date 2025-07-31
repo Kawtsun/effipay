@@ -32,6 +32,7 @@ type Defaults = {
   philhealth: number
   pag_ibig: number
   withholding_tax: number
+  work_hours_per_day: number
 }
 
 export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props) {
@@ -55,10 +56,11 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
     }
   }, [open, value])
 
-  function formatDisplay(raw: string) {
+  function formatDisplay(raw: string, isHours: boolean = false) {
     if (!raw) return ""
     const num = parseInt(raw.replace(/\D/g, ""), 10)
-    return isNaN(num) ? "" : num.toLocaleString("en-PH")
+    if (isNaN(num)) return ""
+    return isHours ? num.toString() : num.toLocaleString("en-PH")
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -78,6 +80,14 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
     if (field === 'pag_ibig') {
       if (numeric < 200) {
         toast.error('Pag-IBIG must be at least ₱200')
+        return
+      }
+    }
+
+    // Validate work hours
+    if (field === 'work_hours_per_day') {
+      if (numeric < 1 || numeric > 24) {
+        toast.error('Work hours must be between 1 and 24 hours')
         return
       }
     }
@@ -125,18 +135,20 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
           <div className="flex flex-col gap-1">
             <Label htmlFor={field}>{label}</Label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
-                ₱
-              </span>
+              {field !== 'work_hours_per_day' && (
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+                  ₱
+                </span>
+              )}
               <Input
                 id={field}
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9,]*"
-                className="pl-8"
-                min={field === 'philhealth' ? 250 : field === 'pag_ibig' ? 200 : undefined}
-                max={field === 'philhealth' ? 2500 : undefined}
-                value={formatDisplay(data[field])}
+                className={field === 'work_hours_per_day' ? "" : "pl-8"}
+                min={field === 'philhealth' ? 250 : field === 'pag_ibig' ? 200 : field === 'work_hours_per_day' ? 1 : undefined}
+                max={field === 'philhealth' ? 2500 : field === 'work_hours_per_day' ? 24 : undefined}
+                value={formatDisplay(data[field], field === 'work_hours_per_day')}
                 onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
                   if (!/[\d]/.test((e as InputEvent).data ?? "")) {
                     e.preventDefault()
@@ -145,7 +157,7 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
                 onInput={(e) => {
                   const input = e.target as HTMLInputElement
                   const raw = input.value.replace(/\D/g, "")
-                  input.value = formatDisplay(raw)
+                  input.value = formatDisplay(raw, field === 'work_hours_per_day')
                 }}
                 onChange={(e) => {
                   const raw = e.target.value.replace(/\D/g, "")
@@ -162,6 +174,11 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
             {field === 'pag_ibig' && (
               <p className="text-xs text-muted-foreground">
                 Must be at least ₱200
+              </p>
+            )}
+            {field === 'work_hours_per_day' && (
+              <p className="text-xs text-muted-foreground">
+                Must be between 1 and 24 hours
               </p>
             )}
             {errors[field as keyof typeof errors] && (

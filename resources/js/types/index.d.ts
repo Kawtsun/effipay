@@ -55,6 +55,9 @@ export interface Employees {
     pag_ibig: number;
     college_program?: string;
     withholding_tax: number;
+    work_hours_per_day: number;
+    work_start_time: string;
+    work_end_time: string;
 }
 
 export interface Salary {
@@ -66,4 +69,5 @@ export interface Salary {
     philhealth: number;
     pag_ibig: number;
     withholding_tax: number;
+    work_hours_per_day: number;
 }
