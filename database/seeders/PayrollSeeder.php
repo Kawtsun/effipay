@@ -14,15 +14,17 @@ class PayrollSeeder extends Seeder
      */
     public function run(): void
     {
-        // Generate payroll data for 4 months (July, June, May, April) with data
-        // March and February will have no data but will appear in month selector
+        // Generate payroll data for 6 months with data
+        // 2 months before the earliest will have no data but will appear in month selector
         $payrollDates = [];
         
-        // Generate 4 months with payroll data (current month + 3 previous)
-        for ($i = 3; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
-            $year = $date->year;
-            $month = $date->month;
+        // Use a fixed date range to ensure we have 6 months of data
+        // Start from March 2025 and go forward 6 months
+        $startDate = \Carbon\Carbon::create(2025, 3, 1); // March 2025
+        
+        // Generate 6 months with payroll data
+        for ($i = 0; $i < 6; $i++) {
+            $date = $startDate->copy()->addMonths($i);
             
             // Add 15th of the month (first payroll)
             $payrollDates[] = $date->copy()->day(15)->format('Y-m-d');
@@ -83,8 +85,8 @@ class PayrollSeeder extends Seeder
             }
         }
 
-        $this->command->info('Sample payroll data generated for 15th and 28th of the last 4 months (July, June, May, April) with salary variations.');
-        $this->command->info('March and February will appear in month selector but have no payroll data for testing empty scenarios.');
+        $this->command->info('Sample payroll data generated for 15th and 28th of the last 6 months with salary variations.');
+        $this->command->info('2 months before the earliest payroll month will appear in month selector but have no payroll data for testing empty scenarios.');
     }
 
     /**
@@ -94,7 +96,7 @@ class PayrollSeeder extends Seeder
     {
         // Base variations that create realistic salary changes
         $variations = [
-            // Month 0 (July - most recent) - slight increases
+            // Month 0 (most recent) - slight increases
             [
                 'base_salary_adjustment' => rand(500, 2000),
                 'overtime_adjustment' => rand(-500, 1000),
@@ -103,7 +105,7 @@ class PayrollSeeder extends Seeder
                 'pag_ibig_adjustment' => rand(-200, 300),
                 'withholding_tax_adjustment' => rand(-500, 800),
             ],
-            // Month 1 (June) - moderate changes
+            // Month 1 - moderate changes
             [
                 'base_salary_adjustment' => rand(-1000, 1500),
                 'overtime_adjustment' => rand(-800, 1200),
@@ -112,7 +114,7 @@ class PayrollSeeder extends Seeder
                 'pag_ibig_adjustment' => rand(-300, 400),
                 'withholding_tax_adjustment' => rand(-600, 900),
             ],
-            // Month 2 (May) - more significant variations
+            // Month 2 - more significant variations
             [
                 'base_salary_adjustment' => rand(-1500, 2500),
                 'overtime_adjustment' => rand(-1200, 1800),
@@ -121,7 +123,7 @@ class PayrollSeeder extends Seeder
                 'pag_ibig_adjustment' => rand(-400, 500),
                 'withholding_tax_adjustment' => rand(-800, 1200),
             ],
-            // Month 3 (April) - original values with minor adjustments
+            // Month 3 - original values with minor adjustments
             [
                 'base_salary_adjustment' => rand(-2000, 1000),
                 'overtime_adjustment' => rand(-1500, 1000),
@@ -130,13 +132,31 @@ class PayrollSeeder extends Seeder
                 'pag_ibig_adjustment' => rand(-500, 300),
                 'withholding_tax_adjustment' => rand(-1000, 800),
             ],
+            // Month 4 - older data with more variations
+            [
+                'base_salary_adjustment' => rand(-2500, 1500),
+                'overtime_adjustment' => rand(-2000, 1500),
+                'sss_adjustment' => rand(-600, 400),
+                'philhealth_adjustment' => rand(-300, 250),
+                'pag_ibig_adjustment' => rand(-600, 400),
+                'withholding_tax_adjustment' => rand(-1200, 1000),
+            ],
+            // Month 5 - oldest data with significant variations
+            [
+                'base_salary_adjustment' => rand(-3000, 2000),
+                'overtime_adjustment' => rand(-2500, 2000),
+                'sss_adjustment' => rand(-700, 500),
+                'philhealth_adjustment' => rand(-350, 300),
+                'pag_ibig_adjustment' => rand(-700, 500),
+                'withholding_tax_adjustment' => rand(-1500, 1200),
+            ],
         ];
 
         // Add role-based variations
         $roleVariations = $this->getRoleBasedVariations($employee);
         
         // Combine base variations with role-based variations
-        $monthVariation = $variations[$monthIndex % 4];
+        $monthVariation = $variations[$monthIndex % 6];
         foreach ($monthVariation as $key => $value) {
             $monthVariation[$key] = $value + ($roleVariations[$key] ?? 0);
         }

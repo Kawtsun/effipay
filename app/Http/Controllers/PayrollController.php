@@ -193,29 +193,16 @@ class PayrollController extends Controller
         $earliestMonth = $allMonths->last(); // since it's descending order
         $monthsToAdd = [];
         if ($earliestMonth) {
-            // Parse the earliest month (Y-m) using Carbon
-            $date = \Carbon\Carbon::createFromFormat('Y-m', $earliestMonth);
+            // Parse the earliest month (Y-m) and create a date on the 1st of that month
+            [$year, $month] = explode('-', $earliestMonth);
+            $date = \Carbon\Carbon::create((int)$year, (int)$month, 1);
             if ($date) {
-                // Add the 2 months before the earliest
-                $year = $date->year;
-                $month = $date->month;
+                // Add the 2 months before the earliest using Carbon's subMonths method
+                $prevMonth1 = $date->copy()->subMonths(1)->format('Y-m');
+                $prevMonth2 = $date->copy()->subMonths(2)->format('Y-m');
                 
-                // Calculate previous months manually
-                $prevMonth1 = $month - 1;
-                $prevYear1 = $year;
-                if ($prevMonth1 < 1) {
-                    $prevMonth1 = 12;
-                    $prevYear1--;
-                }
-                $monthsToAdd[] = sprintf('%04d-%02d', $prevYear1, $prevMonth1);
-                
-                $prevMonth2 = $month - 2;
-                $prevYear2 = $year;
-                if ($prevMonth2 < 1) {
-                    $prevMonth2 += 12;
-                    $prevYear2--;
-                }
-                $monthsToAdd[] = sprintf('%04d-%02d', $prevYear2, $prevMonth2);
+                $monthsToAdd[] = $prevMonth1;
+                $monthsToAdd[] = $prevMonth2;
             }
         }
 
