@@ -209,12 +209,14 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                             ease: "easeOut"
                         }}
                     >
-                        <DialogContent className="max-w-5xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100]">
-                            <DialogHeader>
+                        <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col">
+                            <DialogHeader className="flex-shrink-0">
                                 <DialogTitle className="text-2xl font-bold mb-2">Employee Details</DialogTitle>
                             </DialogHeader>
-                            {/* Show skeleton if loading, else show real data */}
-                            <div className="space-y-8 text-base">
+                            {/* Scrollable content area */}
+                            <div className="flex-1 overflow-y-auto pr-2">
+                                {/* Show skeleton if loading, else show real data */}
+                                <div className="space-y-8 text-base">
                                 {/* Employee Header */}
                                 <div className="border-b pb-6 mb-2">
                                     <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {employee.employee_name}</h3>
@@ -241,22 +243,105 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                 <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
                                 {/* Salary & Contributions Section */}
                                 <div className="pt-2">
-                                    <h4 className="font-semibold text-lg mb-4">Salary & Contributions</h4>
-                                    {/* Payroll Month Selector aligned right above cards, no label */}
-                                    <div className="flex justify-end mb-4 items-center gap-2">
-                                        {/* MonthPicker dropdown must render in a portal with high z-index */}
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h4 className="font-semibold text-lg">Salary & Contributions</h4>
+                                        {/* MonthPicker dropdown positioned at bottom right of header */}
                                         <MonthPicker
                                             value={selectedMonth}
                                             onValueChange={handleMonthChange}
                                             placeholder="Select month"
                                             className="w-46 min-w-0 px-2 py-1 text-sm"
                                             availableMonths={availableMonths}
-                                            // Ensure MonthPicker's dropdown/popover is rendered in a portal:
-                                            // If MonthPicker supports a 'portal', 'container', or 'appendTo' prop, set it to document.body
-                                            // container={document.body} // <-- Or this, if supported
-                                            // appendTo={document.body} // <-- Or this, if supported
                                         />
                                     </div>
+                                    
+                                    {/* Rate Calculations */}
+                                    <AnimatePresence mode="wait">
+                                        {(loadingPayroll || minLoading) ? (
+                                            <motion.div
+                                                key="rate-skeleton"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="grid grid-cols-3 gap-6 mb-6"
+                                            >
+                                                {/* Rate Per Month Skeleton */}
+                                                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
+                                                    <Skeleton className="h-3 w-24 mb-2" />
+                                                    <Skeleton className="h-6 w-32 mb-2" />
+                                                    <Skeleton className="h-3 w-20" />
+                                                </div>
+                                                {/* Rate Per Day Skeleton */}
+                                                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+                                                    <Skeleton className="h-3 w-20 mb-2" />
+                                                    <Skeleton className="h-6 w-32 mb-2" />
+                                                    <Skeleton className="h-3 w-28" />
+                                                </div>
+                                                {/* Rate Per Hour Skeleton */}
+                                                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                                                    <Skeleton className="h-3 w-22 mb-2" />
+                                                    <Skeleton className="h-6 w-32 mb-2" />
+                                                    <Skeleton className="h-3 w-24" />
+                                                </div>
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div
+                                                key="rate-content"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                transition={{ duration: 0.25 }}
+                                                className="grid grid-cols-3 gap-6 mb-6"
+                                            >
+                                                <motion.div 
+                                                    className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800"
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    whileHover={{ scale: 1.02 }}
+                                                    transition={{ duration: 0.3, delay: 0.1 }}
+                                                >
+                                                    <div className="text-sm text-purple-600 font-medium mb-2">Rate Per Month</div>
+                                                    <div className="text-lg font-bold text-purple-700 dark:text-purple-300">
+                                                        ₱{employee.base_salary.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                    </div>
+                                                    <div className="text-xs text-purple-500 mt-1">
+                                                        Base Salary
+                                                    </div>
+                                                </motion.div>
+                                                <motion.div 
+                                                    className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800"
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    whileHover={{ scale: 1.02 }}
+                                                    transition={{ duration: 0.3, delay: 0.2 }}
+                                                >
+                                                    <div className="text-sm text-blue-600 font-medium mb-2">Rate Per Day</div>
+                                                    <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                                                        ₱{((employee.base_salary * 12) / 288).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                    </div>
+                                                    <div className="text-xs text-blue-500 mt-1">
+                                                        Base Salary × 12 ÷ 288
+                                                    </div>
+                                                </motion.div>
+                                                <motion.div 
+                                                    className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800"
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    whileHover={{ scale: 1.02 }}
+                                                    transition={{ duration: 0.3, delay: 0.3 }}
+                                                >
+                                                    <div className="text-sm text-green-600 font-medium mb-2">Rate Per Hour</div>
+                                                    <div className="text-lg font-bold text-green-700 dark:text-green-300">
+                                                        ₱{(((employee.base_salary * 12) / 288) / employee.work_hours_per_day).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                    </div>
+                                                    <div className="text-xs text-green-500 mt-1">
+                                                        Rate Per Day ÷ {employee.work_hours_per_day}h
+                                                    </div>
+                                                </motion.div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                     {/* Summary Cards with Skeleton/Content */}
                                     <AnimatePresence mode="wait">
                                         {(loadingPayroll || minLoading) ? (
@@ -445,7 +530,8 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles }: P
                                 </AnimatePresence>
                             </div>
                             </div>
-                            <DialogFooter> 
+                            </div>
+                            <DialogFooter className="flex-shrink-0"> 
                                 <Button onClick={onClose}>Close</Button> 
                             </DialogFooter>
                         </DialogContent>
