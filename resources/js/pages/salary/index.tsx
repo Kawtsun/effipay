@@ -95,7 +95,6 @@ export default function Index() {
   const cards = [
     { key: 'base_salary' as keyof Defaults, label: 'Base Salary', value: defaults.base_salary, isEarning: true },
     { key: 'overtime_pay' as keyof Defaults, label: 'Overtime Pay', value: defaults.overtime_pay, isEarning: true },
-    { key: 'work_hours_per_day' as keyof Defaults, label: 'Work Hours/Day', value: defaults.work_hours_per_day, isEarning: true, isHours: true },
     { key: 'sss' as keyof Defaults, label: 'SSS', value: defaults.sss, isEarning: false },
     { key: 'philhealth' as keyof Defaults, label: 'PhilHealth', value: defaults.philhealth, isEarning: false },
     { key: 'pag_ibig' as keyof Defaults, label: 'Pag-IBIG', value: defaults.pag_ibig, isEarning: false },
@@ -166,7 +165,7 @@ export default function Index() {
 
                   <CardContent className="flex items-center justify-between">
                     <p className="text-3xl font-bold text-green-600">
-                      {key === 'work_hours_per_day' ? `${value}h` : `₱${value.toLocaleString()}`}
+                      ₱{value.toLocaleString()}
                     </p>
                     <EmployeeSalaryEdit
                       employeeType={type}
