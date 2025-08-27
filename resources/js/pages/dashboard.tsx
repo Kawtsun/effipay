@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Users, Receipt, Wallet } from 'lucide-react';
+import { Users, Receipt, Wallet, LayoutDashboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { MonthPicker } from '@/components/ui/month-picker';
 import NetpayMonthlyChart from '@/components/netpay-monthly-chart';
@@ -55,7 +55,7 @@ export default function Dashboard({ stats, months, selectedMonth, chart }: Dashb
                 {/* Intro like other pages */}
                 <div className="flex-none">
                     <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
-                        <Receipt className="h-6 w-6 text-primary" />
+                        <LayoutDashboard className="h-6 w-6 text-primary" />
                         Dashboard
                     </h1>
                     <p className="text-sm text-muted-foreground">Quick glance at employees and payroll totals.</p>
@@ -78,7 +78,7 @@ export default function Dashboard({ stats, months, selectedMonth, chart }: Dashb
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
                                 <CardTitle>Total Employees</CardTitle>
-                                <CardDescription>All active employees</CardDescription>
+                                <CardDescription>All employees</CardDescription>
                             </div>
                             <Users className="h-5 w-5 text-primary" />
                         </CardHeader>
