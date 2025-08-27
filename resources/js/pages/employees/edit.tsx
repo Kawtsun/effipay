@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { TimePicker } from '@/components/ui/time-picker';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
@@ -60,6 +60,7 @@ export default function Edit({
     page,
     salaryDefaults,
 }: Props) {
+    const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
     const { data, setData, put } = useForm({
         employee_name: employee.employee_name,
         employee_type: employee.employee_type,
@@ -72,8 +73,8 @@ export default function Edit({
         pag_ibig: employee.pag_ibig.toString(),
         withholding_tax: employee.withholding_tax.toString(),
         work_hours_per_day: employee.work_hours_per_day.toString(),
-        work_start_time: employee.work_start_time,
-        work_end_time: employee.work_end_time,
+        work_start_time: trimToHM(employee.work_start_time),
+        work_end_time: trimToHM(employee.work_end_time),
         college_program: employee.college_program || '',
     });
 
@@ -110,31 +111,18 @@ export default function Edit({
             return;
         }
 
-        // Validate work hours consistency
-        const workHours = Number(data.work_hours_per_day) || 8;
-        const startTime = data.work_start_time;
-        const endTime = data.work_end_time;
-        
+        // Derive work hours from start/end time instead of blocking submission
+        const startTime = trimToHM(data.work_start_time);
+        const endTime = trimToHM(data.work_end_time);
+        let workHours = Number(data.work_hours_per_day) || 8;
         if (startTime && endTime) {
             const [startHour, startMinute] = startTime.split(':').map(Number);
             const [endHour, endMinute] = endTime.split(':').map(Number);
-            
-            // Convert to minutes for easier calculation
             const startMinutes = startHour * 60 + startMinute;
             const endMinutes = endHour * 60 + endMinute;
-            
-            // Handle overnight shifts (end time is next day)
             let actualWorkMinutes = endMinutes - startMinutes;
-            if (actualWorkMinutes <= 0) {
-                actualWorkMinutes += 24 * 60; // Add 24 hours
-            }
-            
-            const actualWorkHours = actualWorkMinutes / 60;
-            
-            if (Math.abs(actualWorkHours - workHours) > 0.5) { // Allow 30 minutes tolerance
-                toast.error(`Work hours (${workHours}h) don't match the time range (${startTime} - ${endTime}). Expected approximately ${workHours} hours.`);
-                return;
-            }
+            if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+            workHours = Math.round(actualWorkMinutes / 60);
         }
 
         const cleanedData = {
@@ -146,8 +134,19 @@ export default function Edit({
             pag_ibig: pagIbigValue,
             withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
             work_hours_per_day: workHours,
+            work_start_time: startTime,
+            work_end_time: endTime,
         };
-        put(route('employees.update', employee.id), cleanedData);
+
+        // Submit via PUT with correct route params
+        router.put(route('employees.update', { employee: employee.id }), cleanedData, {
+            preserveScroll: true,
+            // Rely on server redirect to employees.index to show flash toast; do not override/navigation here
+            onError: (errors) => {
+                const first = Object.values(errors)[0] as string | undefined;
+                if (first) toast.error(first);
+            }
+        });
     };
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -227,16 +226,8 @@ export default function Edit({
             setData('pag_ibig', def.pag_ibig.toString());
             setData('withholding_tax', def.withholding_tax.toString());
             setData('work_hours_per_day', def.work_hours_per_day.toString());
-            
-            // Update work times based on work hours
-            const workHours = def.work_hours_per_day;
-            if (workHours === 6) {
-                setData('work_start_time', '09:00');
-                setData('work_end_time', '16:00');
-            } else {
-                setData('work_start_time', '08:00');
-                setData('work_end_time', '17:00');
-            }
+
+            // Do NOT override existing work start/end times on edit.
         }
     }, [data.employee_type, salaryDefaults]);
 
@@ -402,26 +393,7 @@ export default function Edit({
                                 <div>
                                     <h1 className='font-bold text-xl mb-6'>Work Schedule</h1>
                                     <div className='space-y-6'>
-                                        <div className='flex flex-col gap-3'>
-                                            <Label htmlFor="work_hours_per_day">
-                                                Work Hours per Day
-                                            </Label>
-                                            <Input
-                                                id="work_hours_per_day"
-                                                type="number"
-                                                required
-                                                placeholder="8"
-                                                min={1}
-                                                max={24}
-                                                value={data.work_hours_per_day}
-                                                onChange={(e) => setData('work_hours_per_day', e.target.value)}
-                                                disabled
-                                                className="bg-gray-50 cursor-not-allowed"
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                💡 Hours will auto-calculate based on start and end times
-                                            </p>
-                                        </div>
+                                        {/* Work hours per day is auto-derived; input removed */}
                                         <div className='flex flex-row gap-6'>
                                             <div className='flex flex-col gap-3'>
                                                 <TimePicker

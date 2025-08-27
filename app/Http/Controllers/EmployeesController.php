@@ -166,6 +166,20 @@ class EmployeesController extends Controller
         $roles    = (array) $request->input('roles', []);
         $page     = $request->input('page', 1);
         $employeeTypes = ['Full Time', 'Part Time', 'Provisionary', 'Regular'];
+        $salaryDefaults = \App\Models\Salary::whereIn('employee_type', $employeeTypes)
+            ->get()
+            ->mapWithKeys(fn($row) => [
+                $row->employee_type => [
+                    'base_salary'     => $row->base_salary,
+                    'overtime_pay'    => $row->overtime_pay,
+                    'sss'             => $row->sss,
+                    'philhealth'      => $row->philhealth,
+                    'pag_ibig'        => $row->pag_ibig,
+                    'withholding_tax' => $row->withholding_tax,
+                    'work_hours_per_day' => $row->work_hours_per_day,
+                ],
+            ])
+            ->toArray();
         return Inertia::render('employees/edit', [
             'employee' => $employee,
             'search'   => $request->input('search', ''),
@@ -176,6 +190,7 @@ class EmployeesController extends Controller
             ],
             'page'     => $page,
             'employeeTypes' => $employeeTypes,
+            'salaryDefaults' => $salaryDefaults,
         ]);
     }
 

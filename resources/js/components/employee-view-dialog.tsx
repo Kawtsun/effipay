@@ -1,17 +1,16 @@
 
 
-// Clean helper to format time as 12-hour string
-// Helper to format time as 12-hour string
+// Helper to format time as 12-hour string (supports HH:MM or HH:MM:SS)
 function formatTime12Hour(time?: string): string {
-  if (!time) return '-';
-  const parts = time.split(':');
-  if (parts.length !== 2) return '-';
-  const hours = Number(parts[0]);
-  const minutes = Number(parts[1]);
-  if (isNaN(hours) || isNaN(minutes)) return '-';
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const displayHours = hours % 12 || 12;
-  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    if (!time) return '-';
+    const parts = time.split(':');
+    if (parts.length < 2) return '-';
+    const hours = Number(parts[0]);
+    const minutes = Number(parts[1]);
+    if (isNaN(hours) || isNaN(minutes)) return '-';
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
 import {
@@ -133,7 +132,6 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                 // Do not update selectedMonth here; it's already set in handleMonthChange
             } else {
                 setMonthlyPayrollData(null)
-                toast.error('No payroll data found for this month')
             }
         } catch (error) {
             console.error('Error fetching monthly payroll data:', error)
@@ -184,8 +182,6 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                             <div className="space-y-4 text-sm"> {/* Increased gap */}
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
-                                                <Info label="Work Start Time" value={employee.work_start_time ? formatTime12Hour(employee.work_start_time) : '-'} />
-                                                <Info label="Work End Time" value={employee.work_end_time ? formatTime12Hour(employee.work_end_time) : '-'} />
                                                 <Info label="Schedule" value={
                                                     employee.work_start_time && employee.work_end_time && employee.work_hours_per_day
                                                         ? `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${employee.work_hours_per_day} hours)`
