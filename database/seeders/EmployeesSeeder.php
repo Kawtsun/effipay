@@ -142,8 +142,27 @@ class EmployeesSeeder extends Seeder
                 ? fake()->randomElement($employeeTypesAdmin)
                 : fake()->randomElement($employeeTypesTeaching);
             
-            // Generate base salary first
-            $baseSalary = fake()->numberBetween(10000, 999999);
+            // Generate base salary and deductions to avoid negative net pay
+            $salaryRand = fake()->numberBetween(1, 100);
+            if ($salaryRand <= 20) { // 20%: low
+                $baseSalary = fake()->numberBetween(18000, 22000);
+            } elseif ($salaryRand <= 40) { // 20%: lower-mid
+                $baseSalary = fake()->numberBetween(23000, 28000);
+            } elseif ($salaryRand <= 60) { // 20%: upper-mid
+                $baseSalary = fake()->numberBetween(29000, 35000);
+            } elseif ($salaryRand <= 80) { // 20%: high
+                $baseSalary = fake()->numberBetween(36000, 45000);
+            } else { // 20%: very high
+                $baseSalary = fake()->numberBetween(50000, 70000);
+            }
+
+            // Deductions are now always less than half of base salary
+            $overtimePay = fake()->numberBetween(2000, 5000);
+            $sss = fake()->numberBetween(1000, (int)($baseSalary * 0.10));
+            $philhealth = max(250, min(2500, ($baseSalary * 0.05) / 4));
+            $pag_ibig = fake()->numberBetween(1000, (int)($baseSalary * 0.08));
+            $withholding_tax = fake()->numberBetween(2000, (int)($baseSalary * 0.15));
+            // Always process all employees (no skipping)
             
             // Calculate PhilHealth based on base salary
             $calculatedPhilHealth = ($baseSalary * 0.05) / 4;

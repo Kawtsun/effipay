@@ -41,9 +41,20 @@ export function MonthPicker({
       })
     : []
 
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+
+  // Wrap the onValueChange to blur after change
+  const handleValueChange = (val: string) => {
+    onValueChange?.(val);
+    // Blur the select trigger after change
+    setTimeout(() => {
+      triggerRef.current?.blur();
+    }, 0);
+  };
+
   return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className={cn("w-[200px]", className)}>
+    <Select value={value} onValueChange={handleValueChange}>
+      <SelectTrigger ref={triggerRef} className={cn("w-[200px]", className)}>
         <CalendarIcon className="mr-2 h-4 w-4" />
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>

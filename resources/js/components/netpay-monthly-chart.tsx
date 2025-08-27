@@ -37,15 +37,23 @@ export default function NetpayMonthlyChart({
   description?: string
   data: Point[]
 }) {
-  const chartData = (data || []).map(p => ({ month: p.label, netpay: p.total }))
+  // Sort months so January is first, assuming label is month name (e.g., 'Jan', 'Feb', ...)
+  const monthOrder = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+  const chartData = (data || [])
+    .map(p => ({ month: p.label, netpay: p.total }))
+    .sort((a, b) => monthOrder.indexOf(a.month.slice(0, 3)) - monthOrder.indexOf(b.month.slice(0, 3)));
 
   const chartConfig = {
     netpay: {
-      label: "Net Pay",
-      // Force default green (match primary / focus color)
+      label: "Employees' Net Pay (₱)",
+      // Use default green (primary) color
       color: "hsl(var(--primary))",
     },
   } satisfies ChartConfig
+
+
 
   return (
     <Card>
@@ -63,12 +71,30 @@ export default function NetpayMonthlyChart({
               tickMargin={10}
               axisLine={false}
               tickFormatter={(value) => String(value).slice(0, 3)}
+              label={{
+                value: "Month",
+                position: "insideBottomRight",
+                offset: -5,
+                style: { fill: "#22c55e", fontWeight: 600, fontSize: 13 }, // green
+              }}
             />
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent hideLabel valueFormatter={(v) => formatCurrency(Number(v))} />}
+              content={<ChartTooltipContent 
+                hideLabel={false}
+                labelFormatter={(_: unknown, payload: any[]) => {
+                  if (!payload?.length) return null;
+                  const { month, netpay } = payload[0]?.payload || {};
+                  return (
+                    <span>
+                      <span style={{ color: '#22c55e', fontWeight: 600 }}>Net Pay</span><br />
+                      <span style={{ fontSize: 13 }}>{month}: <b>{formatCurrency(Number(netpay))}</b></span>
+                    </span>
+                  );
+                }}
+              />}
             />
-            <Bar dataKey="netpay" fill="var(--color-netpay)" radius={6} />
+            <Bar dataKey="netpay" fill="var(--color-primary)" radius={6} isAnimationActive={true} />
           </BarChart>
         </ChartContainer>
       </CardContent>

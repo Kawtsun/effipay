@@ -43,7 +43,8 @@ export default function Dashboard({ stats, months, selectedMonth, chart }: Dashb
                 setLocalStats(json.stats);
                 const rows = json.chart?.perEmployee || [];
                 setSeries(rows.map((r: any) => ({ name: r.name, value: r.net_pay })));
-                setMonthly(json.chart?.monthly || []);
+                // Always create a new array reference for monthly
+                setMonthly([...(json.chart?.monthly || [])]);
             }
         } catch (_) {}
     }
@@ -115,7 +116,11 @@ export default function Dashboard({ stats, months, selectedMonth, chart }: Dashb
 
                 {/* Overview bar chart (last 12 months) using shadcn Chart + recharts */}
                 <div className="max-w-full">
-                    <NetpayMonthlyChart title="Overview" description="Last 12 months" data={monthly} />
+                    <NetpayMonthlyChart 
+                        title="Overview" 
+                        description="Last 12 months" 
+                        data={monthly} 
+                    />
                 </div>
             </div>
         </AppLayout>
