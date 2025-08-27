@@ -85,8 +85,7 @@ class PayrollSeeder extends Seeder
             }
         }
 
-        $this->command->info('Sample payroll data generated for 15th and 28th of the last 6 months with salary variations.');
-        $this->command->info('2 months before the earliest payroll month will appear in month selector but have no payroll data for testing empty scenarios.');
+        $this->command->info('Sample payroll data generated with pronounced month-to-month salary variations.');
     }
 
     /**
@@ -98,57 +97,57 @@ class PayrollSeeder extends Seeder
         $variations = [
             // Month 0 (most recent) - slight increases
             [
-                'base_salary_adjustment' => rand(500, 2000),
-                'overtime_adjustment' => rand(-500, 1000),
-                'sss_adjustment' => rand(-200, 300),
-                'philhealth_adjustment' => rand(-100, 200),
-                'pag_ibig_adjustment' => rand(-200, 300),
-                'withholding_tax_adjustment' => rand(-500, 800),
+                'base_salary_adjustment' => rand(-15000, 20000),
+                'overtime_adjustment' => rand(-8000, 12000),
+                'sss_adjustment' => rand(-2500, 3500),
+                'philhealth_adjustment' => rand(-1200, 1500),
+                'pag_ibig_adjustment' => rand(-2000, 3000),
+                'withholding_tax_adjustment' => rand(-6000, 9000),
             ],
             // Month 1 - moderate changes
             [
-                'base_salary_adjustment' => rand(-1000, 1500),
-                'overtime_adjustment' => rand(-800, 1200),
-                'sss_adjustment' => rand(-300, 400),
-                'philhealth_adjustment' => rand(-150, 250),
-                'pag_ibig_adjustment' => rand(-300, 400),
-                'withholding_tax_adjustment' => rand(-600, 900),
+                'base_salary_adjustment' => rand(-20000, 25000),
+                'overtime_adjustment' => rand(-10000, 15000),
+                'sss_adjustment' => rand(-3500, 5000),
+                'philhealth_adjustment' => rand(-1600, 2200),
+                'pag_ibig_adjustment' => rand(-2500, 3500),
+                'withholding_tax_adjustment' => rand(-9000, 12000),
             ],
             // Month 2 - more significant variations
             [
-                'base_salary_adjustment' => rand(-1500, 2500),
-                'overtime_adjustment' => rand(-1200, 1800),
-                'sss_adjustment' => rand(-400, 500),
-                'philhealth_adjustment' => rand(-200, 300),
-                'pag_ibig_adjustment' => rand(-400, 500),
-                'withholding_tax_adjustment' => rand(-800, 1200),
+                'base_salary_adjustment' => rand(-25000, 35000),
+                'overtime_adjustment' => rand(-15000, 20000),
+                'sss_adjustment' => rand(-5000, 7000),
+                'philhealth_adjustment' => rand(-2200, 3200),
+                'pag_ibig_adjustment' => rand(-3200, 4500),
+                'withholding_tax_adjustment' => rand(-15000, 20000),
             ],
             // Month 3 - original values with minor adjustments
             [
-                'base_salary_adjustment' => rand(-2000, 1000),
-                'overtime_adjustment' => rand(-1500, 1000),
-                'sss_adjustment' => rand(-500, 300),
-                'philhealth_adjustment' => rand(-250, 200),
-                'pag_ibig_adjustment' => rand(-500, 300),
-                'withholding_tax_adjustment' => rand(-1000, 800),
+                'base_salary_adjustment' => rand(-18000, 18000),
+                'overtime_adjustment' => rand(-9000, 9000),
+                'sss_adjustment' => rand(-3000, 3000),
+                'philhealth_adjustment' => rand(-1200, 1200),
+                'pag_ibig_adjustment' => rand(-2600, 2600),
+                'withholding_tax_adjustment' => rand(-7000, 7000),
             ],
             // Month 4 - older data with more variations
             [
-                'base_salary_adjustment' => rand(-2500, 1500),
-                'overtime_adjustment' => rand(-2000, 1500),
-                'sss_adjustment' => rand(-600, 400),
-                'philhealth_adjustment' => rand(-300, 250),
-                'pag_ibig_adjustment' => rand(-600, 400),
-                'withholding_tax_adjustment' => rand(-1200, 1000),
+                'base_salary_adjustment' => rand(-22000, 22000),
+                'overtime_adjustment' => rand(-12000, 12000),
+                'sss_adjustment' => rand(-4500, 4500),
+                'philhealth_adjustment' => rand(-1800, 1800),
+                'pag_ibig_adjustment' => rand(-4200, 4200),
+                'withholding_tax_adjustment' => rand(-12000, 12000),
             ],
             // Month 5 - oldest data with significant variations
             [
-                'base_salary_adjustment' => rand(-3000, 2000),
-                'overtime_adjustment' => rand(-2500, 2000),
-                'sss_adjustment' => rand(-700, 500),
-                'philhealth_adjustment' => rand(-350, 300),
-                'pag_ibig_adjustment' => rand(-700, 500),
-                'withholding_tax_adjustment' => rand(-1500, 1200),
+                'base_salary_adjustment' => rand(-30000, 35000),
+                'overtime_adjustment' => rand(-20000, 22000),
+                'sss_adjustment' => rand(-7000, 8000),
+                'philhealth_adjustment' => rand(-2600, 3000),
+                'pag_ibig_adjustment' => rand(-6000, 7000),
+                'withholding_tax_adjustment' => rand(-20000, 22000),
             ],
         ];
 

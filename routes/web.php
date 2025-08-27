@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuditLogsController;
 use App\Http\Controllers\EmployeesController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SalaryController;
@@ -14,8 +15,8 @@ Route::get('/', fn() => Inertia::render('welcome'))
      ->name('home');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', fn() => Inertia::render('dashboard'))
-         ->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
 
     // Resourceful controllers
     Route::resources([
