@@ -18,7 +18,7 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
             <TccHeader />
             {/* Main content below header */}
             <AppShell variant="sidebar">
-                <div className="flex flex-1 pt-[64px]">
+                <div className="flex flex-1 pt-[84px]">
                     <AppSidebar />
                     <AppContent variant="sidebar" className="overflow-x-hidden">
                         <AppSidebarHeader breadcrumbs={breadcrumbs} />

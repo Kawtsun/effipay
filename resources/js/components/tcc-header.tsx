@@ -3,7 +3,7 @@ function TccHeader() {
         <header
             className="fixed top-0 left-0 w-full z-40 flex items-center justify-start px-8"
             style={{
-                height: '64px',
+                height: '84px',
                 background: 'var(--primary)',
             }}
         >
