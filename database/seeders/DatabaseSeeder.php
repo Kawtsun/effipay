@@ -34,5 +34,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             SalarySeeder::class,
         ]);
+
+        $this->call([
+            PayrollSeeder::class,
+        ]);
     }
 }

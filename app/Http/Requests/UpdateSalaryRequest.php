@@ -25,9 +25,10 @@ class UpdateSalaryRequest extends FormRequest
             'base_salary'     => 'sometimes|required|integer|min:0',
             'overtime_pay'    => 'sometimes|required|integer|min:0',
             'sss'             => 'sometimes|required|integer|min:0',
-            'philhealth'      => 'sometimes|required|integer|min:0',
-            'pag_ibig'        => 'sometimes|required|integer|min:0',
+            'philhealth'      => 'sometimes|required|integer|min:250|max:2500',
+            'pag_ibig'        => 'sometimes|required|integer|min:200',
             'withholding_tax' => 'sometimes|required|integer|min:0',
+            'work_hours_per_day' => 'sometimes|required|integer|min:1|max:24',
         ];
     }
 }

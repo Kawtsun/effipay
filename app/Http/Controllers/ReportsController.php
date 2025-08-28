@@ -12,9 +12,49 @@ class ReportsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        return Inertia::render('reports/index');
+        $query = \App\Models\Employees::query();
+
+        if ($request->filled('search')) {
+            $query->where('employee_name', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->filled('types')) {
+            $query->whereIn('employee_type', $request->types);
+        }
+
+        if ($request->filled('statuses')) {
+            $query->whereIn('employee_status', $request->statuses);
+        }
+
+        if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
+            $query->where(function($q) use ($request) {
+                foreach ($request->roles as $role) {
+                    $q->orWhere('roles', 'like', '%' . $role . '%');
+                }
+            });
+        }
+
+        // Filter by college program if set
+        if ($request->filled('collegeProgram')) {
+            $query->where('college_program', $request->collegeProgram);
+        }
+
+        $employees = $query->paginate(10)->withQueryString();
+
+        return Inertia::render('reports/index', [
+            'employees'   => $employees->items(),
+            'currentPage' => $employees->currentPage(),
+            'totalPages'  => $employees->lastPage(),
+            'search'      => $request->input('search', ''),
+            'filters'     => [
+                'types'    => (array) $request->input('types', []),
+                'statuses' => (array) $request->input('statuses', []),
+                'roles'    => array_values((array) $request->input('roles', [])),
+                'collegeProgram' => $request->input('collegeProgram', ''),
+            ],
+        ]);
     }
 
     /**

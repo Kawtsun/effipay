@@ -46,8 +46,29 @@ class EmployeesController extends Controller
 
         $employees = $query->paginate(10)->withQueryString();
 
+        // Ensure all required fields are present for each employee
+        $employeesArray = array_map(function ($emp) {
+            return [
+                'id' => $emp->id,
+                'employee_name' => $emp->employee_name,
+                'employee_type' => $emp->employee_type,
+                'employee_status' => $emp->employee_status,
+                'roles' => $emp->roles,
+                'base_salary' => $emp->base_salary,
+                'overtime_pay' => $emp->overtime_pay,
+                'sss' => $emp->sss,
+                'philhealth' => $emp->philhealth,
+                'pag_ibig' => $emp->pag_ibig,
+                'college_program' => $emp->college_program,
+                'withholding_tax' => $emp->withholding_tax,
+                'work_hours_per_day' => $emp->work_hours_per_day,
+                'work_start_time' => $emp->work_start_time,
+                'work_end_time' => $emp->work_end_time,
+            ];
+        }, $employees->items());
+
         return Inertia::render('employees/index', [
-            'employees'   => $employees->items(),
+            'employees'   => $employeesArray,
             'currentPage' => $employees->currentPage(),
             'totalPages'  => $employees->lastPage(),
             'search'      => $request->input('search', ''),
@@ -82,6 +103,7 @@ class EmployeesController extends Controller
                     'philhealth'      => $row->philhealth,
                     'pag_ibig'        => $row->pag_ibig,
                     'withholding_tax' => $row->withholding_tax,
+                    'work_hours_per_day' => $row->work_hours_per_day,
                 ],
             ])
             ->toArray();
@@ -144,6 +166,20 @@ class EmployeesController extends Controller
         $roles    = (array) $request->input('roles', []);
         $page     = $request->input('page', 1);
         $employeeTypes = ['Full Time', 'Part Time', 'Provisionary', 'Regular'];
+        $salaryDefaults = \App\Models\Salary::whereIn('employee_type', $employeeTypes)
+            ->get()
+            ->mapWithKeys(fn($row) => [
+                $row->employee_type => [
+                    'base_salary'     => $row->base_salary,
+                    'overtime_pay'    => $row->overtime_pay,
+                    'sss'             => $row->sss,
+                    'philhealth'      => $row->philhealth,
+                    'pag_ibig'        => $row->pag_ibig,
+                    'withholding_tax' => $row->withholding_tax,
+                    'work_hours_per_day' => $row->work_hours_per_day,
+                ],
+            ])
+            ->toArray();
         return Inertia::render('employees/edit', [
             'employee' => $employee,
             'search'   => $request->input('search', ''),
@@ -154,6 +190,7 @@ class EmployeesController extends Controller
             ],
             'page'     => $page,
             'employeeTypes' => $employeeTypes,
+            'salaryDefaults' => $salaryDefaults,
         ]);
     }
 

@@ -5,24 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Salary extends Model
+class Payroll extends Model
 {
-    /** @use HasFactory<\Database\Factories\SalaryFactory> */
     use HasFactory;
 
     protected $fillable = [
-        'employee_type',
+        'employee_id',
+        'month',
+        'payroll_date',
         'base_salary',
         'overtime_pay',
         'sss',
         'philhealth',
         'pag_ibig',
         'withholding_tax',
-        'work_hours_per_day',
+        'gross_pay',
+        'total_deductions',
+        'net_pay',
     ];
 
-    public function getRouteKeyName(): string
+    public function employee()
     {
-        return 'employee_type';
+        return $this->belongsTo(Employees::class);
     }
 }

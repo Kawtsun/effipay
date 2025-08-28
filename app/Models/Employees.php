@@ -22,5 +22,13 @@ class Employees extends Model
         'philhealth',
         'pag_ibig',
         'withholding_tax',
+        'work_hours_per_day',
+        'work_start_time',
+        'work_end_time',
     ];
+
+    public function payrolls()
+    {
+        return $this->hasMany(Payroll::class);
+    }
 }

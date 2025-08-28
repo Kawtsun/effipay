@@ -20,16 +20,17 @@ class SalaryController extends Controller
         $types    = ['Full Time', 'Part Time', 'Provisionary'];
         $selected = $request->input('type', $types[0]);
 
-        // firstOrCreate() ensures there’s always a row to edit
+        // firstOrCreate() ensures there's always a row to edit
         $defaults = Salary::firstOrCreate(
             ['employee_type' => $selected],
             [
                 'base_salary' => 0,
                 'overtime_pay' => 0,
                 'sss' => 0,
-                'philhealth' => 0,
+                'philhealth' => 250, // Default minimum when base_salary is 0
                 'pag_ibig' => 0,
-                'withholding_tax' => 0
+                'withholding_tax' => 0,
+                'work_hours_per_day' => 8
             ]
         );
 
@@ -80,10 +81,19 @@ class SalaryController extends Controller
      */
     public function update(UpdateSalaryRequest $request, Salary $salary): RedirectResponse
     {
-        $salary->update($request->validated());
+        $data = $request->validated();
+        
+        // If base_salary is being updated, automatically calculate PhilHealth
+        if (isset($data['base_salary'])) {
+            $calculatedPhilHealth = ($data['base_salary'] * 0.05) / 4;
+            $data['philhealth'] = max(250, min(2500, $calculatedPhilHealth));
+        }
+        
+        $salary->update($data);
 
         return redirect()
-            ->route('salary.index', ['type' => $salary->employee_type]);
+            ->route('salary.index', ['type' => $salary->employee_type])
+            ->with('success', 'Salary updated successfully!');
     }
 
     /**

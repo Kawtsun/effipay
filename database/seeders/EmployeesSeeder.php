@@ -141,18 +141,60 @@ class EmployeesSeeder extends Seeder
             $type = (in_array('administrator', $rolesArr) && !$instructor)
                 ? fake()->randomElement($employeeTypesAdmin)
                 : fake()->randomElement($employeeTypesTeaching);
+            
+            // Generate base salary and deductions to avoid negative net pay
+            $salaryRand = fake()->numberBetween(1, 100);
+            if ($salaryRand <= 20) { // 20%: low
+                $baseSalary = fake()->numberBetween(18000, 22000);
+            } elseif ($salaryRand <= 40) { // 20%: lower-mid
+                $baseSalary = fake()->numberBetween(23000, 28000);
+            } elseif ($salaryRand <= 60) { // 20%: upper-mid
+                $baseSalary = fake()->numberBetween(29000, 35000);
+            } elseif ($salaryRand <= 80) { // 20%: high
+                $baseSalary = fake()->numberBetween(36000, 45000);
+            } else { // 20%: very high
+                $baseSalary = fake()->numberBetween(50000, 70000);
+            }
+
+            // Deductions are now always less than half of base salary
+            $overtimePay = fake()->numberBetween(2000, 5000);
+            $sss = fake()->numberBetween(1000, (int)($baseSalary * 0.10));
+            $philhealth = max(250, min(2500, ($baseSalary * 0.05) / 4));
+            $pag_ibig = fake()->numberBetween(1000, (int)($baseSalary * 0.08));
+            $withholding_tax = fake()->numberBetween(2000, (int)($baseSalary * 0.15));
+            // Always process all employees (no skipping)
+            
+            // Calculate PhilHealth based on base salary
+            $calculatedPhilHealth = ($baseSalary * 0.05) / 4;
+            $philhealth = max(250, min(2500, $calculatedPhilHealth));
+            
+            // Generate work schedule based on employee type
+            $workHoursPerDay = $type === 'Part Time' ? fake()->randomElement([4, 6]) : 8;
+            $workStartTime = $type === 'Part Time' 
+                ? fake()->randomElement(['08:00:00', '09:00:00', '10:00:00', '13:00:00', '14:00:00'])
+                : '08:00:00';
+            
+            // Calculate end time based on start time and work hours
+            $startDateTime = \DateTime::createFromFormat('H:i:s', $workStartTime);
+            $endDateTime = clone $startDateTime;
+            $endDateTime->add(new \DateInterval("PT{$workHoursPerDay}H"));
+            $workEndTime = $endDateTime->format('H:i:s');
+
             Employees::create([
                 'employee_name' => $name,
                 'employee_type' => $type,
                 'employee_status' => fake()->randomElement(['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave']),
                 'roles' => $roles,
                 'college_program' => $collegeProgram,
-                'base_salary' => fake()->numberBetween(10000, 999999),
+                'base_salary' => $baseSalary,
                 'overtime_pay' => fake()->numberBetween(2000, 5000),
                 'sss' => fake()->numberBetween(1000, 5000),
-                'philhealth' => fake()->numberBetween(1000, 5000),
+                'philhealth' => $philhealth,
                 'pag_ibig' => fake()->numberBetween(1000, 5000),
                 'withholding_tax' => fake()->numberBetween(5000, 10000),
+                'work_hours_per_day' => $workHoursPerDay,
+                'work_start_time' => $workStartTime,
+                'work_end_time' => $workEndTime,
             ]);
         }
     }

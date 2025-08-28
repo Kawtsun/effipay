@@ -440,7 +440,12 @@ export default function Index({
                             </TableBody>
                         </Table>
                     </div>
-                    <EmployeeViewDialog employee={viewing} onClose={() => setViewing(null)} activeRoles={appliedFilters.roles} />
+                    <EmployeeViewDialog
+                        employee={viewing}
+                        onClose={() => setViewing(null)}
+                        activeRoles={appliedFilters.roles}
+                        showPayroll={false}
+                    />
 
                     <EmployeeDelete
                         open={open}
