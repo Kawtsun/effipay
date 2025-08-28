@@ -8,6 +8,7 @@ import { Users, Receipt, Wallet, LayoutDashboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { MonthPicker } from '@/components/ui/month-picker';
 import NetpayMonthlyChart from '@/components/netpay-monthly-chart';
+import { EmployeeClassificationPie } from '@/components/employee-classification-pie';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -21,6 +22,7 @@ type DashboardProps = {
     months: string[];
     selectedMonth?: string;
     chart?: { perEmployee: { name: string; net_pay: number }[]; monthly: { key: string; label: string; total: number }[] };
+    employeeClassifications?: { classification: string; count: number }[];
 }
 
 export default function Dashboard({ stats, months, selectedMonth, chart }: DashboardProps) {
@@ -114,13 +116,22 @@ export default function Dashboard({ stats, months, selectedMonth, chart }: Dashb
                     </Card>
                 </div>
 
-                {/* Overview bar chart (last 12 months) using shadcn Chart + recharts */}
-                <div className="max-w-full">
-                    <NetpayMonthlyChart 
-                        title="Overview" 
-                        description="Last 12 months" 
-                        data={monthly} 
-                    />
+                {/* Charts row: Bar chart and Pie chart side by side on desktop, stacked on mobile */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+                    <div className="md:col-span-8 col-span-1">
+                        <NetpayMonthlyChart 
+                            title="Overview" 
+                            description="Last 12 months" 
+                            data={monthly} 
+                        />
+                    </div>
+                    <div className="md:col-span-4 col-span-1 flex items-center justify-center">
+                        <div className="w-full max-w-[400px]">
+                            <EmployeeClassificationPie 
+                                data={typeof usePage === 'function' ? (usePage().props.employeeClassifications ?? []) : []}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
         </AppLayout>

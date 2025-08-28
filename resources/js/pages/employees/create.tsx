@@ -124,6 +124,9 @@ export default function Create({
         // Submit via router to ensure redirect + flash messages work
         router.post(route('employees.store'), cleanedData, {
             preserveScroll: true,
+            onSuccess: () => {
+                router.reload({ only: ['employeeClassifications'] });
+            }
         });
     };
 

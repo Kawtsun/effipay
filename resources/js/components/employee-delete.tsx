@@ -53,7 +53,8 @@ const EmployeeDelete: FC<Props> = ({
         preserveScroll: true,
         onSuccess: () => {
           setOpen(false)
-          onDeleted?.()     // still notify parent to reload if you want
+          onDeleted?.()
+          window?.Inertia?.router?.reload?.({ only: ['employeeClassifications'] })
         },
       }
     )

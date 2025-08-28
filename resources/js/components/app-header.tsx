@@ -94,7 +94,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                         </Sheet>
                     </div>
 
-                    <Link href="/dashboard" prefetch className="flex items-center space-x-2">
+                    <Link href="/dashboard" prefetch className="flex items-center space-x-2" onClick={e => { e.preventDefault(); window.Inertia?.router?.visit('/dashboard', { replace: true }); }}>
                         <AppLogo />
                     </Link>
 

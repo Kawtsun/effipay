@@ -141,7 +141,9 @@ export default function Edit({
         // Submit via PUT with correct route params
         router.put(route('employees.update', { employee: employee.id }), cleanedData, {
             preserveScroll: true,
-            // Rely on server redirect to employees.index to show flash toast; do not override/navigation here
+            onSuccess: () => {
+                router.reload({ only: ['employeeClassifications'] });
+            },
             onError: (errors) => {
                 const first = Object.values(errors)[0] as string | undefined;
                 if (first) toast.error(first);
