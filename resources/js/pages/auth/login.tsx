@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
+import TccHeader from '@/components/tcc-header';
 
 type LoginForm = {
     username: string;
@@ -38,6 +39,7 @@ export default function Login({ status}: LoginProps) {
     return (
         <AuthLayout title="Log in to payroll system" description="Enter admin username and password below to log in">
             <Head title="Log in" />
+            <TccHeader />
             <form className="flex flex-col gap-6 w-full" onSubmit={submit}>
                 <div className="grid gap-6">
                     <div className="grid gap-2">

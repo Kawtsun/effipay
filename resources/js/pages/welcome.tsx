@@ -4,6 +4,7 @@ import { Head } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
+import TccHeader from '@/components/tcc-header';
 
 export default function Welcome() {
     const [loading, setLoading] = useState(false);
@@ -19,6 +20,7 @@ export default function Welcome() {
             <Head title="Welcome">
                 {/* Removed custom font, using default font stack */}
             </Head>
+            <TccHeader />
             <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden">
                 {/* Background image using imported asset */}
                 <div
