@@ -1,0 +1,26 @@
+// Add to DashboardController@index and @stats
+// Get employee classification counts for pie chart
+$employeeClassifications = Employees::select('employee_type')
+    ->get()
+    ->groupBy('employee_type')
+    ->map(fn($group, $type) => [
+        'classification' => $type,
+        'count' => $group->count(),
+    ])->values();
+
+// Pass to Inertia
+// ...existing code...
+'employeeClassifications' => $employeeClassifications,
+// ...existing code...
+
+// In stats():
+$employeeClassifications = Employees::select('employee_type')
+    ->get()
+    ->groupBy('employee_type')
+    ->map(fn($group, $type) => [
+        'classification' => $type,
+        'count' => $group->count(),
+    ])->values();
+// ...existing code...
+'employeeClassifications' => $employeeClassifications,
+// ...existing code...

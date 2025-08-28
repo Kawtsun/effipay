@@ -11,6 +11,16 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        // Get employee classification counts for pie chart
+        $employeeClassifications = Employees::select('employee_type')
+            ->get()
+            ->groupBy('employee_type')
+            ->map(function($group, $type) {
+                return [
+                    'classification' => $type,
+                    'count' => $group->count(),
+                ];
+            })->values();
         $totalEmployees = Employees::count();
 
         // Distinct months available from payrolls (Y-m)
@@ -64,11 +74,22 @@ class DashboardController extends Controller
                 'perEmployee' => $perEmployee,
                 'monthly' => $monthly,
             ],
+            'employeeClassifications' => $employeeClassifications,
         ]);
     }
 
     public function stats(Request $request)
     {
+        // Get employee classification counts for pie chart
+        $employeeClassifications = Employees::select('employee_type')
+            ->get()
+            ->groupBy('employee_type')
+            ->map(function($group, $type) {
+                return [
+                    'classification' => $type,
+                    'count' => $group->count(),
+                ];
+            })->values();
         $request->validate([
             'month' => 'nullable|date_format:Y-m',
         ]);
@@ -118,6 +139,7 @@ class DashboardController extends Controller
                 'perEmployee' => $perEmployee,
                 'monthly' => $monthly,
             ],
+            'employeeClassifications' => $employeeClassifications,
         ]);
     }
 }
