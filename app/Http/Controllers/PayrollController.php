@@ -33,22 +33,16 @@ class PayrollController extends Controller
             try {
                 // Get salary defaults for employee type
                 $salaryDefaults = Salary::where('employee_type', $employee->employee_type)->first();
-                
-                if (!$salaryDefaults) {
-                    $errors[] = "No salary defaults found for employee type: {$employee->employee_type}";
-                    continue;
-                }
 
+                // Use salary defaults if found, else fallback to employee's own values
+                $baseSalary = $salaryDefaults ? $salaryDefaults->base_salary : $employee->base_salary;
+                $overtimePay = $salaryDefaults ? $salaryDefaults->overtime_pay : $employee->overtime_pay;
+                $sss = $salaryDefaults ? $salaryDefaults->sss : $employee->sss;
+                $pagIbig = $salaryDefaults ? $salaryDefaults->pag_ibig : $employee->pag_ibig;
+                $withholdingTax = $salaryDefaults ? $salaryDefaults->withholding_tax : $employee->withholding_tax;
                 // Calculate PhilHealth based on base salary
-                $philhealth = ($employee->base_salary * 0.05) / 4;
+                $philhealth = ($baseSalary * 0.05) / 4;
                 $philhealth = max(250, min(2500, $philhealth));
-
-                // Calculate payroll components
-                $baseSalary = $employee->base_salary;
-                $overtimePay = $employee->overtime_pay;
-                $sss = $employee->sss;
-                $pagIbig = $employee->pag_ibig;
-                $withholdingTax = $employee->withholding_tax;
 
                 // Calculate totals
                 $grossPay = $baseSalary + $overtimePay;
