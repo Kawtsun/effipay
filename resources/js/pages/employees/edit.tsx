@@ -61,22 +61,25 @@ export default function Edit({
     salaryDefaults,
 }: Props) {
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
-    const { data, setData, put } = useForm({
-        employee_name: employee.employee_name,
-        employee_type: employee.employee_type,
-        employee_status: employee.employee_status,
-        roles: employee.roles,
-        base_salary: employee.base_salary.toString(),
-        overtime_pay: employee.overtime_pay.toString(),
-        sss: employee.sss.toString(),
-        philhealth: employee.philhealth.toString(),
-        pag_ibig: employee.pag_ibig.toString(),
-        withholding_tax: employee.withholding_tax.toString(),
-        work_hours_per_day: employee.work_hours_per_day.toString(),
-        work_start_time: trimToHM(employee.work_start_time),
-        work_end_time: trimToHM(employee.work_end_time),
-        college_program: employee.college_program || '',
-    });
+        const nameParts = employee.employee_name.split(',');
+        const { data, setData, put } = useForm({
+            surname: nameParts[0]?.trim() || '',
+            first_name: nameParts[1]?.trim() || '',
+            middle_name: nameParts[2]?.trim() || '',
+            employee_type: employee.employee_type,
+            employee_status: employee.employee_status,
+            roles: employee.roles,
+            base_salary: employee.base_salary.toString(),
+            overtime_pay: employee.overtime_pay.toString(),
+            sss: employee.sss.toString(),
+            philhealth: employee.philhealth.toString(),
+            pag_ibig: employee.pag_ibig.toString(),
+            withholding_tax: employee.withholding_tax.toString(),
+            work_hours_per_day: employee.work_hours_per_day.toString(),
+            work_start_time: trimToHM(employee.work_start_time),
+            work_end_time: trimToHM(employee.work_end_time),
+            college_program: employee.college_program || '',
+        });
 
     const [collegeProgram, setCollegeProgram] = useState(employee.college_program || '');
     const [collegeProgramError, setCollegeProgramError] = useState('');
@@ -268,48 +271,47 @@ export default function Edit({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Edit Employee" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
-                <div className="mb-4">
-                    <Link
-                        href={route('employees.index', {
-                            search,
-                            types: filters.types,
-                            statuses: filters.statuses,
-                            page,
-                        })}
-                    >
-                        <Button variant='outline'>
-                            <ArrowLeft className='w-4 h-4' />
-                            Go Back
-                        </Button>
-                    </Link>
-                </div>
-                <div className='w-full max-w-6xl mx-auto'>
-                    <form
-                        className='space-y-8'
-                        onSubmit={handleUpdate}
-                    >
-                        {/* Two Column Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-32">
-                            {/* Left Column - Employee Info & Work Schedule */}
-                            <div className="space-y-8">
-                                {/* Employee Information */}
-                                <div>
-                                    <h1 className='font-bold text-xl mb-6'>Employee Information</h1>
-                                    <div className='space-y-6'>
+                <Head title="Edit Employee" />
+                <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
+                    <div className="mb-4">
+                        <Link
+                            href={route('employees.index', {
+                                search,
+                                types: filters.types,
+                                statuses: filters.statuses,
+                                page,
+                            })}
+                        >
+                            <Button variant='outline'>
+                                <ArrowLeft className='w-4 h-4' />
+                                Go Back
+                            </Button>
+                        </Link>
+                    </div>
+                    <div className='w-full max-w-6xl mx-auto'>
+                        <form
+                            className='space-y-8'
+                            onSubmit={handleUpdate}
+                        >
+                            {/* Two Column Layout */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-32">
+                                {/* Left Column - Employee Info & Work Schedule */}
+                                <div className="space-y-8">
+                                    {/* Employee Information */}
+                                    <div>
+                                        <h1 className='font-bold text-xl mb-6'>Employee Information</h1>
+                                        <div className='space-y-6'>
                                         <div className="flex flex-col gap-3">
-                                            <Label htmlFor="employee_name">
-                                                Employee Name
-                                            </Label>
-                                            <Input
-                                                id="employee_name"
-                                                type="text"
-                                                required
-                                                placeholder="Name"
-                                                value={data.employee_name}
-                                                onChange={(e) => setData('employee_name', e.target.value)}
-                                            />
+                                            <Label>Surname</Label>
+                                            <Input id="surname" type="text" required placeholder="Surname" value={data.surname} onChange={e => setData('surname', e.target.value)} />
+                                        </div>
+                                        <div className="flex flex-col gap-3">
+                                            <Label>First Name</Label>
+                                            <Input id="first_name" type="text" required placeholder="First Name" value={data.first_name} onChange={e => setData('first_name', e.target.value)} />
+                                        </div>
+                                        <div className="flex flex-col gap-3">
+                                            <Label>Middle Name</Label>
+                                            <Input id="middle_name" type="text" placeholder="Middle Name" value={data.middle_name} onChange={e => setData('middle_name', e.target.value)} />
                                         </div>
                                         <div className="flex flex-col gap-3">
                                             <Label>Employee Roles</Label>
@@ -604,9 +606,6 @@ export default function Edit({
                                                         onChange={(e) => setData('philhealth', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    💡 Auto-calculated based on base salary
-                                                </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
                                                 <Label htmlFor="pag-ibig">
@@ -699,6 +698,6 @@ export default function Edit({
                     </form>
                 </div>
             </div>
-        </AppLayout>
+    </AppLayout>
     );
 }

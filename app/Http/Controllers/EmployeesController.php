@@ -122,7 +122,9 @@ class EmployeesController extends Controller
      */
     public function store(StoreEmployeesRequest $request)
     {
-        Employees::create($request->validated());
+    $data = $request->validated();
+    $data['employee_name'] = strtoupper(trim($data['surname']) . ', ' . trim($data['first_name']) . ', ' . ($data['middle_name'] ?? ''));
+    Employees::create($data);
 
         // Restore previous filters from referer
         $redirectParams = [];
@@ -199,7 +201,9 @@ class EmployeesController extends Controller
      */
     public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
-        $employee->update($request->validated());
+    $data = $request->validated();
+    $data['employee_name'] = strtoupper(trim($data['surname']) . ', ' . trim($data['first_name']) . ', ' . ($data['middle_name'] ?? ''));
+    $employee->update($data);
 
         // Restore previous filters from referer
         $redirectParams = [];

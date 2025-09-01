@@ -44,7 +44,10 @@ export default function Create({
 }: Props) {
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
     const { data, setData, post } = useForm({
-        employee_name: '',
+    first_name: '',
+    middle_name: '',
+    surname: '',
+    employee_name: '',
         employee_type: 'Full Time',
         employee_status: 'Active',
         roles: '',
@@ -108,8 +111,10 @@ export default function Create({
             workHours = Math.round(actualWorkMinutes / 60);
         }
 
+        const employee_name = `${data.surname}, ${data.first_name}, ${data.middle_name}`.toUpperCase();
         const cleanedData = {
             ...data,
+            employee_name: employee_name,
             base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
             overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
             sss: Number(data.sss.replace(/,/g, '')) || 0,
@@ -120,8 +125,6 @@ export default function Create({
             work_start_time: startTime,
             work_end_time: endTime,
         };
-
-        // Submit via router to ensure redirect + flash messages work
         router.post(route('employees.store'), cleanedData, {
             preserveScroll: true,
             onSuccess: () => {
@@ -294,17 +297,16 @@ export default function Create({
                                     <h1 className='font-bold text-xl mb-6'>Employee Information</h1>
                                     <div className='space-y-6'>
                                         <div className="flex flex-col gap-3">
-                                            <Label htmlFor="employee_name">
-                                                Employee Name
-                                            </Label>
-                                            <Input
-                                                id="employee_name"
-                                                type="text"
-                                                required
-                                                placeholder="Name"
-                                                value={data.employee_name}
-                                                onChange={(e) => setData('employee_name', e.target.value)}
-                                            />
+                                            <Label>Surname</Label>
+                                            <Input id="surname" type="text" required placeholder="Surname" value={data.surname} onChange={e => setData('surname', e.target.value)} />
+                                        </div>
+                                        <div className="flex flex-col gap-3">
+                                            <Label>First Name</Label>
+                                            <Input id="first_name" type="text" required placeholder="First Name" value={data.first_name} onChange={e => setData('first_name', e.target.value)} />
+                                        </div>
+                                        <div className="flex flex-col gap-3">
+                                            <Label>Middle Name</Label>
+                                            <Input id="middle_name" type="text" placeholder="Middle Name" value={data.middle_name} onChange={e => setData('middle_name', e.target.value)} />
                                         </div>
                                         <div className="flex flex-col gap-3">
                                             <Label>Employee Roles</Label>

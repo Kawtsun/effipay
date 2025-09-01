@@ -23,7 +23,9 @@ class UpdateEmployeesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'employee_name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'surname' => 'required|string|max:255',
             'employee_type' => 'required|string|max:255',
             'employee_status' => 'required|string|max:255',
             'base_salary' => 'required|integer|min:0',
