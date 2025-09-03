@@ -101,6 +101,12 @@ class SalaryController extends Controller
             $data['withholding_tax'] = ($total_compensation - 20833) * 0.15;
         } elseif ($total_compensation >= 33333 && $total_compensation <= 66666) {
             $data['withholding_tax'] = ($total_compensation - 33333) * 0.20 + 1875;
+        } elseif ($total_compensation >= 66667 && $total_compensation <= 166666) {
+            $data['withholding_tax'] = ($total_compensation - 66667) * 0.25 + 8541.80;
+        } elseif ($total_compensation >= 166667 && $total_compensation <= 666666) {
+            $data['withholding_tax'] = ($total_compensation - 166667) * 0.30 + 33541.80;
+        } elseif ($total_compensation >= 666667) {
+            $data['withholding_tax'] = ($total_compensation - 666667) * 0.35 + 183541.80;
         }
         
         $salary->update($data);
