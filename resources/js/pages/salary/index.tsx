@@ -167,12 +167,24 @@ export default function Index() {
                     <p className="text-3xl font-bold text-green-600">
                       ₱{value.toLocaleString()}
                     </p>
-                    <EmployeeSalaryEdit
-                      employeeType={type}
-                      field={key}
-                      label={label}
-                      value={value}
-                    />
+                      {key === 'withholding_tax' ? (
+                        <div className="flex flex-col items-end">
+                          <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
+                            <Pencil className="w-4 h-4" />
+                            Edit
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-1 text-right">
+                            Automated
+                          </p>
+                        </div>
+                      ) : (
+                        <EmployeeSalaryEdit
+                          employeeType={type}
+                          field={key}
+                          label={label}
+                          value={value}
+                        />
+                      )}
                   </CardContent>
                 </Card>
               ))}
@@ -202,7 +214,7 @@ export default function Index() {
                       </p>
                       {key === 'philhealth' && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Auto-calculated based on base salary
+                          Auto-calculated: (Base Salary × 0.05) / 2
                         </p>
                       )}
                     </div>
@@ -214,6 +226,16 @@ export default function Index() {
                         </Button>
                         <p className="text-xs text-muted-foreground mt-1 text-right">
                           Auto-calculated
+                        </p>
+                      </div>
+                    ) : key === 'withholding_tax' ? (
+                      <div className="flex flex-col items-end">
+                        <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
+                          <Pencil className="w-4 h-4" />
+                          Edit
+                        </Button>
+                        <p className="text-xs text-muted-foreground mt-1 text-right">
+                          Automated
                         </p>
                       </div>
                     ) : (

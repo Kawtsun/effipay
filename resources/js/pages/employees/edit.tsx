@@ -474,7 +474,7 @@ export default function Edit({
                                                             setData('base_salary', newBaseSalary);
                                                             // Auto-calculate PhilHealth based on base salary
                                                             const baseSalaryNum = Number(newBaseSalary) || 0;
-                                                            const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 4));
+                                                            const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
                                                             setData('philhealth', calculatedPhilHealth.toString());
                                                         }}
                                                     />
@@ -659,30 +659,12 @@ export default function Edit({
                                                         type="text"
                                                         required
                                                         placeholder="Withholding Tax"
-                                                        className="pl-8"
+                                                        className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
                                                         inputMode="numeric"
                                                         pattern="[0-9,]*"
                                                         min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
+                                                        disabled
                                                         value={data.withholding_tax ? Number(data.withholding_tax.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('withholding_tax', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
                                             </div>

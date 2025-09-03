@@ -124,6 +124,12 @@ class EmployeesController extends Controller
     {
     $data = $request->validated();
     $data['employee_name'] = strtoupper(trim($data['surname']) . ', ' . trim($data['first_name']) . ', ' . ($data['middle_name'] ?? ''));
+    // Recalculate PhilHealth using new formula (divide by 2)
+    if (isset($data['base_salary'])) {
+        $base_salary = (float) $data['base_salary'];
+        $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
+        $data['philhealth'] = round($philhealth, 2);
+    }
     Employees::create($data);
 
         // Restore previous filters from referer
@@ -203,6 +209,12 @@ class EmployeesController extends Controller
     {
     $data = $request->validated();
     $data['employee_name'] = strtoupper(trim($data['surname']) . ', ' . trim($data['first_name']) . ', ' . ($data['middle_name'] ?? ''));
+    // Recalculate PhilHealth using new formula (divide by 2)
+    if (isset($data['base_salary'])) {
+        $base_salary = (float) $data['base_salary'];
+        $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
+        $data['philhealth'] = round($philhealth, 2);
+    }
     $employee->update($data);
 
         // Restore previous filters from referer
