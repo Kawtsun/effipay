@@ -103,6 +103,10 @@ export default function Index() {
 
   const earningsCards = cards.filter(c => c.isEarning)
   const deductionCards = cards.filter(c => !c.isEarning)
+  // Calculate total compensation
+  const totalCompensation =
+    Number(defaults.base_salary) -
+    (Number(defaults.sss) + Number(defaults.pag_ibig) + Number(defaults.philhealth));
 
   const allTypes = [
     { value: 'Full Time', label: 'Full Time' },
@@ -147,26 +151,37 @@ export default function Index() {
             </div>
           </div>
 
+          {/* Total Compensation Box */}
+          <div className="mb-8">
+            <label className="block text-sm font-medium mb-2">Total Compensation</label>
+            <input
+              type="text"
+              value={`₱${totalCompensation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              readOnly
+              className="w-64 px-3 py-2 border rounded bg-gray-900 text-green-500 font-bold text-xl"
+            />
+          </div>
+
           {/* EARNINGS */}
           <section>
             <h2 className="text-lg font-semibold mb-4">Earnings</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {earningsCards.map(({ key, label, value }) => (
-                <Card
-                  key={key}
-                  className="h-full shadow-none hover:shadow-lg transition-shadow rounded-lg select-none"
-                >
-                  <CardHeader className="flex items-center justify-between pb-2">
-                    <CardTitle className="text-base">{label}</CardTitle>
-                    <span className="text-sm text-muted-foreground">
-                      {type}
-                    </span>
-                  </CardHeader>
-
-                  <CardContent className="flex items-center justify-between">
-                    <p className="text-3xl font-bold text-green-600">
-                      ₱{value.toLocaleString()}
-                    </p>
+              {earningsCards.map(({ key, label, value }) => {
+                return (
+                  <Card
+                    key={key}
+                    className="h-full shadow-none hover:shadow-lg transition-shadow rounded-lg select-none"
+                  >
+                    <CardHeader className="flex items-center justify-between pb-2">
+                      <CardTitle className="text-base">{label}</CardTitle>
+                      <span className="text-sm text-muted-foreground">
+                        {type}
+                      </span>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between">
+                      <p className="text-3xl font-bold text-green-600">
+                        ₱{Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
                       {key === 'withholding_tax' ? (
                         <div className="flex flex-col items-end">
                           <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
@@ -185,9 +200,10 @@ export default function Index() {
                           value={value}
                         />
                       )}
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </section>
 
@@ -195,60 +211,61 @@ export default function Index() {
           <section>
             <h2 className="text-lg font-semibold mb-4">Deductions</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {deductionCards.map(({ key, label, value }) => (
-                <Card
-                  key={key}
-                  className="h-full shadow-none hover:shadow-lg transition-shadow rounded-lg select-none"
-                >
-                  <CardHeader className="flex items-center justify-between pb-2">
-                    <CardTitle className="text-base">{label}</CardTitle>
-                    <span className="text-sm text-muted-foreground">
-                      {type}
-                    </span>
-                  </CardHeader>
-
-                  <CardContent className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <p className="text-3xl font-bold text-red-600">
-                        ₱{value.toLocaleString()}
-                      </p>
-                      {key === 'philhealth' && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Auto-calculated: (Base Salary × 0.05) / 2
+              {deductionCards.map(({ key, label, value }) => {
+                return (
+                  <Card
+                    key={key}
+                    className="h-full shadow-none hover:shadow-lg transition-shadow rounded-lg select-none"
+                  >
+                    <CardHeader className="flex items-center justify-between pb-2">
+                      <CardTitle className="text-base">{label}</CardTitle>
+                      <span className="text-sm text-muted-foreground">
+                        {type}
+                      </span>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <p className="text-3xl font-bold text-red-600">
+                          ₱{Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
+                        {key === 'philhealth' && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Auto-calculated: (Base Salary × 0.05) / 2
+                          </p>
+                        )}
+                      </div>
+                      {key === 'philhealth' ? (
+                        <div className="flex flex-col items-end">
+                          <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
+                            <Pencil className="w-4 h-4" />
+                            Edit
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-1 text-right">
+                            Auto-calculated
+                          </p>
+                        </div>
+                      ) : key === 'withholding_tax' ? (
+                        <div className="flex flex-col items-end">
+                          <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
+                            <Pencil className="w-4 h-4" />
+                            Edit
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-1 text-right">
+                            Automated
+                          </p>
+                        </div>
+                      ) : (
+                        <EmployeeSalaryEdit
+                          employeeType={type}
+                          field={key}
+                          label={label}
+                          value={value}
+                        />
                       )}
-                    </div>
-                    {key === 'philhealth' ? (
-                      <div className="flex flex-col items-end">
-                        <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
-                          <Pencil className="w-4 h-4" />
-                          Edit
-                        </Button>
-                        <p className="text-xs text-muted-foreground mt-1 text-right">
-                          Auto-calculated
-                        </p>
-                      </div>
-                    ) : key === 'withholding_tax' ? (
-                      <div className="flex flex-col items-end">
-                        <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
-                          <Pencil className="w-4 h-4" />
-                          Edit
-                        </Button>
-                        <p className="text-xs text-muted-foreground mt-1 text-right">
-                          Automated
-                        </p>
-                      </div>
-                    ) : (
-                      <EmployeeSalaryEdit
-                        employeeType={type}
-                        field={key}
-                        label={label}
-                        value={value}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </section>
         </div>

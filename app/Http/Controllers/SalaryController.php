@@ -85,7 +85,7 @@ class SalaryController extends Controller
         
         // If base_salary is being updated, automatically calculate PhilHealth
         if (isset($data['base_salary'])) {
-            $calculatedPhilHealth = ($data['base_salary'] * 0.05) / 4;
+            $calculatedPhilHealth = ($data['base_salary'] * 0.05) / 2;
             $data['philhealth'] = max(250, min(2500, $calculatedPhilHealth));
         }
         
