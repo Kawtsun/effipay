@@ -88,6 +88,20 @@ class SalaryController extends Controller
             $calculatedPhilHealth = ($data['base_salary'] * 0.05) / 2;
             $data['philhealth'] = max(250, min(2500, $calculatedPhilHealth));
         }
+
+        // Automate withholding tax: if total_compensation is 20,832 or below, set withholding_tax to 0
+        $base_salary = isset($data['base_salary']) ? $data['base_salary'] : $salary->base_salary;
+        $sss = isset($data['sss']) ? $data['sss'] : $salary->sss;
+        $pag_ibig = isset($data['pag_ibig']) ? $data['pag_ibig'] : $salary->pag_ibig;
+        $philhealth = isset($data['philhealth']) ? $data['philhealth'] : $salary->philhealth;
+        $total_compensation = $base_salary - ($sss + $pag_ibig + $philhealth);
+        if ($total_compensation <= 20832) {
+            $data['withholding_tax'] = 0;
+        } elseif ($total_compensation >= 20833 && $total_compensation <= 33332) {
+            $data['withholding_tax'] = ($total_compensation - 20833) * 0.15;
+        } elseif ($total_compensation >= 33333 && $total_compensation <= 66666) {
+            $data['withholding_tax'] = ($total_compensation - 33333) * 0.20 + 1875;
+        }
         
         $salary->update($data);
 
