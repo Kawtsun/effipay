@@ -66,11 +66,15 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    const numeric = data[field] === "" ? 0 : parseInt(data[field], 10)
+    // Always send latest values for base_salary, sss, and pag_ibig
+    const baseSalary = data.base_salary ? parseInt(data.base_salary, 10) : 0;
+    const sss = data.sss ? parseInt(data.sss, 10) : 0;
+    const pagIbig = data.pag_ibig ? parseInt(data.pag_ibig, 10) : 0;
+    const fieldValue = data[field] === "" ? 0 : parseInt(data[field], 10);
 
     // Validate PhilHealth range
     if (field === 'philhealth') {
-      if (numeric < 250 || numeric > 2500) {
+      if (fieldValue < 250 || fieldValue > 2500) {
         toast.error('PhilHealth must be between ₱250 and ₱2,500')
         return
       }
@@ -78,7 +82,7 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
 
     // Validate Pag-IBIG minimum
     if (field === 'pag_ibig') {
-      if (numeric < 200) {
+      if (fieldValue < 200) {
         toast.error('Pag-IBIG must be at least ₱200')
         return
       }
@@ -86,20 +90,20 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
 
     // Validate work hours
     if (field === 'work_hours_per_day') {
-      if (numeric < 1 || numeric > 24) {
+      if (fieldValue < 1 || fieldValue > 24) {
         toast.error('Work hours must be between 1 and 24 hours')
         return
       }
     }
 
-    // If updating base salary, also update PhilHealth automatically
-    let updateData = { [field]: numeric }
-    if (field === 'base_salary') {
-      const calculatedPhilHealth = calculatePhilHealth(numeric)
+    // Always send all three fields for backend automation
+    let updateData: any = { [field]: fieldValue };
+    if (['base_salary', 'sss', 'pag_ibig'].includes(field)) {
       updateData = {
-        [field]: numeric,
-        philhealth: calculatedPhilHealth
-      }
+        base_salary: field === 'base_salary' ? fieldValue : baseSalary,
+        sss: field === 'sss' ? fieldValue : sss,
+        pag_ibig: field === 'pag_ibig' ? fieldValue : pagIbig,
+      };
     }
 
     put(

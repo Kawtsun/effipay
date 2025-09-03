@@ -224,17 +224,17 @@ export default function Edit({
     useEffect(() => {
         if (salaryDefaults && salaryDefaults[data.employee_type]) {
             const def = salaryDefaults[data.employee_type];
-            setData('base_salary', def.base_salary.toString());
-            setData('overtime_pay', def.overtime_pay.toString());
-            setData('sss', def.sss.toString());
-            setData('philhealth', def.philhealth.toString());
-            setData('pag_ibig', def.pag_ibig.toString());
-            setData('withholding_tax', def.withholding_tax.toString());
-            setData('work_hours_per_day', def.work_hours_per_day.toString());
-
+            // Only set defaults if the field is empty (for create, not edit)
+            if (!data.base_salary) setData('base_salary', def.base_salary.toString());
+            if (!data.overtime_pay) setData('overtime_pay', def.overtime_pay.toString());
+            if (!data.sss) setData('sss', def.sss.toString());
+            if (!data.philhealth) setData('philhealth', def.philhealth.toString());
+            if (!data.pag_ibig) setData('pag_ibig', def.pag_ibig.toString());
+            if (!data.withholding_tax) setData('withholding_tax', def.withholding_tax.toString());
+            if (!data.work_hours_per_day) setData('work_hours_per_day', def.work_hours_per_day.toString());
             // Do NOT override existing work start/end times on edit.
         }
-    }, [data.employee_type, salaryDefaults]);
+    }, [data.employee_type, salaryDefaults, data.base_salary, data.overtime_pay, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, data.work_hours_per_day, setData]);
 
     // Auto-calculate work hours when start/end times change
     useEffect(() => {
@@ -265,9 +265,46 @@ export default function Edit({
     }, [data.work_start_time, data.work_end_time]);
 
     // When collegeProgram changes, sync to form state
+
+    // useEffect: When base_salary, sss, or pag_ibig change, recalculate PhilHealth and Withholding Tax
+    useEffect(() => {
+        const baseSalary = Number(data.base_salary.replace(/,/g, '')) || 0;
+        const sss = Number(data.sss.replace(/,/g, '')) || 0;
+        const pagIbig = Number(data.pag_ibig.replace(/,/g, '')) || 0;
+
+        // PhilHealth calculation
+        const calculatedPhilHealth = Math.round(Math.max(250, Math.min(2500, (baseSalary * 0.05) / 2)));
+        if (Number(data.philhealth.replace(/,/g, '')) !== calculatedPhilHealth) {
+            setData('philhealth', calculatedPhilHealth.toString());
+        }
+
+        // Withholding tax calculation
+        const philhealth = calculatedPhilHealth;
+        const totalCompensation = baseSalary - (sss + pagIbig + philhealth);
+        let withholdingTax = 0;
+        if (totalCompensation <= 20832) {
+            withholdingTax = 0;
+        } else if (totalCompensation >= 20833 && totalCompensation <= 33332) {
+            withholdingTax = (totalCompensation - 20833) * 0.15;
+        } else if (totalCompensation >= 33333 && totalCompensation <= 66666) {
+            withholdingTax = (totalCompensation - 33333) * 0.20 + 1875;
+        } else if (totalCompensation >= 66667 && totalCompensation <= 166666) {
+            withholdingTax = (totalCompensation - 66667) * 0.25 + 8541.80;
+        } else if (totalCompensation >= 166667 && totalCompensation <= 666666) {
+            withholdingTax = (totalCompensation - 166667) * 0.30 + 33541.80;
+        } else if (totalCompensation >= 666667) {
+            withholdingTax = (totalCompensation - 666667) * 0.35 + 183541.80;
+        }
+        withholdingTax = Math.max(0, withholdingTax);
+        const roundedWithholdingTax = Math.round(withholdingTax);
+        if (Number(data.withholding_tax.replace(/,/g, '')) !== roundedWithholdingTax) {
+            setData('withholding_tax', roundedWithholdingTax.toString());
+        }
+    }, [data.base_salary, data.sss, data.pag_ibig, data.philhealth, data.withholding_tax, setData]);
+
     useEffect(() => {
         setData('college_program', collegeProgram);
-    }, [collegeProgram]);
+    }, [collegeProgram, setData]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
