@@ -59,6 +59,17 @@ interface Props {
     showPayroll?: boolean
 }
 
+function formatWithCommas(value: string | number): string {
+    let num = 0;
+    if (value === null || value === undefined || value === '') {
+        num = 0;
+    } else {
+        num = typeof value === 'number' ? value : Number(value);
+        if (isNaN(num)) num = 0;
+    }
+    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function Info({ label, value }: { label: string; value: string | number }) {
     return (
         <div>
@@ -206,18 +217,18 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                             <div>
                                                 <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                 <div className="space-y-3 text-sm"> {/* Increased gap */}
-                                                    <Info label="Base Salary" value={`₱${employee.base_salary.toLocaleString()}`} />
-                                                    <Info label="Overtime Pay" value={`₱${employee.overtime_pay?.toLocaleString?.() ?? '-'}`} />
+                                                    <Info label="Base Salary" value={`₱${formatWithCommas(employee.base_salary)}`} />
+                                                    <Info label="Overtime Pay" value={`₱${formatWithCommas(employee.overtime_pay)}`} />
                                                 </div>
                                             </div>
 
                                             <div>
                                                 <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
                                                 <div className="space-y-3 text-sm"> {/* Increased gap */}
-                                                    <Info label="SSS" value={`₱${employee.sss.toLocaleString()}`} />
-                                                    <Info label="PhilHealth" value={`₱${employee.philhealth.toLocaleString()}`} />
-                                                    <Info label="Pag-IBIG" value={`₱${employee.pag_ibig.toLocaleString()}`} />
-                                                    <Info label="Withholding Tax" value={`₱${employee.withholding_tax.toLocaleString()}`} />
+                                                    <Info label="SSS" value={`₱${formatWithCommas(employee.sss)}`} />
+                                                    <Info label="PhilHealth" value={`₱${formatWithCommas(employee.philhealth)}`} />
+                                                    <Info label="Pag-IBIG" value={`₱${formatWithCommas(employee.pag_ibig)}`} />
+                                                    <Info label="Withholding Tax" value={`₱${formatWithCommas(employee.withholding_tax)}`} />
                                                 </div>
                                             </div>
 
