@@ -94,7 +94,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
         } else {
             setMonthlyPayrollData(null)
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [employee, pendingMonth])
 
     const fetchAvailableMonths = async () => {
@@ -122,9 +122,9 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
         if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current)
         minLoadingTimeout.current = setTimeout(() => setMinLoading(false), 400)
         try {
-            const response = await fetch(route('payroll.employee.monthly', { 
-                employee_id: employee.id, 
-                month: pendingMonth 
+            const response = await fetch(route('payroll.employee.monthly', {
+                employee_id: employee.id,
+                month: pendingMonth
             }))
             const result = await response.json()
             if (result.success) {
@@ -157,7 +157,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                         initial={{ opacity: 0, scale: 0.99 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.99 }}
-                        transition={{ 
+                        transition={{
                             duration: 0.2,
                             ease: "easeOut"
                         }}
@@ -203,16 +203,25 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                     <div className="pt-2">
                                         <h4 className="font-semibold text-lg mb-6">Salary & Contributions</h4>
                                         <div className="grid grid-cols-2 gap-16 items-start mb-10"> {/* Increased gap and margin */}
-                                            <div className="space-y-4"> {/* Increased gap */}
-                                                <Info label="Base Salary" value={`₱${employee.base_salary.toLocaleString()}`} />
-                                                <Info label="Overtime Pay" value={`₱${employee.overtime_pay?.toLocaleString?.() ?? '-'}`} />
+                                            <div>
+                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
+                                                <div className="space-y-3 text-sm"> {/* Increased gap */}
+                                                    <Info label="Base Salary" value={`₱${employee.base_salary.toLocaleString()}`} />
+                                                    <Info label="Overtime Pay" value={`₱${employee.overtime_pay?.toLocaleString?.() ?? '-'}`} />
+                                                </div>
                                             </div>
-                                            <div className="space-y-4"> {/* Increased gap */}
-                                                <Info label="SSS" value={`₱${employee.sss.toLocaleString()}`} />
-                                                <Info label="PhilHealth" value={`₱${employee.philhealth.toLocaleString()}`} />
-                                                <Info label="Pag-IBIG" value={`₱${employee.pag_ibig.toLocaleString()}`} />
-                                                <Info label="Withholding Tax" value={`₱${employee.withholding_tax.toLocaleString()}`} />
+
+                                            <div>
+                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
+                                                <div className="space-y-3 text-sm"> {/* Increased gap */}
+                                                    <Info label="SSS" value={`₱${employee.sss.toLocaleString()}`} />
+                                                    <Info label="PhilHealth" value={`₱${employee.philhealth.toLocaleString()}`} />
+                                                    <Info label="Pag-IBIG" value={`₱${employee.pag_ibig.toLocaleString()}`} />
+                                                    <Info label="Withholding Tax" value={`₱${employee.withholding_tax.toLocaleString()}`} />
+                                                </div>
                                             </div>
+
+
                                         </div>
                                         {/* Only show payroll data if showPayroll is true */}
                                         {showPayroll && (
@@ -233,13 +242,13 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                     </div>
                                 </div>
                             </div>
-                            <DialogFooter className="flex-shrink-0"> 
-                                <Button onClick={onClose}>Close</Button> 
+                            <DialogFooter className="flex-shrink-0">
+                                <Button onClick={onClose}>Close</Button>
                             </DialogFooter>
                         </DialogContent>
                     </motion.div>
                 )}
             </AnimatePresence>
         </Dialog>
-)
+    )
 }
