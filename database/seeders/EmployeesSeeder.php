@@ -115,13 +115,23 @@ class EmployeesSeeder extends Seeder
             'Rin Shima'
         ];
 
+        $employeeNames2 = [
+            'Francisco Morpheus Joshua Sumiquiab',
+            'Dizon Isaac Rossdale Manzano',
+            'Tañega Nicolle Daban',
+            'Vilaga Arwin Paul Bausista'
+
+        ];
+
         $shuffled = collect($employeeNames)->shuffle();
         $employeeTypesTeaching = ['Full Time', 'Part Time', 'Provisionary'];
         $employeeTypesAdmin = ['Regular', 'Provisionary'];
         $collegePrograms = [
             'BSBA', 'BSA', 'COELA', 'BSCRIM', 'BSCS', 'JD', 'BSN', 'RLE', 'CG', 'BSPT', 'GSP', 'MBA'
         ];
-        foreach ($shuffled as $name) {
+
+        //foreach ($shuffled as $name)
+        foreach ($employeeNames2 as $name) {
             // Assign at most one instructor type, and optionally administrator
             $instructor = fake()->randomElement(['college instructor', 'basic education instructor', null]);
             $rolesArr = [];
@@ -141,7 +151,7 @@ class EmployeesSeeder extends Seeder
             $type = (in_array('administrator', $rolesArr) && !$instructor)
                 ? fake()->randomElement($employeeTypesAdmin)
                 : fake()->randomElement($employeeTypesTeaching);
-            
+
             // Generate base salary and deductions to avoid negative net pay
             $salaryRand = fake()->numberBetween(1, 100);
             if ($salaryRand <= 20) { // 20%: low
@@ -156,24 +166,39 @@ class EmployeesSeeder extends Seeder
                 $baseSalary = fake()->numberBetween(50000, 70000);
             }
 
-            // Deductions are now always less than half of base salary
+            // Deductions
             $overtimePay = fake()->numberBetween(2000, 5000);
             $sss = fake()->numberBetween(1000, (int)($baseSalary * 0.10));
-            $philhealth = max(250, min(2500, ($baseSalary * 0.05) / 4));
             $pag_ibig = fake()->numberBetween(1000, (int)($baseSalary * 0.08));
-            $withholding_tax = fake()->numberBetween(2000, (int)($baseSalary * 0.15));
-            // Always process all employees (no skipping)
-            
-            // Calculate PhilHealth based on base salary
-            $calculatedPhilHealth = ($baseSalary * 0.05) / 4;
+
+            // PhilHealth calculation (match SalaryController: ($base_salary * 0.05) / 2, min 250, max 2500)
+            $calculatedPhilHealth = ($baseSalary * 0.05) / 2;
             $philhealth = max(250, min(2500, $calculatedPhilHealth));
-            
+
+            // Withholding tax calculation (match SalaryController)
+            $total_compensation = $baseSalary - ($sss + $pag_ibig + $philhealth);
+            if ($total_compensation <= 20832) {
+                $withholding_tax = 0;
+            } elseif ($total_compensation >= 20833 && $total_compensation <= 33332) {
+                $withholding_tax = ($total_compensation - 20833) * 0.15;
+            } elseif ($total_compensation >= 33333 && $total_compensation <= 66666) {
+                $withholding_tax = ($total_compensation - 33333) * 0.20 + 1875;
+            } elseif ($total_compensation >= 66667 && $total_compensation <= 166666) {
+                $withholding_tax = ($total_compensation - 66667) * 0.25 + 8541.80;
+            } elseif ($total_compensation >= 166667 && $total_compensation <= 666666) {
+                $withholding_tax = ($total_compensation - 166667) * 0.30 + 33541.80;
+            } elseif ($total_compensation >= 666667) {
+                $withholding_tax = ($total_compensation - 666667) * 0.35 + 183541.80;
+            } else {
+                $withholding_tax = 0;
+            }
+
             // Generate work schedule based on employee type
             $workHoursPerDay = $type === 'Part Time' ? fake()->randomElement([4, 6]) : 8;
             $workStartTime = $type === 'Part Time' 
                 ? fake()->randomElement(['08:00:00', '09:00:00', '10:00:00', '13:00:00', '14:00:00'])
                 : '08:00:00';
-            
+
             // Calculate end time based on start time and work hours
             $startDateTime = \DateTime::createFromFormat('H:i:s', $workStartTime);
             $endDateTime = clone $startDateTime;
@@ -197,11 +222,11 @@ class EmployeesSeeder extends Seeder
                 'roles' => $roles,
                 'college_program' => $collegeProgram,
                 'base_salary' => $baseSalary,
-                'overtime_pay' => fake()->numberBetween(2000, 5000),
-                'sss' => fake()->numberBetween(1000, 5000),
+                'overtime_pay' => $overtimePay,
+                'sss' => $sss,
                 'philhealth' => $philhealth,
-                'pag_ibig' => fake()->numberBetween(1000, 5000),
-                'withholding_tax' => fake()->numberBetween(5000, 10000),
+                'pag_ibig' => $pag_ibig,
+                'withholding_tax' => $withholding_tax,
                 'work_hours_per_day' => $workHoursPerDay,
                 'work_start_time' => $workStartTime,
                 'work_end_time' => $workEndTime,

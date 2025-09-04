@@ -14,58 +14,52 @@ class PayrollSeeder extends Seeder
      */
     public function run(): void
     {
-        // Generate payroll data for 6 months with data
-        // 2 months before the earliest will have no data but will appear in month selector
+        // Generate payroll data for 6 months for all employees, with monthly and role-based variations, but using SalaryController formulas for PhilHealth and withholding_tax
         $employees = Employees::all();
 
-        // Use a fixed date range to ensure we have 6 months of data
         $startDate = \Carbon\Carbon::create(2025, 3, 1); // March 2025
         for ($i = 0; $i < 6; $i++) {
             $date = $startDate->copy()->addMonths($i);
             $month = $date->format('Y-m');
-            // Payroll runs: 15th and 28th (or last day if <28)
             $firstPayrollDate = $date->copy()->day(15)->format('Y-m-d');
             $lastDay = $date->copy()->endOfMonth()->day;
             $secondPayrollDay = min(28, $lastDay);
             $secondPayrollDate = $date->copy()->day($secondPayrollDay)->format('Y-m-d');
 
-            // For each run, randomly select employees to process
-            $processPercent1 = rand(80, 90);
-            $processPercent2 = rand(80, 90);
-            $employeesRun1 = $employees->shuffle()->take((int) round($employees->count() * $processPercent1 / 100))->pluck('id')->toArray();
-            $employeesRun2 = $employees->shuffle()->take((int) round($employees->count() * $processPercent2 / 100))->pluck('id')->toArray();
+            foreach ($employees as $employee) {
+                // Get monthly and role-based variations
+                $monthVariation = $this->getMonthVariation($i, $employee);
 
-            // Only keep employees present in BOTH runs
-            $employeesBoth = array_intersect($employeesRun1, $employeesRun2);
-            $employeesToProcess = $employees->whereIn('id', $employeesBoth);
-
-            $monthIndex = $i;
-            foreach ($employeesToProcess as $employee) {
-                // Create salary variations based on month
-                $monthVariation = $this->getMonthVariation($monthIndex, $employee);
-
-                // Calculate PhilHealth based on adjusted base salary
-                $adjustedBaseSalary = $employee->base_salary + $monthVariation['base_salary_adjustment'];
-                $philhealth = ($adjustedBaseSalary * 0.05) / 4;
-                $philhealth = max(250, min(2500, $philhealth));
-                $philhealth += $monthVariation['philhealth_adjustment'];
-
-                // Calculate payroll components with variations
                 $baseSalary = max(10000, $employee->base_salary + $monthVariation['base_salary_adjustment']);
                 $overtimePay = max(0, $employee->overtime_pay + $monthVariation['overtime_adjustment']);
                 $sss = max(0, min($employee->sss + $monthVariation['sss_adjustment'], $baseSalary * 0.10));
                 $pagIbig = max(0, min($employee->pag_ibig + $monthVariation['pag_ibig_adjustment'], $baseSalary * 0.08));
-                $withholdingTax = max(0, min($employee->withholding_tax + $monthVariation['withholding_tax_adjustment'], $baseSalary * 0.15));
 
-                // Recalculate PhilHealth based on adjusted base salary
-                $philhealth = max(250, min(2500, ($baseSalary * 0.05) / 4));
+                // PhilHealth calculation (match SalaryController: ($base_salary * 0.05) / 2, min 250, max 2500)
+                $philhealth = max(250, min(2500, ($baseSalary * 0.05) / 2));
 
-                // Calculate totals
+                // Withholding tax calculation (match SalaryController)
+                $total_compensation = $baseSalary - ($sss + $pagIbig + $philhealth);
+                if ($total_compensation <= 20832) {
+                    $withholdingTax = 0;
+                } elseif ($total_compensation >= 20833 && $total_compensation <= 33332) {
+                    $withholdingTax = ($total_compensation - 20833) * 0.15;
+                } elseif ($total_compensation >= 33333 && $total_compensation <= 66666) {
+                    $withholdingTax = ($total_compensation - 33333) * 0.20 + 1875;
+                } elseif ($total_compensation >= 66667 && $total_compensation <= 166666) {
+                    $withholdingTax = ($total_compensation - 66667) * 0.25 + 8541.80;
+                } elseif ($total_compensation >= 166667 && $total_compensation <= 666666) {
+                    $withholdingTax = ($total_compensation - 166667) * 0.30 + 33541.80;
+                } elseif ($total_compensation >= 666667) {
+                    $withholdingTax = ($total_compensation - 666667) * 0.35 + 183541.80;
+                } else {
+                    $withholdingTax = 0;
+                }
+
                 $grossPay = $baseSalary + $overtimePay;
                 $totalDeductions = $sss + $philhealth + $pagIbig + $withholdingTax;
                 $netPay = max(0, $grossPay - $totalDeductions);
 
-                // Create payroll record for BOTH payroll runs (15th and 28th)
                 foreach ([$firstPayrollDate, $secondPayrollDate] as $payrollDate) {
                     Payroll::updateOrCreate(
                         [
@@ -89,7 +83,7 @@ class PayrollSeeder extends Seeder
             }
         }
 
-        $this->command->info('Sample payroll data generated: only employees processed in both payroll runs per month have payroll data for that month.');
+        $this->command->info('Payroll data generated for all employees for each payroll run per month, with monthly and role-based variations, using auto-calculation formulas.');
     }
 
     /**
