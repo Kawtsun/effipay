@@ -56,6 +56,13 @@ type Props = {
 export default function Edit({
     employee,
     search,
+function formatWithCommas(value: string) {
+    if (!value) return '';
+    const [int, dec] = value.split('.');
+    return dec !== undefined
+        ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
+        : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
     filters,
     page,
     salaryDefaults,
@@ -494,13 +501,12 @@ export default function Edit({
                                                             }
                                                         }}
                                                         // No formatting, just allow raw value for editing
-                                                        value={data.base_salary ?? ''}
-                                                        onChange={(e) => {
-                                                            // Allow only digits, commas, and periods
-                                                            const newBaseSalary = e.target.value.replace(/[^\d.,]/g, '');
-                                                            setData('base_salary', newBaseSalary);
+                                                        value={formatWithCommas(data.base_salary ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('base_salary', raw);
                                                             // Auto-calculate PhilHealth based on base salary
-                                                            const baseSalaryNum = Number(newBaseSalary) || 0;
+                                                            const baseSalaryNum = Number(raw) || 0;
                                                             const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
                                                             setData('philhealth', calculatedPhilHealth.toString());
                                                         }}
@@ -529,9 +535,9 @@ export default function Edit({
                                                             }
                                                         }}
                                                         // No formatting, just allow raw value for editing
-                                                        value={data.overtime_pay ?? ''}
+                                                        value={formatWithCommas(data.overtime_pay ?? '')}
                                                         onChange={e => {
-                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
+                                                            const raw = e.target.value.replace(/,/g, '');
                                                             setData('overtime_pay', raw);
                                                         }}
                                                     />
@@ -566,9 +572,9 @@ export default function Edit({
                                                             }
                                                         }}
                                                         // No formatting, just allow raw value for editing
-                                                        value={data.sss ?? ''}
+                                                        value={formatWithCommas(data.sss ?? '')}
                                                         onChange={e => {
-                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
+                                                            const raw = e.target.value.replace(/,/g, '');
                                                             setData('sss', raw);
                                                         }}
                                                     />
@@ -599,9 +605,9 @@ export default function Edit({
                                                             }
                                                         }}
                                                         // No formatting, just allow raw value for editing
-                                                        value={data.philhealth ?? ''}
+                                                        value={formatWithCommas(data.philhealth ?? '')}
                                                         onChange={e => {
-                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
+                                                            const raw = e.target.value.replace(/,/g, '');
                                                             setData('philhealth', raw);
                                                         }}
                                                     />
@@ -629,9 +635,9 @@ export default function Edit({
                                                             }
                                                         }}
                                                         // No formatting, just allow raw value for editing
-                                                        value={data.pag_ibig ?? ''}
+                                                        value={formatWithCommas(data.pag_ibig ?? '')}
                                                         onChange={e => {
-                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
+                                                            const raw = e.target.value.replace(/,/g, '');
                                                             setData('pag_ibig', raw);
                                                         }}
                                                     />
@@ -656,7 +662,7 @@ export default function Edit({
                                                         pattern="[0-9,]*"
                                                         min={0}
                                                         disabled
-                                                        value={data.withholding_tax ?? ''}
+                                                        value={formatWithCommas(data.withholding_tax ?? '')}
                                                     />
                                                 </div>
                                             </div>
