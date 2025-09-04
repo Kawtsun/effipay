@@ -1,3 +1,11 @@
+function formatWithCommas(value: string): string {
+  if (!value) return '';
+  const [int, dec] = value.split('.');
+  return dec !== undefined
+    ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
+    : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 import { EmployeeStatus } from '@/components/employee-status';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -445,15 +453,9 @@ export default function Create({
                                                         placeholder="Salary"
                                                         className="pl-8"
                                                         min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric, non-comma, and non-period input
-                                                            if (!/[\d,.]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        value={data.base_salary ?? ''}
+                                                        value={formatWithCommas(data.base_salary ?? '')}
                                                         onChange={e => {
-                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
+                                                            const raw = e.target.value.replace(/,/g, '');
                                                             setData('base_salary', raw);
                                                             // Auto-calculate PhilHealth based on base salary
                                                             const baseSalaryNum = Number(raw) || 0;
@@ -473,31 +475,16 @@ export default function Create({
                                                         id="overtime_pay"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="Overtime Pay"
                                                         className="pl-8"
                                                         min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
+                                                        value={formatWithCommas(data.overtime_pay ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('overtime_pay', raw);
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.overtime_pay ? Number(data.overtime_pay.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('overtime_pay', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
                                             </div>
@@ -518,31 +505,16 @@ export default function Create({
                                                         id="sss"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="SSS"
                                                         className="pl-8"
                                                         min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
+                                                        value={formatWithCommas(data.sss ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('sss', raw);
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.sss ? Number(data.sss.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('sss', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
                                             </div>
@@ -556,7 +528,7 @@ export default function Create({
                                                         id="philhealth"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="PhilHealth"
                                                         className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
@@ -564,29 +536,11 @@ export default function Create({
                                                         min={250}
                                                         max={2500}
                                                         disabled
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
+                                                        value={formatWithCommas(data.philhealth ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('philhealth', raw);
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 250) {
-                                                                value = '250';
-                                                            }
-                                                            if (value && Number(value) > 2500) {
-                                                                value = '2500';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.philhealth ? Number(data.philhealth.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('philhealth', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground">
@@ -603,31 +557,16 @@ export default function Create({
                                                         id="pag-ibig"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="Pag-IBIG"
                                                         className="pl-8"
                                                         min={200}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
+                                                        value={formatWithCommas(data.pag_ibig ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('pag_ibig', raw);
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.pag_ibig ? Number(data.pag_ibig.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('pag_ibig', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground">
@@ -647,10 +586,14 @@ export default function Create({
                                                             placeholder="Withholding Tax"
                                                             className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
                                                             inputMode="numeric"
-                                                            pattern="[0-9,]*"
+                                                            pattern="[0-9.,]*"
                                                             min={0}
                                                             disabled
-                                                            value={data.withholding_tax ? Number(data.withholding_tax.replace(/,/g, '')).toLocaleString() : ''}
+                                                            value={formatWithCommas(data.withholding_tax ?? '')}
+                                                            onChange={e => {
+                                                                const raw = e.target.value.replace(/,/g, '');
+                                                                setData('withholding_tax', raw);
+                                                            }}
                                                         />
                                                 </div>
                                             </div>

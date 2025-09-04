@@ -53,9 +53,6 @@ type Props = {
     employeeCategory?: string;
 };
 
-export default function Edit({
-    employee,
-    search,
 function formatWithCommas(value: string) {
     if (!value) return '';
     const [int, dec] = value.split('.');
@@ -63,6 +60,10 @@ function formatWithCommas(value: string) {
         ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
         : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
+
+export default function Edit({
+    employee,
+    search,
     filters,
     page,
     salaryDefaults,
@@ -494,13 +495,6 @@ function formatWithCommas(value: string) {
                                                         placeholder="Salary"
                                                         className="pl-8"
                                                         min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric, non-comma, and non-period input
-                                                            if (!/[\d,.]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        // No formatting, just allow raw value for editing
                                                         value={formatWithCommas(data.base_salary ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
@@ -528,13 +522,6 @@ function formatWithCommas(value: string) {
                                                         placeholder="Overtime Pay"
                                                         className="pl-8"
                                                         min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric, non-comma, and non-period input
-                                                            if (!/[\d,.]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        // No formatting, just allow raw value for editing
                                                         value={formatWithCommas(data.overtime_pay ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
@@ -565,13 +552,6 @@ function formatWithCommas(value: string) {
                                                         placeholder="SSS"
                                                         className="pl-8"
                                                         min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric, non-comma, and non-period input
-                                                            if (!/[\d,.]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        // No formatting, just allow raw value for editing
                                                         value={formatWithCommas(data.sss ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
@@ -590,7 +570,7 @@ function formatWithCommas(value: string) {
                                                         id="philhealth"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="PhilHealth"
                                                         className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
@@ -598,13 +578,6 @@ function formatWithCommas(value: string) {
                                                         min={250}
                                                         max={2500}
                                                         disabled
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        // No formatting, just allow raw value for editing
                                                         value={formatWithCommas(data.philhealth ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
@@ -623,18 +596,11 @@ function formatWithCommas(value: string) {
                                                         id="pag-ibig"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="Pag-IBIG"
                                                         className="pl-8"
                                                         min={200}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        // No formatting, just allow raw value for editing
                                                         value={formatWithCommas(data.pag_ibig ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
@@ -659,10 +625,14 @@ function formatWithCommas(value: string) {
                                                         placeholder="Withholding Tax"
                                                         className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         min={0}
                                                         disabled
                                                         value={formatWithCommas(data.withholding_tax ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('withholding_tax', raw);
+                                                        }}
                                                     />
                                                 </div>
                                             </div>
