@@ -440,35 +440,23 @@ export default function Create({
                                                         id="base_salary"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="Salary"
                                                         className="pl-8"
                                                         min={0}
                                                         onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
+                                                            // Prevent non-numeric, non-comma, and non-period input
+                                                            if (!/[\d,.]/.test((e as InputEvent).data ?? '')) {
                                                                 e.preventDefault();
                                                             }
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.base_salary ? Number(data.base_salary.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => {
-                                                            const newBaseSalary = e.target.value.replace(/,/g, '');
-                                                            setData('base_salary', newBaseSalary);
+                                                        value={data.base_salary ?? ''}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
+                                                            setData('base_salary', raw);
                                                             // Auto-calculate PhilHealth based on base salary
-                                                            const baseSalaryNum = Number(newBaseSalary) || 0;
+                                                            const baseSalaryNum = Number(raw) || 0;
                                                             const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
                                                             setData('philhealth', calculatedPhilHealth.toString());
                                                         }}

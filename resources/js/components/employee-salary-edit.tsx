@@ -148,25 +148,21 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
                 id={field}
                 type="text"
                 inputMode="numeric"
-                pattern="[0-9,]*"
+                pattern="[0-9.,]*"
                 className={field === 'work_hours_per_day' ? "" : "pl-8"}
                 min={field === 'philhealth' ? 250 : field === 'pag_ibig' ? 200 : field === 'work_hours_per_day' ? 1 : undefined}
                 max={field === 'philhealth' ? 2500 : field === 'work_hours_per_day' ? 24 : undefined}
-                value={formatDisplay(data[field], field === 'work_hours_per_day')}
+                value={data[field] ?? ''}
                 onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                  if (!/[\d]/.test((e as InputEvent).data ?? "")) {
-                    e.preventDefault()
+                  if (!/[\d,.]/.test((e as InputEvent).data ?? "")) {
+                    e.preventDefault();
                   }
                 }}
-                onInput={(e) => {
-                  const input = e.target as HTMLInputElement
-                  const raw = input.value.replace(/\D/g, "")
-                  input.value = formatDisplay(raw, field === 'work_hours_per_day')
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^\d.,]/g, '');
+                  setData(field as keyof typeof data, raw);
                 }}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, "")
-                  setData(field as keyof typeof data, raw)
-                }}
+
               // no autoFocus here
               />
             </div>

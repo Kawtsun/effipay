@@ -482,32 +482,22 @@ export default function Edit({
                                                         id="base_salary"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="Salary"
                                                         className="pl-8"
                                                         min={0}
                                                         onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
+                                                            // Prevent non-numeric, non-comma, and non-period input
+                                                            if (!/[\d,.]/.test((e as InputEvent).data ?? '')) {
                                                                 e.preventDefault();
                                                             }
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.base_salary ? Number(data.base_salary.replace(/,/g, '')).toLocaleString() : ''}
+                                                        // No formatting, just allow raw value for editing
+                                                        value={data.base_salary ?? ''}
                                                         onChange={(e) => {
-                                                            const newBaseSalary = e.target.value.replace(/,/g, '');
+                                                            // Allow only digits, commas, and periods
+                                                            const newBaseSalary = e.target.value.replace(/[^\d.,]/g, '');
                                                             setData('base_salary', newBaseSalary);
                                                             // Auto-calculate PhilHealth based on base salary
                                                             const baseSalaryNum = Number(newBaseSalary) || 0;
@@ -527,31 +517,23 @@ export default function Edit({
                                                         id="overtime_pay"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="Overtime Pay"
                                                         className="pl-8"
                                                         min={0}
                                                         onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
+                                                            // Prevent non-numeric, non-comma, and non-period input
+                                                            if (!/[\d,.]/.test((e as InputEvent).data ?? '')) {
                                                                 e.preventDefault();
                                                             }
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
+                                                        // No formatting, just allow raw value for editing
+                                                        value={data.overtime_pay ?? ''}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
+                                                            setData('overtime_pay', raw);
                                                         }}
-                                                        value={data.overtime_pay ? Number(data.overtime_pay.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('overtime_pay', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
                                             </div>
@@ -572,31 +554,23 @@ export default function Edit({
                                                         id="sss"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="SSS"
                                                         className="pl-8"
                                                         min={0}
                                                         onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
+                                                            // Prevent non-numeric, non-comma, and non-period input
+                                                            if (!/[\d,.]/.test((e as InputEvent).data ?? '')) {
                                                                 e.preventDefault();
                                                             }
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
+                                                        // No formatting, just allow raw value for editing
+                                                        value={data.sss ?? ''}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
+                                                            setData('sss', raw);
                                                         }}
-                                                        value={data.sss ? Number(data.sss.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('sss', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
                                             </div>
@@ -624,23 +598,12 @@ export default function Edit({
                                                                 e.preventDefault();
                                                             }
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 250) {
-                                                                value = '250';
-                                                            }
-                                                            if (value && Number(value) > 2500) {
-                                                                value = '2500';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
+                                                        // No formatting, just allow raw value for editing
+                                                        value={data.philhealth ?? ''}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
+                                                            setData('philhealth', raw);
                                                         }}
-                                                        value={data.philhealth ? Number(data.philhealth.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('philhealth', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
                                             </div>
@@ -665,20 +628,12 @@ export default function Edit({
                                                                 e.preventDefault();
                                                             }
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
+                                                        // No formatting, just allow raw value for editing
+                                                        value={data.pag_ibig ?? ''}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
+                                                            setData('pag_ibig', raw);
                                                         }}
-                                                        value={data.pag_ibig ? Number(data.pag_ibig.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('pag_ibig', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground">
@@ -701,7 +656,7 @@ export default function Edit({
                                                         pattern="[0-9,]*"
                                                         min={0}
                                                         disabled
-                                                        value={data.withholding_tax ? Number(data.withholding_tax.replace(/,/g, '')).toLocaleString() : ''}
+                                                        value={data.withholding_tax ?? ''}
                                                     />
                                                 </div>
                                             </div>
