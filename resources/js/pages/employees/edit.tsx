@@ -329,7 +329,7 @@ export default function Edit({
                         >
                             <Button variant='outline'>
                                 <ArrowLeft className='w-4 h-4' />
-                                Go Back
+                                Back
                             </Button>
                         </Link>
                     </div>
