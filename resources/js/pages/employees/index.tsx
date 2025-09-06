@@ -285,7 +285,7 @@ export default function Index({
                             <TableHeader className=''>
                                 <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
                                     <TableHead style={{ width: 120 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
-                                    <TableHead style={{ width: 300 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
+                                    <TableHead style={{ width: 400 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
                                     <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
                                     <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
                                     <TableHead style={{ width: 350 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Roles</TableHead>
@@ -308,7 +308,7 @@ export default function Index({
                                                 className={`transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}
                                             >
                                                 <TableCell style={{ width: 120 }} className="px-4 py-2">{emp.id}</TableCell>
-                                                <TableCell style={{ width: 300 }} className="px-4 py-2">{emp.employee_name}</TableCell>
+                                                <TableCell style={{ width: 400 }} className="px-4 py-2">{emp.employee_name}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
                                                 <TableCell style={{ width: 350 }} className="px-4 py-2 min-w-[160px]">
