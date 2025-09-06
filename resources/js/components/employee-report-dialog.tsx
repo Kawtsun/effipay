@@ -1,3 +1,5 @@
+// Usage: formatFullName(employee.employee_name)
+import { formatFullName } from '../utils/formatFullName'
 import {
     Dialog,
     DialogContent,
@@ -142,7 +144,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                             <div className="flex-1 overflow-y-auto pr-2">
                                 <div className="space-y-8 text-base">
                                     <div className="border-b pb-6 mb-2">
-                                        <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {employee.employee_name}</h3>
+                                        <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {formatFullName(employee.employee_name)}</h3>
                                     </div>
                                     <div className="grid grid-cols-2 gap-10 items-start mb-6">
                                         <div>
