@@ -7,6 +7,7 @@ function formatWithCommas(value: string): string {
 }
 
 import { EmployeeStatus } from '@/components/employee-status';
+import { calculatePhilHealth, calculateWithholdingTax } from '@/utils/salaryFormulas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,7 @@ import { TimePicker } from '@/components/ui/time-picker';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Lightbulb } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { EmployeeType } from '@/components/employee-type';
@@ -44,37 +45,45 @@ type Props = {
     employeeCategory?: string;
 };
 
-export default function Create({
-    search,
-    filters,
-    page,
-    salaryDefaults,
-}: Props) {
-    const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
-    const { data, setData, post } = useForm({
-    first_name: '',
-    middle_name: '',
-    surname: '',
-    employee_name: '',
-        employee_type: 'Full Time',
-        employee_status: 'Active',
-        roles: '',
-        base_salary: salaryDefaults['Full Time']?.base_salary.toString() ?? '',
-        overtime_pay: salaryDefaults['Full Time']?.overtime_pay.toString() ?? '',
-        sss: salaryDefaults['Full Time']?.sss.toString() ?? '',
-        philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
-        pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
-        withholding_tax: salaryDefaults['Full Time']?.withholding_tax.toString() ?? '',
-        work_hours_per_day: salaryDefaults['Full Time']?.work_hours_per_day.toString() ?? '8',
-        // Default schedule depends on default work hours: 8h => 08:00-16:00, 6h => 09:00-15:00, else 08:00-17:00
-        work_start_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '08:00' : (salaryDefaults[' Full Time']?.work_hours_per_day === 6 ? '09:00' : '08:00')),
-        work_end_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '16:00' : (salaryDefaults[' Full Time']?.work_hours_per_day === 6 ? '15:00' : '17:00')),
-        college_program: '', // NEW
-    });
+    export default function Create(props: Props) {
+        const { search, filters, page, salaryDefaults } = props;
+        const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
+        const { data, setData, post } = useForm({
+            first_name: '',
+            middle_name: '',
+            surname: '',
+            employee_name: '',
+            employee_type: 'Full Time',
+            employee_status: 'Active',
+            roles: '',
+            base_salary: salaryDefaults['Full Time']?.base_salary.toString() ?? '',
+            overtime_pay: salaryDefaults['Full Time']?.overtime_pay.toString() ?? '',
+            sss: salaryDefaults['Full Time']?.sss.toString() ?? '',
+            philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
+            pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
+            withholding_tax: salaryDefaults['Full Time']?.withholding_tax.toString() ?? '',
+            work_hours_per_day: salaryDefaults['Full Time']?.work_hours_per_day.toString() ?? '8',
+            work_start_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '08:00' : (salaryDefaults['Full Time']?.work_hours_per_day === 6 ? '09:00' : '08:00')),
+            work_end_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '16:00' : (salaryDefaults['Full Time']?.work_hours_per_day === 6 ? '15:00' : '17:00')),
+            college_program: '', // NEW
+        });
+        const [collegeProgram, setCollegeProgram] = useState('');
+        const [collegeProgramError, setCollegeProgramError] = useState('');
+        const collegeDeptRef = useRef<HTMLDivElement>(null);
+        useEffect(() => {
+            const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
+            const sssNum = Number(data.sss.replace(/,/g, '')) || 0;
+            const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
+            const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
+            if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
+                setData('philhealth', calculatedPhilHealth.toFixed(2));
+            }
+            const calculatedWithholdingTax = calculateWithholdingTax(baseSalaryNum, sssNum, pagIbigNum, calculatedPhilHealth);
+            if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
+                setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
+            }
+        }, [data.base_salary, data.sss, data.pag_ibig, setData]);
 
-    const [collegeProgram, setCollegeProgram] = useState('');
-    const [collegeProgramError, setCollegeProgramError] = useState('');
-    const collegeDeptRef = useRef<HTMLDivElement>(null);
 
     // Helper function to format time to 12-hour format
     const formatTime12Hour = (time: string) => {
@@ -114,6 +123,21 @@ export default function Create({
             const [endHour, endMinute] = endTime.split(':').map(Number);
             const startMinutes = startHour * 60 + startMinute;
             const endMinutes = endHour * 60 + endMinute;
+
+            // Auto-calculate PhilHealth and Withholding Tax
+            useEffect(() => {
+                const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
+                const sssNum = Number(data.sss.replace(/,/g, '')) || 0;
+                const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
+                const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
+                if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
+                    setData('philhealth', calculatedPhilHealth.toFixed(2));
+                }
+                const calculatedWithholdingTax = calculateWithholdingTax(baseSalaryNum, sssNum, pagIbigNum, calculatedPhilHealth);
+                if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
+                    setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
+                }
+            }, [data.base_salary, data.sss, data.pag_ibig, setData]);
             let actualWorkMinutes = endMinutes - startMinutes;
             if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
             workHours = Math.round(actualWorkMinutes / 60);
@@ -543,8 +567,9 @@ export default function Create({
                                                         }}
                                                     />
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    💡 Auto-calculated based on base salary
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+                                                    Automated
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
@@ -569,7 +594,8 @@ export default function Create({
                                                         }}
                                                     />
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
                                                     Must be at least ₱200
                                                 </p>
                                             </div>
@@ -596,6 +622,10 @@ export default function Create({
                                                             }}
                                                         />
                                                 </div>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+                                                    Automated
+                                                </p>
                                             </div>
                                         </div>
                                     </div>

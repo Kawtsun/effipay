@@ -85,6 +85,7 @@ class SalaryController extends Controller
         
         // If base_salary is being updated, automatically calculate PhilHealth
         if (isset($data['base_salary'])) {
+            // See resources/js/utils/salaryFormulas.ts for JS equivalent
             $calculatedPhilHealth = ($data['base_salary'] * 0.05) / 2;
             $data['philhealth'] = max(250, min(2500, $calculatedPhilHealth));
         }
@@ -94,6 +95,7 @@ class SalaryController extends Controller
         $sss = isset($data['sss']) ? $data['sss'] : $salary->sss;
         $pag_ibig = isset($data['pag_ibig']) ? $data['pag_ibig'] : $salary->pag_ibig;
         $philhealth = isset($data['philhealth']) ? $data['philhealth'] : $salary->philhealth;
+        // See resources/js/utils/salaryFormulas.ts for JS equivalent
         $total_compensation = $base_salary - ($sss + $pag_ibig + $philhealth);
         if ($total_compensation <= 20832) {
             $data['withholding_tax'] = 0;

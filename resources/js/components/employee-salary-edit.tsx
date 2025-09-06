@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Pencil } from "lucide-react"
+import { Lightbulb, Pencil } from "lucide-react"
 import { router } from "@inertiajs/react"
 
 interface Props {
@@ -179,7 +179,8 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
               </p>
             )}
             {field === 'pag_ibig' && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
+                <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
                 Must be at least ₱200
               </p>
             )}

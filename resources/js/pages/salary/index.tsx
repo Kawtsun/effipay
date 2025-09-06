@@ -5,7 +5,7 @@ import AppLayout from '@/layouts/app-layout'
 import { EmployeeType } from '@/components/employee-type'
 import { EmployeeSalaryEdit } from '@/components/employee-salary-edit'
 import { type BreadcrumbItem } from '@/types'
-import { Wallet, Pencil, Calculator } from 'lucide-react'
+import { Wallet, Pencil, Calculator, Lightbulb } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -74,7 +74,7 @@ export default function Index() {
       })
 
       const result = await response.json()
-      
+
       if (result.success) {
         toast.success(result.message)
       } else {
@@ -125,7 +125,7 @@ export default function Index() {
             <div>
               <h1 className="flex items-center gap-2 text-2xl font-semibold">
                 <Wallet className="w-6 h-6 text-primary" />
-                Salary Defaults
+                Salary
               </h1>
               <p className="text-sm text-muted-foreground">
                 Set default payroll values by employee type.
@@ -138,7 +138,7 @@ export default function Index() {
                   onValueChange={setSelectedDate}
                   placeholder="Select payroll date"
                 />
-                <Button 
+                <Button
                   onClick={handleRunPayroll}
                   disabled={!selectedDate || isRunningPayroll}
                   className="flex items-center gap-2"
@@ -228,11 +228,6 @@ export default function Index() {
                         <p className="text-3xl font-bold text-red-600">
                           ₱{Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
-                        {key === 'philhealth' && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Auto-calculated: (Base Salary × 0.05) / 2
-                          </p>
-                        )}
                       </div>
                       {key === 'philhealth' ? (
                         <div className="flex flex-col items-end">
@@ -240,8 +235,9 @@ export default function Index() {
                             <Pencil className="w-4 h-4" />
                             Edit
                           </Button>
-                          <p className="text-xs text-muted-foreground mt-1 text-right">
-                            Auto-calculated
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
+                            <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+                            Automated
                           </p>
                         </div>
                       ) : key === 'withholding_tax' ? (
@@ -250,7 +246,8 @@ export default function Index() {
                             <Pencil className="w-4 h-4" />
                             Edit
                           </Button>
-                          <p className="text-xs text-muted-foreground mt-1 text-right">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
+                            <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
                             Automated
                           </p>
                         </div>

@@ -1,3 +1,4 @@
+import { calculatePhilHealth, calculateWithholdingTax } from '@/utils/salaryFormulas';
 import { EmployeeStatus } from '@/components/employee-status';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { TimePicker } from '@/components/ui/time-picker';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Lightbulb } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { EmployeeType } from '@/components/employee-type';
@@ -279,34 +280,13 @@ export default function Edit({
         const baseSalary = Number(data.base_salary.replace(/,/g, '')) || 0;
         const sss = Number(data.sss.replace(/,/g, '')) || 0;
         const pagIbig = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-
-        // PhilHealth calculation
-        const calculatedPhilHealth = Math.round(Math.max(250, Math.min(2500, (baseSalary * 0.05) / 2)));
-        if (Number(data.philhealth.replace(/,/g, '')) !== calculatedPhilHealth) {
-            setData('philhealth', calculatedPhilHealth.toString());
+        const calculatedPhilHealth = calculatePhilHealth(baseSalary);
+        if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
+            setData('philhealth', calculatedPhilHealth.toFixed(2));
         }
-
-        // Withholding tax calculation
-        const philhealth = calculatedPhilHealth;
-        const totalCompensation = baseSalary - (sss + pagIbig + philhealth);
-        let withholdingTax = 0;
-        if (totalCompensation <= 20832) {
-            withholdingTax = 0;
-        } else if (totalCompensation >= 20833 && totalCompensation <= 33332) {
-            withholdingTax = (totalCompensation - 20833) * 0.15;
-        } else if (totalCompensation >= 33333 && totalCompensation <= 66666) {
-            withholdingTax = (totalCompensation - 33333) * 0.20 + 1875;
-        } else if (totalCompensation >= 66667 && totalCompensation <= 166666) {
-            withholdingTax = (totalCompensation - 66667) * 0.25 + 8541.80;
-        } else if (totalCompensation >= 166667 && totalCompensation <= 666666) {
-            withholdingTax = (totalCompensation - 166667) * 0.30 + 33541.80;
-        } else if (totalCompensation >= 666667) {
-            withholdingTax = (totalCompensation - 666667) * 0.35 + 183541.80;
-        }
-        withholdingTax = Math.max(0, withholdingTax);
-        const roundedWithholdingTax = Math.round(withholdingTax);
-        if (Number(data.withholding_tax.replace(/,/g, '')) !== roundedWithholdingTax) {
-            setData('withholding_tax', roundedWithholdingTax.toString());
+        const calculatedWithholdingTax = calculateWithholdingTax(baseSalary, sss, pagIbig, calculatedPhilHealth);
+        if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
+            setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
         }
     }, [data.base_salary, data.sss, data.pag_ibig, data.philhealth, data.withholding_tax, setData]);
 
@@ -585,6 +565,10 @@ export default function Edit({
                                                         }}
                                                     />
                                                 </div>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+                                                    Automated
+                                                </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
                                                 <Label htmlFor="pag-ibig">
@@ -608,7 +592,8 @@ export default function Edit({
                                                         }}
                                                     />
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
                                                     Must be at least ₱200
                                                 </p>
                                             </div>
@@ -635,6 +620,10 @@ export default function Edit({
                                                         }}
                                                     />
                                                 </div>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+                                                    Automated
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
