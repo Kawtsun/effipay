@@ -205,11 +205,11 @@ class EmployeesSeeder extends Seeder
             $endDateTime->add(new \DateInterval("PT{$workHoursPerDay}H"));
             $workEndTime = $endDateTime->format('H:i:s');
 
-            // Split name into surname, first_name, middle_name (assume format: Surname Firstname Middlename)
+            // Split name into surname, first_name, middle_name (assume format: Surname Firstname Middlename, where first name can be two words)
             $parts = preg_split('/\s+/', $name);
             $surname = $parts[0] ?? '';
-            $first_name = $parts[1] ?? '';
-            $middle_name = isset($parts[2]) ? implode(' ', array_slice($parts, 2)) : '';
+            $middle_name = count($parts) > 2 ? $parts[count($parts) - 1] : '';
+            $first_name = count($parts) > 2 ? implode(' ', array_slice($parts, 1, -1)) : ($parts[1] ?? '');
             $employee_name = strtoupper(trim($surname . ', ' . $first_name . ($middle_name ? ', ' . $middle_name : '')));
 
             Employees::create([
