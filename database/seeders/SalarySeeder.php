@@ -23,44 +23,46 @@ class SalarySeeder extends Seeder
         // }
 
         /// Each Types
-        $defaults = [
-            'Full Time' => [
-                'base_salary'     => 50000,
-                'overtime_pay'    => 200,    // per hour
-                'sss'             => 800,
-                'philhealth'      => max(250, min(2500, (50000 * 0.05) / 2)), // 1250
-                'pag_ibig'        => 200,
-                'withholding_tax' => 5000,
-                'work_hours_per_day' => 8,
-            ],
-            'Part Time' => [
-                'base_salary'     => 20000,
-                'overtime_pay'    => 150,
-                'sss'             => 400,
-                'philhealth'      => max(250, min(2500, (20000 * 0.05) / 2)), // 500
-                'pag_ibig'        => 200,
-                'withholding_tax' => 1500,
-                'work_hours_per_day' => 6,
-            ],
-            'Provisionary' => [
-                'base_salary'     => 30000,
-                'overtime_pay'    => 175,
-                'sss'             => 600,
-                'philhealth'      => max(250, min(2500, (30000 * 0.05) / 2)), // 750
-                'pag_ibig'        => 200,
-                'withholding_tax' => 3000,
-                'work_hours_per_day' => 8,
-            ],
-            'Regular' => [
-                'base_salary'     => 40000,
-                'overtime_pay'    => 180,
-                'sss'             => 700,
-                'philhealth'      => max(250, min(2500, (40000 * 0.05) / 2)), // 1000
-                'pag_ibig'        => 200,
-                'withholding_tax' => 4000,
-                'work_hours_per_day' => 8,
-            ],
+        // --- Payroll formulas: see resources/js/utils/salaryFormulas.ts ---
+        $defaults = [];
+        $types = [
+            'Full Time' => [50000, 200, 800, 200],
+            'Part Time' => [20000, 150, 400, 200],
+            'Provisionary' => [30000, 175, 600, 200],
+            'Regular' => [40000, 180, 700, 200],
         ];
+        foreach ($types as $type => [$base_salary, $overtime_pay, $sss, $pag_ibig]) {
+            // PhilHealth formula
+            $calculatedPhilHealth = ($base_salary * 0.05) / 2;
+            $philhealth = max(250, min(2500, $calculatedPhilHealth));
+
+            // Withholding tax formula
+            $total_compensation = $base_salary - ($sss + $pag_ibig + $philhealth);
+            if ($total_compensation <= 20832) {
+                $withholding_tax = 0;
+            } elseif ($total_compensation >= 20833 && $total_compensation <= 33332) {
+                $withholding_tax = ($total_compensation - 20833) * 0.15;
+            } elseif ($total_compensation >= 33333 && $total_compensation <= 66666) {
+                $withholding_tax = ($total_compensation - 33333) * 0.20 + 1875;
+            } elseif ($total_compensation >= 66667 && $total_compensation <= 166666) {
+                $withholding_tax = ($total_compensation - 66667) * 0.25 + 8541.80;
+            } elseif ($total_compensation >= 166667 && $total_compensation <= 666666) {
+                $withholding_tax = ($total_compensation - 166667) * 0.30 + 33541.80;
+            } elseif ($total_compensation >= 666667) {
+                $withholding_tax = ($total_compensation - 666667) * 0.35 + 183541.80;
+            } else {
+                $withholding_tax = 0;
+            }
+
+            $defaults[$type] = [
+                'base_salary'     => $base_salary,
+                'overtime_pay'    => $overtime_pay,
+                'sss'             => $sss,
+                'philhealth'      => $philhealth,
+                'pag_ibig'        => $pag_ibig,
+                'withholding_tax' => $withholding_tax,
+            ];
+        }
 
         // 2) Loop and upsert each type
         foreach ($defaults as $type => $values) {
