@@ -111,7 +111,9 @@ export default function Dashboard({ stats, months, selectedMonth, chart }: Dashb
                             <Wallet className="h-5 w-5 text-primary" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold">₱{(localStats.totalNetPay ?? 0).toLocaleString()}</div>
+                                                        <div className="text-3xl font-bold">
+                                                            ₱{Number(localStats.totalNetPay ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </div>
                         </CardContent>
                     </Card>
                 </div>

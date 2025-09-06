@@ -22,9 +22,9 @@ type Point = { key: string; label: string; total: number }
 
 export function formatCurrency(amount: number) {
   try {
-    return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(amount)
+    return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)
   } catch {
-    return `₱${(amount ?? 0).toLocaleString()}`
+    return `₱${Number(amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 }
 
