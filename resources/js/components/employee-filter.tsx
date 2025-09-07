@@ -179,20 +179,37 @@ export default function EmployeeFilter({
                 />
                 Administrator
               </label>
-              <div className="mt-2 mb-1 text-xs font-semibold text-muted-foreground select-none">Instructor</div>
-              <EmployeeInstructorRadioRole
-                value={roles.find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
-                onChange={val => {
-                  // Remove any instructor role, add the new one
-                  const newRoles = roles.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
-                  setRoles(val ? [val, ...newRoles] : [...newRoles]);
-                  if (val === 'college instructor') {
-                    setTimeout(() => {
-                      collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 100);
-                  }
-                }}
-              />
+              <label className="flex items-center gap-2 text-sm select-none">
+                <Checkbox
+                  checked={roles.some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
+                  onCheckedChange={(checked) => {
+                    const newRoles = roles.filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor');
+                    if (checked) {
+                      setRoles([...newRoles, 'instructor']);
+                    } else {
+                      setRoles(newRoles);
+                    }
+                  }}
+                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                />
+                Instructor
+              </label>
+              <div className="pl-6 mt-1">
+                <EmployeeInstructorRadioRole
+                  value={roles.find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
+                  onChange={val => {
+                    // Remove any instructor and teaching role, add the new teaching role only
+                    const newRoles = roles.filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor');
+                    setRoles(val ? [val, ...newRoles] : [...newRoles]);
+                    if (val === 'college instructor') {
+                      setTimeout(() => {
+                        collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 100);
+                    }
+                  }}
+                  disabled={!roles.some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
+                />
+              </div>
               {/* College program radio group, only show if college instructor is selected */}
               <AnimatePresence>
                 {roles.includes('college instructor') && (
