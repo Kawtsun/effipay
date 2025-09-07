@@ -269,7 +269,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.1 }}
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Gross Pay</div>
-                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{Math.abs(Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay : employee.base_salary + employee.overtime_pay))).toLocaleString()}</div>
+                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay : Number(employee.base_salary) + Number(employee.overtime_pay))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                                         </motion.div>
                                                         {/* Deductions */}
                                                         <motion.div
@@ -280,7 +280,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.2 }}
                                                         >
                                                             <div className="text-xs text-orange-600 font-medium mb-2">Total Deductions</div>
-                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">₱{Math.abs(Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].total_deductions : employee.sss + employee.philhealth + employee.pag_ibig + employee.withholding_tax))).toLocaleString()}</div>
+                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">₱{Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].total_deductions : Number(employee.sss) + Number(employee.philhealth) + Number(employee.pag_ibig) + Number(employee.withholding_tax))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                                         </motion.div>
                                                         {/* Net Pay */}
                                                         <motion.div
@@ -291,7 +291,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.3 }}
                                                         >
                                                             <div className="text-xs text-green-600 font-medium mb-2">Net Pay</div>
-                                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">₱{Math.abs(Number((monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions : employee.base_salary + employee.overtime_pay - employee.sss - employee.philhealth - employee.pag_ibig - employee.withholding_tax))).toLocaleString()}</div>
+                                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">₱{Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions : Number(employee.base_salary) + Number(employee.overtime_pay) - Number(employee.sss) - Number(employee.philhealth) - Number(employee.pag_ibig) - Number(employee.withholding_tax))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                                         </motion.div>
                                                         {/* Per Payroll */}
                                                         <motion.div
@@ -304,7 +304,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             <div className="text-xs text-blue-600 font-medium mb-2">Per Payroll</div>
                                                             {monthlyPayrollData && monthlyPayrollData.payrolls.length > 0 ? (
                                                                 <>
-                                                                    <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">₱{Math.abs(Number((monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions) / monthlyPayrollData.payrolls.length)).toLocaleString()}</div>
+                                                                    <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">₱{Math.abs(Number(monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions) / monthlyPayrollData.payrolls.length).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                                                     <div className="flex flex-wrap gap-1 mt-2 overflow-x-auto max-w-full text-xs">
                                                                         {monthlyPayrollData.payrolls.map((payroll, index) => (
                                                                             <div key={payroll.id} className="flex items-center gap-1 whitespace-nowrap">
@@ -335,17 +335,17 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                             <div className="space-y-3 text-sm">
-                                                                <Info label="Base Salary" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].base_salary : employee.base_salary)).toLocaleString()}`} />
-                                                                <Info label="Overtime Pay" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].overtime_pay : employee.overtime_pay)).toLocaleString()}`} />
+                                                                <Info label="Base Salary" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].base_salary : employee.base_salary)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                                <Info label="Overtime Pay" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].overtime_pay : employee.overtime_pay)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                                                             </div>
                                                         </div>
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
                                                             <div className="space-y-3 text-sm">
-                                                                <Info label="SSS" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].sss : employee.sss)).toLocaleString()}`} />
-                                                                <Info label="PhilHealth" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].philhealth : employee.philhealth)).toLocaleString()}`} />
-                                                                <Info label="Pag-IBIG" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].pag_ibig : employee.pag_ibig)).toLocaleString()}`} />
-                                                                <Info label="Withholding Tax" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].withholding_tax : employee.withholding_tax)).toLocaleString()}`} />
+                                                                <Info label="SSS" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].sss : employee.sss)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                                <Info label="PhilHealth" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].philhealth : employee.philhealth)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                                <Info label="Pag-IBIG" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].pag_ibig : employee.pag_ibig)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                                <Info label="Withholding Tax" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].withholding_tax : employee.withholding_tax)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                                                             </div>
                                                         </div>
                                                     </motion.div>

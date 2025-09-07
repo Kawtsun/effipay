@@ -57,21 +57,20 @@ class PayrollController extends Controller
                     ],
                     [
                         'month' => $month,
-                        'base_salary' => $baseSalary,
-                        'overtime_pay' => $overtimePay,
-                        'sss' => $sss,
-                        'philhealth' => $philhealth,
-                        'pag_ibig' => $pagIbig,
-                        'withholding_tax' => $withholdingTax,
-                        'gross_pay' => $grossPay,
-                        'total_deductions' => $totalDeductions,
-                        'net_pay' => $netPay,
+                        'base_salary' => number_format($baseSalary, 2, '.', ''),
+                        'overtime_pay' => number_format($overtimePay, 2, '.', ''),
+                        'sss' => number_format($sss, 2, '.', ''),
+                        'philhealth' => number_format($philhealth, 2, '.', ''),
+                        'pag_ibig' => number_format($pagIbig, 2, '.', ''),
+                        'withholding_tax' => number_format($withholdingTax, 2, '.', ''),
+                        'gross_pay' => number_format($grossPay, 2, '.', ''),
+                        'total_deductions' => number_format($totalDeductions, 2, '.', ''),
+                        'net_pay' => number_format($netPay, 2, '.', ''),
                     ]
                 );
 
                 $processedCount++;
             } catch (\Exception $e) {
-                $errors[] = "Error processing employee {$employee->employee_name}: " . $e->getMessage();
                 $errors[] = "Error processing employee {$employee->last_name}, {$employee->first_name} {$employee->middle_name}: " . $e->getMessage();
             }
         }
