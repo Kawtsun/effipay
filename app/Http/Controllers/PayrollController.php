@@ -7,6 +7,7 @@ use App\Models\Payroll;
 use App\Models\Salary;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
 class PayrollController extends Controller
@@ -14,7 +15,7 @@ class PayrollController extends Controller
     /**
      * Run payroll calculation for all employees for a specific month
      */
-    public function runPayroll(Request $request): JsonResponse
+    public function runPayroll(Request $request): RedirectResponse
     {
         $request->validate([
             'payroll_date' => 'required|date',
@@ -75,12 +76,7 @@ class PayrollController extends Controller
             }
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => "Payroll processed for {$processedCount} employees for " . date('F j, Y', strtotime($payrollDate)),
-            'processed_count' => $processedCount,
-            'errors' => $errors,
-        ]);
+    return redirect()->back()->with('flash', "Payroll processed for {$processedCount} employees for " . date('F j, Y', strtotime($payrollDate)));
     }
 
     /**

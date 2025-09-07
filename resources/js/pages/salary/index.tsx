@@ -61,31 +61,15 @@ export default function Index() {
       toast.error('Please select a date first')
       return
     }
-
     setIsRunningPayroll(true)
-    try {
-      const response = await fetch(route('payroll.run'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        },
-        body: JSON.stringify({ payroll_date: selectedDate }),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        toast.success(result.message)
-      } else {
-        toast.error('Failed to run payroll')
+    router.post(
+      route('payroll.run'),
+      { payroll_date: selectedDate },
+      {
+        preserveState: true,
+        onFinish: () => setIsRunningPayroll(false),
       }
-    } catch (error) {
-      toast.error('Error running payroll')
-      console.error('Payroll error:', error)
-    } finally {
-      setIsRunningPayroll(false)
-    }
+    )
   }, [selectedDate])
 
   const breadcrumbs: BreadcrumbItem[] = [
