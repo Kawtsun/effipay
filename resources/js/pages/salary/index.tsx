@@ -135,9 +135,7 @@ export default function Index() {
               
             </div>
           </div>
-            <div className="flex justify-end">
-            <EmployeeType value={type} onChange={onTypeChange} types={allTypes} />
-            </div>
+          <EmployeeType value={type} onChange={onTypeChange} types={allTypes} />
 
           {/* Total Compensation Box */}
           {/* <div className="mb-8">
