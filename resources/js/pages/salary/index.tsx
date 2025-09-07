@@ -1,6 +1,7 @@
 // resources/js/Pages/salary/index.tsx
 
 import { Head, router, usePage } from '@inertiajs/react'
+import { calculateSSS } from '@/utils/salaryFormulas'
 import AppLayout from '@/layouts/app-layout'
 import { EmployeeType } from '@/components/employee-type'
 import { EmployeeSalaryEdit } from '@/components/employee-salary-edit'
@@ -79,7 +80,7 @@ export default function Index() {
   const cards = [
     { key: 'base_salary' as keyof Defaults, label: 'Base Salary', value: defaults.base_salary, isEarning: true },
     { key: 'overtime_pay' as keyof Defaults, label: 'Overtime Pay', value: defaults.overtime_pay, isEarning: true },
-    { key: 'sss' as keyof Defaults, label: 'SSS', value: defaults.sss, isEarning: false },
+    { key: 'sss' as keyof Defaults, label: 'SSS', value: calculateSSS(defaults.base_salary), isEarning: false },
     { key: 'philhealth' as keyof Defaults, label: 'PhilHealth', value: defaults.philhealth, isEarning: false },
     { key: 'pag_ibig' as keyof Defaults, label: 'Pag-IBIG', value: defaults.pag_ibig, isEarning: false },
     { key: 'withholding_tax' as keyof Defaults, label: 'Withholding Tax', value: defaults.withholding_tax, isEarning: false },
@@ -88,9 +89,9 @@ export default function Index() {
   const earningsCards = cards.filter(c => c.isEarning)
   const deductionCards = cards.filter(c => !c.isEarning)
   // Calculate total compensation
-  const totalCompensation =
-    Number(defaults.base_salary) -
-    (Number(defaults.sss) + Number(defaults.pag_ibig) + Number(defaults.philhealth));
+  // const totalCompensation =
+  //   Number(defaults.base_salary) -
+  //   (Number(calculateSSS(defaults.base_salary)) + Number(defaults.pag_ibig) + Number(defaults.philhealth));
 
   const allTypes = [
     { value: 'Full Time', label: 'Full Time' },
@@ -136,7 +137,7 @@ export default function Index() {
           </div>
 
           {/* Total Compensation Box */}
-          <div className="mb-8">
+          {/* <div className="mb-8">
             <label className="block text-sm font-medium mb-2">Total Compensation</label>
             <input
               type="text"
@@ -144,7 +145,7 @@ export default function Index() {
               readOnly
               className="w-64 px-3 py-2 border rounded bg-gray-900 text-green-500 font-bold text-xl"
             />
-          </div>
+          </div> */}
 
           {/* EARNINGS */}
           <section>

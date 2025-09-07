@@ -7,6 +7,7 @@ function formatWithCommas(value: string): string {
 }
 
 import { EmployeeStatus } from '@/components/employee-status';
+import { calculateSSS } from '@/utils/salaryFormulas';
 import { calculatePhilHealth, calculateWithholdingTax } from '@/utils/salaryFormulas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,7 +59,7 @@ type Props = {
             roles: '',
             base_salary: salaryDefaults['Full Time']?.base_salary.toString() ?? '',
             overtime_pay: salaryDefaults['Full Time']?.overtime_pay.toString() ?? '',
-            sss: salaryDefaults['Full Time']?.sss.toString() ?? '',
+            sss: calculateSSS(Number(salaryDefaults['Full Time']?.base_salary ?? 0)).toString(),
             philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
             pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
             withholding_tax: salaryDefaults['Full Time']?.withholding_tax.toString() ?? '',
@@ -72,9 +73,12 @@ type Props = {
         const collegeDeptRef = useRef<HTMLDivElement>(null);
         useEffect(() => {
             const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
-            const sssNum = Number(data.sss.replace(/,/g, '')) || 0;
+            const sssNum = calculateSSS(baseSalaryNum);
             const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
             const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
+            if (data.sss.replace(/,/g, '') !== sssNum.toString()) {
+                setData('sss', sssNum.toString());
+            }
             if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
                 setData('philhealth', calculatedPhilHealth.toFixed(2));
             }
@@ -82,7 +86,7 @@ type Props = {
             if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
                 setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
             }
-        }, [data.base_salary, data.sss, data.pag_ibig, setData]);
+        }, [data.base_salary, data.pag_ibig, setData]);
 
 
     // Helper function to format time to 12-hour format
@@ -519,15 +523,16 @@ type Props = {
                                                         pattern="[0-9.,]*"
                                                         required
                                                         placeholder="SSS"
-                                                        className="pl-8"
+                                                        className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
                                                         min={0}
                                                         value={formatWithCommas(data.sss ?? '')}
-                                                        onChange={e => {
-                                                            const raw = e.target.value.replace(/,/g, '');
-                                                            setData('sss', raw);
-                                                        }}
+                                                        disabled
                                                     />
                                                 </div>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+                                                    Automated
+                                                </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
                                                 <Label htmlFor="philhealth">

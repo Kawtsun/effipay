@@ -5,7 +5,8 @@ function formatWithCommas(value: string) {
     ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
     : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
-"use client"
+
+import { calculateSSS } from '@/utils/salaryFormulas'
 
 import * as React from "react"
 import { useForm } from "@inertiajs/react"
@@ -75,7 +76,7 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
 
     // Always send latest values for base_salary, sss, and pag_ibig
     const baseSalary = data.base_salary ? parseInt(data.base_salary, 10) : 0;
-    const sss = data.sss ? parseInt(data.sss, 10) : 0;
+  const sss = field === 'base_salary' ? calculateSSS(baseSalary) : (data.sss ? parseInt(data.sss, 10) : 0);
     const pagIbig = data.pag_ibig ? parseInt(data.pag_ibig, 10) : 0;
     const fieldValue = data[field] === "" ? 0 : parseInt(data[field], 10);
 
@@ -108,7 +109,7 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
     if (['base_salary', 'sss', 'pag_ibig'].includes(field)) {
       updateData = {
         base_salary: field === 'base_salary' ? fieldValue : baseSalary,
-        sss: field === 'sss' ? fieldValue : sss,
+    sss: field === "base_salary" ? calculateSSS(fieldValue) : (field === "sss" ? fieldValue : sss),
         pag_ibig: field === 'pag_ibig' ? fieldValue : pagIbig,
       };
     }
@@ -128,6 +129,22 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
     )
   }
 
+  // Disable edit for SSS, show hint
+  if (field === 'sss') {
+    return (
+      <div className="flex flex-col items-end">
+        <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
+          <Pencil className="w-4 h-4" />
+          Edit
+        </Button>
+        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
+          <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+          Automated
+        </p>
+      </div>
+    )
+  }
+  // ...existing code for other fields...
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -136,12 +153,10 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
           Edit
         </Button>
       </DialogTrigger>
-
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit {label}</DialogTitle>
         </DialogHeader>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
             <Label htmlFor={field}>{label}</Label>
@@ -169,8 +184,6 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
                   const raw = e.target.value.replace(/,/g, '');
                   setData(field as keyof typeof data, raw);
                 }}
-
-              // no autoFocus here
               />
             </div>
             {field === 'philhealth' && (
@@ -195,10 +208,9 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
               </p>
             )}
           </div>
-
           <DialogFooter className="flex justify-end gap-2">
             <Button
-              type="button"                // ← prevent this from submitting the form
+              type="button"
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={processing}
