@@ -504,6 +504,8 @@ export default function Edit({
                                                         value={formatWithCommas(data.base_salary ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
+                                                            // Only allow numbers and period
+                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
                                                             setData('base_salary', raw);
                                                             // Auto-calculate PhilHealth based on base salary
                                                             const baseSalaryNum = Number(raw) || 0;
@@ -529,6 +531,7 @@ export default function Edit({
                                                         value={formatWithCommas(data.overtime_pay ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
+                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
                                                             setData('overtime_pay', raw);
                                                         }}
                                                     />
@@ -613,6 +616,7 @@ export default function Edit({
                                                         value={formatWithCommas(data.pag_ibig ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
+                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
                                                             setData('pag_ibig', raw);
                                                         }}
                                                     />

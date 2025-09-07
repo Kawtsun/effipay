@@ -504,7 +504,9 @@ type Props = {
                                                         min={0}
                                                         value={formatWithCommas(data.base_salary ?? '')}
                                                         onChange={e => {
-                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            let raw = e.target.value.replace(/,/g, '');
+                                                            // Only allow numbers and period
+                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
                                                             setData('base_salary', raw);
                                                             // Auto-calculate PhilHealth based on base salary
                                                             const baseSalaryNum = Number(raw) || 0;
@@ -531,7 +533,8 @@ type Props = {
                                                         min={0}
                                                         value={formatWithCommas(data.overtime_pay ?? '')}
                                                         onChange={e => {
-                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            let raw = e.target.value.replace(/,/g, '');
+                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
                                                             setData('overtime_pay', raw);
                                                         }}
                                                     />
@@ -615,7 +618,8 @@ type Props = {
                                                         min={200}
                                                         value={formatWithCommas(data.pag_ibig ?? '')}
                                                         onChange={e => {
-                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            let raw = e.target.value.replace(/,/g, '');
+                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
                                                             setData('pag_ibig', raw);
                                                         }}
                                                     />
