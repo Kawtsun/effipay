@@ -104,7 +104,7 @@ export default function Index() {
     <>
       <Head title="Salary Defaults" />
       <AppLayout breadcrumbs={breadcrumbs}>
-        <div className="py-6 px-8 space-y-8">
+        <div className="py-6 px-8 space-y-6">
           {/* HEADER */}
           <div className="flex items-center justify-between">
             <div>
@@ -113,7 +113,7 @@ export default function Index() {
                 Salary
               </h1>
               <p className="text-sm text-muted-foreground">
-                Set default payroll values by employee type.
+                Set default salary values by employee type.
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -132,9 +132,12 @@ export default function Index() {
                   {isRunningPayroll ? 'Running...' : 'Run Payroll'}
                 </Button>
               </div>
-              <EmployeeType value={type} onChange={onTypeChange} types={allTypes} />
+              
             </div>
           </div>
+            <div className="flex justify-end">
+            <EmployeeType value={type} onChange={onTypeChange} types={allTypes} />
+            </div>
 
           {/* Total Compensation Box */}
           {/* <div className="mb-8">

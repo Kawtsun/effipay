@@ -217,7 +217,9 @@ export default function Index({
                         <Users className="h-6 w-6 text-primary" />
                         Employees
                     </h1>
-                    <p className="text-sm text-muted-foreground">Manage your organization's employee type, status, and salary.</p>
+                    <p className="text-sm text-muted-foreground">
+                        Manage employee information, status, and salaries.
+                    </p>
                 </div>
 
                 {/* SEARCH & CONTROLS */}
