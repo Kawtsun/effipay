@@ -72,7 +72,7 @@ export function EmployeeType({ value, onChange, roles = [], disabled = false, ty
         </Button>
       </PopoverTrigger>
       {!disabled && (
-        <PopoverContent className="w-[200px] p-0 shadow-md dark:bg-gray-800">
+        <PopoverContent className="w-[200px] p-0 shadow-md dark:bg-gray-800 z-[100]">
           <Command>
             <CommandList>
               <CommandGroup>

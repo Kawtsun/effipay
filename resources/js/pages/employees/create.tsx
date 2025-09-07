@@ -429,7 +429,7 @@ type Props = {
                                                 value={data.employee_type}
                                                 onChange={val => setData('employee_type', val)}
                                                 roles={data.roles ? data.roles.split(',') : []}
-                                                disabled={data.roles === ''}
+                                                disabled={!(data.roles.split(',').includes('administrator') || data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))}
                                                 types={data.roles === '' ? [{ value: 'Full Time', label: 'Full Time' }] : undefined}
                                             />
                                         </div>
@@ -439,7 +439,7 @@ type Props = {
                                                 value={data.employee_status}
                                                 onChange={val => setData('employee_status', val)}
                                                 statuses={availableStatuses}
-                                                disabled={data.roles === ''}
+                                                disabled={!(data.roles.split(',').includes('administrator') || data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))}
                                             />
                                         </div>
                                     </div>

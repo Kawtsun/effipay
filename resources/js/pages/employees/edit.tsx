@@ -429,7 +429,7 @@ export default function Edit({
                                                 value={data.employee_type}
                                                 onChange={val => setData('employee_type', val)}
                                                 roles={data.roles ? data.roles.split(',') : []}
-                                                disabled={data.roles === ''}
+                                                disabled={!(data.roles.split(',').includes('administrator') || data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))}
                                             />
                                         </div>
                                         <div className="flex flex-col gap-3">
@@ -438,7 +438,7 @@ export default function Edit({
                                                 value={data.employee_status}
                                                 onChange={val => setData('employee_status', val)}
                                                 statuses={availableStatuses}
-                                                disabled={data.roles === ''}
+                                                disabled={!(data.roles.split(',').includes('administrator') || data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))}
                                             />
                                         </div>
                                     </div>
