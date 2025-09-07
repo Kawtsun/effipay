@@ -48,7 +48,7 @@ export function EmployeeType({ value, onChange, roles = [], disabled = false, ty
       if (roles.includes('administrator') && !value) {
         onChange('Regular');
       } else if (!roles.includes('administrator') && !roles.includes('college instructor') && !roles.includes('basic education instructor')) {
-        if (value) onChange('');
+        if (value !== 'Full Time') onChange('Full Time');
       }
     }
     // Only run when roles change

@@ -213,10 +213,24 @@ type Props = {
     // useEffect: When roles change and not empty, set type and status to first available
     useEffect(() => {
         const rolesArr = data.roles ? data.roles.split(',') : [];
-        if (rolesArr.length > 0) {
-            // Set type to first available if not set
-            if (!data.employee_type && availableTypes[0]?.value) {
-                setData('employee_type', availableTypes[0].value);
+        const hasAdmin = rolesArr.includes('administrator');
+        const hasTeaching = rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor');
+        if (rolesArr.length === 0) {
+            if (data.employee_type !== 'Full Time') {
+                setData('employee_type', 'Full Time');
+            }
+        } else {
+            // If admin is checked and not teaching, set to Regular
+            if (hasAdmin && !hasTeaching && data.employee_type !== 'Regular') {
+                setData('employee_type', 'Regular');
+            }
+            // If admin is unchecked and not teaching, set to Full Time
+            if (!hasAdmin && !hasTeaching && data.employee_type !== 'Full Time') {
+                setData('employee_type', 'Full Time');
+            }
+            // If teaching only, set to Full Time
+            if (!hasAdmin && hasTeaching && data.employee_type !== 'Full Time') {
+                setData('employee_type', 'Full Time');
             }
             // Set status to 'Active' as default if not already
             if (data.employee_status !== 'Active') {
