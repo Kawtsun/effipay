@@ -105,13 +105,11 @@ export default function Edit({
         return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
     };
 
-    const handleUpdate = (e: React.FormEvent) => {
     // Auto-calculate SSS when base_salary changes
     useEffect(() => {
         setData('sss', calculateSSS(Number(data.base_salary.replace(/,/g, '')) || 0).toString());
     }, [data.base_salary, setData]);
 
-    // ...existing code...
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         if (data.roles.split(',').includes('college instructor') && !collegeProgram) {
@@ -146,7 +144,7 @@ export default function Edit({
             workHours = Math.round(actualWorkMinutes / 60);
         }
 
-    const employee_name = `${data.last_name}, ${data.first_name}, ${data.middle_name}`;
+        const employee_name = `${data.last_name}, ${data.first_name}, ${data.middle_name}`;
         const cleanedData = {
             ...data,
             employee_name,
@@ -499,9 +497,7 @@ export default function Edit({
                                                 </div>
                                             </div>
                                             <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="overtime_pay">
-                                                    Overtime Pay
-                                                </Label>
+                                                <Label>Overtime Pay</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
                                                     <Input
@@ -543,7 +539,7 @@ export default function Edit({
                                                         placeholder="SSS"
                                                         className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
                                                         min={0}
-                                                        value={formatWithCommas(data.sss ?? '')}
+                                                        value={formatWithCommas(Number(data.sss ?? 0).toFixed(2))}
                                                         disabled
                                                     />
                                                 </div>
