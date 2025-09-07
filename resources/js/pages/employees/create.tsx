@@ -525,7 +525,7 @@ type Props = {
                                                         placeholder="SSS"
                                                         className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
                                                         min={0}
-                                                        value={formatWithCommas(data.sss ?? '')}
+                                                        value={formatWithCommas(Number(data.sss ?? 0).toFixed(2))}
                                                         disabled
                                                     />
                                                 </div>
