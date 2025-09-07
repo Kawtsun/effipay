@@ -44,7 +44,9 @@ export interface User {
 
 export interface Employees {
     id: number;
-    employee_name: string;
+    last_name: string;
+    first_name: string;
+    middle_name: string;
     employee_type: string;
     employee_status: string;
     roles: string;

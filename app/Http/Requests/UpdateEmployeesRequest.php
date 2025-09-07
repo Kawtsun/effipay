@@ -25,7 +25,7 @@ class UpdateEmployeesRequest extends FormRequest
         return [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
-            'surname' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'employee_type' => 'required|string|max:255',
             'employee_status' => 'required|string|max:255',
             'base_salary' => 'required|numeric|min:0',

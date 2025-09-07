@@ -19,8 +19,12 @@ class EmployeesController extends Controller
     {
         $query = Employees::query();
 
-        if ($request->filled('search')) {
-            $query->where('employee_name', 'like', '%' . $request->search . '%');
+                if ($request->filled('search')) {
+                        $query->where(function($q) use ($request) {
+                                $q->where('last_name', 'like', '%' . $request->search . '%')
+                                    ->orWhere('first_name', 'like', '%' . $request->search . '%')
+                                    ->orWhere('middle_name', 'like', '%' . $request->search . '%');
+                        });
         }
 
         if ($request->filled('types')) {
@@ -50,7 +54,9 @@ class EmployeesController extends Controller
         $employeesArray = array_map(function ($emp) {
             return [
                 'id' => $emp->id,
-                'employee_name' => $emp->employee_name,
+                'last_name' => $emp->last_name,
+                'first_name' => $emp->first_name,
+                'middle_name' => $emp->middle_name,
                 'employee_type' => $emp->employee_type,
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
@@ -123,7 +129,6 @@ class EmployeesController extends Controller
     public function store(StoreEmployeesRequest $request)
     {
     $data = $request->validated();
-    $data['employee_name'] = strtoupper(trim($data['surname']) . ', ' . trim($data['first_name']) . ', ' . ($data['middle_name'] ?? ''));
     // Recalculate PhilHealth using new formula (divide by 2)
     if (isset($data['base_salary'])) {
         $base_salary = (float) $data['base_salary'];
@@ -189,7 +194,25 @@ class EmployeesController extends Controller
             ])
             ->toArray();
         return Inertia::render('employees/edit', [
-            'employee' => $employee,
+            'employee' => [
+                'id' => $employee->id,
+                'last_name' => $employee->last_name,
+                'first_name' => $employee->first_name,
+                'middle_name' => $employee->middle_name,
+                'employee_type' => $employee->employee_type,
+                'employee_status' => $employee->employee_status,
+                'roles' => $employee->roles,
+                'base_salary' => $employee->base_salary,
+                'overtime_pay' => $employee->overtime_pay,
+                'sss' => $employee->sss,
+                'philhealth' => $employee->philhealth,
+                'pag_ibig' => $employee->pag_ibig,
+                'college_program' => $employee->college_program,
+                'withholding_tax' => $employee->withholding_tax,
+                'work_hours_per_day' => $employee->work_hours_per_day,
+                'work_start_time' => $employee->work_start_time,
+                'work_end_time' => $employee->work_end_time,
+            ],
             'search'   => $request->input('search', ''),
             'filters'  => [
                 'types'    => $types,
@@ -208,7 +231,6 @@ class EmployeesController extends Controller
     public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
     $data = $request->validated();
-    $data['employee_name'] = strtoupper(trim($data['surname']) . ', ' . trim($data['first_name']) . ', ' . ($data['middle_name'] ?? ''));
     // Recalculate PhilHealth using new formula (divide by 2)
     if (isset($data['base_salary'])) {
         $base_salary = (float) $data['base_salary'];

@@ -72,6 +72,7 @@ class PayrollController extends Controller
                 $processedCount++;
             } catch (\Exception $e) {
                 $errors[] = "Error processing employee {$employee->employee_name}: " . $e->getMessage();
+                $errors[] = "Error processing employee {$employee->last_name}, {$employee->first_name} {$employee->middle_name}: " . $e->getMessage();
             }
         }
 

@@ -11,8 +11,7 @@ class Employees extends Model
     use HasFactory;
 
     protected $fillable = [
-        'employee_name',
-        'surname',
+        'last_name',
         'first_name',
         'middle_name',
         'employee_type',

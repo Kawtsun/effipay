@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('employees', function (Blueprint $table) {
-            $table->string('surname')->nullable()->after('employee_category');
-            $table->string('first_name')->nullable()->after('surname');
+            $table->string('last_name')->nullable()->after('employee_category');
+            $table->string('first_name')->nullable()->after('last_name');
             $table->string('middle_name')->nullable()->after('first_name');
         });
     }
@@ -24,7 +24,15 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('employees', function (Blueprint $table) {
-            $table->dropColumn(['surname', 'first_name', 'middle_name']);
+            if (Schema::hasColumn('employees', 'last_name')) {
+                $table->dropColumn('last_name');
+            }
+            if (Schema::hasColumn('employees', 'first_name')) {
+                $table->dropColumn('first_name');
+            }
+            if (Schema::hasColumn('employees', 'middle_name')) {
+                $table->dropColumn('middle_name');
+            }
         });
     }
 };

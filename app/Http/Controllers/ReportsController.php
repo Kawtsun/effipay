@@ -16,8 +16,12 @@ class ReportsController extends Controller
     {
         $query = \App\Models\Employees::query();
 
-        if ($request->filled('search')) {
-            $query->where('employee_name', 'like', '%' . $request->search . '%');
+                if ($request->filled('search')) {
+                        $query->where(function($q) use ($request) {
+                                $q->where('last_name', 'like', '%' . $request->search . '%')
+                                    ->orWhere('first_name', 'like', '%' . $request->search . '%')
+                                    ->orWhere('middle_name', 'like', '%' . $request->search . '%');
+                        });
         }
 
         if ($request->filled('types')) {

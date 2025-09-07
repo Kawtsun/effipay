@@ -51,7 +51,7 @@ type Props = {
         const { data, setData, post } = useForm({
             first_name: '',
             middle_name: '',
-            surname: '',
+            last_name: '',
             employee_name: '',
             employee_type: 'Full Time',
             employee_status: 'Active',
@@ -125,25 +125,12 @@ type Props = {
             const endMinutes = endHour * 60 + endMinute;
 
             // Auto-calculate PhilHealth and Withholding Tax
-            useEffect(() => {
-                const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
-                const sssNum = Number(data.sss.replace(/,/g, '')) || 0;
-                const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-                const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
-                if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
-                    setData('philhealth', calculatedPhilHealth.toFixed(2));
-                }
-                const calculatedWithholdingTax = calculateWithholdingTax(baseSalaryNum, sssNum, pagIbigNum, calculatedPhilHealth);
-                if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
-                    setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
-                }
-            }, [data.base_salary, data.sss, data.pag_ibig, setData]);
             let actualWorkMinutes = endMinutes - startMinutes;
             if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
             workHours = Math.round(actualWorkMinutes / 60);
         }
 
-        const employee_name = `${data.surname}, ${data.first_name}, ${data.middle_name}`.toUpperCase();
+    const employee_name = `${data.last_name}, ${data.first_name}, ${data.middle_name}`;
         const cleanedData = {
             ...data,
             employee_name: employee_name,
@@ -329,8 +316,8 @@ type Props = {
                                     <h1 className='font-bold text-xl mb-6'>Employee Information</h1>
                                     <div className='space-y-6'>
                                         <div className="flex flex-col gap-3">
-                                            <Label>Surname</Label>
-                                            <Input id="surname" type="text" required placeholder="Surname" value={data.surname} onChange={e => setData('surname', e.target.value)} />
+                                            <Label>Last Name</Label>
+                                            <Input id="last_name" type="text" required placeholder="Last Name" value={data.last_name} onChange={e => setData('last_name', e.target.value)} />
                                         </div>
                                         <div className="flex flex-col gap-3">
                                             <Label>First Name</Label>

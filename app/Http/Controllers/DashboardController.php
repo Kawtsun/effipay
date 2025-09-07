@@ -46,7 +46,7 @@ class DashboardController extends Controller
         if ($selectedMonth) {
             $perEmployee = Payroll::where('month', $selectedMonth)
                 ->join('employees', 'payrolls.employee_id', '=', 'employees.id')
-                ->select('employees.employee_name as name', 'payrolls.net_pay as net_pay', 'payrolls.payroll_date')
+                ->selectRaw("CONCAT(employees.last_name, ', ', employees.first_name, ' ', employees.middle_name) as name, payrolls.net_pay as net_pay, payrolls.payroll_date")
                 ->orderBy('net_pay', 'desc')
                 ->get();
         }
@@ -112,7 +112,7 @@ class DashboardController extends Controller
         if ($selectedMonth) {
             $perEmployee = Payroll::where('month', $selectedMonth)
                 ->join('employees', 'payrolls.employee_id', '=', 'employees.id')
-                ->select('employees.employee_name as name', 'payrolls.net_pay as net_pay', 'payrolls.payroll_date')
+                ->selectRaw("CONCAT(employees.last_name, ', ', employees.first_name, ' ', employees.middle_name) as name, payrolls.net_pay as net_pay, payrolls.payroll_date")
                 ->orderBy('net_pay', 'desc')
                 ->get();
         }

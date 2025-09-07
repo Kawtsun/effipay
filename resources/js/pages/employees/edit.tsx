@@ -70,11 +70,10 @@ export default function Edit({
     salaryDefaults,
 }: Props) {
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
-        const nameParts = employee.employee_name.split(',');
         const { data, setData, put } = useForm({
-            surname: nameParts[0]?.trim() || '',
-            first_name: nameParts[1]?.trim() || '',
-            middle_name: nameParts[2]?.trim() || '',
+            last_name: employee.last_name || '',
+            first_name: employee.first_name || '',
+            middle_name: employee.middle_name || '',
             employee_type: employee.employee_type,
             employee_status: employee.employee_status,
             roles: employee.roles,
@@ -137,8 +136,10 @@ export default function Edit({
             workHours = Math.round(actualWorkMinutes / 60);
         }
 
+    const employee_name = `${data.last_name}, ${data.first_name}, ${data.middle_name}`;
         const cleanedData = {
             ...data,
+            employee_name,
             base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
             overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
             sss: Number(data.sss.replace(/,/g, '')) || 0,
@@ -327,8 +328,8 @@ export default function Edit({
                                         <h1 className='font-bold text-xl mb-6'>Employee Information</h1>
                                         <div className='space-y-6'>
                                         <div className="flex flex-col gap-3">
-                                            <Label>Surname</Label>
-                                            <Input id="surname" type="text" required placeholder="Surname" value={data.surname} onChange={e => setData('surname', e.target.value)} />
+                                            <Label>Last Name</Label>
+                                            <Input id="last_name" type="text" required placeholder="Last Name" value={data.last_name} onChange={e => setData('last_name', e.target.value)} />
                                         </div>
                                         <div className="flex flex-col gap-3">
                                             <Label>First Name</Label>
