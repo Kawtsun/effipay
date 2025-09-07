@@ -1,6 +1,3 @@
-
-
-// Helper to format time as 12-hour string (supports HH:MM or HH:MM:SS)
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
     const parts = time.split(':');
@@ -13,7 +10,6 @@ function formatTime12Hour(time?: string): string {
     return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
-// ...existing code...
 import {
     Dialog,
     DialogContent,
@@ -183,16 +179,16 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                 {/* Show skeleton if loading, else show real data */}
                                 <div className="space-y-12 text-base"> {/* Increased gap */}
                                     {/* Employee Header */}
-                                    <div className="border-b pb-6 mb-4"> {/* Increased bottom margin */}
+                                    <div className="border-b pb-6 mb-2"> {/* Increased bottom margin */}
                                         <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {`${employee.last_name}, ${employee.first_name} ${employee.middle_name}`.toLocaleUpperCase('en-US')}</h3>
 
                                     </div>
                                     {/* Header Row */}
-                                    <div className="grid grid-cols-2 gap-16 items-start mb-10"> {/* Increased gap and margin */}
+                                    <div className="grid grid-cols-2 gap-10 items-start mb-6"> {/* Increased gap and margin */}
                                         {/* General Info */}
                                         <div>
                                             <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
-                                            <div className="space-y-4 text-sm"> {/* Increased gap */}
+                                            <div className="space-y-2 text-sm"> {/* Increased gap */}
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
                                                 <Info label="Schedule" value={

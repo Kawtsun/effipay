@@ -1,4 +1,15 @@
-// ...existing code...
+function formatTime12Hour(time?: string): string {
+    if (!time) return '-';
+    const parts = time.split(':');
+    if (parts.length < 2) return '-';
+    const hours = Number(parts[0]);
+    const minutes = Number(parts[1]);
+    if (isNaN(hours) || isNaN(minutes)) return '-';
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
 import {
     Dialog,
     DialogContent,
@@ -151,6 +162,11 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                             <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
+                                                 <Info label="Schedule" value={
+                                                    employee.work_start_time && employee.work_end_time && employee.work_hours_per_day
+                                                        ? `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${employee.work_hours_per_day} hours)`
+                                                        : '-'
+                                                } />
                                             </div>
                                         </div>
                                         <div>
