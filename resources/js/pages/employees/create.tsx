@@ -397,6 +397,7 @@ type Props = {
                                                 onChange={val => setData('employee_type', val)}
                                                 roles={data.roles ? data.roles.split(',') : []}
                                                 disabled={data.roles === ''}
+                                                types={data.roles === '' ? [{ value: 'Full Time', label: 'Full Time' }] : undefined}
                                             />
                                         </div>
                                         <div className="flex flex-col gap-3">
