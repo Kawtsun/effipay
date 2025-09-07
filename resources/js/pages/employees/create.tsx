@@ -363,20 +363,39 @@ type Props = {
                                                     />
                                                     Administrator
                                                 </label>
-                                                <div className="mt-2 mb-1 text-xs font-semibold text-muted-foreground select-none">Instructor</div>
-                                                <EmployeeInstructorRadioRole
-                                                    value={data.roles.split(',').find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
-                                                    onChange={val => {
-                                                        // Remove any instructor role, add the new one
-                                                        const rolesArr = data.roles.split(',').filter(r => r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
-                                                        setData('roles', [val, ...rolesArr].filter(Boolean).join(','));
-                                                        if (val === 'college instructor') {
-                                                            setTimeout(() => {
-                                                                collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                            }, 100);
-                                                        }
-                                                    }}
-                                                />
+                                                <label className="flex items-center gap-2 text-sm select-none mt-2">
+                                                    <Checkbox
+                                                        checked={data.roles.split(',').some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
+                                                        onCheckedChange={(checked) => {
+                                                            let rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
+                                                            if (checked) {
+                                                                // Add 'instructor' as a UI flag only if no teaching role is selected
+                                                                setData('roles', [...rolesArr, 'instructor'].filter(Boolean).join(','));
+                                                            } else {
+                                                                // Remove 'instructor' and any teaching role
+                                                                setData('roles', rolesArr.join(','));
+                                                            }
+                                                        }}
+                                                        className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                                                    />
+                                                    Instructor
+                                                </label>
+                                                <div className="pl-6 mt-1">
+                                                    <EmployeeInstructorRadioRole
+                                                        value={data.roles.split(',').find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
+                                                        onChange={val => {
+                                                            // Remove any instructor and teaching role, add the new teaching role only
+                                                            let rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
+                                                            setData('roles', [val, ...rolesArr].filter(Boolean).join(','));
+                                                            if (val === 'college instructor') {
+                                                                setTimeout(() => {
+                                                                    collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                }, 100);
+                                                            }
+                                                        }}
+                                                        disabled={!data.roles.split(',').some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
+                                                    />
+                                                </div>
                                                 <AnimatePresence>
                                                     {data.roles.split(',').includes('college instructor') && (
                                                         <motion.div
