@@ -60,6 +60,11 @@ export interface Employees {
     work_hours_per_day: number;
     work_start_time: string;
     work_end_time: string;
+        late_count?: number;
+        early_count?: number;
+        overtime_count?: number;
+        overtime_pay_weekdays?: number;
+        overtime_pay_weekends?: number;
 }
 
 export interface Salary {

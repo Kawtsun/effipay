@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2 } from 'lucide-react';
 import { useState, useCallback, useRef } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 // @ts-ignore
@@ -50,6 +51,8 @@ function getCollegeProgramLabel(acronym: string) {
 type FilterState = { types: string[]; statuses: string[]; roles: string[] };
 
 export default function TimeKeeping() {
+    const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
+    const [modalOpen, setModalOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleImportClick = () => {
@@ -106,8 +109,17 @@ export default function TimeKeeping() {
             toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
             if (response.ok) {
                 toast.success(`Successfully imported: ${fileName}`);
+                // Automatically refresh the page to show updated time keeping data
+                router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] });
             } else {
-                toast.error('Import failed.');
+                let errorMsg = 'Import failed.';
+                try {
+                    const errorData = await response.json();
+                    if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+                        errorMsg = errorData.errors.join('\n');
+                    }
+                } catch {}
+                toast.error(errorMsg);
             }
         } catch (err) {
             toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
@@ -399,7 +411,7 @@ export default function TimeKeeping() {
                                                     })()}
                                                 </TableCell>
                                                 <TableCell style={{ width: 180 }} className="px-4 py-2 whitespace-nowrap text-right">
-                                                    <Button variant="secondary" disabled>
+                                                    <Button variant="secondary" onClick={() => { setSelectedEmployee(emp); setModalOpen(true); }}>
                                                         <Eye />
                                                         View
                                                     </Button>
@@ -428,6 +440,26 @@ export default function TimeKeeping() {
                     </div>
                 </div>
             </div>
+            {/* Floating Modal for Late/Early Departures */}
+            <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Time Keeping Details</DialogTitle>
+                    </DialogHeader>
+                    {selectedEmployee ? (
+                        <div className="space-y-4">
+                            <div className="font-semibold text-lg">{`${selectedEmployee.last_name}, ${selectedEmployee.first_name} ${selectedEmployee.middle_name}`.toLocaleUpperCase('en-US')}</div>
+                            <div className="flex flex-col gap-2">
+                                <div><span className="font-medium">Late Count:</span> {selectedEmployee.late_count ?? 0}</div>
+                                <div><span className="font-medium">Early Departure Count:</span> {selectedEmployee.early_count ?? 0}</div>
+                                <div><span className="font-medium">Overtime Count:</span> {selectedEmployee.overtime_count ?? 0}</div>
+                                <div><span className="font-medium">Overtime Pay (Weekdays):</span> ₱{selectedEmployee.overtime_pay_weekdays?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</div>
+                                <div><span className="font-medium">Overtime Pay (Weekends):</span> ₱{selectedEmployee.overtime_pay_weekends?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</div>
+                            </div>
+                        </div>
+                    ) : null}
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

@@ -21,6 +21,7 @@ class TimeKeepingController extends Controller
             // Normalize keys to lowercase for robust matching
             $imported = 0;
             $errors = [];
+            $shownIdNameError = false;
             foreach ($records as $i => $row) {
                 // Normalize keys to lowercase for robust matching
                 $normalized = [];
@@ -28,6 +29,8 @@ class TimeKeepingController extends Controller
                     $normalized[strtolower(str_replace([' ', '_'], '', $key))] = $value;
                 }
                 $employeeId = $normalized['personid'] ?? null;
+                $firstName = $normalized['firstname'] ?? null;
+                $lastName = $normalized['lastname'] ?? null;
                 $date = $normalized['date'] ?? null;
                 $clockIn = $normalized['clockin'] ?? null;
                 $clockOut = $normalized['clockout'] ?? null;
@@ -37,11 +40,22 @@ class TimeKeepingController extends Controller
                 }
                 $employee = $employeeId ? \App\Models\Employees::where('id', $employeeId)->first() : null;
                 if (!$employee) {
-                    $errors[] = "Row " . ($i+2) . ": Employee ID '$employeeId' not found.";
+                    $errors[] = "Employee ID $employeeId.";
+                    continue;
+                }
+                // Verify first name and last name
+                if (
+                    ($firstName && strtolower(trim($employee->first_name)) !== strtolower(trim($firstName))) ||
+                    ($lastName && strtolower(trim($employee->last_name)) !== strtolower(trim($lastName)))
+                ) {
+                    if (!$shownIdNameError) {
+                        $errors[] = "Import Error: An Employee's Id and Name does not match correctly";
+                        $shownIdNameError = true;
+                    }
                     continue;
                 }
                 if (empty($date)) {
-                    $errors[] = "Row " . ($i+2) . ": Date missing.";
+                    $errors[] = "Date missing.";
                     continue;
                 }
                 \App\Models\TimeKeeping::updateOrCreate(
@@ -108,6 +122,45 @@ class TimeKeepingController extends Controller
         $employees = $query->paginate(10)->withQueryString();
 
         $employeesArray = array_map(function ($emp) {
+            $latestTK = \App\Models\TimeKeeping::where('employee_id', $emp->id)
+                ->orderByDesc('date')
+                ->first();
+            $clock_in = $latestTK ? $latestTK->clock_in : null;
+            $clock_out = $latestTK ? $latestTK->clock_out : null;
+            $overtime = false;
+            if ($clock_out) {
+                $overtime = strtotime($clock_out) > strtotime('20:00:00');
+            }
+
+            // Late/Early Departure & Overtime Counters
+            $late_count = 0;
+            $early_count = 0;
+            $overtime_count = 0;
+            $records = \App\Models\TimeKeeping::where('employee_id', $emp->id)->get();
+            $late_threshold = null;
+            if ($emp->work_start_time) {
+                $late_threshold = date('H:i:s', strtotime($emp->work_start_time) + 15 * 60);
+            }
+            $overtime_pay_weekdays = 0;
+            $overtime_pay_weekends = 0;
+            foreach ($records as $tk) {
+                if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
+                    $late_count++;
+                }
+                if ($tk->clock_out && strtotime($tk->clock_out) < strtotime('20:00:00')) {
+                    $early_count++;
+                }
+                if ($tk->clock_out && strtotime($tk->clock_out) > strtotime('20:00:00')) {
+                    $overtime_count++;
+                    $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
+                    if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                        $overtime_pay_weekdays += 100 * 0.25;
+                    } else {
+                        $overtime_pay_weekends += 100 * 0.30;
+                    }
+                }
+            }
+
             return [
                 'id' => $emp->id,
                 'last_name' => $emp->last_name,
@@ -117,6 +170,14 @@ class TimeKeepingController extends Controller
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
                 'college_program' => $emp->college_program,
+                'clock_in' => $clock_in,
+                'clock_out' => $clock_out,
+                'overtime' => $overtime,
+                'late_count' => $late_count,
+                'early_count' => $early_count,
+                'overtime_count' => $overtime_count,
+                'overtime_pay_weekdays' => $overtime_pay_weekdays,
+                'overtime_pay_weekends' => $overtime_pay_weekends,
             ];
         }, $employees->items());
 
