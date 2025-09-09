@@ -6,9 +6,64 @@ use App\Models\TimeKeeping;
 use App\Http\Requests\StoreTimeKeepingRequest;
 use App\Http\Requests\UpdateTimeKeepingRequest;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
 
 class TimeKeepingController extends Controller
 {
+    /**
+     * Import time keeping records from uploaded file.
+     */
+    public function import(Request $request)
+    {
+        $records = $request->input('records', []);
+        $imported = 0;
+        foreach ($records as $row) {
+            // Normalize keys to lowercase for robust matching
+            $imported = 0;
+            $errors = [];
+            foreach ($records as $i => $row) {
+                // Normalize keys to lowercase for robust matching
+                $normalized = [];
+                foreach ($row as $key => $value) {
+                    $normalized[strtolower(str_replace([' ', '_'], '', $key))] = $value;
+                }
+                $employeeId = $normalized['personid'] ?? null;
+                $date = $normalized['date'] ?? null;
+                $clockIn = $normalized['clockin'] ?? null;
+                $clockOut = $normalized['clockout'] ?? null;
+                // Convert MM/DD/YYYY to YYYY-MM-DD if needed
+                if ($date && preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $date, $matches)) {
+                    $date = $matches[3] . '-' . $matches[1] . '-' . $matches[2];
+                }
+                $employee = $employeeId ? \App\Models\Employees::where('id', $employeeId)->first() : null;
+                if (!$employee) {
+                    $errors[] = "Row " . ($i+2) . ": Employee ID '$employeeId' not found.";
+                    continue;
+                }
+                if (empty($date)) {
+                    $errors[] = "Row " . ($i+2) . ": Date missing.";
+                    continue;
+                }
+                \App\Models\TimeKeeping::updateOrCreate(
+                    [
+                        'employee_id' => $employee->id,
+                        'date' => $date,
+                    ],
+                    [
+                        'clock_in' => $clockIn,
+                        'clock_out' => $clockOut,
+                    ]
+                );
+                $imported++;
+            }
+            if ($imported > 0) {
+                return response()->json(['success' => true, 'imported' => $imported, 'errors' => $errors]);
+            } else {
+                return response()->json(['success' => false, 'imported' => 0, 'errors' => $errors], 400);
+            }
+        }
+        return response()->json(['success' => true, 'imported' => $imported]);
+    }
     /**
      * Display a listing of the resource.
      */

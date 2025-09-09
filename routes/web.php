@@ -16,6 +16,8 @@ Route::get('/', fn() => Inertia::render('welcome'))
     ->name('home');
 
 Route::middleware('auth')->group(function () {
+
+    Route::post('/time-keeping/import', [TimeKeepingController::class, 'import'])->name('time-keeping.import');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
 

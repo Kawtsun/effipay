@@ -20,6 +20,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Loader2 } from 'lucide-react';
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import Papa from 'papaparse';
+// @ts-ignore
+import * as XLSX from 'xlsx';
 
 const MAX_ROWS = 10;
 const ROW_HEIGHT = 53; // px
@@ -70,7 +73,46 @@ export default function TimeKeeping() {
             toast.error('Invalid file type. Only CSV or Excel files are accepted.');
             return;
         }
-        toast.success(`Successfully imported: ${file.name}`);
+
+        let rows = [];
+        const importToast = toast.loading('Importing file...');
+        if (ext === '.csv') {
+            file.text().then(text => {
+                const result = Papa.parse(text, { header: true });
+                rows = result.data;
+                sendImport(rows, file.name, importToast);
+            });
+        } else {
+            file.arrayBuffer().then(data => {
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                rows = XLSX.utils.sheet_to_json(worksheet);
+                sendImport(rows, file.name, importToast);
+            });
+        }
+    };
+    const sendImport = async (rows: any[], fileName: string, toastId: string | number) => {
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch('/time-keeping/import', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken || '',
+                },
+                body: JSON.stringify({ records: rows }),
+            });
+            toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
+            if (response.ok) {
+                toast.success(`Successfully imported: ${fileName}`);
+            } else {
+                toast.error('Import failed.');
+            }
+        } catch (err) {
+            toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
+            toast.error('Import failed.');
+        }
     };
     const page = usePage();
     const {
