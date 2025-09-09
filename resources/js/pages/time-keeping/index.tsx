@@ -14,6 +14,15 @@ import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
 import { calculateOvertimePay } from '@/utils/salaryFormulas';
+
+function formatWithCommas(value: string | number): string {
+    if (value === null || value === undefined || value === '') return '';
+    const strValue = typeof value === 'number' ? value.toFixed(2) : value;
+    const [int, dec] = strValue.split('.');
+    return dec !== undefined
+        ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
+        : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
 import { Head, router, usePage } from '@inertiajs/react';
 import { Users, Shield, GraduationCap, Book, Eye, Import } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -449,9 +458,9 @@ export default function TimeKeeping() {
                     </DialogHeader>
                     {selectedEmployee ? (
                         <div className="space-y-4">
-                            <div><span className="font-medium">Monthly Salary:</span> ₱{selectedEmployee.base_salary?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</div>
-                            <div><span className="font-medium">Rate per Day:</span> ₱{selectedEmployee.rate_per_day?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</div>
-                            <div><span className="font-medium">Rate per Hour:</span> ₱{selectedEmployee.rate_per_hour?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</div>
+                            <div><span className="font-medium">Monthly Salary:</span> ₱{formatWithCommas(selectedEmployee.base_salary ?? 0)}</div>
+                            <div><span className="font-medium">Rate per Day:</span> ₱{formatWithCommas(selectedEmployee.rate_per_day ?? 0)}</div>
+                            <div><span className="font-medium">Rate per Hour:</span> ₱{formatWithCommas(selectedEmployee.rate_per_hour ?? 0)}</div>
                             <div className="font-semibold text-lg">{`${selectedEmployee.last_name}, ${selectedEmployee.first_name} ${selectedEmployee.middle_name}`.toLocaleUpperCase('en-US')}</div>
                             <div className="flex flex-col gap-2">
                                 <div><span className="font-medium">Tardiness:</span> {selectedEmployee.late_count ?? 0}</div>
@@ -469,7 +478,7 @@ export default function TimeKeeping() {
                                         if (selectedEmployee.overtime_count_weekends && selectedEmployee.overtime_count_weekends > 0) {
                                             total += selectedEmployee.overtime_count_weekends * calculateOvertimePay('2025-09-07', ratePerHour); // Weekend sample date
                                         }
-                                        return total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                        return formatWithCommas(total);
                                     })()
                                 }</div>
                             </div>
