@@ -122,6 +122,18 @@ class TimeKeepingController extends Controller
         $employees = $query->paginate(10)->withQueryString();
 
         $employeesArray = array_map(function ($emp) {
+            // Overtime pay calculation function (matches frontend)
+            $calculateOvertimePay = function($date, $ratePerHour) {
+                $dayOfWeek = date('w', strtotime($date)); // 0 (Sun) - 6 (Sat)
+                if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                    return round($ratePerHour * 0.25, 2);
+                } else {
+                    return round($ratePerHour * 0.30, 2);
+                }
+            };
+            // Calculate rate per day and rate per hour
+            $rate_per_day = ($emp->base_salary * 12) / 288;
+            $rate_per_hour = $rate_per_day / 8;
             $latestTK = \App\Models\TimeKeeping::where('employee_id', $emp->id)
                 ->orderByDesc('date')
                 ->first();
@@ -143,6 +155,19 @@ class TimeKeepingController extends Controller
             }
             $overtime_pay_weekdays = 0;
             $overtime_pay_weekends = 0;
+            $overtime_count_weekdays = 0;
+            $overtime_count_weekends = 0;
+            // Absences: count days with no clock_in and clock_out
+            $absences = 0;
+            $dates = $records->pluck('date')->unique();
+            foreach ($dates as $date) {
+                $dayRecords = $records->where('date', $date);
+                $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
+                $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
+                if (!$hasClockIn && !$hasClockOut) {
+                    $absences++;
+                }
+            }
             foreach ($records as $tk) {
                 if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
                     $late_count++;
@@ -151,17 +176,22 @@ class TimeKeepingController extends Controller
                     $early_count++;
                 }
                 if ($tk->clock_out && strtotime($tk->clock_out) > strtotime('20:00:00')) {
-                    $overtime_count++;
+                    $pay = $calculateOvertimePay($tk->date, $rate_per_hour);
                     $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
                     if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
-                        $overtime_pay_weekdays += 100 * 0.25;
+                        $overtime_count_weekdays++;
+                        $overtime_pay_weekdays += $pay;
                     } else {
-                        $overtime_pay_weekends += 100 * 0.30;
+                        $overtime_count_weekends++;
+                        $overtime_pay_weekends += $pay;
                     }
                 }
             }
+            $overtime_count = $overtime_count_weekdays + $overtime_count_weekends;
+            $overtime_pay_total = $overtime_pay_weekdays + $overtime_pay_weekends;
 
             return [
+                'base_salary' => $emp->base_salary,
                 'id' => $emp->id,
                 'last_name' => $emp->last_name,
                 'first_name' => $emp->first_name,
@@ -176,8 +206,12 @@ class TimeKeepingController extends Controller
                 'late_count' => $late_count,
                 'early_count' => $early_count,
                 'overtime_count' => $overtime_count,
-                'overtime_pay_weekdays' => $overtime_pay_weekdays,
-                'overtime_pay_weekends' => $overtime_pay_weekends,
+                'overtime_count_weekdays' => $overtime_count_weekdays,
+                'overtime_count_weekends' => $overtime_count_weekends,
+                'overtime_pay_total' => $overtime_pay_total,
+                'absences' => $absences,
+                'rate_per_day' => $rate_per_day,
+                'rate_per_hour' => $rate_per_hour,
             ];
         }, $employees->items());
 

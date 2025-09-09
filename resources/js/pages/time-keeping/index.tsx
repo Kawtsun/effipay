@@ -13,6 +13,7 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
+import { calculateOvertimePay } from '@/utils/salaryFormulas';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Users, Shield, GraduationCap, Book, Eye, Import } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -448,13 +449,29 @@ export default function TimeKeeping() {
                     </DialogHeader>
                     {selectedEmployee ? (
                         <div className="space-y-4">
+                            <div><span className="font-medium">Monthly Salary:</span> ₱{selectedEmployee.base_salary?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</div>
+                            <div><span className="font-medium">Rate per Day:</span> ₱{selectedEmployee.rate_per_day?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</div>
+                            <div><span className="font-medium">Rate per Hour:</span> ₱{selectedEmployee.rate_per_hour?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</div>
                             <div className="font-semibold text-lg">{`${selectedEmployee.last_name}, ${selectedEmployee.first_name} ${selectedEmployee.middle_name}`.toLocaleUpperCase('en-US')}</div>
                             <div className="flex flex-col gap-2">
-                                <div><span className="font-medium">Late Count:</span> {selectedEmployee.late_count ?? 0}</div>
-                                <div><span className="font-medium">Early Departure Count:</span> {selectedEmployee.early_count ?? 0}</div>
-                                <div><span className="font-medium">Overtime Count:</span> {selectedEmployee.overtime_count ?? 0}</div>
-                                <div><span className="font-medium">Overtime Pay (Weekdays):</span> ₱{selectedEmployee.overtime_pay_weekdays?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</div>
-                                <div><span className="font-medium">Overtime Pay (Weekends):</span> ₱{selectedEmployee.overtime_pay_weekends?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}</div>
+                                <div><span className="font-medium">Tardiness:</span> {selectedEmployee.late_count ?? 0}</div>
+                                <div><span className="font-medium">Undertime:</span> {selectedEmployee.early_count ?? 0}</div>
+                                <div><span className="font-medium">Overtime Count (Weekdays):</span> {selectedEmployee.overtime_count_weekdays ?? 0}</div>
+                                <div><span className="font-medium">Overtime Count (Weekends):</span> {selectedEmployee.overtime_count_weekends ?? 0}</div>
+                                <div><span className="font-medium">Absences:</span> {selectedEmployee.absences ?? 0}</div>
+                                <div><span className="font-medium">Total Overtime Pay:</span> ₱{
+                                    (() => {
+                                        let total = 0;
+                                        const ratePerHour = selectedEmployee.rate_per_hour ?? 0;
+                                        if (selectedEmployee.overtime_count_weekdays && selectedEmployee.overtime_count_weekdays > 0) {
+                                            total += selectedEmployee.overtime_count_weekdays * calculateOvertimePay('2025-09-08', ratePerHour); // Weekday sample date
+                                        }
+                                        if (selectedEmployee.overtime_count_weekends && selectedEmployee.overtime_count_weekends > 0) {
+                                            total += selectedEmployee.overtime_count_weekends * calculateOvertimePay('2025-09-07', ratePerHour); // Weekend sample date
+                                        }
+                                        return total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                    })()
+                                }</div>
                             </div>
                         </div>
                     ) : null}

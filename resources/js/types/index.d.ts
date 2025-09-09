@@ -63,8 +63,12 @@ export interface Employees {
         late_count?: number;
         early_count?: number;
         overtime_count?: number;
-        overtime_pay_weekdays?: number;
-        overtime_pay_weekends?: number;
+        overtime_count_weekdays?: number;
+        overtime_count_weekends?: number;
+        overtime_pay_total?: number;
+        absences?: number;
+        rate_per_day?: number;
+        rate_per_hour?: number;
 }
 
 export interface Salary {

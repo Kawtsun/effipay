@@ -1,3 +1,25 @@
+// Calculates overtime pay for a given date and base amount
+export function calculateOvertimePay(date: string, baseAmount: number): number {
+    const dayOfWeek = new Date(date).getDay(); // 0 (Sun) - 6 (Sat)
+    // Weekdays: 1 (Mon) - 5 (Fri), Weekends: 0 (Sun), 6 (Sat)
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        return parseFloat((baseAmount * 0.25).toFixed(2));
+    } else {
+        return parseFloat((baseAmount * 0.30).toFixed(2));
+    }
+}
+// Calculates rate per day (default: base salary)
+export function calculateRatePerDay(baseSalary: number): number {
+    // Formula: (baseSalary * 12) / 288
+    return parseFloat(((baseSalary * 12) / 288).toFixed(2));
+}
+
+// Calculates rate per hour (base salary divided by work hours per day)
+export function calculateRatePerHour(baseSalary: number, workHoursPerDay: number): number {
+    // Formula: rate per day divided by 8
+    const ratePerDay = calculateRatePerDay(baseSalary);
+    return parseFloat((ratePerDay / 8).toFixed(2));
+}
 export function calculateSSS(base_salary: number): number {
         const brackets = [
             { min: 0, max: 5249.99, value: 250.00 },
