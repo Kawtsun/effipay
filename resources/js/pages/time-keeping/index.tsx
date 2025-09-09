@@ -14,11 +14,12 @@ import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Users, Shield, GraduationCap, Book, Eye } from 'lucide-react';
+import { Users, Shield, GraduationCap, Book, Eye, Import } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2 } from 'lucide-react';
 import { useState, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 
 const MAX_ROWS = 10;
 const ROW_HEIGHT = 53; // px
@@ -46,6 +47,31 @@ function getCollegeProgramLabel(acronym: string) {
 type FilterState = { types: string[]; statuses: string[]; roles: string[] };
 
 export default function TimeKeeping() {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleImportClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const validTypes = [
+            'text/csv',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ];
+        const validExtensions = ['.csv', '.xls', '.xlsx'];
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (!validTypes.includes(file.type) && !validExtensions.includes(ext)) {
+            toast.error('Invalid file type. Only CSV or Excel files are accepted.');
+            return;
+        }
+        toast.success(`Successfully imported: ${file.name}`);
+    };
     const page = usePage();
     const {
         employees = [],
@@ -180,6 +206,17 @@ export default function TimeKeeping() {
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
                                 onChange={newFilters => handleFilterChange({ ...filters, ...newFilters })}
+                            />
+                            <Button variant="default" onClick={handleImportClick}>
+                                <Import />
+                                Import
+                            </Button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                style={{ display: 'none' }}
+                                accept=".csv,.xls,.xlsx"
+                                onChange={handleFileChange}
                             />
                         </div>
                     </div>
