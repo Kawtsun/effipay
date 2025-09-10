@@ -274,11 +274,11 @@ export default function ReportsIndex() {
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
                                                 <TableCell style={{ width: 350 }} className="px-4 py-2 min-w-[160px]">
+                                                    {/* Roles display logic unchanged */}
                                                     {(() => {
                                                         if (!emp.roles) return '';
                                                         const rolesArr = emp.roles.split(',').map((r: string) => r.trim()).filter(Boolean);
                                                         const order = ['administrator', 'college instructor', 'basic education instructor'];
-                                                        // Prioritize filtered role if applied
                                                         let displayRoles = rolesArr;
                                                         if (appliedFilters.roles.length > 0) {
                                                             const filtered = appliedFilters.roles.filter(r => rolesArr.includes(r));
@@ -302,7 +302,6 @@ export default function ReportsIndex() {
                                                             color = 'warning';
                                                             icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                         }
-                                                        // Tooltip: all roles as badges, with full program name for college instructor
                                                         const tooltipContent = (
                                                             <div className="flex flex-wrap gap-2">
                                                                 {displayRoles.map(role => {
@@ -330,7 +329,6 @@ export default function ReportsIndex() {
                                                                 })}
                                                             </div>
                                                         );
-                                                        // Main badge: show acronym for college instructor, +N for additional roles
                                                         const badgeContent = (
                                                             <span className="inline-flex items-center gap-1">
                                                                 <Badge key={mainRole} variant={color} className="capitalize flex items-center">
@@ -341,12 +339,9 @@ export default function ReportsIndex() {
                                                                 )}
                                                             </span>
                                                         );
-                                                        // Tooltip logic
-                                                        // Only one role and not college instructor: no tooltip
                                                         if (displayRoles.length === 1 && mainRole !== 'college instructor') {
                                                             return badgeContent;
                                                         }
-                                                        // Otherwise, show tooltip (for college instructor or multiple roles)
                                                         return (
                                                             <TooltipProvider>
                                                                 <Tooltip>

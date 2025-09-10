@@ -149,7 +149,6 @@ export default function Edit({
             ...data,
             employee_name,
             base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
-            overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
             sss: Number(data.sss.replace(/,/g, '')) || 0,
             philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
             pag_ibig: pagIbigValue,

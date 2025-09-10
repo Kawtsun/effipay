@@ -58,7 +58,7 @@ type Props = {
             employee_status: 'Active',
             roles: '',
             base_salary: salaryDefaults['Full Time']?.base_salary.toString() ?? '',
-            overtime_pay: salaryDefaults['Full Time']?.overtime_pay.toString() ?? '',
+            // overtime_pay removed
             sss: calculateSSS(Number(salaryDefaults['Full Time']?.base_salary ?? 0)).toString(),
             philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
             pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
@@ -139,7 +139,6 @@ type Props = {
             ...data,
             employee_name: employee_name,
             base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
-            overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
             sss: Number(data.sss.replace(/,/g, '')) || 0,
             philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
             pag_ibig: pagIbigValue,
@@ -246,13 +245,11 @@ type Props = {
         if (salaryDefaults && salaryDefaults[data.employee_type]) {
             const def = salaryDefaults[data.employee_type];
             setData('base_salary', def.base_salary.toString());
-            setData('overtime_pay', def.overtime_pay.toString());
             setData('sss', def.sss.toString());
             setData('philhealth', def.philhealth.toString());
             setData('pag_ibig', def.pag_ibig.toString());
             setData('withholding_tax', def.withholding_tax.toString());
             setData('work_hours_per_day', def.work_hours_per_day.toString());
-            
             // Update work times based on default work hours (first-time add)
             const workHours = def.work_hours_per_day;
             if (workHours === 8) {
@@ -512,30 +509,6 @@ type Props = {
                                                             const baseSalaryNum = Number(raw) || 0;
                                                             const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
                                                             setData('philhealth', calculatedPhilHealth.toString());
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="overtime_pay">
-                                                    Overtime Pay
-                                                </Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input
-                                                        id="overtime_pay"
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9.,]*"
-                                                        required
-                                                        placeholder="Overtime Pay"
-                                                        className="pl-8"
-                                                        min={0}
-                                                        value={formatWithCommas(data.overtime_pay ?? '')}
-                                                        onChange={e => {
-                                                            let raw = e.target.value.replace(/,/g, '');
-                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                            setData('overtime_pay', raw);
                                                         }}
                                                     />
                                                 </div>

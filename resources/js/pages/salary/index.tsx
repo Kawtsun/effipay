@@ -78,12 +78,11 @@ export default function Index() {
   ]
 
   const cards = [
-    { key: 'base_salary' as keyof Defaults, label: 'Base Salary', value: defaults.base_salary, isEarning: true },
-    { key: 'overtime_pay' as keyof Defaults, label: 'Overtime Pay', value: defaults.overtime_pay, isEarning: true },
-    { key: 'sss' as keyof Defaults, label: 'SSS', value: calculateSSS(defaults.base_salary), isEarning: false },
-    { key: 'philhealth' as keyof Defaults, label: 'PhilHealth', value: defaults.philhealth, isEarning: false },
-    { key: 'pag_ibig' as keyof Defaults, label: 'Pag-IBIG', value: defaults.pag_ibig, isEarning: false },
-    { key: 'withholding_tax' as keyof Defaults, label: 'Withholding Tax', value: defaults.withholding_tax, isEarning: false },
+  { key: 'base_salary' as keyof Defaults, label: 'Base Salary', value: defaults.base_salary, isEarning: true },
+  { key: 'sss' as keyof Defaults, label: 'SSS', value: calculateSSS(defaults.base_salary), isEarning: false },
+  { key: 'philhealth' as keyof Defaults, label: 'PhilHealth', value: defaults.philhealth, isEarning: false },
+  { key: 'pag_ibig' as keyof Defaults, label: 'Pag-IBIG', value: defaults.pag_ibig, isEarning: false },
+  { key: 'withholding_tax' as keyof Defaults, label: 'Withholding Tax', value: defaults.withholding_tax, isEarning: false },
   ] as const
 
   const earningsCards = cards.filter(c => c.isEarning)
