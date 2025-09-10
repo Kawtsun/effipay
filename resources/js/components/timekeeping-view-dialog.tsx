@@ -159,18 +159,33 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 availableMonths={availableMonths}
                                             />
                                         </div>
-                                        <div className="grid grid-cols-2 gap-16 items-start mb-10">
-                                            <div>
-                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Attendance & Overtime</h5>
-                                                <div className="space-y-3 text-sm">
-                                                    <Info label="Total Tardiness Hour(s)" value={employee.late_count ?? 0} />
-                                                    <Info label="Total Undertime Hour(s)" value={employee.early_count ?? 0} />
-                                                    <Info label="Total Overtime Hour(s)" value={(employee.overtime_count_weekdays ?? 0) + (employee.overtime_count_weekends ?? 0)} />
-                                                    <Info label="Absences" value={employee.absences ?? 0} />
-                                                </div>
+                                        <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
+                                            {/* Tardiness Card */}
+                                            <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
+                                                <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{employee.late_count ?? 0} hr(s)</div>
                                             </div>
+                                            {/* Undertime Card */}
+                                            <div className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
+                                                <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{employee.early_count ?? 0} hr(s)</div>
+                                            </div>
+                                            {/* Overtime Card */}
+                                            <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
+                                                <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{(employee.overtime_count_weekdays ?? 0) + (employee.overtime_count_weekends ?? 0)} hr(s)</div>
+                                            </div>
+                                            {/* Absences Card */}
+                                            <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
+                                                <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{employee.absences ?? 0}</div>
+                                            </div>
+                                        </div>
+                                        {/* Computation details below cards, like report view dialog */}
+                                        <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
+                                            {/*   */}
                                             <div>
-                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
+                                                 <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
                                                 <div className="space-y-3 text-sm">
                                                     <Info label="Monthly Salary" value={`₱${formatNumberWithCommas(employee.base_salary ?? 0)}`} />
                                                     <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(employee.rate_per_day ?? 0)}`} />
@@ -183,8 +198,8 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                 </div>
                             </div>
                             <DialogFooter className="flex-shrink-0">
-                                <Button onClick={onClose}>Close</Button>
-                            </DialogFooter>
+        <Button onClick={onClose}>Close</Button>
+    </DialogFooter>
                         </DialogContent>
                     </motion.div>
                 )}
