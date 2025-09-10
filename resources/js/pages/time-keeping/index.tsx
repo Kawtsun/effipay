@@ -1,6 +1,7 @@
 import EmployeeFilter from '@/components/employee-filter';
 import EmployeePagination from '@/components/employee-pagination';
 import EmployeeSearch from '@/components/employee-search';
+import TimeKeepingViewDialog from '@/components/timekeeping-view-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -13,23 +14,13 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
-import { calculateOvertimePay } from '@/utils/salaryFormulas';
 
-function formatWithCommas(value: string | number): string {
-    if (value === null || value === undefined || value === '') return '';
-    const strValue = typeof value === 'number' ? value.toFixed(2) : value;
-    const [int, dec] = strValue.split('.');
-    return dec !== undefined
-        ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
-        : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
 import { Head, router, usePage } from '@inertiajs/react';
 import { Users, Shield, GraduationCap, Book, Eye, Import } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2 } from 'lucide-react';
 import { useState, useCallback, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 // @ts-ignore
@@ -62,7 +53,6 @@ type FilterState = { types: string[]; statuses: string[]; roles: string[] };
 
 export default function TimeKeeping() {
     const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
-    const [modalOpen, setModalOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleImportClick = () => {
@@ -421,7 +411,7 @@ export default function TimeKeeping() {
                                                     })()}
                                                 </TableCell>
                                                 <TableCell style={{ width: 180 }} className="px-4 py-2 whitespace-nowrap text-right">
-                                                    <Button variant="secondary" onClick={() => { setSelectedEmployee(emp); setModalOpen(true); }}>
+                                                    <Button variant="secondary" onClick={() => { setSelectedEmployee(emp); }}>
                                                         <Eye />
                                                         View
                                                     </Button>
@@ -451,41 +441,12 @@ export default function TimeKeeping() {
                 </div>
             </div>
             {/* Floating Modal for Late/Early Departures */}
-            <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Time Keeping Details</DialogTitle>
-                    </DialogHeader>
-                    {selectedEmployee ? (
-                        <div className="space-y-4">
-                            <div><span className="font-medium">Monthly Salary:</span> ₱{formatWithCommas(selectedEmployee.base_salary ?? 0)}</div>
-                            <div><span className="font-medium">Rate per Day:</span> ₱{formatWithCommas(selectedEmployee.rate_per_day ?? 0)}</div>
-                            <div><span className="font-medium">Rate per Hour:</span> ₱{formatWithCommas(selectedEmployee.rate_per_hour ?? 0)}</div>
-                            <div className="font-semibold text-lg">{`${selectedEmployee.last_name}, ${selectedEmployee.first_name} ${selectedEmployee.middle_name}`.toLocaleUpperCase('en-US')}</div>
-                            <div className="flex flex-col gap-2">
-                                <div><span className="font-medium">Tardiness:</span> {selectedEmployee.late_count ?? 0}</div>
-                                <div><span className="font-medium">Undertime:</span> {selectedEmployee.early_count ?? 0}</div>
-                                <div><span className="font-medium">Overtime Count (Weekdays):</span> {selectedEmployee.overtime_count_weekdays ?? 0}</div>
-                                <div><span className="font-medium">Overtime Count (Weekends):</span> {selectedEmployee.overtime_count_weekends ?? 0}</div>
-                                <div><span className="font-medium">Absences:</span> {selectedEmployee.absences ?? 0}</div>
-                                <div><span className="font-medium">Total Overtime Pay:</span> ₱{
-                                    (() => {
-                                        let total = 0;
-                                        const ratePerHour = selectedEmployee.rate_per_hour ?? 0;
-                                        if (selectedEmployee.overtime_count_weekdays && selectedEmployee.overtime_count_weekdays > 0) {
-                                            total += selectedEmployee.overtime_count_weekdays * calculateOvertimePay('2025-09-08', ratePerHour); // Weekday sample date
-                                        }
-                                        if (selectedEmployee.overtime_count_weekends && selectedEmployee.overtime_count_weekends > 0) {
-                                            total += selectedEmployee.overtime_count_weekends * calculateOvertimePay('2025-09-07', ratePerHour); // Weekend sample date
-                                        }
-                                        return formatWithCommas(total);
-                                    })()
-                                }</div>
-                            </div>
-                        </div>
-                    ) : null}
-                </DialogContent>
-            </Dialog>
+            {selectedEmployee && (
+                <TimeKeepingViewDialog
+                    employee={selectedEmployee}
+                    onClose={() => setSelectedEmployee(null)}
+                />
+            )}
         </AppLayout>
     );
 }
