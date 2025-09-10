@@ -181,12 +181,13 @@ class TimeKeepingController extends Controller
                     $workEnd = strtotime($emp->work_end_time);
                     $clockOut = strtotime($tk->clock_out);
                     if ($clockOut >= $workEnd + 3600) { // 1 hour after work_end_time
-                        $pay = $calculateOvertimePay($tk->date, $rate_per_hour);
                         $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
                         if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                            $pay = round($rate_per_hour * 0.25, 2); // Weekdays: 25%
                             $overtime_count_weekdays++;
                             $overtime_pay_weekdays += $pay;
                         } else {
+                            $pay = round($rate_per_hour * 0.30, 2); // Weekends: 30%
                             $overtime_count_weekends++;
                             $overtime_pay_weekends += $pay;
                         }

@@ -23,6 +23,20 @@ function formatTime12Hour(time?: string): string {
     return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
+function formatNumberWithCommas(num: number | string): string {
+    if (num === null || num === undefined) return '-';
+    const n = typeof num === 'string' ? Number(num) : num;
+    if (isNaN(n)) return '-';
+    return n.toLocaleString('en-US');
+}
+
+function formatNumberWithCommasAndFixed(num: number | string, decimals = 2): string {
+    if (num === null || num === undefined) return '-';
+    const n = typeof num === 'string' ? Number(num) : num;
+    if (isNaN(n)) return '-';
+    return n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
 interface Props {
     employee: Employees | null;
     onClose: () => void;
@@ -114,10 +128,10 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                             <div>
                                                 <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
                                                 <div className="space-y-3 text-sm">
-                                                    <Info label="Monthly Salary" value={`₱${employee.base_salary ?? 0}`} />
-                                                    <Info label="Rate per Day" value={`₱${employee.rate_per_day ?? 0}`} />
-                                                    <Info label="Rate per Hour" value={`₱${employee.rate_per_hour ?? 0}`} />
-                                                    <Info label="Total Overtime Pay" value={`₱${employee.overtime_pay ?? 0}`} />
+                                                    <Info label="Monthly Salary" value={`₱${formatNumberWithCommas(employee.base_salary ?? 0)}`} />
+                                                    <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(employee.rate_per_day ?? 0)}`} />
+                                                    <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(employee.rate_per_hour ?? 0)}`} />
+                                                    <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommas(employee.overtime_pay_total ?? 0)}`} />
                                                 </div>
                                             </div>
                                         </div>
