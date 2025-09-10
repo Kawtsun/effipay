@@ -11,6 +11,7 @@ import { Button } from "./ui/button";
 import { RolesBadges, getCollegeProgramLabel } from "./roles-badges";
 import React, { useState, useEffect } from "react";
 import { MonthPicker } from "./ui/month-picker";
+import { Skeleton } from "./ui/skeleton";
 
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
@@ -68,12 +69,19 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     const [selectedMonth, setSelectedMonth] = useState("");
     const [pendingMonth, setPendingMonth] = useState("");
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+    // Skeleton loading state for cards
+    const [showSkeleton, setShowSkeleton] = useState(true);
 
     useEffect(() => {
         if (employee) {
             fetchAvailableMonths();
         }
     }, [employee]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setShowSkeleton(false), 500); // 500ms delay
+        return () => clearTimeout(timer);
+    }, [employee, selectedMonth]);
 
     const fetchAvailableMonths = async () => {
         if (!employee) return;
@@ -161,25 +169,92 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                         </div>
                                         <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                             {/* Tardiness Card */}
-                                            <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
-                                                <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{employee.late_count ?? 0} hr(s)</div>
-                                            </div>
+                                            <motion.div
+                                                className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] h-[120px] shadow-sm"
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                whileHover={{ scale: 1.02 }}
+                                                transition={{ duration: 0.3, delay: 0.1 }}
+                                            >
+                                                {showSkeleton ? (
+                                                    <>
+                                                        <Skeleton className="h-3 w-24 mb-2" />
+                                                        <Skeleton className="h-8 w-32" />
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
+                                                        <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{employee.late_count ?? 0} hr(s)</div>
+                                                    </>
+                                                )}
+                                            </motion.div>
                                             {/* Undertime Card */}
-                                            <div className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
-                                                <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{employee.early_count ?? 0} hr(s)</div>
-                                            </div>
+                                            <motion.div
+                                                className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] h-[120px] shadow-sm"
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                whileHover={{ scale: 1.02 }}
+                                                transition={{ duration: 0.3, delay: 0.2 }}
+                                            >
+                                                {showSkeleton ? (
+                                                    <>
+                                                        <Skeleton className="h-3 w-36 mb-2" />
+                                                        <Skeleton className="h-8 w-32" />
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
+                                                        <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{employee.early_count ?? 0} hr(s)</div>
+                                                    </>
+                                                )}
+                                            </motion.div>
                                             {/* Overtime Card */}
-                                            <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
-                                                <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{(employee.overtime_count_weekdays ?? 0) + (employee.overtime_count_weekends ?? 0)} hr(s)</div>
-                                            </div>
+                                            <motion.div
+                                                className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] h-[120px] shadow-sm"
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                whileHover={{ scale: 1.02 }}
+                                                transition={{ duration: 0.3, delay: 0.3 }}
+                                            >
+                                                {showSkeleton ? (
+                                                    <>
+                                                        <Skeleton className="h-3 w-20 mb-2" />
+                                                        <Skeleton className="h-8 w-32" />
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
+                                                        <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{(employee.overtime_count_weekdays ?? 0) + (employee.overtime_count_weekends ?? 0)} hr(s)</div>
+                                                    </>
+                                                )}
+                                            </motion.div>
                                             {/* Absences Card */}
-                                            <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
-                                                <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{employee.absences ?? 0}</div>
-                                            </div>
+                                            <motion.div
+                                                className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] h-[120px] shadow-sm"
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                whileHover={{ scale: 1.02 }}
+                                                transition={{ duration: 0.3, delay: 0.4 }}
+                                            >
+                                                {showSkeleton ? (
+                                                    <>
+                                                        <Skeleton className="h-3 w-28 mb-2" />
+                                                        <Skeleton className="h-8 w-32 mb-3" />
+                                                        <div className="flex flex-wrap gap-1 mt-2">
+                                                            <Skeleton className="h-3 w-10 rounded-full" />
+                                                            <Skeleton className="h-3 w-2 rounded-full" />
+                                                            <Skeleton className="h-3 w-10 rounded-full" />
+                                                            <Skeleton className="h-3 w-2 rounded-full" />
+                                                            <Skeleton className="h-3 w-10 rounded-full" />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
+                                                        <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{employee.absences ?? 0}</div>
+                                                    </>
+                                                )}
+                                            </motion.div>
                                         </div>
                                         {/* Computation details below cards, like report view dialog */}
                                         <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
