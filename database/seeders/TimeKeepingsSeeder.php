@@ -24,9 +24,10 @@ class TimeKeepingsSeeder extends Seeder
             $date = $startDate->copy();
             $classificationKeys = array_keys($classifications);
             $classCount = count($classificationKeys);
-            $i = 0;
             while ($date->lte($endDate)) {
-                $classification = $classifications[$classificationKeys[$i % $classCount]];
+                // Randomize classification for each day
+                $randomIndex = rand(0, $classCount - 1);
+                $classification = $classifications[$classificationKeys[$randomIndex]];
                 \App\Models\TimeKeeping::create([
                     'employee_id' => $employeeId,
                     'date' => $date->format('Y-m-d'),
@@ -34,7 +35,6 @@ class TimeKeepingsSeeder extends Seeder
                     'clock_out' => $classification['clock_out'],
                 ]);
                 $date->addDay();
-                $i++;
             }
         }
     }

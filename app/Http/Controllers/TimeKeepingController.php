@@ -172,7 +172,8 @@ class TimeKeepingController extends Controller
                 if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
                     $late_count++;
                 }
-                if ($tk->clock_out && strtotime($tk->clock_out) < strtotime('20:00:00')) {
+                // Fix undertime logic: only count as undertime if clock_out is before work_end_time
+                if ($tk->clock_out && $emp->work_end_time && strtotime($tk->clock_out) < strtotime($emp->work_end_time)) {
                     $early_count++;
                 }
                 if ($tk->clock_out && strtotime($tk->clock_out) > strtotime('20:00:00')) {
