@@ -169,27 +169,38 @@ class TimeKeepingController extends Controller
                 }
             }
             foreach ($records as $tk) {
+                // Tardiness: count hours late (stack, not per day)
                 if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
-                    $late_count++;
+                    $late_minutes = (strtotime($tk->clock_in) - strtotime($late_threshold)) / 60;
+                    if ($late_minutes > 0) {
+                        $late_count += ceil($late_minutes / 60); // stack by hour
+                    }
                 }
-                // Fix undertime logic: only count as undertime if clock_out is before work_end_time
+                // Undertime: count hours early (stack, not per day)
                 if ($tk->clock_out && $emp->work_end_time && strtotime($tk->clock_out) < strtotime($emp->work_end_time)) {
-                    $early_count++;
+                    $early_minutes = (strtotime($emp->work_end_time) - strtotime($tk->clock_out)) / 60;
+                    if ($early_minutes > 0) {
+                        $early_count += ceil($early_minutes / 60); // stack by hour
+                    }
                 }
-                // Recognize overtime if clock_out is at least 1 hour after work_end_time
+                // Overtime: count hours overtime (stack, not per day)
                 if ($tk->clock_out && $emp->work_end_time) {
                     $workEnd = strtotime($emp->work_end_time);
                     $clockOut = strtotime($tk->clock_out);
                     if ($clockOut >= $workEnd + 3600) { // 1 hour after work_end_time
-                        $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
-                        if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
-                            $pay = round($rate_per_hour * 0.25, 2); // Weekdays: 25%
-                            $overtime_count_weekdays++;
-                            $overtime_pay_weekdays += $pay;
-                        } else {
-                            $pay = round($rate_per_hour * 0.30, 2); // Weekends: 30%
-                            $overtime_count_weekends++;
-                            $overtime_pay_weekends += $pay;
+                        $overtime_minutes = ($clockOut - $workEnd) / 60 - 59; // subtract 59 minutes (inclusive)
+                        if ($overtime_minutes >= 1) {
+                            $overtime_hours = ceil($overtime_minutes / 60); // stack by hour
+                            $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
+                            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                                $pay = round($rate_per_hour * 0.25, 2);
+                                $overtime_count_weekdays += $overtime_hours;
+                                $overtime_pay_weekdays += $pay * $overtime_hours;
+                            } else {
+                                $pay = round($rate_per_hour * 0.30, 2);
+                                $overtime_count_weekends += $overtime_hours;
+                                $overtime_pay_weekends += $pay * $overtime_hours;
+                            }
                         }
                     }
                 }

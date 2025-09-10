@@ -118,8 +118,8 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                             <div>
                                                 <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Attendance & Overtime</h5>
                                                 <div className="space-y-3 text-sm">
-                                                    <Info label="Tardiness" value={employee.late_count ?? 0} />
-                                                    <Info label="Undertime" value={employee.early_count ?? 0} />
+                                                    <Info label="Total Tardiness Hour(s)" value={employee.late_count ?? 0} />
+                                                    <Info label="Total Undertime Hour(s)" value={employee.early_count ?? 0} />
                                                     <Info label="Total Overtime Hour(s)" value={(employee.overtime_count_weekdays ?? 0) + (employee.overtime_count_weekends ?? 0)} />
                                                     <Info label="Absences" value={employee.absences ?? 0} />
                                                 </div>
