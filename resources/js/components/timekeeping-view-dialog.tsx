@@ -9,7 +9,8 @@ import { Employees } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
 import { RolesBadges, getCollegeProgramLabel } from "./roles-badges";
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { MonthPicker } from "./ui/month-picker";
 
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
@@ -63,6 +64,41 @@ function formatTimeMilitary(time?: string): string {
 }
 
 export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }: Props) {
+    // Month selector state
+    const [selectedMonth, setSelectedMonth] = useState("");
+    const [pendingMonth, setPendingMonth] = useState("");
+    const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (employee) {
+            fetchAvailableMonths();
+        }
+    }, [employee]);
+
+    const fetchAvailableMonths = async () => {
+        if (!employee) return;
+        try {
+            const response = await fetch(route('payroll.employee.months', { employee_id: employee.id }));
+            const result = await response.json();
+            if (result.success) {
+                setAvailableMonths(result.months);
+                if (result.months.length > 0 && !selectedMonth) {
+                    setSelectedMonth(result.months[0]);
+                    setPendingMonth(result.months[0]);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching available months:', error);
+        }
+    };
+
+    const handleMonthChange = (month: string) => {
+        if (month !== selectedMonth) {
+            setSelectedMonth(month);
+            setPendingMonth(month);
+        }
+    };
+
     // DEBUG: Show actual values for troubleshooting
     console.log('DEBUG employee.schedule:', {
         work_start_time: employee?.work_start_time,
@@ -113,7 +149,16 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                     </div>
                                     <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
                                     <div className="pt-2">
-                                        <h4 className="font-semibold text-lg mb-6">Time Keeping Data</h4>
+                                        <div className="flex items-center justify-between mb-6">
+                                            <h4 className="font-semibold text-lg">Time Keeping Data</h4>
+                                            <MonthPicker
+                                                value={selectedMonth}
+                                                onValueChange={handleMonthChange}
+                                                placeholder="Select month"
+                                                className="w-46 min-w-0 px-2 py-1 text-sm"
+                                                availableMonths={availableMonths}
+                                            />
+                                        </div>
                                         <div className="grid grid-cols-2 gap-16 items-start mb-10">
                                             <div>
                                                 <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Attendance & Overtime</h5>
