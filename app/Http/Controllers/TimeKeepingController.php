@@ -352,13 +352,14 @@ class TimeKeepingController extends Controller
                     $early_count += round($early_minutes / 60, 2);
                 }
             }
-            // Overtime (decimal hours)
+            // Overtime (decimal hours, start counting after exactly 1 hour past work end time)
             if ($tk->clock_out && $employee->work_end_time) {
                 $workEnd = strtotime($employee->work_end_time);
                 $clockOut = strtotime($tk->clock_out);
-                if ($clockOut >= $workEnd + 3600) {
-                    $overtime_minutes = ($clockOut - $workEnd) / 60 - 59;
-                    if ($overtime_minutes >= 1) {
+                // Only count overtime after exactly 1 hour past work end time
+                if ($clockOut > $workEnd + 3600) {
+                    $overtime_minutes = ($clockOut - ($workEnd + 3600)) / 60;
+                    if ($overtime_minutes > 0) {
                         $overtime_hours = round($overtime_minutes / 60, 2);
                         $dayOfWeek = date('N', strtotime($tk->date));
                         $pay = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
