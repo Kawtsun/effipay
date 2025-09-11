@@ -124,11 +124,19 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                         transition={{ duration: 0.2, ease: "easeOut" }}
                     >
                         <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col">
-                            <div className="flex-1 pr-2 overflow-y-auto" style={{ maxHeight: '70vh' }}>
+                            <DialogHeader className="flex-shrink-0">
+                                <DialogTitle className="text-2xl font-bold mb-2">Employee Attendance Details</DialogTitle>
+                            </DialogHeader>
+                            {/* Scrollable content area */}
+                            <div className="flex-1 overflow-y-auto pr-2">
                                 <div className="space-y-12 text-base">
+                                    {/* Employee Header */}
                                     <div className="border-b pb-6 mb-2">
-                                        <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {`${employee.last_name}, ${employee.first_name} ${employee.middle_name} `}</h3>
+                                        <h3 className="text-2xl font-extrabold mb-1">
+                                            #{employee.id} - {`${employee.last_name}, ${employee.first_name} ${employee.middle_name}`.toLocaleUpperCase('en-US')}
+                                        </h3>
                                     </div>
+                                    {/* ...existing timekeeping view content... */}
                                     <div className="grid grid-cols-2 gap-10 items-start mb-6">
                                         <div>
                                             <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
