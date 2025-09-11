@@ -257,36 +257,61 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                         <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
                                             {/*   */}
                                             <div>
-                                                 <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
-                                                <div className="space-y-3 text-sm">
-                                                    {showSkeleton ? (
-                                                        <>
-                                                            <div>
-                                                                <p className="text-xs text-muted-foreground">Monthly Salary</p>
-                                                                <Skeleton className="h-4 w-40 mb-2" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-xs text-muted-foreground">Rate per Hour</p>
-                                                                <Skeleton className="h-4 w-36 mb-2" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-xs text-muted-foreground">Rate per Day</p>
-                                                                <Skeleton className="h-4 w-36 mb-2" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-xs text-muted-foreground">Total Overtime Pay</p>
-                                                                <Skeleton className="h-4 w-40 mb-2" />
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Info label="Monthly Salary" value={`₱${formatNumberWithCommas(employee.base_salary ?? 0)}`} />
-                                                            <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(employee.rate_per_hour ?? 0)}`} />
-                                                            <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(employee.rate_per_day ?? 0)}`} />
-                                                            <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommas(employee.overtime_pay_total ?? 0)}`} />
-                                                        </>
-                                                    )}
-                                                </div>
+                                                <AnimatePresence mode="wait">
+    {showSkeleton ? (
+        <motion.div
+            key="skeleton"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+        >
+            <div className="grid grid-cols-1 gap-10">
+                <div>
+                    <Skeleton className="h-6 w-36 mb-4" />
+                    <div className="space-y-3 text-sm">
+                        <div>
+                            <Skeleton className="h-3 w-28 mb-1" />
+                            <Skeleton className="h-4 w-40" />
+                        </div>
+                        <div>
+                            <Skeleton className="h-3 w-26 mb-1" />
+                            <Skeleton className="h-4 w-36" />
+                        </div>
+                        <div>
+                            <Skeleton className="h-3 w-26 mb-1" />
+                            <Skeleton className="h-4 w-36" />
+                        </div>
+                        <div>
+                            <Skeleton className="h-3 w-40 mb-1" />
+                            <Skeleton className="h-4 w-40" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    ) : (
+        <motion.div
+            key="content"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+        >
+            <div className="grid grid-cols-1 gap-10">
+                <div>
+                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
+                    <div className="space-y-3 text-sm">
+                        <Info label="Monthly Salary" value={`₱${formatNumberWithCommas(employee.base_salary ?? 0)}`} />
+                        <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(employee.rate_per_hour ?? 0)}`} />
+                        <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(employee.rate_per_day ?? 0)}`} />
+                        <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommas(employee.overtime_pay_total ?? 0)}`} />
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    )}
+</AnimatePresence>
                                             </div>
                                         </div>
                                     </div>
