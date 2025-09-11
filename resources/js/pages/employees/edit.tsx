@@ -162,7 +162,7 @@ export default function Edit({
         router.put(route('employees.update', { employee: employee.id }), cleanedData, {
             preserveScroll: true,
             onSuccess: () => {
-                router.reload({ only: ['employeeClassifications'] });
+                router.reload(); // Reload all props and pages to reflect updated info everywhere
             },
             onError: (errors) => {
                 const first = Object.values(errors)[0] as string | undefined;
