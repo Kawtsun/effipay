@@ -40,13 +40,13 @@ class TimeKeepingsSeeder extends Seeder
         foreach ($employeeNames2 as $index => $name) {
             $employeeIds[] = $index + 1; // IDs start from 1
         }
-        $startDate = Carbon::create(2025, 3, 1);
+        $startDate = Carbon::create(2025, 8, 1);
         $endDate = Carbon::create(2025, 8, 31);
         $classifications = [
             'late' => ['clock_in' => '09:00:00', 'clock_out' => '16:00:00'],
             'normal' => ['clock_in' => '08:00:00', 'clock_out' => '16:00:00'],
             'undertime' => ['clock_in' => '08:00:00', 'clock_out' => '15:00:00'],
-            'overtime' => ['clock_in' => '08:00:00', 'clock_out' => '17:00:00'],
+            'overtime' => ['clock_in' => '08:00:00', 'clock_out' => '17:30:00'],
             'absent' => ['clock_in' => null, 'clock_out' => null],
         ];
 
@@ -55,7 +55,6 @@ class TimeKeepingsSeeder extends Seeder
             $classificationKeys = array_keys($classifications);
             $classCount = count($classificationKeys);
             while ($date->lte($endDate)) {
-                // Randomize classification for each day
                 $randomIndex = rand(0, $classCount - 1);
                 $classification = $classifications[$classificationKeys[$randomIndex]];
                 \App\Models\TimeKeeping::create([

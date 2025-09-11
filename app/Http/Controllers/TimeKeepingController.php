@@ -326,11 +326,13 @@ class TimeKeepingController extends Controller
             ->get();
 
         // --- Compute summary values ---
-        $late_count = 0;
-        $early_count = 0;
-        $overtime_count = 0;
-        $absences = 0;
-        $overtime_pay_total = 0;
+    $late_count = 0;
+    $early_count = 0;
+    $overtime_count = 0;
+    $overtime_count_weekdays = 0;
+    $overtime_count_weekends = 0;
+    $absences = 0;
+    $overtime_pay_total = 0;
 
         $rate_per_day = ($employee->base_salary * 12) / 288;
         $rate_per_hour = $rate_per_day / 8;
@@ -367,6 +369,11 @@ class TimeKeepingController extends Controller
                             : round($rate_per_hour * 0.30, 2);
                         $overtime_count += $overtime_hours;
                         $overtime_pay_total += $pay * $overtime_hours;
+                        if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                            $overtime_count_weekdays += $overtime_hours;
+                        } else {
+                            $overtime_count_weekends += $overtime_hours;
+                        }
                     }
                 }
             }
@@ -397,6 +404,8 @@ class TimeKeepingController extends Controller
             'tardiness' => $late_count,
             'undertime' => $early_count,
             'overtime' => $overtime_count,
+            'overtime_count_weekdays' => $overtime_count_weekdays,
+            'overtime_count_weekends' => $overtime_count_weekends,
             'absences' => $absences,
             'base_salary' => $employee->base_salary,
             'rate_per_day' => $rate_per_day,

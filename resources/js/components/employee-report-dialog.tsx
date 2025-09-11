@@ -40,6 +40,10 @@ interface PayrollData {
     gross_pay: number;
     total_deductions: number;
     net_pay: number;
+    rate_per_hour?: number;
+    tardiness?: number;
+    undertime?: number;
+    absences?: number;
 }
 
 interface MonthlyPayrollData {
@@ -285,7 +289,17 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.1 }}
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Gross Pay</div>
-                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay : Number(employee.base_salary) + Number(employee.overtime_pay))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{monthlyPayrollData && monthlyPayrollData.payrolls.length > 0
+    ? Math.abs(
+        Number(monthlyPayrollData.payrolls[0].base_salary) + Number(monthlyPayrollData.payrolls[0].overtime_pay)
+        - (
+            (Number(monthlyPayrollData.payrolls[0].rate_per_hour ?? 0) * Number(monthlyPayrollData.payrolls[0].tardiness ?? 0))
+            + (Number(monthlyPayrollData.payrolls[0].rate_per_hour ?? 0) * Number(monthlyPayrollData.payrolls[0].undertime ?? 0))
+            + (Number(monthlyPayrollData.payrolls[0].rate_per_hour ?? 0) * Number(monthlyPayrollData.payrolls[0].absences ?? 0))
+        )
+    ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : (employee ? Math.abs(Number(employee.gross_pay)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-')
+}</div>
                                                         </motion.div>
                                                         {/* Deductions */}
                                                         <motion.div
@@ -296,7 +310,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.2 }}
                                                         >
                                                             <div className="text-xs text-orange-600 font-medium mb-2">Total Deductions</div>
-                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">₱{Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].total_deductions : Number(employee.sss) + Number(employee.philhealth) + Number(employee.pag_ibig) + Number(employee.withholding_tax))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">₱{employee ? Math.abs(Number(employee.total_deductions)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</div>
                                                         </motion.div>
                                                         {/* Net Pay */}
                                                         <motion.div
@@ -307,7 +321,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.3 }}
                                                         >
                                                             <div className="text-xs text-green-600 font-medium mb-2">Net Pay</div>
-                                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">₱{Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions : Number(employee.base_salary) + Number(employee.overtime_pay) - Number(employee.sss) - Number(employee.philhealth) - Number(employee.pag_ibig) - Number(employee.withholding_tax))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">₱{employee ? Math.abs(Number(employee.net_pay)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</div>
                                                         </motion.div>
                                                         {/* Per Payroll */}
                                                         <motion.div
@@ -318,27 +332,22 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.4 }}
                                                         >
                                                             <div className="text-xs text-blue-600 font-medium mb-2">Per Payroll</div>
-                                                            {monthlyPayrollData && monthlyPayrollData.payrolls.length > 0 ? (
-                                                                <>
-                                                                    <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">₱{Math.abs(Number(monthlyPayrollData.payrolls[0].gross_pay - monthlyPayrollData.payrolls[0].total_deductions) / monthlyPayrollData.payrolls.length).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                                                    <div className="flex flex-wrap gap-1 mt-2 overflow-x-auto max-w-full text-xs">
-                                                                        {monthlyPayrollData.payrolls.map((payroll, index) => (
-                                                                            <div key={payroll.id} className="flex items-center gap-1 whitespace-nowrap">
-                                                                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                                                                {new Date(payroll.payroll_date).toLocaleDateString('en-US', {
-                                                                                    month: 'short',
-                                                                                    day: 'numeric'
-                                                                                })}
-                                                                                {index < monthlyPayrollData.payrolls.length - 1 && <span className="text-blue-400">•</span>}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </>
-                                                            ) : (
-                                                                <div className="flex flex-col items-center justify-center h-full min-h-[48px]">
-                                                                    <span className="text-xl font-bold text-blue-300">No payrolls</span>
-                                                                </div>
-                                                            )}
+                                                            <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">₱{employee ? Math.abs(Number(employee.per_payroll)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</div>
+                                                            <div className="flex flex-wrap gap-1 mt-2 overflow-x-auto max-w-full text-xs">
+                                                                {monthlyPayrollData && monthlyPayrollData.payrolls.length > 0
+                                                                    ? monthlyPayrollData.payrolls.map((payroll, index) => (
+                                                                        <div key={payroll.id} className="flex items-center gap-1 whitespace-nowrap">
+                                                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                                            {new Date(payroll.payroll_date).toLocaleDateString('en-US', {
+                                                                                month: 'short',
+                                                                                day: 'numeric'
+                                                                            })}
+                                                                            {index < monthlyPayrollData.payrolls.length - 1 && <span className="text-blue-400">•</span>}
+                                                                        </div>
+                                                                    ))
+                                                                    : <span className="text-blue-300">No payrolls</span>
+                                                                }
+                                                            </div>
                                                         </motion.div>
                                                     </div>
                                                     {/* Detailed Breakdown and Totals remain as before */}
@@ -352,7 +361,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                             <div className="space-y-3 text-sm">
                                                                 <Info label="Base Salary" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].base_salary : employee.base_salary)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                                                                <Info label="Overtime Pay" value={`₱${Math.abs(Number(employee.overtime_pay_total ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                                <Info label="Overtime Pay" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].overtime_pay : employee.overtime_pay_total ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                                                             </div>
                                                         </div>
                                                         <div>

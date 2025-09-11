@@ -67,8 +67,12 @@ export interface Employees {
         overtime_count_weekends?: number;
         overtime_pay_total?: number;
         absences?: number;
-        rate_per_day?: number;
-        rate_per_hour?: number;
+    rate_per_day?: number;
+    rate_per_hour?: number;
+    gross_pay?: number;
+    total_deductions?: number;
+    net_pay?: number;
+    per_payroll?: number;
 }
 
 export interface Salary {
