@@ -56,7 +56,7 @@ function Info({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }: Props) {
-    // ...existing state declarations...
+    // State for monthly summary
     const [summary, setSummary] = useState({
         tardiness: 0,
         undertime: 0,
@@ -67,6 +67,11 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         rate_per_hour: 0,
         overtime_pay_total: 0
     });
+    // Calculate gross pay: base_salary - ((rate per hour * tardiness hours) + (rate per hour * undertime hours))
+    const grossPay = Number(summary.base_salary) + Number(summary.overtime_pay_total)
+        - ((Number(summary.rate_per_hour) * Number(summary.tardiness))
+        + (Number(summary.rate_per_hour) * Number(summary.undertime))
+        + (Number(summary.rate_per_hour) * Number(summary.absences)));
     // Track if there is at least one record for the month
     const hasMonthData = (
         summary.tardiness !== undefined &&
@@ -422,12 +427,14 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                 <div>
                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
                     <div className="grid grid-cols-2 gap-6 text-sm">
-                        <Info label="Monthly Salary" value={`₱${formatNumberWithCommas(summary.base_salary)}`} />
+                        <Info label="Monthly Salary" value={`₱${formatNumberWithCommasAndFixed(summary.base_salary)}`} />
                         <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommasAndFixed(summary.overtime_pay_total)}`} />
+                        <Info label="Gross Pay" value={`₱${formatNumberWithCommasAndFixed(grossPay)}`} />
                     </div>
                     <div className="space-y-3 text-sm mt-4">
                         <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(summary.rate_per_day)}`} />
                         <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(summary.rate_per_hour)}`} />
+                        <Info label="Gross Pay" value={`₱${formatNumberWithCommasAndFixed(grossPay)}`} />
                     </div>
                 </div>
             </div>
