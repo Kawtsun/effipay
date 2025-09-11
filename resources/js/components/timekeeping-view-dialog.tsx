@@ -74,6 +74,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         overtime_pay_total: 0
     });
     const [loadingSummary, setLoadingSummary] = useState(false);
+    // Ref for minimum loading timeout
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
@@ -122,17 +123,19 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         }
     };
 
+    // Month change handler with skeleton loading
     const handleMonthChange = (month: string) => {
         setSelectedMonth(month);
         setPendingMonth(month);
+        setShowSkeleton(true); // Show skeleton immediately on month change
     };
 
-    // Fetch summary data for selected month from backend
+    // Fetch summary data for selected month from backend with minimum skeleton delay
     const fetchMonthlySummary = async () => {
         if (!employee || !pendingMonth) return;
         setLoadingSummary(true);
+        setShowSkeleton(true); // Show skeleton while loading
         if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
-        minLoadingTimeout.current = setTimeout(() => setShowSkeleton(false), 400);
         try {
             const response = await fetch(route('timekeeping.employee.monthly-summary', {
                 employee_id: employee.id,
@@ -175,7 +178,11 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                 overtime_pay_total: 0
             });
         } finally {
-            setTimeout(() => setLoadingSummary(false), 100);
+            // Ensure skeleton is shown for at least 400ms
+            minLoadingTimeout.current = setTimeout(() => {
+                setShowSkeleton(false);
+                setLoadingSummary(false);
+            }, 400);
         }
     };
 
@@ -381,11 +388,13 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
             <div className="grid grid-cols-1 gap-10">
                 <div>
                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
-                    <div className="space-y-3 text-sm">
+                    <div className="grid grid-cols-2 gap-6 text-sm">
                         <Info label="Monthly Salary" value={`₱${formatNumberWithCommas(summary.base_salary)}`} />
+                        <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommas(summary.overtime_pay_total)}`} />
+                    </div>
+                    <div className="space-y-3 text-sm mt-4">
                         <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(summary.rate_per_day)}`} />
                         <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(summary.rate_per_hour)}`} />
-                        <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommas(summary.overtime_pay_total)}`} />
                     </div>
                 </div>
             </div>
