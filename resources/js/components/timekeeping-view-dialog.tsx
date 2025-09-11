@@ -423,7 +423,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
                     <div className="grid grid-cols-2 gap-6 text-sm">
                         <Info label="Monthly Salary" value={`₱${formatNumberWithCommas(summary.base_salary)}`} />
-                        <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommas(summary.overtime_pay_total)}`} />
+                        <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommasAndFixed(summary.overtime_pay_total)}`} />
                     </div>
                     <div className="space-y-3 text-sm mt-4">
                         <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(summary.rate_per_day)}`} />
