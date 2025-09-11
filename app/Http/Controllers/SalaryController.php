@@ -38,7 +38,7 @@ class SalaryController extends Controller
             'types'     => $types,
             'selected'  => $selected,
             'defaults'  => $defaults,
-            'flash'     => session('success'),
+            'flash'     => session('flash') ?? session('success'),
         ]);
     }
 

@@ -67,7 +67,7 @@ export default function Index() {
       route('payroll.run'),
       { payroll_date: selectedDate },
       {
-        preserveState: true,
+        preserveState: false, // reload page to get flash
         onFinish: () => setIsRunningPayroll(false),
       }
     )

@@ -37,7 +37,6 @@ class PayrollController extends Controller
 
                 // Use salary defaults if found, else fallback to employee's own values
                 $baseSalary = $salaryDefaults ? $salaryDefaults->base_salary : $employee->base_salary;
-                $overtimePay = $salaryDefaults ? $salaryDefaults->overtime_pay : $employee->overtime_pay;
                 $sss = $salaryDefaults ? $salaryDefaults->sss : $employee->sss;
                 $pagIbig = $salaryDefaults ? $salaryDefaults->pag_ibig : $employee->pag_ibig;
                 $withholdingTax = $salaryDefaults ? $salaryDefaults->withholding_tax : $employee->withholding_tax;
@@ -46,7 +45,7 @@ class PayrollController extends Controller
                 $philhealth = max(250, min(2500, $philhealth));
 
                 // Calculate totals
-                $grossPay = $baseSalary + $overtimePay;
+                $grossPay = $baseSalary; // Overtime now handled by timekeeping
                 $totalDeductions = $sss + $philhealth + $pagIbig + $withholdingTax;
                 $netPay = $grossPay - $totalDeductions;
 
@@ -59,7 +58,6 @@ class PayrollController extends Controller
                     [
                         'month' => $month,
                         'base_salary' => number_format($baseSalary, 2, '.', ''),
-                        'overtime_pay' => number_format($overtimePay, 2, '.', ''),
                         'sss' => number_format($sss, 2, '.', ''),
                         'philhealth' => number_format($philhealth, 2, '.', ''),
                         'pag_ibig' => number_format($pagIbig, 2, '.', ''),
@@ -76,7 +74,7 @@ class PayrollController extends Controller
             }
         }
 
-    return redirect()->back()->with('flash', "Payroll processed for {$processedCount} employees for " . date('F j, Y', strtotime($payrollDate)));
+    return redirect()->route('salary.index')->with('flash', "Payroll processed for {$processedCount} employees for " . date('F j, Y', strtotime($payrollDate)));
     }
 
     /**
