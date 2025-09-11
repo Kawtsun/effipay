@@ -279,7 +279,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
-                                                        <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{summary.tardiness} hr(s)</div>
+                                                        <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{(summary.tardiness === 0 && summary.undertime === 0 && summary.overtime === 0 && summary.absences === 0) ? '-' : `${summary.tardiness} hr(s)`}</div>
                                                     </>
                                                 )}
                                             </motion.div>
@@ -299,7 +299,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
-                                                        <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{summary.undertime} hr(s)</div>
+                                                        <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{(summary.tardiness === 0 && summary.undertime === 0 && summary.overtime === 0 && summary.absences === 0) ? '-' : `${summary.undertime} hr(s)`}</div>
                                                     </>
                                                 )}
                                             </motion.div>
@@ -319,7 +319,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
-                                                        <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{summary.overtime} hr(s)</div>
+                                                        <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{(summary.tardiness === 0 && summary.undertime === 0 && summary.overtime === 0 && summary.absences === 0) ? '-' : `${summary.overtime} hr(s)`}</div>
                                                     </>
                                                 )}
                                             </motion.div>
@@ -346,7 +346,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
-                                                        <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{summary.absences}</div>
+                                                        <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{(summary.tardiness === 0 && summary.undertime === 0 && summary.overtime === 0 && summary.absences === 0) ? '-' : summary.absences}</div>
                                                     </>
                                                 )}
                                             </motion.div>
