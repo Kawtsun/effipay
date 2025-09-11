@@ -34,7 +34,6 @@ interface PayrollData {
     month: string
     payroll_date: string
     base_salary: number
-    overtime_pay: number
     sss: number
     philhealth: number
     pag_ibig: number
@@ -216,7 +215,6 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                                 <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                 <div className="space-y-3 text-sm"> {/* Increased gap */}
                                                     <Info label="Base Salary" value={`₱${formatWithCommas(employee.base_salary)}`} />
-                                                    <Info label="Overtime Pay" value={`₱${formatWithCommas(employee.overtime_pay_total ?? 0)}`} />
                                                 </div>
                                             </div>
 

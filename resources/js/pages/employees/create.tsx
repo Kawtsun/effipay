@@ -35,7 +35,6 @@ type Props = {
         string,
         {
             base_salary: number;
-            overtime_pay: number;
             sss: number;
             philhealth: number;
             pag_ibig: number;
@@ -46,47 +45,46 @@ type Props = {
     employeeCategory?: string;
 };
 
-    export default function Create(props: Props) {
-        const { search, filters, page, salaryDefaults } = props;
-        const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
-        const { data, setData, post } = useForm({
-            first_name: '',
-            middle_name: '',
-            last_name: '',
-            employee_name: '',
-            employee_type: 'Full Time',
-            employee_status: 'Active',
-            roles: '',
-            base_salary: salaryDefaults['Full Time']?.base_salary.toString() ?? '',
-            // overtime_pay removed
-            sss: calculateSSS(Number(salaryDefaults['Full Time']?.base_salary ?? 0)).toString(),
-            philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
-            pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
-            withholding_tax: salaryDefaults['Full Time']?.withholding_tax.toString() ?? '',
-            work_hours_per_day: salaryDefaults['Full Time']?.work_hours_per_day.toString() ?? '8',
-            work_start_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '08:00' : (salaryDefaults['Full Time']?.work_hours_per_day === 6 ? '09:00' : '08:00')),
-            work_end_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '16:00' : (salaryDefaults['Full Time']?.work_hours_per_day === 6 ? '15:00' : '17:00')),
-            college_program: '', // NEW
-        });
-        const [collegeProgram, setCollegeProgram] = useState('');
-        const [collegeProgramError, setCollegeProgramError] = useState('');
-        const collegeDeptRef = useRef<HTMLDivElement>(null);
-        useEffect(() => {
-            const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
-            const sssNum = calculateSSS(baseSalaryNum);
-            const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-            const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
-            if (data.sss.replace(/,/g, '') !== sssNum.toString()) {
-                setData('sss', sssNum.toString());
-            }
-            if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
-                setData('philhealth', calculatedPhilHealth.toFixed(2));
-            }
-            const calculatedWithholdingTax = calculateWithholdingTax(baseSalaryNum, sssNum, pagIbigNum, calculatedPhilHealth);
-            if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
-                setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
-            }
-        }, [data.base_salary, data.pag_ibig, setData]);
+export default function Create(props: Props) {
+    const { search, filters, page, salaryDefaults } = props;
+    const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
+    const { data, setData, post } = useForm({
+        first_name: '',
+        middle_name: '',
+        last_name: '',
+        employee_name: '',
+        employee_type: 'Full Time',
+        employee_status: 'Active',
+        roles: '',
+        base_salary: salaryDefaults['Full Time']?.base_salary.toString() ?? '',
+        sss: calculateSSS(Number(salaryDefaults['Full Time']?.base_salary ?? 0)).toString(),
+        philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
+        pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
+        withholding_tax: salaryDefaults['Full Time']?.withholding_tax.toString() ?? '',
+        work_hours_per_day: salaryDefaults['Full Time']?.work_hours_per_day.toString() ?? '8',
+        work_start_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '08:00' : (salaryDefaults['Full Time']?.work_hours_per_day === 6 ? '09:00' : '08:00')),
+        work_end_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '16:00' : (salaryDefaults['Full Time']?.work_hours_per_day === 6 ? '15:00' : '17:00')),
+        college_program: '', // NEW
+    });
+    const [collegeProgram, setCollegeProgram] = useState('');
+    const [collegeProgramError, setCollegeProgramError] = useState('');
+    const collegeDeptRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
+        const sssNum = calculateSSS(baseSalaryNum);
+        const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
+        const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
+        if (data.sss.replace(/,/g, '') !== sssNum.toString()) {
+            setData('sss', sssNum.toString());
+        }
+        if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
+            setData('philhealth', calculatedPhilHealth.toFixed(2));
+        }
+        const calculatedWithholdingTax = calculateWithholdingTax(baseSalaryNum, sssNum, pagIbigNum, calculatedPhilHealth);
+        if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
+            setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
+        }
+    }, [data.base_salary, data.pag_ibig, setData]);
 
 
     // Helper function to format time to 12-hour format

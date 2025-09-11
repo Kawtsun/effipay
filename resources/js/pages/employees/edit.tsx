@@ -27,7 +27,6 @@ type Props = {
         employee_status: string;
         roles: string;
         base_salary: number;
-        overtime_pay: number;
         sss: number;
         philhealth: number;
         pag_ibig: number;
@@ -46,7 +45,6 @@ type Props = {
         string,
         {
             base_salary: number;
-            overtime_pay: number;
             sss: number;
             philhealth: number;
             pag_ibig: number;
@@ -73,24 +71,23 @@ export default function Edit({
     salaryDefaults,
 }: Props) {
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
-        const { data, setData, put } = useForm({
-            last_name: employee.last_name || '',
-            first_name: employee.first_name || '',
-            middle_name: employee.middle_name || '',
-            employee_type: employee.employee_type,
-            employee_status: employee.employee_status,
-            roles: employee.roles,
-            base_salary: employee.base_salary.toString(),
-            overtime_pay: employee.overtime_pay.toString(),
-            sss: calculateSSS(employee.base_salary).toString(),
-            philhealth: employee.philhealth.toString(),
-            pag_ibig: employee.pag_ibig.toString(),
-            withholding_tax: employee.withholding_tax.toString(),
-            work_hours_per_day: employee.work_hours_per_day.toString(),
-            work_start_time: trimToHM(employee.work_start_time),
-            work_end_time: trimToHM(employee.work_end_time),
-            college_program: employee.college_program || '',
-        });
+    const { data, setData, put } = useForm({
+        last_name: employee.last_name || '',
+        first_name: employee.first_name || '',
+        middle_name: employee.middle_name || '',
+        employee_type: employee.employee_type,
+        employee_status: employee.employee_status,
+        roles: employee.roles,
+        base_salary: employee.base_salary.toString(),
+        sss: calculateSSS(employee.base_salary).toString(),
+        philhealth: employee.philhealth.toString(),
+        pag_ibig: employee.pag_ibig.toString(),
+        withholding_tax: employee.withholding_tax.toString(),
+        work_hours_per_day: employee.work_hours_per_day.toString(),
+        work_start_time: trimToHM(employee.work_start_time),
+        work_end_time: trimToHM(employee.work_end_time),
+        college_program: employee.college_program || '',
+    });
 
     const [collegeProgram, setCollegeProgram] = useState(employee.college_program || '');
     const [collegeProgramError, setCollegeProgramError] = useState('');
@@ -243,7 +240,6 @@ export default function Edit({
             const def = salaryDefaults[data.employee_type];
             // Only set defaults if the field is empty (for create, not edit)
             if (!data.base_salary) setData('base_salary', def.base_salary.toString());
-            if (!data.overtime_pay) setData('overtime_pay', def.overtime_pay.toString());
             if (!data.sss) setData('sss', def.sss.toString());
             if (!data.philhealth) setData('philhealth', def.philhealth.toString());
             if (!data.pag_ibig) setData('pag_ibig', def.pag_ibig.toString());
@@ -251,7 +247,7 @@ export default function Edit({
             if (!data.work_hours_per_day) setData('work_hours_per_day', def.work_hours_per_day.toString());
             // Do NOT override existing work start/end times on edit.
         }
-    }, [data.employee_type, salaryDefaults, data.base_salary, data.overtime_pay, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, data.work_hours_per_day, setData]);
+    }, [data.employee_type, salaryDefaults, data.base_salary, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, data.work_hours_per_day, setData]);
 
     // Auto-calculate work hours when start/end times change
     useEffect(() => {
@@ -510,28 +506,6 @@ export default function Edit({
                                                             const baseSalaryNum = Number(raw) || 0;
                                                             const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
                                                             setData('philhealth', calculatedPhilHealth.toString());
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className='flex flex-col gap-3'>
-                                                <Label>Overtime Pay</Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input
-                                                        id="overtime_pay"
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9.,]*"
-                                                        required
-                                                        placeholder="Overtime Pay"
-                                                        className="pl-8"
-                                                        min={0}
-                                                        value={formatWithCommas(data.overtime_pay ?? '')}
-                                                        onChange={e => {
-                                                            const raw = e.target.value.replace(/,/g, '');
-                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                            setData('overtime_pay', raw);
                                                         }}
                                                     />
                                                 </div>
