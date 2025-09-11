@@ -1,3 +1,19 @@
+// Calculates gross pay based on base salary, overtime pay, rate per hour, tardiness, undertime, absences
+export function calculateGrossPay(
+    baseSalary: number,
+    overtimePay: number,
+    ratePerHour: number,
+    tardiness: number,
+    undertime: number,
+    absences: number
+): number {
+    return parseFloat((
+        baseSalary + overtimePay
+        - ((ratePerHour * tardiness)
+            + (ratePerHour * undertime)
+            + (ratePerHour * absences))
+    ).toFixed(2));
+}
 // Calculates overtime pay for a given date and base amount
 export function calculateOvertimePay(date: string, baseAmount: number): number {
     const dayOfWeek = new Date(date).getDay(); // 0 (Sun) - 6 (Sat)

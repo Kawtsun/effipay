@@ -5,6 +5,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { calculateGrossPay } from "@/utils/salaryFormulas";
 import { toast } from "sonner";
 import { Employees } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -69,11 +70,15 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         overtime_count_weekdays: 0,
         overtime_count_weekends: 0
     });
-    // Calculate gross pay: base_salary - ((rate per hour * tardiness hours) + (rate per hour * undertime hours))
-    const grossPay = Number(summary.base_salary) + Number(summary.overtime_pay_total)
-        - ((Number(summary.rate_per_hour) * Number(summary.tardiness))
-            + (Number(summary.rate_per_hour) * Number(summary.undertime))
-            + (Number(summary.rate_per_hour) * Number(summary.absences)));
+    // Calculate gross pay using shared formula
+    const grossPay = calculateGrossPay(
+        Number(summary.base_salary),
+        Number(summary.overtime_pay_total),
+        Number(summary.rate_per_hour),
+        Number(summary.tardiness),
+        Number(summary.undertime),
+        Number(summary.absences)
+    );
     // Track if there is at least one record for the month
     const hasMonthData = (
         summary.tardiness !== undefined &&
