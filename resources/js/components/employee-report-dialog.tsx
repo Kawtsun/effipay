@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
 import { MonthPicker } from "./ui/month-picker";
 import { useState, useEffect, useRef } from "react";
+import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { toast } from "sonner";
 import { Skeleton } from "./ui/skeleton";
 import { RolesBadges } from "./roles-badges";
@@ -69,6 +70,8 @@ function Info({ label, value }: { label: string; value: string | number }) {
 export default function EmployeeReportDialog({ employee, onClose, activeRoles }: Props) {
     const [selectedMonth, setSelectedMonth] = useState('');
     const [pendingMonth, setPendingMonth] = useState('');
+    // Use payroll summary from timekeeping
+    const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, pendingMonth);
     const [monthlyPayrollData, setMonthlyPayrollData] = useState<MonthlyPayrollData | null>(null);
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [loadingPayroll, setLoadingPayroll] = useState(false);
@@ -289,17 +292,9 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.1 }}
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Gross Pay</div>
-                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{monthlyPayrollData && monthlyPayrollData.payrolls.length > 0
-    ? Math.abs(
-        Number(monthlyPayrollData.payrolls[0].base_salary) + Number(monthlyPayrollData.payrolls[0].overtime_pay)
-        - (
-            (Number(monthlyPayrollData.payrolls[0].rate_per_hour ?? 0) * Number(monthlyPayrollData.payrolls[0].tardiness ?? 0))
-            + (Number(monthlyPayrollData.payrolls[0].rate_per_hour ?? 0) * Number(monthlyPayrollData.payrolls[0].undertime ?? 0))
-            + (Number(monthlyPayrollData.payrolls[0].rate_per_hour ?? 0) * Number(monthlyPayrollData.payrolls[0].absences ?? 0))
-        )
-    ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : (employee ? Math.abs(Number(employee.gross_pay)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-')
-}</div>
+                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{typeof timekeepingSummary?.gross_pay === 'number'
+    ? timekeepingSummary.gross_pay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '-'}</div>
                                                         </motion.div>
                                                         {/* Deductions */}
                                                         <motion.div
@@ -361,7 +356,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                             <div className="space-y-3 text-sm">
                                                                 <Info label="Base Salary" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].base_salary : employee.base_salary)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                                                                <Info label="Overtime Pay" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].overtime_pay : employee.overtime_pay_total ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                                <Info label="Overtime Pay" value={`₱${typeof timekeepingSummary?.overtime_pay_total === 'number' ? timekeepingSummary.overtime_pay_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}`} />
                                                             </div>
                                                         </div>
                                                         <div>

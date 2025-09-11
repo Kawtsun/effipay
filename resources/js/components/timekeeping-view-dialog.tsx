@@ -11,7 +11,8 @@ import { Employees } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
 import { RolesBadges, getCollegeProgramLabel } from "./roles-badges";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
+import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { MonthPicker } from "./ui/month-picker";
 import { Skeleton } from "./ui/skeleton";
 
@@ -57,56 +58,22 @@ function Info({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }: Props) {
-    // State for monthly summary
-    const [summary, setSummary] = useState({
-        tardiness: 0,
-        undertime: 0,
-        overtime: 0,
-        absences: 0,
-        base_salary: 0,
-        rate_per_day: 0,
-        rate_per_hour: 0,
-        overtime_pay_total: 0,
-        overtime_count_weekdays: 0,
-        overtime_count_weekends: 0
-    });
-    // Calculate gross pay using shared formula
-    const grossPay = calculateGrossPay(
-        Number(summary.base_salary),
-        Number(summary.overtime_pay_total),
-        Number(summary.rate_per_hour),
-        Number(summary.tardiness),
-        Number(summary.undertime),
-        Number(summary.absences)
-    );
-    // Track if there is at least one record for the month
-    const hasMonthData = (
-        summary.tardiness !== undefined &&
-        summary.undertime !== undefined &&
-        summary.overtime !== undefined &&
-        summary.absences !== undefined &&
-        (
-            summary.tardiness !== 0 ||
-            summary.undertime !== 0 ||
-            summary.overtime !== 0 ||
-            summary.absences !== 0 ||
-            summary.base_salary !== 0 ||
-            summary.rate_per_day !== 0 ||
-            summary.rate_per_hour !== 0 ||
-            summary.overtime_pay_total !== 0
-        )
-    );
     // Month selector state
     const [selectedMonth, setSelectedMonth] = useState("");
     const [pendingMonth, setPendingMonth] = useState("");
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
-    // Skeleton loading state for cards
     const [showSkeleton, setShowSkeleton] = useState(true);
-
-    // Track if there is at least one record for the month
-    const [loadingSummary, setLoadingSummary] = useState(false);
-    // Ref for minimum loading timeout
-    const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
+    const { summary } = useEmployeePayroll(employee?.id ?? null, pendingMonth);
+    const hasMonthData = !!summary && (
+        summary.tardiness !== 0 ||
+        summary.undertime !== 0 ||
+        summary.overtime !== 0 ||
+        summary.absences !== 0 ||
+        summary.base_salary !== 0 ||
+        summary.rate_per_day !== 0 ||
+        summary.rate_per_hour !== 0 ||
+        summary.overtime_pay_total !== 0
+    );
 
     useEffect(() => {
         if (employee) {
@@ -115,23 +82,8 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     }, [employee]);
 
     useEffect(() => {
-        if (employee && pendingMonth) {
-            fetchMonthlySummary();
-        } else {
-            setSummary({
-                tardiness: 0,
-                undertime: 0,
-                overtime: 0,
-                absences: 0,
-                base_salary: 0,
-                rate_per_day: 0,
-                rate_per_hour: 0,
-                overtime_pay_total: 0,
-                overtime_count_weekdays: 0,
-                overtime_count_weekends: 0
-            });
-        }
-        // eslint-disable-next-line
+        // summary is now handled by useEmployeePayroll
+    // summary is now handled by useEmployeePayroll
     }, [employee, pendingMonth]);
 
     useEffect(() => {
@@ -163,81 +115,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         setShowSkeleton(true); // Show skeleton immediately on month change
     };
 
-    // Fetch summary data for selected month from backend with minimum skeleton delay
-    const fetchMonthlySummary = async () => {
-        if (!employee || !pendingMonth) return;
-        setLoadingSummary(true);
-        setShowSkeleton(true); // Show skeleton while loading
-        if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
-        try {
-            const response = await fetch(route('timekeeping.employee.monthly-summary', {
-                employee_id: employee.id,
-                month: pendingMonth
-            }));
-            const result = await response.json();
-            if (result.success) {
-                setSummary({
-                    tardiness: result.tardiness ?? 0,
-                    undertime: result.undertime ?? 0,
-                    overtime: result.overtime ?? 0,
-                    absences: result.absences ?? 0,
-                    base_salary: result.base_salary ?? 0,
-                    rate_per_day: result.rate_per_day ?? 0,
-                    rate_per_hour: result.rate_per_hour ?? 0,
-                    overtime_pay_total: result.overtime_pay_total ?? 0,
-                    overtime_count_weekdays: result.overtime_count_weekdays ?? 0,
-                    overtime_count_weekends: result.overtime_count_weekends ?? 0
-                });
-                // Only show error if there are truly no records for the month
-                if (
-                    (result.tardiness ?? 0) === 0 &&
-                    (result.undertime ?? 0) === 0 &&
-                    (result.overtime ?? 0) === 0 &&
-                    (result.absences ?? 0) === 0 &&
-                    result.base_salary === 0 &&
-                    result.rate_per_day === 0 &&
-                    result.rate_per_hour === 0 &&
-                    result.overtime_pay_total === 0
-                ) {
-                    toast.error("There are no attendance record on selected month");
-                }
-            } else {
-                setSummary({
-                    tardiness: 0,
-                    undertime: 0,
-                    overtime: 0,
-                    absences: 0,
-                    base_salary: 0,
-                    rate_per_day: 0,
-                    rate_per_hour: 0,
-                    overtime_pay_total: 0,
-                    overtime_count_weekdays: 0,
-                    overtime_count_weekends: 0
-                });
-                toast.error("There are no attendance record on selected month");
-            }
-        } catch (error) {
-            console.error('Error fetching monthly timekeeping summary:', error);
-            setSummary({
-                tardiness: 0,
-                undertime: 0,
-                overtime: 0,
-                absences: 0,
-                base_salary: 0,
-                rate_per_day: 0,
-                rate_per_hour: 0,
-                overtime_pay_total: 0,
-                overtime_count_weekdays: 0,
-                overtime_count_weekends: 0
-            });
-        } finally {
-            // Ensure skeleton is shown for at least 400ms
-            minLoadingTimeout.current = setTimeout(() => {
-                setShowSkeleton(false);
-                setLoadingSummary(false);
-            }, 400);
-        }
-    };
+    // fetchMonthlySummary is now handled by useEmployeePayroll
 
     // DEBUG: Show actual values for troubleshooting
     console.log('DEBUG employee.schedule:', {
@@ -445,14 +323,13 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                                 <div>
                                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
                                                                     <div className="grid grid-cols-2 gap-6 text-sm">
-                                                                        <Info label="Monthly Salary" value={`₱${formatNumberWithCommasAndFixed(summary.base_salary)}`} />
-                                                                        <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommasAndFixed(summary.overtime_pay_total)}`} />
-                                                                        <Info label="Gross Pay" value={`₱${formatNumberWithCommasAndFixed(grossPay)}`} />
-                                                                        <Info label="Gross Pay" value={`₱${formatNumberWithCommasAndFixed(grossPay)}`} />
+                                                                        <Info label="Monthly Salary" value={`₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
+                                                                        <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
+                                                                        <Info label="Gross Pay" value={`₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
                                                                     </div>
                                                                     <div className="space-y-3 text-sm mt-4">
-                                                                        <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(summary.rate_per_day)}`} />
-                                                                        <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(summary.rate_per_hour)}`} />
+                                                                        <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(summary?.rate_per_day ?? 0)}`} />
+                                                                        <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(summary?.rate_per_hour ?? 0)}`} />
 
                                                                     </div>
                                                                 </div>
