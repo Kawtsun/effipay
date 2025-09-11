@@ -207,7 +207,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                 <DialogTitle className="text-2xl font-bold mb-2">Employee Attendance Details</DialogTitle>
                             </DialogHeader>
                             {/* Scrollable content area */}
-                            <div className="flex-1 overflow-y-auto pr-2">
+                            <div className="flex-1 overflow-y-auto pr-2 min-h-[700px]">
                                 <div className="space-y-12 text-base">
                                     {/* Employee Header */}
                                     <div className="border-b pb-6 mb-2">
