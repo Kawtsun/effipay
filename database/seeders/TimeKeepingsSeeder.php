@@ -28,11 +28,19 @@ class TimeKeepingsSeeder extends Seeder
             'Sayaka Miki', 'Kyouko Sakura', 'Yui Hirasawa', 'Mio Akiyama', 'Ritsu Tainaka', 'Tsumugi Kotobuki',
             'Azusa Nakano', 'Nadeshiko Kagamihara', 'Aoi Inuyama', 'Chiaki Oogaki', 'Ena Saitou', 'Rin Shima'
         ];
+
+        $employeeNames2 = [
+            'Francisco Morpheus Joshua Sumiquiab',
+            'Dizon Isaac Rossdale Manzano',
+            'Tañega Nicolle Daban',
+            'Vilaga Arwin Paul Bausista'
+        ];
+
         $employeeIds = [];
-        foreach ($employeeNames as $index => $name) {
+        foreach ($employeeNames2 as $index => $name) {
             $employeeIds[] = $index + 1; // IDs start from 1
         }
-        $startDate = Carbon::create(2025, 7, 1);
+        $startDate = Carbon::create(2025, 3, 1);
         $endDate = Carbon::create(2025, 8, 31);
         $classifications = [
             'late' => ['clock_in' => '09:00:00', 'clock_out' => '16:00:00'],

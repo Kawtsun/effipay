@@ -5,6 +5,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Employees } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
@@ -153,6 +154,15 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                     rate_per_hour: result.rate_per_hour ?? 0,
                     overtime_pay_total: result.overtime_pay_total ?? 0
                 });
+                // If all values are zero, treat as no attendance record
+                if (
+                    (result.tardiness ?? 0) === 0 &&
+                    (result.undertime ?? 0) === 0 &&
+                    (result.overtime ?? 0) === 0 &&
+                    (result.absences ?? 0) === 0
+                ) {
+                    toast.error("There are no attendance record on selected month");
+                }
             } else {
                 setSummary({
                     tardiness: 0,
@@ -164,6 +174,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                     rate_per_hour: 0,
                     overtime_pay_total: 0
                 });
+                toast.error("There are no attendance record on selected month");
             }
         } catch (error) {
             console.error('Error fetching monthly timekeeping summary:', error);

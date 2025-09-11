@@ -124,11 +124,11 @@ class EmployeesSeeder extends Seeder
 
         // Create a matching ID for each name in $employeeNames
         $employeeIds = [];
-        foreach ($employeeNames as $index => $name) {
+        foreach ($employeeNames2 as $index => $name) {
             $employeeIds[] = $index + 1; // IDs start from 1
         }
 
-        $shuffled = collect($employeeNames)->shuffle();
+        $shuffled = collect($employeeNames2)->shuffle();
         $employeeTypesTeaching = ['Full Time', 'Part Time', 'Provisionary'];
         $employeeTypesAdmin = ['Regular', 'Provisionary'];
         $collegePrograms = [
@@ -136,7 +136,7 @@ class EmployeesSeeder extends Seeder
         ];
 
         //foreach ($shuffled as $name)
-        foreach ($employeeNames as $name) {
+        foreach ($employeeNames2 as $name) {
             // Assign at most one instructor type, and optionally administrator
             $instructor = fake()->randomElement(['college instructor', 'basic education instructor', null]);
             $rolesArr = [];
