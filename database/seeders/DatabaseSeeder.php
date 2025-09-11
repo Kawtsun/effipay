@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
             EmployeesSeeder::class,
             SalarySeeder::class,
             PayrollSeeder::class,
-            TimeKeepingsSeeder::class,
+            // TimeKeepingsSeeder::class,
         ]);
     }
 }

@@ -1,4 +1,6 @@
 import EmployeeFilter from '@/components/employee-filter';
+// @ts-ignore
+import Encoding from 'encoding-japanese';
 import EmployeePagination from '@/components/employee-pagination';
 import EmployeeSearch from '@/components/employee-search';
 import TimeKeepingViewDialog from '@/components/timekeeping-view-dialog';
@@ -80,9 +82,36 @@ export default function TimeKeeping() {
         let rows = [];
         const importToast = toast.loading('Importing file...');
         if (ext === '.csv') {
-            file.text().then(text => {
-                const result = Papa.parse(text, { header: true });
-                rows = result.data;
+            file.arrayBuffer().then(buffer => {
+                // Use encoding.js to auto-detect and convert encoding to UTF-8
+                const uint8Array = new Uint8Array(buffer);
+                const detected = Encoding.detect(uint8Array);
+                const text = Encoding.convert(uint8Array, {
+                    to: 'UNICODE',
+                    from: detected,
+                    type: 'string'
+                });
+                // Strip BOM if present
+                let cleanText = text;
+                if (cleanText.charCodeAt(0) === 0xFEFF) {
+                    cleanText = cleanText.slice(1);
+                }
+                console.log('Raw CSV text:', cleanText);
+                const result = Papa.parse(cleanText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    transform: (value: string) => value ? value.normalize('NFC') : value,
+                    error: (err) => {
+                        console.error('PapaParse error:', err);
+                    }
+                });
+                console.log('Parsed rows:', result.data);
+                // Log and filter out empty/malformed rows
+                const validRows = result.data.filter((row: any) => row && Object.values(row).some(v => v !== null && v !== undefined && v !== ''));
+                if (validRows.length !== result.data.length) {
+                    toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${result.data.length} rows.`);
+                }
+                rows = validRows;
                 sendImport(rows, file.name, importToast);
             });
         } else {
