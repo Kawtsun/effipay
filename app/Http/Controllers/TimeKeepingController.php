@@ -157,40 +157,46 @@ class TimeKeepingController extends Controller
             $overtime_pay_weekends = 0;
             $overtime_count_weekdays = 0;
             $overtime_count_weekends = 0;
-            // Absences: count days with no clock_in and clock_out
-            $absences = 0;
+            // Absences: count days with no clock_in and clock_out, then convert to decimal hours
+            $absent_days = 0;
             $dates = $records->pluck('date')->unique();
             foreach ($dates as $date) {
                 $dayRecords = $records->where('date', $date);
                 $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
                 $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
                 if (!$hasClockIn && !$hasClockOut) {
-                    $absences++;
+                    $absent_days++;
                 }
             }
+            $absences = 0;
+            if (!empty($emp->work_hours_per_day)) {
+                $absences = round($absent_days * floatval($emp->work_hours_per_day), 2); // decimal hours
+            } else {
+                $absences = $absent_days; // fallback to days if no schedule
+            }
             foreach ($records as $tk) {
-                // Tardiness: count hours late (stack, not per day)
+                // Tardiness: count decimal hours late (not stacked)
                 if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
                     $late_minutes = (strtotime($tk->clock_in) - strtotime($late_threshold)) / 60;
                     if ($late_minutes > 0) {
-                        $late_count += ceil($late_minutes / 60); // stack by hour
+                        $late_count += round($late_minutes / 60, 2); // decimal hours
                     }
                 }
-                // Undertime: count hours early (stack, not per day)
+                // Undertime: count decimal hours early (not stacked)
                 if ($tk->clock_out && $emp->work_end_time && strtotime($tk->clock_out) < strtotime($emp->work_end_time)) {
                     $early_minutes = (strtotime($emp->work_end_time) - strtotime($tk->clock_out)) / 60;
                     if ($early_minutes > 0) {
-                        $early_count += ceil($early_minutes / 60); // stack by hour
+                        $early_count += round($early_minutes / 60, 2); // decimal hours
                     }
                 }
-                // Overtime: count hours overtime (stack, not per day)
+                // Overtime: count decimal hours overtime (not stacked)
                 if ($tk->clock_out && $emp->work_end_time) {
                     $workEnd = strtotime($emp->work_end_time);
                     $clockOut = strtotime($tk->clock_out);
                     if ($clockOut >= $workEnd + 3600) { // 1 hour after work_end_time
                         $overtime_minutes = ($clockOut - $workEnd) / 60 - 59; // subtract 59 minutes (inclusive)
                         if ($overtime_minutes >= 1) {
-                            $overtime_hours = ceil($overtime_minutes / 60); // stack by hour
+                            $overtime_hours = round($overtime_minutes / 60, 2); // decimal hours
                             $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
                             if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
                                 $pay = round($rate_per_hour * 0.25, 2);
@@ -332,28 +338,28 @@ class TimeKeepingController extends Controller
         $late_threshold = $employee->work_start_time ? date('H:i:s', strtotime($employee->work_start_time) + 15 * 60) : null;
 
         foreach ($records as $tk) {
-            // Tardiness
+            // Tardiness (decimal hours)
             if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
                 $late_minutes = (strtotime($tk->clock_in) - strtotime($late_threshold)) / 60;
                 if ($late_minutes > 0) {
-                    $late_count += ceil($late_minutes / 60);
+                    $late_count += round($late_minutes / 60, 2);
                 }
             }
-            // Undertime
+            // Undertime (decimal hours)
             if ($tk->clock_out && $employee->work_end_time && strtotime($tk->clock_out) < strtotime($employee->work_end_time)) {
                 $early_minutes = (strtotime($employee->work_end_time) - strtotime($tk->clock_out)) / 60;
                 if ($early_minutes > 0) {
-                    $early_count += ceil($early_minutes / 60);
+                    $early_count += round($early_minutes / 60, 2);
                 }
             }
-            // Overtime
+            // Overtime (decimal hours)
             if ($tk->clock_out && $employee->work_end_time) {
                 $workEnd = strtotime($employee->work_end_time);
                 $clockOut = strtotime($tk->clock_out);
                 if ($clockOut >= $workEnd + 3600) {
                     $overtime_minutes = ($clockOut - $workEnd) / 60 - 59;
                     if ($overtime_minutes >= 1) {
-                        $overtime_hours = ceil($overtime_minutes / 60);
+                        $overtime_hours = round($overtime_minutes / 60, 2);
                         $dayOfWeek = date('N', strtotime($tk->date));
                         $pay = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
                             ? round($rate_per_hour * 0.25, 2)
@@ -365,19 +371,28 @@ class TimeKeepingController extends Controller
             }
         }
 
-        // Absences: count days with no clock_in and clock_out
+        // Absences: count days with no clock_in and clock_out, then convert to decimal hours
+        $absent_days = 0;
         $dates = $records->pluck('date')->unique();
         foreach ($dates as $date) {
             $dayRecords = $records->where('date', $date);
             $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
             $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
             if (!$hasClockIn && !$hasClockOut) {
-                $absences++;
+                $absent_days++;
             }
         }
+        $absences = 0;
+        if (!empty($employee->work_hours_per_day)) {
+            $absences = round($absent_days * floatval($employee->work_hours_per_day), 2);
+        } else {
+            $absences = $absent_days;
+        }
 
+        // If there is at least one record in the month, always return success and computed values
+        $hasData = $records->count() > 0;
         return response()->json([
-            'success' => true,
+            'success' => $hasData,
             'tardiness' => $late_count,
             'undertime' => $early_count,
             'overtime' => $overtime_count,

@@ -56,14 +56,7 @@ function Info({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }: Props) {
-    // Month selector state
-    const [selectedMonth, setSelectedMonth] = useState("");
-    const [pendingMonth, setPendingMonth] = useState("");
-    const [availableMonths, setAvailableMonths] = useState<string[]>([]);
-    // Skeleton loading state for cards
-    const [showSkeleton, setShowSkeleton] = useState(true);
-
-    // Summary data for selected month
+    // ...existing state declarations...
     const [summary, setSummary] = useState({
         tardiness: 0,
         undertime: 0,
@@ -74,6 +67,31 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         rate_per_hour: 0,
         overtime_pay_total: 0
     });
+    // Track if there is at least one record for the month
+    const hasMonthData = (
+        summary.tardiness !== undefined &&
+        summary.undertime !== undefined &&
+        summary.overtime !== undefined &&
+        summary.absences !== undefined &&
+        (
+            summary.tardiness !== 0 ||
+            summary.undertime !== 0 ||
+            summary.overtime !== 0 ||
+            summary.absences !== 0 ||
+            summary.base_salary !== 0 ||
+            summary.rate_per_day !== 0 ||
+            summary.rate_per_hour !== 0 ||
+            summary.overtime_pay_total !== 0
+        )
+    );
+    // Month selector state
+    const [selectedMonth, setSelectedMonth] = useState("");
+    const [pendingMonth, setPendingMonth] = useState("");
+    const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+    // Skeleton loading state for cards
+    const [showSkeleton, setShowSkeleton] = useState(true);
+
+    // Track if there is at least one record for the month
     const [loadingSummary, setLoadingSummary] = useState(false);
     // Ref for minimum loading timeout
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -154,12 +172,16 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                     rate_per_hour: result.rate_per_hour ?? 0,
                     overtime_pay_total: result.overtime_pay_total ?? 0
                 });
-                // If all values are zero, treat as no attendance record
+                // Only show error if there are truly no records for the month
                 if (
                     (result.tardiness ?? 0) === 0 &&
                     (result.undertime ?? 0) === 0 &&
                     (result.overtime ?? 0) === 0 &&
-                    (result.absences ?? 0) === 0
+                    (result.absences ?? 0) === 0 &&
+                    result.base_salary === 0 &&
+                    result.rate_per_day === 0 &&
+                    result.rate_per_hour === 0 &&
+                    result.overtime_pay_total === 0
                 ) {
                     toast.error("There are no attendance record on selected month");
                 }
@@ -279,7 +301,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
-                                                        <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{(summary.tardiness === 0 && summary.undertime === 0 && summary.overtime === 0 && summary.absences === 0) ? '-' : `${summary.tardiness} hr(s)`}</div>
+                                                        <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.tardiness).toFixed(2)} hr(s)`}</div>
                                                     </>
                                                 )}
                                             </motion.div>
@@ -299,7 +321,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
-                                                        <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{(summary.tardiness === 0 && summary.undertime === 0 && summary.overtime === 0 && summary.absences === 0) ? '-' : `${summary.undertime} hr(s)`}</div>
+                                                        <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.undertime).toFixed(2)} hr(s)`}</div>
                                                     </>
                                                 )}
                                             </motion.div>
@@ -319,7 +341,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
-                                                        <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{(summary.tardiness === 0 && summary.undertime === 0 && summary.overtime === 0 && summary.absences === 0) ? '-' : `${summary.overtime} hr(s)`}</div>
+                                                        <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.overtime).toFixed(2)} hr(s)`}</div>
                                                     </>
                                                 )}
                                             </motion.div>
@@ -346,7 +368,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
-                                                        <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{(summary.tardiness === 0 && summary.undertime === 0 && summary.overtime === 0 && summary.absences === 0) ? '-' : summary.absences}</div>
+                                                        <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.absences).toFixed(2)} hr(s)`}</div>
                                                     </>
                                                 )}
                                             </motion.div>
