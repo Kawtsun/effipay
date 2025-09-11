@@ -45,6 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/payroll/employee/dates', [PayrollController::class, 'getEmployeePayrollDates'])->name('payroll.employee.dates');
     Route::get('/payroll/employee/monthly', [PayrollController::class, 'getEmployeeMonthlyPayroll'])->name('payroll.employee.monthly');
     Route::get('/payroll/employee/months', [PayrollController::class, 'getEmployeePayrollMonths'])->name('payroll.employee.months');
+    Route::get('/timekeeping/employee/monthly-summary', [TimeKeepingController::class, 'monthlySummary'])->name('timekeeping.employee.monthly-summary');
 });
 
 require __DIR__ . '/settings.php';

@@ -297,4 +297,95 @@ class TimeKeepingController extends Controller
     {
         //
     }
+    /**
+     * Return computed timekeeping summary for a given employee and month.
+     */
+    public function monthlySummary(Request $request)
+    {
+        $employeeId = $request->input('employee_id');
+        $month = $request->input('month'); // format: YYYY-MM
+
+        if (!$employeeId || !$month) {
+            return response()->json(['success' => false, 'error' => 'Missing parameters']);
+        }
+
+        $employee = \App\Models\Employees::find($employeeId);
+        if (!$employee) {
+            return response()->json(['success' => false, 'error' => 'Employee not found']);
+        }
+
+        // Get all timekeeping records for this employee in the selected month
+        $records = \App\Models\TimeKeeping::where('employee_id', $employeeId)
+            ->where('date', 'like', "$month%")
+            ->get();
+
+        // --- Compute summary values ---
+        $late_count = 0;
+        $early_count = 0;
+        $overtime_count = 0;
+        $absences = 0;
+        $overtime_pay_total = 0;
+
+        $rate_per_day = ($employee->base_salary * 12) / 288;
+        $rate_per_hour = $rate_per_day / 8;
+
+        $late_threshold = $employee->work_start_time ? date('H:i:s', strtotime($employee->work_start_time) + 15 * 60) : null;
+
+        foreach ($records as $tk) {
+            // Tardiness
+            if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
+                $late_minutes = (strtotime($tk->clock_in) - strtotime($late_threshold)) / 60;
+                if ($late_minutes > 0) {
+                    $late_count += ceil($late_minutes / 60);
+                }
+            }
+            // Undertime
+            if ($tk->clock_out && $employee->work_end_time && strtotime($tk->clock_out) < strtotime($employee->work_end_time)) {
+                $early_minutes = (strtotime($employee->work_end_time) - strtotime($tk->clock_out)) / 60;
+                if ($early_minutes > 0) {
+                    $early_count += ceil($early_minutes / 60);
+                }
+            }
+            // Overtime
+            if ($tk->clock_out && $employee->work_end_time) {
+                $workEnd = strtotime($employee->work_end_time);
+                $clockOut = strtotime($tk->clock_out);
+                if ($clockOut >= $workEnd + 3600) {
+                    $overtime_minutes = ($clockOut - $workEnd) / 60 - 59;
+                    if ($overtime_minutes >= 1) {
+                        $overtime_hours = ceil($overtime_minutes / 60);
+                        $dayOfWeek = date('N', strtotime($tk->date));
+                        $pay = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
+                            ? round($rate_per_hour * 0.25, 2)
+                            : round($rate_per_hour * 0.30, 2);
+                        $overtime_count += $overtime_hours;
+                        $overtime_pay_total += $pay * $overtime_hours;
+                    }
+                }
+            }
+        }
+
+        // Absences: count days with no clock_in and clock_out
+        $dates = $records->pluck('date')->unique();
+        foreach ($dates as $date) {
+            $dayRecords = $records->where('date', $date);
+            $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
+            $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
+            if (!$hasClockIn && !$hasClockOut) {
+                $absences++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'tardiness' => $late_count,
+            'undertime' => $early_count,
+            'overtime' => $overtime_count,
+            'absences' => $absences,
+            'base_salary' => $employee->base_salary,
+            'rate_per_day' => $rate_per_day,
+            'rate_per_hour' => $rate_per_hour,
+            'overtime_pay_total' => $overtime_pay_total,
+        ]);
+    }
 }

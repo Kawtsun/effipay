@@ -32,7 +32,7 @@ class TimeKeepingsSeeder extends Seeder
         foreach ($employeeNames as $index => $name) {
             $employeeIds[] = $index + 1; // IDs start from 1
         }
-        $startDate = Carbon::create(2025, 8, 1);
+        $startDate = Carbon::create(2025, 7, 1);
         $endDate = Carbon::create(2025, 8, 31);
         $classifications = [
             'late' => ['clock_in' => '09:00:00', 'clock_out' => '16:00:00'],

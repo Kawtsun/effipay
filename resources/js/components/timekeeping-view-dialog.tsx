@@ -9,7 +9,7 @@ import { Employees } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
 import { RolesBadges, getCollegeProgramLabel } from "./roles-badges";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { MonthPicker } from "./ui/month-picker";
 import { Skeleton } from "./ui/skeleton";
 
@@ -46,16 +46,6 @@ interface Props {
 }
 
 function Info({ label, value }: { label: string; value: string | number }) {
-// Display schedule based on employee data, using 12-hour format
-function formatTimeMilitary(time?: string): string {
-    if (!time) return '-';
-    const parts = time.split(':');
-    if (parts.length < 2) return '-';
-    const hours = Number(parts[0]);
-    const minutes = Number(parts[1]);
-    if (isNaN(hours) || isNaN(minutes)) return '-';
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-}
     return (
         <div>
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -72,11 +62,43 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     // Skeleton loading state for cards
     const [showSkeleton, setShowSkeleton] = useState(true);
 
+    // Summary data for selected month
+    const [summary, setSummary] = useState({
+        tardiness: 0,
+        undertime: 0,
+        overtime: 0,
+        absences: 0,
+        base_salary: 0,
+        rate_per_day: 0,
+        rate_per_hour: 0,
+        overtime_pay_total: 0
+    });
+    const [loadingSummary, setLoadingSummary] = useState(false);
+    const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
+
     useEffect(() => {
         if (employee) {
             fetchAvailableMonths();
         }
     }, [employee]);
+
+    useEffect(() => {
+        if (employee && pendingMonth) {
+            fetchMonthlySummary();
+        } else {
+            setSummary({
+                tardiness: 0,
+                undertime: 0,
+                overtime: 0,
+                absences: 0,
+                base_salary: 0,
+                rate_per_day: 0,
+                rate_per_hour: 0,
+                overtime_pay_total: 0
+            });
+        }
+        // eslint-disable-next-line
+    }, [employee, pendingMonth]);
 
     useEffect(() => {
         const timer = setTimeout(() => setShowSkeleton(false), 500); // 500ms delay
@@ -101,9 +123,59 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     };
 
     const handleMonthChange = (month: string) => {
-        if (month !== selectedMonth) {
-            setSelectedMonth(month);
-            setPendingMonth(month);
+        setSelectedMonth(month);
+        setPendingMonth(month);
+    };
+
+    // Fetch summary data for selected month from backend
+    const fetchMonthlySummary = async () => {
+        if (!employee || !pendingMonth) return;
+        setLoadingSummary(true);
+        if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
+        minLoadingTimeout.current = setTimeout(() => setShowSkeleton(false), 400);
+        try {
+            const response = await fetch(route('timekeeping.employee.monthly-summary', {
+                employee_id: employee.id,
+                month: pendingMonth
+            }));
+            const result = await response.json();
+            if (result.success) {
+                setSummary({
+                    tardiness: result.tardiness ?? 0,
+                    undertime: result.undertime ?? 0,
+                    overtime: result.overtime ?? 0,
+                    absences: result.absences ?? 0,
+                    base_salary: result.base_salary ?? 0,
+                    rate_per_day: result.rate_per_day ?? 0,
+                    rate_per_hour: result.rate_per_hour ?? 0,
+                    overtime_pay_total: result.overtime_pay_total ?? 0
+                });
+            } else {
+                setSummary({
+                    tardiness: 0,
+                    undertime: 0,
+                    overtime: 0,
+                    absences: 0,
+                    base_salary: 0,
+                    rate_per_day: 0,
+                    rate_per_hour: 0,
+                    overtime_pay_total: 0
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching monthly timekeeping summary:', error);
+            setSummary({
+                tardiness: 0,
+                undertime: 0,
+                overtime: 0,
+                absences: 0,
+                base_salary: 0,
+                rate_per_day: 0,
+                rate_per_hour: 0,
+                overtime_pay_total: 0
+            });
+        } finally {
+            setTimeout(() => setLoadingSummary(false), 100);
         }
     };
 
@@ -189,7 +261,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
-                                                        <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{employee.late_count ?? 0} hr(s)</div>
+                                                        <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{summary.tardiness} hr(s)</div>
                                                     </>
                                                 )}
                                             </motion.div>
@@ -209,7 +281,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
-                                                        <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{employee.early_count ?? 0} hr(s)</div>
+                                                        <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{summary.undertime} hr(s)</div>
                                                     </>
                                                 )}
                                             </motion.div>
@@ -229,7 +301,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
-                                                        <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{(employee.overtime_count_weekdays ?? 0) + (employee.overtime_count_weekends ?? 0)} hr(s)</div>
+                                                        <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{summary.overtime} hr(s)</div>
                                                     </>
                                                 )}
                                             </motion.div>
@@ -256,7 +328,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 ) : (
                                                     <>
                                                         <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
-                                                        <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{employee.absences ?? 0}</div>
+                                                        <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{summary.absences}</div>
                                                     </>
                                                 )}
                                             </motion.div>
@@ -310,10 +382,10 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                 <div>
                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
                     <div className="space-y-3 text-sm">
-                        <Info label="Monthly Salary" value={`₱${formatNumberWithCommas(employee.base_salary ?? 0)}`} />
-                        <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(employee.rate_per_day ?? 0)}`} />
-                        <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(employee.rate_per_hour ?? 0)}`} />
-                        <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommas(employee.overtime_pay_total ?? 0)}`} />
+                        <Info label="Monthly Salary" value={`₱${formatNumberWithCommas(summary.base_salary)}`} />
+                        <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(summary.rate_per_day)}`} />
+                        <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(summary.rate_per_hour)}`} />
+                        <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommas(summary.overtime_pay_total)}`} />
                     </div>
                 </div>
             </div>
