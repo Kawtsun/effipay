@@ -355,7 +355,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                             <div className="space-y-3 text-sm">
-                                                                <Info label="Base Salary" value={`₱${Math.abs(Number(monthlyPayrollData ? monthlyPayrollData.payrolls[0].base_salary : employee.base_salary)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                                <Info label="Base Salary" value={`₱${typeof timekeepingSummary?.base_salary === 'number' ? timekeepingSummary.base_salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.abs(Number(employee.base_salary)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                                                                 <Info label="Overtime Pay" value={`₱${typeof timekeepingSummary?.overtime_pay_total === 'number' ? timekeepingSummary.overtime_pay_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}`} />
                                                             </div>
                                                         </div>
