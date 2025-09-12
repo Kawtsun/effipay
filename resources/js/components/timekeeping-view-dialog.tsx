@@ -11,7 +11,7 @@ import { Employees } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
 import { RolesBadges, getCollegeProgramLabel } from "./roles-badges";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { MonthPicker } from "./ui/month-picker";
 import { Skeleton } from "./ui/skeleton";
@@ -62,7 +62,9 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     const [selectedMonth, setSelectedMonth] = useState("");
     const [pendingMonth, setPendingMonth] = useState("");
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
-    const [showSkeleton, setShowSkeleton] = useState(true);
+    const [loadingPayroll, setLoadingPayroll] = useState(false);
+    const [minLoading, setMinLoading] = useState(false);
+    const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
     const { summary } = useEmployeePayroll(employee?.id ?? null, pendingMonth);
     const hasMonthData = !!summary && (
         summary.tardiness !== 0 ||
@@ -75,23 +77,8 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         summary.overtime_pay_total !== 0
     );
 
-    useEffect(() => {
-        if (employee) {
-            fetchAvailableMonths();
-        }
-    }, [employee]);
 
-    useEffect(() => {
-        // summary is now handled by useEmployeePayroll
-    // summary is now handled by useEmployeePayroll
-    }, [employee, pendingMonth]);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setShowSkeleton(false), 500); // 500ms delay
-        return () => clearTimeout(timer);
-    }, [employee, selectedMonth]);
-
-    const fetchAvailableMonths = async () => {
+    const fetchAvailableMonths = React.useCallback(async () => {
         if (!employee) return;
         try {
             const response = await fetch(route('payroll.employee.months', { employee_id: employee.id }));
@@ -106,13 +93,38 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         } catch (error) {
             console.error('Error fetching available months:', error);
         }
-    };
+    }, [employee, selectedMonth]);
+
+    useEffect(() => {
+        if (employee) {
+            fetchAvailableMonths();
+        }
+    }, [employee, fetchAvailableMonths]);
+
+    useEffect(() => {
+        // summary is now handled by useEmployeePayroll
+    }, [employee, pendingMonth]);
+
+    useEffect(() => {
+        if (employee) {
+            setLoadingPayroll(true);
+            setMinLoading(true);
+            if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
+            minLoadingTimeout.current = setTimeout(() => setMinLoading(false), 400);
+            // Simulate loading for payroll summary (useEmployeePayroll is async)
+            setTimeout(() => setLoadingPayroll(false), 100);
+        } else {
+            setLoadingPayroll(false);
+            setMinLoading(false);
+        }
+    }, [employee, selectedMonth]);
 
     // Month change handler with skeleton loading
     const handleMonthChange = (month: string) => {
-        setSelectedMonth(month);
-        setPendingMonth(month);
-        setShowSkeleton(true); // Show skeleton immediately on month change
+        if (month !== selectedMonth) {
+            setSelectedMonth(month);
+            setPendingMonth(month);
+        }
     };
 
     // fetchMonthlySummary is now handled by useEmployeePayroll
@@ -137,16 +149,13 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                             <DialogHeader className="flex-shrink-0">
                                 <DialogTitle className="text-2xl font-bold mb-2">Employee Attendance Details</DialogTitle>
                             </DialogHeader>
-                            {/* Scrollable content area */}
                             <div className="flex-1 overflow-y-auto pr-2 min-h-[700px]">
                                 <div className="space-y-12 text-base">
-                                    {/* Employee Header */}
                                     <div className="border-b pb-6 mb-2">
                                         <h3 className="text-2xl font-extrabold mb-1">
                                             #{employee.id} - {`${employee.last_name}, ${employee.first_name} ${employee.middle_name}`.toLocaleUpperCase('en-US')}
                                         </h3>
                                     </div>
-                                    {/* ...existing timekeeping view content... */}
                                     <div className="grid grid-cols-2 gap-10 items-start mb-6">
                                         <div>
                                             <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
@@ -164,7 +173,6 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                             <h4 className="font-semibold text-base mb-4 border-b pb-2">Roles & Responsibilities</h4>
                                             <div className="flex flex-wrap gap-3 max-w-full px-2 py-2 break-words whitespace-pre-line min-h-[2.5rem] text-sm">
                                                 <RolesBadges roles={employee.roles} activeRoles={activeRoles} employee={employee} />
-                                               
                                             </div>
                                         </div>
                                     </div>
@@ -180,165 +188,136 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 availableMonths={availableMonths}
                                             />
                                         </div>
-                                        <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-                                            {/* Tardiness Card */}
-                                            <motion.div
-                                                className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] h-[120px] shadow-sm"
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                whileHover={{ scale: 1.02 }}
-                                                transition={{ duration: 0.3, delay: 0.1 }}
-                                            >
-                                                {showSkeleton ? (
-                                                    <>
-                                                        <Skeleton className="h-3 w-24 mb-2" />
-                                                        <Skeleton className="h-8 w-32" />
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
-                                                        <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.tardiness).toFixed(2)} hr(s)`}</div>
-                                                    </>
-                                                )}
-                                            </motion.div>
-                                            {/* Undertime Card */}
-                                            <motion.div
-                                                className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] h-[120px] shadow-sm"
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                whileHover={{ scale: 1.02 }}
-                                                transition={{ duration: 0.3, delay: 0.2 }}
-                                            >
-                                                {showSkeleton ? (
-                                                    <>
-                                                        <Skeleton className="h-3 w-36 mb-2" />
-                                                        <Skeleton className="h-8 w-32" />
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
-                                                        <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.undertime).toFixed(2)} hr(s)`}</div>
-                                                    </>
-                                                )}
-                                            </motion.div>
-                                            {/* Overtime Card */}
-                                            <motion.div
-                                                className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] h-[120px] shadow-sm"
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                whileHover={{ scale: 1.02 }}
-                                                transition={{ duration: 0.3, delay: 0.3 }}
-                                            >
-                                                {showSkeleton ? (
-                                                    <>
-                                                        <Skeleton className="h-3 w-20 mb-2" />
-                                                        <Skeleton className="h-8 w-32" />
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
-                                                        <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.overtime).toFixed(2)} hr(s)`}</div>
-                                                        <div className="text-xs text-blue-400 mt-1">
-                                                            {hasMonthData
-                                                                ? `Weekdays: ${Number(summary.overtime_count_weekdays ?? 0).toFixed(2)} hr(s), Weekends: ${Number(summary.overtime_count_weekends ?? 0).toFixed(2)} hr(s)`
-                                                                : ''}
+                                        <AnimatePresence mode="wait">
+                                            {(loadingPayroll || minLoading) ? (
+                                                <motion.div
+                                                    key="skeleton"
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                >
+                                                    <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
+                                                        <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                            <Skeleton className="h-3 w-24 mb-2" />
+                                                            <Skeleton className="h-8 w-32" />
                                                         </div>
-                                                    </>
-                                                )}
-                                            </motion.div>
-                                            {/* Absences Card */}
-                                            <motion.div
-                                                className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] h-[120px] shadow-sm"
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                whileHover={{ scale: 1.02 }}
-                                                transition={{ duration: 0.3, delay: 0.4 }}
-                                            >
-                                                {showSkeleton ? (
-                                                    <>
-                                                        <Skeleton className="h-3 w-28 mb-2" />
-                                                        <Skeleton className="h-8 w-32 mb-3" />
-                                                        <div className="flex flex-wrap gap-1 mt-2">
-                                                            <Skeleton className="h-3 w-10 rounded-full" />
-                                                            <Skeleton className="h-3 w-2 rounded-full" />
-                                                            <Skeleton className="h-3 w-10 rounded-full" />
-                                                            <Skeleton className="h-3 w-2 rounded-full" />
-                                                            <Skeleton className="h-3 w-10 rounded-full" />
+                                                        <div className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                            <Skeleton className="h-3 w-36 mb-2" />
+                                                            <Skeleton className="h-8 w-32" />
                                                         </div>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
-                                                        <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.absences).toFixed(2)} hr(s)`}</div>
-                                                    </>
-                                                )}
-                                            </motion.div>
-                                        </div>
-                                        {/* Computation details below cards, like report view dialog */}
-                                        <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
-                                            {/*   */}
-                                            <div>
-                                                <AnimatePresence mode="wait">
-                                                    {showSkeleton ? (
-                                                        <motion.div
-                                                            key="skeleton"
-                                                            initial={{ opacity: 0 }}
-                                                            animate={{ opacity: 1 }}
-                                                            exit={{ opacity: 0 }}
-                                                            transition={{ duration: 0.2 }}
-                                                        >
-                                                            <div className="grid grid-cols-1 gap-10">
+                                                        <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                            <Skeleton className="h-3 w-20 mb-2" />
+                                                            <Skeleton className="h-8 w-32" />
+                                                        </div>
+                                                        <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                            <Skeleton className="h-3 w-28 mb-2" />
+                                                            <Skeleton className="h-8 w-32 mb-3" />
+                                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                                <Skeleton className="h-3 w-10 rounded-full" />
+                                                                <Skeleton className="h-3 w-2 rounded-full" />
+                                                                <Skeleton className="h-3 w-10 rounded-full" />
+                                                                <Skeleton className="h-3 w-2 rounded-full" />
+                                                                <Skeleton className="h-3 w-10 rounded-full" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
+                                                        <div>
+                                                            <Skeleton className="h-6 w-36 mb-4" />
+                                                            <div className="space-y-3 text-sm">
                                                                 <div>
-                                                                    <Skeleton className="h-6 w-36 mb-4" />
-                                                                    <div className="space-y-3 text-sm">
-                                                                        <div>
-                                                                            <Skeleton className="h-3 w-28 mb-1" />
-                                                                            <Skeleton className="h-4 w-40" />
-                                                                        </div>
-                                                                        <div>
-                                                                            <Skeleton className="h-3 w-26 mb-1" />
-                                                                            <Skeleton className="h-4 w-36" />
-                                                                        </div>
-                                                                        <div>
-                                                                            <Skeleton className="h-3 w-26 mb-1" />
-                                                                            <Skeleton className="h-4 w-36" />
-                                                                        </div>
-                                                                        <div>
-                                                                            <Skeleton className="h-3 w-40 mb-1" />
-                                                                            <Skeleton className="h-4 w-40" />
-                                                                        </div>
-                                                                    </div>
+                                                                    <Skeleton className="h-3 w-28 mb-1" />
+                                                                    <Skeleton className="h-4 w-40" />
+                                                                </div>
+                                                                <div>
+                                                                    <Skeleton className="h-3 w-26 mb-1" />
+                                                                    <Skeleton className="h-4 w-36" />
+                                                                </div>
+                                                                <div>
+                                                                    <Skeleton className="h-3 w-26 mb-1" />
+                                                                    <Skeleton className="h-4 w-36" />
+                                                                </div>
+                                                                <div>
+                                                                    <Skeleton className="h-3 w-40 mb-1" />
+                                                                    <Skeleton className="h-4 w-40" />
                                                                 </div>
                                                             </div>
-                                                        </motion.div>
-                                                    ) : (
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            ) : (
+                                                <motion.div
+                                                    key="content"
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    transition={{ duration: 0.25 }}
+                                                >
+                                                    <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                                         <motion.div
-                                                            key="content"
-                                                            initial={{ opacity: 0 }}
-                                                            animate={{ opacity: 1 }}
-                                                            exit={{ opacity: 0 }}
-                                                            transition={{ duration: 0.25 }}
+                                                            className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            transition={{ duration: 0.3, delay: 0.1 }}
                                                         >
-                                                            <div className="grid grid-cols-1 gap-10">
-                                                                <div>
-                                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
-                                                                    <div className="grid grid-cols-2 gap-6 text-sm">
-                                                                        <Info label="Monthly Salary" value={`₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
-                                                                        <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
-                                                                        <Info label="Gross Pay" value={`₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
-                                                                    </div>
-                                                                    <div className="space-y-3 text-sm mt-4">
-                                                                        <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(summary?.rate_per_day ?? 0)}`} />
-                                                                        <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(summary?.rate_per_hour ?? 0)}`} />
-
-                                                                    </div>
-                                                                </div>
+                                                            <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
+                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.tardiness).toFixed(2)} hr(s)`}</div>
+                                                        </motion.div>
+                                                        <motion.div
+                                                            className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            transition={{ duration: 0.3, delay: 0.2 }}
+                                                        >
+                                                            <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
+                                                            <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.undertime).toFixed(2)} hr(s)`}</div>
+                                                        </motion.div>
+                                                        <motion.div
+                                                            className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            transition={{ duration: 0.3, delay: 0.3 }}
+                                                        >
+                                                            <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
+                                                            <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.overtime).toFixed(2)} hr(s)`}</div>
+                                                            <div className="text-xs text-blue-400 mt-1">
+                                                                {hasMonthData
+                                                                    ? `Weekdays: ${Number(summary.overtime_count_weekdays ?? 0).toFixed(2)} hr(s), Weekends: ${Number(summary.overtime_count_weekends ?? 0).toFixed(2)} hr(s)`
+                                                                    : ''}
                                                             </div>
                                                         </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-                                        </div>
+                                                        <motion.div
+                                                            className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            transition={{ duration: 0.3, delay: 0.4 }}
+                                                        >
+                                                            <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
+                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.absences).toFixed(2)} hr(s)`}</div>
+                                                        </motion.div>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
+                                                        <div>
+                                                            <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
+                                                            <div className="space-y-3 text-sm">
+                                                                <Info label="Monthly Salary" value={`₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
+                                                                <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
+                                                                <Info label="Gross Pay" value={`₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
+                                                            </div>
+                                                            <div className="space-y-3 text-sm mt-4">
+                                                                <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(summary?.rate_per_day ?? 0)}`} />
+                                                                <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(summary?.rate_per_hour ?? 0)}`} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 </div>
                             </div>
