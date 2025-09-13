@@ -78,6 +78,26 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         summary.overtime_pay_total !== 0
     );
 
+    // Show toast if no data, but only once per employee+month
+    const lastToastRef = useRef<{ emp: number|null, month: string } | null>(null);
+    useEffect(() => {
+        if (!loadingPayroll && !minLoading && employee && selectedMonth) {
+            const empId = employee.id;
+            if (!hasMonthData) {
+                if (
+                    !lastToastRef.current ||
+                    lastToastRef.current.emp !== empId ||
+                    lastToastRef.current.month !== selectedMonth
+                ) {
+                    toast.error("No timekeeping data found for this month.");
+                    lastToastRef.current = { emp: empId, month: selectedMonth };
+                }
+            } else {
+                // Reset lastToastRef if data is present
+                lastToastRef.current = null;
+            }
+        }
+    }, [loadingPayroll, minLoading, employee, selectedMonth, hasMonthData]);
 
     // Fetch merged months from backend (payroll + timekeeping)
     const fetchAvailableMonths = React.useCallback(async () => {

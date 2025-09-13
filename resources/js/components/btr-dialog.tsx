@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -60,8 +61,12 @@ export default function BTRDialog({ employee, onClose }: Props) {
       .then((data) => {
         if (Array.isArray(data.records)) {
           setRecords(data.records);
+          if (data.records.length === 0) {
+            toast.error("No timekeeping data found for this month.");
+          }
         } else {
           setRecords([]);
+          toast.error("No timekeeping data found for this month.");
         }
       })
       .finally(() => setLoading(false));
