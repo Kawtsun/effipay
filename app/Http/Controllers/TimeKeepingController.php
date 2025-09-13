@@ -48,12 +48,10 @@ class TimeKeepingController extends Controller {
     {
         $records = $request->input('records', []);
         $imported = 0;
-        foreach ($records as $row) {
-            // Normalize keys to lowercase for robust matching
-            $imported = 0;
-            $errors = [];
-            $shownIdNameError = false;
-            foreach ($records as $i => $row) {
+        $errors = [];
+        $shownIdNameError = false;
+        foreach ($records as $i => $row) {
+            try {
                 // Normalize keys to lowercase for robust matching
                 $normalized = [];
                 foreach ($row as $key => $value) {
@@ -65,13 +63,13 @@ class TimeKeepingController extends Controller {
                 $date = $normalized['date'] ?? null;
                 $clockIn = $normalized['clockin'] ?? null;
                 $clockOut = $normalized['clockout'] ?? null;
-                // Convert MM/DD/YYYY to YYYY-MM-DD if needed
-                if ($date && preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $date, $matches)) {
-                    $date = $matches[3] . '-' . $matches[1] . '-' . $matches[2];
+                // Convert M/D/YYYY or MM/DD/YYYY to YYYY-MM-DD if needed
+                if ($date && preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $date, $matches)) {
+                    $date = sprintf('%04d-%02d-%02d', $matches[3], $matches[1], $matches[2]);
                 }
                 $employee = $employeeId ? \App\Models\Employees::where('id', $employeeId)->first() : null;
                 if (!$employee) {
-                    $errors[] = "Employee ID $employeeId.";
+                    $errors[] = "Employee ID $employeeId not found.";
                     continue;
                 }
                 // Verify first name and last name
@@ -80,13 +78,13 @@ class TimeKeepingController extends Controller {
                     ($lastName && strtolower(trim($employee->last_name)) !== strtolower(trim($lastName)))
                 ) {
                     if (!$shownIdNameError) {
-                        $errors[] = "Import Error: An Employee's Id and Name does not match correctly";
+                        $errors[] = "Import Error: Employee ID $employeeId: DB name '{$employee->first_name} {$employee->last_name}', CSV name '$firstName $lastName' do not match.";
                         $shownIdNameError = true;
                     }
                     continue;
                 }
                 if (empty($date)) {
-                    $errors[] = "Date missing.";
+                    $errors[] = "Date missing for Employee ID $employeeId.";
                     continue;
                 }
                 \App\Models\TimeKeeping::updateOrCreate(
@@ -100,14 +98,15 @@ class TimeKeepingController extends Controller {
                     ]
                 );
                 $imported++;
-            }
-            if ($imported > 0) {
-                return response()->json(['success' => true, 'imported' => $imported, 'errors' => $errors]);
-            } else {
-                return response()->json(['success' => false, 'imported' => 0, 'errors' => $errors], 400);
+            } catch (\Throwable $e) {
+                $errors[] = "Row $i: " . $e->getMessage();
             }
         }
-        return response()->json(['success' => true, 'imported' => $imported]);
+        if ($imported > 0) {
+            return response()->json(['success' => true, 'imported' => $imported, 'errors' => $errors]);
+        } else {
+            return response()->json(['success' => false, 'imported' => 0, 'errors' => $errors], 400);
+        }
     }
     /**
      * Display a listing of the resource.
