@@ -62,42 +62,38 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     // Month selector state
     const [selectedMonth, setSelectedMonth] = useState("");
     const [pendingMonth, setPendingMonth] = useState("");
+    // Payroll summary for pay details (keep for summary cards)
+    const { summary } = useEmployeePayroll(employee?.id ?? null, pendingMonth);
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [loadingPayroll, setLoadingPayroll] = useState(false);
     const [minLoading, setMinLoading] = useState(false);
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
-    const { summary } = useEmployeePayroll(employee?.id ?? null, pendingMonth);
-    const hasMonthData = !!summary && (
-        summary.tardiness !== 0 ||
-        summary.undertime !== 0 ||
-        summary.overtime !== 0 ||
-        summary.absences !== 0 ||
-        summary.base_salary !== 0 ||
-        summary.rate_per_day !== 0 ||
-        summary.rate_per_hour !== 0 ||
-        summary.overtime_pay_total !== 0
-    );
-
-    // Show toast if no data, but only once per employee+month
-    const lastToastRef = useRef<{ emp: number|null, month: string } | null>(null);
+    // Remove summary/hasMonthData logic for toast, use BTRDialog approach
+    const [records, setRecords] = useState<any[]>([]);
+    const recordsMinLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
     useEffect(() => {
-        if (!loadingPayroll && !minLoading && employee && selectedMonth) {
-            const empId = employee.id;
-            if (!hasMonthData) {
-                if (
-                    !lastToastRef.current ||
-                    lastToastRef.current.emp !== empId ||
-                    lastToastRef.current.month !== selectedMonth
-                ) {
+        if (!employee || !selectedMonth) return;
+    if (recordsMinLoadingTimeout.current) clearTimeout(recordsMinLoadingTimeout.current);
+    recordsMinLoadingTimeout.current = setTimeout(() => {}, 400);
+        fetch(`/api/timekeeping/records?employee_id=${employee.id}&month=${selectedMonth}`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (Array.isArray(data.records)) {
+                    setRecords(data.records);
+                    if (data.records.length === 0) {
+                        toast.error("No timekeeping data found for this month.");
+                    }
+                } else {
+                    setRecords([]);
                     toast.error("No timekeeping data found for this month.");
-                    lastToastRef.current = { emp: empId, month: selectedMonth };
                 }
-            } else {
-                // Reset lastToastRef if data is present
-                lastToastRef.current = null;
-            }
-        }
-    }, [loadingPayroll, minLoading, employee, selectedMonth, hasMonthData]);
+            })
+            .finally(() => {});
+    }, [employee, selectedMonth]);
+    // Use records.length === 0 to determine if there is data, matching BTRDialog
+
+    // Show toast if no data, but only once per employee+month, and reset properly when data is present
+    // Remove lastToastRef and use BTRDialog's approach
 
     // Fetch merged months from backend (payroll + timekeeping)
     const fetchAvailableMonths = React.useCallback(async () => {
@@ -114,7 +110,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         } catch (error) {
             console.error('Error fetching available months:', error);
         }
-    }, [selectedMonth]);
+    }, [selectedMonth, setPendingMonth, setSelectedMonth]);
 
     useEffect(() => {
         if (employee) {
@@ -126,13 +122,13 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         // summary is now handled by useEmployeePayroll
     }, [employee, pendingMonth]);
 
+    // Keep payroll loading for summary, but not for toast
     useEffect(() => {
         if (employee) {
             setLoadingPayroll(true);
             setMinLoading(true);
             if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
             minLoadingTimeout.current = setTimeout(() => setMinLoading(false), 400);
-            // Simulate loading for payroll summary (useEmployeePayroll is async)
             setTimeout(() => setLoadingPayroll(false), 100);
         } else {
             setLoadingPayroll(false);
@@ -281,7 +277,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                         {[
                                                             {
                                                                 label: 'Tardiness',
-                                                                value: !hasMonthData ? '-' : `${Number(summary.tardiness).toFixed(2)} hr(s)`,
+                                                                value: records.length === 0 ? '-' : `${Number(summary?.tardiness ?? 0).toFixed(2)} hr(s)`,
                                                                 bg: 'bg-orange-50 dark:bg-orange-900/20',
                                                                 border: 'border-orange-200 dark:border-orange-800',
                                                                 text: 'text-orange-600',
@@ -289,7 +285,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             },
                                                             {
                                                                 label: 'Undertime',
-                                                                value: !hasMonthData ? '-' : `${Number(summary.undertime).toFixed(2)} hr(s)`,
+                                                                value: records.length === 0 ? '-' : `${Number(summary?.undertime ?? 0).toFixed(2)} hr(s)`,
                                                                 bg: 'bg-red-50 dark:bg-red-900/20',
                                                                 border: 'border-red-200 dark:border-red-800',
                                                                 text: 'text-red-600',
@@ -297,16 +293,16 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             },
                                                             {
                                                                 label: 'Overtime',
-                                                                value: !hasMonthData ? '-' : `${Number(summary.overtime).toFixed(2)} hr(s)`,
+                                                                value: records.length === 0 ? '-' : `${Number(summary?.overtime ?? 0).toFixed(2)} hr(s)`,
                                                                 bg: 'bg-blue-50 dark:bg-blue-900/20',
                                                                 border: 'border-blue-200 dark:border-blue-800',
                                                                 text: 'text-blue-600',
                                                                 valueText: 'text-blue-700 dark:text-blue-300',
-                                                                extra: hasMonthData
+                                                                extra: records.length !== 0
                                                             },
                                                             {
                                                                 label: 'Absences',
-                                                                value: !hasMonthData ? '-' : `${Number(summary.absences).toFixed(2)} hr(s)`,
+                                                                value: records.length === 0 ? '-' : `${Number(summary?.absences ?? 0).toFixed(2)} hr(s)`,
                                                                 bg: 'bg-gray-50 dark:bg-gray-800',
                                                                 border: 'border-gray-200 dark:border-gray-700',
                                                                 text: 'text-gray-600',
@@ -325,8 +321,8 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                                 <div className={`text-xl font-bold ${card.valueText} break-words whitespace-nowrap`}>{card.value}</div>
                                                                 {card.label === 'Overtime' && card.extra && (
                                                                     <div className="text-xs text-blue-400 mt-1">
-                                                                        {hasMonthData
-                                                                            ? `Weekdays: ${Number(summary.overtime_count_weekdays ?? 0).toFixed(2)} hr(s), Weekends: ${Number(summary.overtime_count_weekends ?? 0).toFixed(2)} hr(s)`
+                                                                        {records.length !== 0
+                                                                            ? `Weekdays: ${Number(summary?.overtime_count_weekdays ?? 0).toFixed(2)} hr(s), Weekends: ${Number(summary?.overtime_count_weekends ?? 0).toFixed(2)} hr(s)`
                                                                             : ''}
                                                                     </div>
                                                                 )}
