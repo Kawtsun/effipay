@@ -144,7 +144,12 @@ export default function BTRDialog({ employee, onClose }: Props) {
             />
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full border text-sm">
+            <table className="min-w-full border text-sm table-fixed">
+              <colgroup>
+                <col style={{ width: '140px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '120px' }} />
+              </colgroup>
               <thead>
                 <tr className="bg-muted">
                   <th className="px-2 py-1 border">Date</th>
