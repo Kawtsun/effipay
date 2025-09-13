@@ -229,7 +229,7 @@ export default function BTRDialog({ employee, onClose }: Props) {
           </div>
         </div>
         <DialogFooter className="flex-shrink-0">
-          <Button type="button" onClick={onClose} variant="secondary">
+          <Button type="button" onClick={onClose}>
             Close
           </Button>
         </DialogFooter>
