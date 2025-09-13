@@ -13,7 +13,7 @@ import { Button } from "./ui/button";
 import { RolesBadges, getCollegeProgramLabel } from "./roles-badges";
 import React, { useState, useEffect, useRef } from "react";
 import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
-import { MonthPicker } from "./ui/month-picker";
+import { MonthRangePicker } from "./ui/month-range-picker";
 import { Skeleton } from "./ui/skeleton";
 
 function formatTime12Hour(time?: string): string {
@@ -180,7 +180,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                     <div className="pt-2">
                                         <div className="flex items-center justify-between mb-6">
                                             <h4 className="font-semibold text-lg">Time Keeping Data</h4>
-                                            <MonthPicker
+                                            <MonthRangePicker
                                                 value={selectedMonth}
                                                 onValueChange={handleMonthChange}
                                                 placeholder="Select month"
