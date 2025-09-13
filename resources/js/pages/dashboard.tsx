@@ -3,9 +3,9 @@ import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Users, Receipt, Wallet, LayoutDashboard } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MonthPicker } from '@/components/ui/month-picker';
 import NetpayMonthlyChart from '@/components/netpay-monthly-chart';
 import { EmployeeClassificationPie } from '@/components/employee-classification-pie';
@@ -26,31 +26,42 @@ type DashboardProps = {
 }
 
 export default function Dashboard({ stats, months, selectedMonth, chart, employeeClassifications }: DashboardProps) {
-    const [availableMonths, setAvailableMonths] = useState<string[]>(months || []);
-    const [month, setMonth] = useState<string>(selectedMonth || months?.[0] || '');
+    // Track if this is the first render (for animation)
+    const isFirstRender = useRef(true);
+    // Always call usePage at the top, and use optional chaining for fallback
+    const page = usePage();
+    const pieData: { classification: string; count: number }[] =
+        (employeeClassifications && Array.isArray(employeeClassifications) && employeeClassifications.length > 0)
+            ? employeeClassifications
+            : (Array.isArray(page?.props?.employeeClassifications) ? page.props.employeeClassifications : []);
+    const [availableMonths, setAvailableMonths] = useState<string[]>(months && months.length > 0 ? months : []);
+    const [month, setMonth] = useState<string>(selectedMonth || (months && months.length > 0 ? months[0] : ''));
     const [localStats, setLocalStats] = useState(stats);
     // Removed unused 'series' state
     const [monthly, setMonthly] = useState<{ key: string; label: string; total: number }[]>(chart?.monthly || []);
 
+    // After first render, set isFirstRender to false
     useEffect(() => {
-        // Fetch merged months from backend and update only if changed
-        fetch('/payroll/all-available-months')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && Array.isArray(data.months)) {
-                    // Compare arrays by stringified value
-                    if (JSON.stringify(data.months) !== JSON.stringify(availableMonths)) {
-                        setAvailableMonths(data.months);
-                        // Only set month if not present
-                        if (!data.months.includes(month)) {
-                            setMonth(data.months[0] || '');
+        isFirstRender.current = false;
+    }, []);
+
+    useEffect(() => {
+        // Only fetch if months prop is empty (SSR/first load)
+        if (!months || months.length === 0) {
+            fetch('/payroll/all-available-months')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && Array.isArray(data.months)) {
+                        if (JSON.stringify(data.months) !== JSON.stringify(availableMonths)) {
+                            setAvailableMonths(data.months);
+                            if (!data.months.includes(month)) {
+                                setMonth(data.months[0] || '');
+                            }
                         }
                     }
-                }
-            });
-        // Add dependencies to avoid React warning
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [availableMonths, month]);
+                });
+        }
+    }, [months, availableMonths, month]);
 
     useEffect(() => {
         setLocalStats(stats);
@@ -96,7 +107,7 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
                 </div>
 
                 {month && (
-                    <div key={month}>
+                    <div>
                         {/* Stats cards */}
                         <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                             <Card>
@@ -144,18 +155,18 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
                         {/* Charts row: Bar chart and Pie chart side by side on desktop, stacked on mobile */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
                             <div className="md:col-span-8 col-span-1">
-                                <NetpayMonthlyChart 
-                                    key={month + '-chart'}
-                                    title="Overview" 
-                                    description="Last 12 months" 
-                                    data={monthly} 
+                                <NetpayMonthlyChart
+                                    {...(isFirstRender.current ? { key: month + '-' + availableMonths.join(',') + '-chart' } : {})}
+                                    title="Overview"
+                                    description="Last 12 months"
+                                    data={monthly}
                                 />
                             </div>
                             <div className="md:col-span-4 col-span-1 flex items-center justify-center">
                                 <div className="w-full max-w-[400px]">
-                                    <EmployeeClassificationPie 
-                                        key={month + '-pie'}
-                                        data={employeeClassifications ?? []}
+                                    <EmployeeClassificationPie
+                                        {...(isFirstRender.current ? { key: month + '-' + availableMonths.join(',') + '-pie' } : {})}
+                                        data={pieData}
                                     />
                                 </div>
                             </div>
