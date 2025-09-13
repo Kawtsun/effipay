@@ -4,6 +4,7 @@ import Encoding from 'encoding-japanese';
 import EmployeePagination from '@/components/employee-pagination';
 import EmployeeSearch from '@/components/employee-search';
 import TimeKeepingViewDialog from '@/components/timekeeping-view-dialog';
+import BTRDialog from '@/components/btr-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -18,7 +19,7 @@ import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
 
 import { Head, router, usePage } from '@inertiajs/react';
-import { Users, Shield, GraduationCap, Book, Eye, Import } from 'lucide-react';
+import { Users, Shield, GraduationCap, Book, Eye, Import, Fingerprint } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2 } from 'lucide-react';
@@ -55,6 +56,7 @@ type FilterState = { types: string[]; statuses: string[]; roles: string[] };
 
 export default function TimeKeeping() {
     const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
+    const [selectedBtrEmployee, setSelectedBtrEmployee] = useState<Employees | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleImportClick = () => {
@@ -147,7 +149,7 @@ export default function TimeKeeping() {
                     if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
                         errorMsg = errorData.errors.join('\n');
                     }
-                } catch {}
+                } catch { }
                 toast.error(errorMsg);
             }
         } catch (err) {
@@ -440,10 +442,17 @@ export default function TimeKeeping() {
                                                     })()}
                                                 </TableCell>
                                                 <TableCell style={{ width: 180 }} className="px-4 py-2 whitespace-nowrap text-right">
-                                                    <Button variant="secondary" onClick={() => { setSelectedEmployee(emp); }}>
-                                                        <Eye />
-                                                        View
-                                                    </Button>
+                                                    <div className='flex justify-end items-center gap-2'>
+                                                        <Button variant="secondary" onClick={() => { setSelectedEmployee(emp); }}>
+                                                            <Eye />
+                                                            View
+                                                        </Button>
+                                                        <Button onClick={() => setSelectedBtrEmployee(emp)}>
+                                                            <Fingerprint />
+                                                            BTR
+                                                        </Button>
+                                                    </div>
+
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -474,6 +483,12 @@ export default function TimeKeeping() {
                 <TimeKeepingViewDialog
                     employee={selectedEmployee}
                     onClose={() => setSelectedEmployee(null)}
+                />
+            )}
+            {selectedBtrEmployee && (
+                <BTRDialog
+                    employee={selectedBtrEmployee}
+                    onClose={() => setSelectedBtrEmployee(null)}
                 />
             )}
         </AppLayout>

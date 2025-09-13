@@ -8,8 +8,39 @@ use App\Http\Requests\UpdateTimeKeepingRequest;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 
-class TimeKeepingController extends Controller
-{
+
+class TimeKeepingController extends Controller {
+
+    /**
+     * Get daily biometric records for an employee and month (for BTRDialog)
+     * URL: /api/timekeeping/records?employee_id=123&month=2025-08
+     * Returns: [{date, clock_in, clock_out} ...]
+     */
+    public function getEmployeeRecordsForMonth(Request $request)
+    {
+        $employeeId = $request->query('employee_id');
+        $month = $request->query('month'); // format: YYYY-MM
+        if (!$employeeId || !$month) {
+            return response()->json(['success' => false, 'error' => 'Missing employee_id or month'], 400);
+        }
+
+        // Get all records for the employee in the given month
+        $records = \App\Models\TimeKeeping::where('employee_id', $employeeId)
+            ->where('date', 'like', $month . '%')
+            ->orderBy('date')
+            ->get(['date', 'clock_in', 'clock_out']);
+
+        // Format clock_in and clock_out as 12-hour time (h:i A)
+        $formatted = $records->map(function ($rec) {
+            return [
+                'date' => $rec->date,
+                'clock_in' => $rec->clock_in ? date('g:i A', strtotime($rec->clock_in)) : null,
+                'clock_out' => $rec->clock_out ? date('g:i A', strtotime($rec->clock_out)) : null,
+            ];
+        });
+
+        return response()->json(['success' => true, 'records' => $formatted]);
+    }
     /**
      * Import time keeping records from uploaded file.
      */

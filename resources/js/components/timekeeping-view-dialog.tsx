@@ -15,6 +15,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { MonthRangePicker } from "./ui/month-range-picker";
 import { Skeleton } from "./ui/skeleton";
+import { Fingerprint } from "lucide-react";
 
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
