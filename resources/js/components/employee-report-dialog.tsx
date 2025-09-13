@@ -227,22 +227,42 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                     transition={{ duration: 0.2 }}
                                                 >
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-                                                        {/* Gross Pay Card */}
+                                                        {/* Tardiness Skeleton */}
+                                                        <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                            <Skeleton className="h-3 w-24 mb-2" />
+                                                            <Skeleton className="h-8 w-32" />
+                                                        </div>
+                                                        {/* Undertime Skeleton */}
+                                                        <div className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                            <Skeleton className="h-3 w-24 mb-2" />
+                                                            <Skeleton className="h-8 w-32" />
+                                                        </div>
+                                                        {/* Overtime Skeleton */}
+                                                        <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                            <Skeleton className="h-3 w-24 mb-2" />
+                                                            <Skeleton className="h-8 w-32" />
+                                                        </div>
+                                                        {/* Absences Skeleton */}
                                                         <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
                                                             <Skeleton className="h-3 w-24 mb-2" />
                                                             <Skeleton className="h-8 w-32" />
                                                         </div>
-                                                        {/* Deductions Card */}
+                                                        {/* Gross Pay Skeleton */}
+                                                        <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
+                                                            <Skeleton className="h-3 w-24 mb-2" />
+                                                            <Skeleton className="h-8 w-32" />
+                                                        </div>
+                                                        {/* Deductions Skeleton */}
                                                         <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
                                                             <Skeleton className="h-3 w-36 mb-2" />
                                                             <Skeleton className="h-8 w-32" />
                                                         </div>
-                                                        {/* Net Pay Card */}
+                                                        {/* Net Pay Skeleton */}
                                                         <div className="bg-green-50 dark:bg-green-900/20 p-5 rounded-2xl border border-green-200 dark:border-green-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
                                                             <Skeleton className="h-3 w-20 mb-2" />
                                                             <Skeleton className="h-8 w-32" />
                                                         </div>
-                                                        {/* Per Payroll Card */}
+                                                        {/* Per Payroll Skeleton */}
                                                         <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
                                                             <Skeleton className="h-3 w-28 mb-2" />
                                                             <Skeleton className="h-8 w-32 mb-3" />
@@ -303,15 +323,75 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                     exit={{ opacity: 0 }}
                                                     transition={{ duration: 0.25 }}
                                                 >
-                                                    {/* Summary Cards: Only Gross Pay, Deductions, Net Pay, Per Payroll (with dates) */}
+                                                    {/* Summary Cards: 4 timekeeping (amounts) + 4 report cards */}
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
+                                                        {/* Tardiness Amount */}
+                                                        <motion.div
+                                                            className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            transition={{ duration: 0.3, delay: 0.05 }}
+                                                        >
+                                                            <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
+                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">
+                                                                {typeof timekeepingSummary?.tardiness === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
+                                                                    ? `₱${(timekeepingSummary.tardiness * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                                    : '-'}
+                                                            </div>
+                                                        </motion.div>
+                                                        {/* Undertime Amount */}
+                                                        <motion.div
+                                                            className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            transition={{ duration: 0.3, delay: 0.1 }}
+                                                        >
+                                                            <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
+                                                            <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">
+                                                                {typeof timekeepingSummary?.undertime === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
+                                                                    ? `₱${(timekeepingSummary.undertime * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                                    : '-'}
+                                                            </div>
+                                                        </motion.div>
+                                                        {/* Overtime Amount */}
+                                                        <motion.div
+                                                            className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            transition={{ duration: 0.3, delay: 0.15 }}
+                                                        >
+                                                            <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
+                                                            <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">
+                                                                {typeof timekeepingSummary?.overtime_pay_total === 'number'
+                                                                    ? `₱${timekeepingSummary.overtime_pay_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                                    : '-'}
+                                                            </div>
+                                                        </motion.div>
+                                                        {/* Absences Amount */}
+                                                        <motion.div
+                                                            className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            transition={{ duration: 0.3, delay: 0.2 }}
+                                                        >
+                                                            <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
+                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">
+                                                                {typeof timekeepingSummary?.absences === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
+                                                                    ? `₱${(timekeepingSummary.absences * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                                    : '-'}
+                                                            </div>
+                                                        </motion.div>
                                                         {/* Gross Pay */}
                                                         <motion.div
                                                             className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             whileHover={{ scale: 1.02 }}
-                                                            transition={{ duration: 0.3, delay: 0.1 }}
+                                                            transition={{ duration: 0.3, delay: 0.25 }}
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Gross Pay</div>
                                                             <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{typeof timekeepingSummary?.gross_pay === 'number'
