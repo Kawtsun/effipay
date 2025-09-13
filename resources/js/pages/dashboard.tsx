@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Users, Receipt, Wallet, LayoutDashboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { MonthPicker } from '@/components/ui/month-picker';
@@ -26,26 +26,31 @@ type DashboardProps = {
 }
 
 export default function Dashboard({ stats, months, selectedMonth, chart, employeeClassifications }: DashboardProps) {
+    const [availableMonths, setAvailableMonths] = useState<string[]>(months || []);
     const [month, setMonth] = useState<string>(selectedMonth || months?.[0] || '');
     const [localStats, setLocalStats] = useState(stats);
-    const [series, setSeries] = useState<{ name: string; value: number }[]>(chart?.perEmployee?.map(r => ({ name: r.name, value: r.net_pay })) || []);
+    // Removed unused 'series' state
     const [monthly, setMonthly] = useState<{ key: string; label: string; total: number }[]>(chart?.monthly || []);
-    const [availableMonths, setAvailableMonths] = useState<string[]>(months || []);
 
     useEffect(() => {
-        // Fetch merged months from backend
+        // Fetch merged months from backend and update only if changed
         fetch('/payroll/all-available-months')
             .then(res => res.json())
             .then(data => {
                 if (data.success && Array.isArray(data.months)) {
-                    setAvailableMonths(data.months);
-                    // If current month is not in the list, set to first
-                    if (!data.months.includes(month)) {
-                        setMonth(data.months[0] || '');
+                    // Compare arrays by stringified value
+                    if (JSON.stringify(data.months) !== JSON.stringify(availableMonths)) {
+                        setAvailableMonths(data.months);
+                        // Only set month if not present
+                        if (!data.months.includes(month)) {
+                            setMonth(data.months[0] || '');
+                        }
                     }
                 }
             });
-    }, []);
+        // Add dependencies to avoid React warning
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [availableMonths, month]);
 
     useEffect(() => {
         setLocalStats(stats);
@@ -59,12 +64,13 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
             const json = await res.json();
             if (json?.success && json?.stats) {
                 setLocalStats(json.stats);
-                const rows = json.chart?.perEmployee || [];
-                setSeries(rows.map((r: any) => ({ name: r.name, value: r.net_pay })));
                 setMonthly([...(json.chart?.monthly || [])]);
             }
-        } catch (_) {}
+        } catch {
+            // Optionally log error
+        }
     };
+    // Only render dashboard content when month is set (prevents stale/empty animation)
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
@@ -82,74 +88,80 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
                 <div className="flex items-center justify-end">
                     <MonthPicker
                         value={month}
-                        onValueChange={(val) => handleMonthChange({ target: { value: val } } as any)}
+                        onValueChange={(val: string) => handleMonthChange({ target: { value: val } })}
                         placeholder="Select month"
                         availableMonths={availableMonths}
                         className="w-46 min-w-0 px-2 py-1 text-sm"
                     />
                 </div>
 
-                {/* Stats cards */}
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle>Total Employees</CardTitle>
-                                <CardDescription>All employees</CardDescription>
-                            </div>
-                            <Users className="h-5 w-5 text-primary" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">{localStats.totalEmployees?.toLocaleString?.() ?? 0}</div>
-                        </CardContent>
-                    </Card>
+                {month && (
+                    <div key={month}>
+                        {/* Stats cards */}
+                        <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardTitle>Total Employees</CardTitle>
+                                        <CardDescription>All employees</CardDescription>
+                                    </div>
+                                    <Users className="h-5 w-5 text-primary" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-bold">{localStats.totalEmployees?.toLocaleString?.() ?? 0}</div>
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle>Processed Payroll</CardTitle>
-                                <CardDescription>Count for selected month</CardDescription>
-                            </div>
-                            <Receipt className="h-5 w-5 text-primary" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">{localStats.processedPayroll?.toLocaleString?.() ?? 0}</div>
-                        </CardContent>
-                    </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardTitle>Processed Payroll</CardTitle>
+                                        <CardDescription>Count for selected month</CardDescription>
+                                    </div>
+                                    <Receipt className="h-5 w-5 text-primary" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-bold">{localStats.processedPayroll?.toLocaleString?.() ?? 0}</div>
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle>Employees' Net Pay</CardTitle>
-                                <CardDescription>Total for selected month</CardDescription>
-                            </div>
-                            <Wallet className="h-5 w-5 text-primary" />
-                        </CardHeader>
-                        <CardContent>
-                                                        <div className="text-3xl font-bold">
-                                                            ₱{Number(localStats.totalNetPay ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardTitle>Employees' Net Pay</CardTitle>
+                                        <CardDescription>Total for selected month</CardDescription>
+                                    </div>
+                                    <Wallet className="h-5 w-5 text-primary" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-bold">
+                                        ₱{Number(localStats.totalNetPay ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
 
-                {/* Charts row: Bar chart and Pie chart side by side on desktop, stacked on mobile */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
-                    <div className="md:col-span-8 col-span-1">
-                        <NetpayMonthlyChart 
-                            title="Overview" 
-                            description="Last 12 months" 
-                            data={monthly} 
-                        />
-                    </div>
-                    <div className="md:col-span-4 col-span-1 flex items-center justify-center">
-                        <div className="w-full max-w-[400px]">
-                            <EmployeeClassificationPie 
-                                data={typeof usePage === 'function' ? (usePage().props.employeeClassifications ?? []) : []}
-                            />
+                        {/* Charts row: Bar chart and Pie chart side by side on desktop, stacked on mobile */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+                            <div className="md:col-span-8 col-span-1">
+                                <NetpayMonthlyChart 
+                                    key={month + '-chart'}
+                                    title="Overview" 
+                                    description="Last 12 months" 
+                                    data={monthly} 
+                                />
+                            </div>
+                            <div className="md:col-span-4 col-span-1 flex items-center justify-center">
+                                <div className="w-full max-w-[400px]">
+                                    <EmployeeClassificationPie 
+                                        key={month + '-pie'}
+                                        data={employeeClassifications ?? []}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </AppLayout>
     );
