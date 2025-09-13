@@ -21,8 +21,10 @@ interface Props {
 
 interface TimeRecord {
   date: string; // YYYY-MM-DD
-  time_in: string | null;
-  time_out: string | null;
+  time_in?: string | null;
+  time_out?: string | null;
+  clock_in?: string | null;
+  clock_out?: string | null;
 }
 
 export default function BTRDialog({ employee, onClose }: Props) {
@@ -221,11 +223,12 @@ export default function BTRDialog({ employee, onClose }: Props) {
                         const day = i + 1;
                         const dateStr = `${year}-${month.padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                         const rec = recordMap[dateStr];
+                        // Use clock_in/clock_out for display, fallback to time_in/time_out for compatibility
                         return (
                           <tr key={dateStr}>
                             <td className="px-2 py-1 border">{dateStr}</td>
-                            <td className="px-2 py-1 border">{rec?.time_in || "-"}</td>
-                            <td className="px-2 py-1 border">{rec?.time_out || "-"}</td>
+                            <td className="px-2 py-1 border">{rec?.clock_in || rec?.time_in || "-"}</td>
+                            <td className="px-2 py-1 border">{rec?.clock_out || rec?.time_out || "-"}</td>
                           </tr>
                         );
                       })}
