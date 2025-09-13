@@ -10,71 +10,38 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
+
 class PayrollController extends Controller
 {
     /**
-     * Run payroll calculation for all employees for a specific month
+     * Get all unique months from both Payroll and TimeKeeping, sorted descending.
      */
-    public function runPayroll(Request $request): RedirectResponse
+    public function getAllAvailableMonths(Request $request): JsonResponse
     {
-        $request->validate([
-            'payroll_date' => 'required|date',
+        // Get months from payrolls
+        $payrollMonths = \App\Models\Payroll::orderBy('month', 'desc')
+            ->pluck('month')
+            ->filter()
+            ->unique();
+
+        // Get months from timekeeping (extract YYYY-MM from date)
+        $tkMonths = \App\Models\TimeKeeping::selectRaw('DISTINCT LEFT(date, 7) as month')
+            ->orderBy('month', 'desc')
+            ->pluck('month')
+            ->filter()
+            ->unique();
+
+        // Merge, deduplicate, sort descending
+        $allMonths = $payrollMonths->merge($tkMonths)
+            ->unique()
+            ->sortDesc()
+            ->values();
+
+
+        return response()->json([
+            'success' => true,
+            'months' => $allMonths,
         ]);
-
-        $payrollDate = $request->input('payroll_date');
-        $month = date('Y-m', strtotime($payrollDate));
-        
-        // Get all employees
-        $employees = Employees::all();
-        
-        $processedCount = 0;
-        $errors = [];
-
-        foreach ($employees as $employee) {
-            try {
-                // Get salary defaults for employee type
-                $salaryDefaults = Salary::where('employee_type', $employee->employee_type)->first();
-
-                // Use salary defaults if found, else fallback to employee's own values
-                $baseSalary = $salaryDefaults ? $salaryDefaults->base_salary : $employee->base_salary;
-                $sss = $salaryDefaults ? $salaryDefaults->sss : $employee->sss;
-                $pagIbig = $salaryDefaults ? $salaryDefaults->pag_ibig : $employee->pag_ibig;
-                $withholdingTax = $salaryDefaults ? $salaryDefaults->withholding_tax : $employee->withholding_tax;
-                // Calculate PhilHealth based on base salary
-                $philhealth = ($baseSalary * 0.05) / 4;
-                $philhealth = max(250, min(2500, $philhealth));
-
-                // Calculate totals
-                $grossPay = $baseSalary; // Overtime now handled by timekeeping
-                $totalDeductions = $sss + $philhealth + $pagIbig + $withholdingTax;
-                $netPay = $grossPay - $totalDeductions;
-
-                // Create or update payroll record
-                Payroll::updateOrCreate(
-                    [
-                        'employee_id' => $employee->id,
-                        'payroll_date' => $payrollDate,
-                    ],
-                    [
-                        'month' => $month,
-                        'base_salary' => number_format($baseSalary, 2, '.', ''),
-                        'sss' => number_format($sss, 2, '.', ''),
-                        'philhealth' => number_format($philhealth, 2, '.', ''),
-                        'pag_ibig' => number_format($pagIbig, 2, '.', ''),
-                        'withholding_tax' => number_format($withholdingTax, 2, '.', ''),
-                        'gross_pay' => number_format($grossPay, 2, '.', ''),
-                        'total_deductions' => number_format($totalDeductions, 2, '.', ''),
-                        'net_pay' => number_format($netPay, 2, '.', ''),
-                    ]
-                );
-
-                $processedCount++;
-            } catch (\Exception $e) {
-                $errors[] = "Error processing employee {$employee->last_name}, {$employee->first_name} {$employee->middle_name}: " . $e->getMessage();
-            }
-        }
-
-    return redirect()->route('salary.index')->with('flash', "Payroll processed for {$processedCount} employees for " . date('F j, Y', strtotime($payrollDate)));
     }
 
     /**
@@ -212,7 +179,8 @@ class PayrollController extends Controller
 
         return response()->json([
             'success' => true,
-            'months' => $finalMonths,
+            'months' => isset($finalMonths) ? $finalMonths : [],
         ]);
     }
+
 }

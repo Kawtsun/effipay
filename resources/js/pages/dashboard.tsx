@@ -25,17 +25,33 @@ type DashboardProps = {
     employeeClassifications?: { classification: string; count: number }[];
 }
 
-export default function Dashboard({ stats, months, selectedMonth, chart }: DashboardProps) {
+export default function Dashboard({ stats, months, selectedMonth, chart, employeeClassifications }: DashboardProps) {
     const [month, setMonth] = useState<string>(selectedMonth || months?.[0] || '');
     const [localStats, setLocalStats] = useState(stats);
     const [series, setSeries] = useState<{ name: string; value: number }[]>(chart?.perEmployee?.map(r => ({ name: r.name, value: r.net_pay })) || []);
     const [monthly, setMonthly] = useState<{ key: string; label: string; total: number }[]>(chart?.monthly || []);
+    const [availableMonths, setAvailableMonths] = useState<string[]>(months || []);
+
+    useEffect(() => {
+        // Fetch merged months from backend
+        fetch('/payroll/all-available-months')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && Array.isArray(data.months)) {
+                    setAvailableMonths(data.months);
+                    // If current month is not in the list, set to first
+                    if (!data.months.includes(month)) {
+                        setMonth(data.months[0] || '');
+                    }
+                }
+            });
+    }, []);
 
     useEffect(() => {
         setLocalStats(stats);
     }, [stats]);
 
-    const handleMonthChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const handleMonthChange = async (e: React.ChangeEvent<HTMLSelectElement> | { target: { value: string } }) => {
         const m = e.target.value;
         setMonth(m);
         try {
@@ -45,11 +61,10 @@ export default function Dashboard({ stats, months, selectedMonth, chart }: Dashb
                 setLocalStats(json.stats);
                 const rows = json.chart?.perEmployee || [];
                 setSeries(rows.map((r: any) => ({ name: r.name, value: r.net_pay })));
-                // Always create a new array reference for monthly
                 setMonthly([...(json.chart?.monthly || [])]);
             }
         } catch (_) {}
-    }
+    };
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
@@ -69,7 +84,7 @@ export default function Dashboard({ stats, months, selectedMonth, chart }: Dashb
                         value={month}
                         onValueChange={(val) => handleMonthChange({ target: { value: val } } as any)}
                         placeholder="Select month"
-                        availableMonths={months}
+                        availableMonths={availableMonths}
                         className="w-46 min-w-0 px-2 py-1 text-sm"
                     />
                 </div>

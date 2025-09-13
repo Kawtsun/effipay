@@ -17,6 +17,9 @@ Route::get('/', fn() => Inertia::render('welcome'))
 
 Route::middleware('auth')->group(function () {
 
+    // Add merged months endpoint for selectors
+    Route::get('/payroll/all-available-months', [PayrollController::class, 'getAllAvailableMonths'])->name('payroll.all-available-months');
+
     Route::post('/time-keeping/import', [TimeKeepingController::class, 'import'])->name('time-keeping.import');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');

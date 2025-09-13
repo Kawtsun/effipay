@@ -78,10 +78,10 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     );
 
 
+    // Fetch merged months from backend (payroll + timekeeping)
     const fetchAvailableMonths = React.useCallback(async () => {
-        if (!employee) return;
         try {
-            const response = await fetch(route('payroll.employee.months', { employee_id: employee.id }));
+            const response = await fetch('/payroll/all-available-months');
             const result = await response.json();
             if (result.success) {
                 setAvailableMonths(result.months);
@@ -93,7 +93,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         } catch (error) {
             console.error('Error fetching available months:', error);
         }
-    }, [employee, selectedMonth]);
+    }, [selectedMonth]);
 
     useEffect(() => {
         if (employee) {
