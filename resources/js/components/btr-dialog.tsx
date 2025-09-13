@@ -9,6 +9,8 @@ import {
 import { Employees } from "@/types";
 import { MonthRangePicker } from "./ui/month-range-picker";
 import { Button } from "./ui/button";
+import { Skeleton } from "./ui/skeleton";
+import { motion, AnimatePresence } from "framer-motion";
 import { RolesBadges } from "./roles-badges";
 
 interface Props {
@@ -43,9 +45,16 @@ export default function BTRDialog({ employee, onClose }: Props) {
       });
   }, [employee, selectedMonth]);
 
-  // Fetch records for selected month
+  // Loading state for skeleton and minimum loading time
+  const [loading, setLoading] = useState(false);
+  const [minLoading, setMinLoading] = useState(false);
+  const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     if (!employee || !selectedMonth) return;
+    setLoading(true);
+    setMinLoading(true);
+    if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
+    minLoadingTimeout.current = setTimeout(() => setMinLoading(false), 400);
     fetch(`/api/timekeeping/records?employee_id=${employee.id}&month=${selectedMonth}`)
       .then((res) => res.json())
       .then((data) => {
@@ -54,7 +63,8 @@ export default function BTRDialog({ employee, onClose }: Props) {
         } else {
           setRecords([]);
         }
-      });
+      })
+      .finally(() => setLoading(false));
   }, [employee, selectedMonth]);
 
   // Generate days for the month
@@ -144,34 +154,78 @@ export default function BTRDialog({ employee, onClose }: Props) {
             />
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full border text-sm table-fixed">
-              <colgroup>
-                <col style={{ width: '140px' }} />
-                <col style={{ width: '120px' }} />
-                <col style={{ width: '120px' }} />
-              </colgroup>
-              <thead>
-                <tr className="bg-muted">
-                  <th className="px-2 py-1 border">Date</th>
-                  <th className="px-2 py-1 border">Clock In</th>
-                  <th className="px-2 py-1 border">Clock Out</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: daysInMonth }, (_, i) => {
-                  const day = i + 1;
-                  const dateStr = `${year}-${month.padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                  const rec = recordMap[dateStr];
-                  return (
-                    <tr key={dateStr}>
-                      <td className="px-2 py-1 border">{dateStr}</td>
-                      <td className="px-2 py-1 border">{rec?.clock_in || "-"}</td>
-                      <td className="px-2 py-1 border">{rec?.clock_out || "-"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <AnimatePresence mode="wait">
+              {(loading || minLoading) ? (
+                <motion.div
+                  key="skeleton"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <table className="min-w-full border text-sm table-fixed">
+                    <colgroup>
+                      <col style={{ width: '140px' }} />
+                      <col style={{ width: '120px' }} />
+                      <col style={{ width: '120px' }} />
+                    </colgroup>
+                    <thead>
+                      <tr className="bg-muted">
+                        <th className="px-2 py-1 border">Date</th>
+                        <th className="px-2 py-1 border">Clock In</th>
+                        <th className="px-2 py-1 border">Clock Out</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: daysInMonth || 10 }, (_, i) => (
+                        <tr key={i}>
+                          <td className="px-2 py-1 border"><Skeleton className="h-4 w-24" /></td>
+                          <td className="px-2 py-1 border"><Skeleton className="h-4 w-16" /></td>
+                          <td className="px-2 py-1 border"><Skeleton className="h-4 w-16" /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="content"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <table className="min-w-full border text-sm table-fixed">
+                    <colgroup>
+                      <col style={{ width: '140px' }} />
+                      <col style={{ width: '120px' }} />
+                      <col style={{ width: '120px' }} />
+                    </colgroup>
+                    <thead>
+                      <tr className="bg-muted">
+                        <th className="px-2 py-1 border">Date</th>
+                        <th className="px-2 py-1 border">Clock In</th>
+                        <th className="px-2 py-1 border">Clock Out</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: daysInMonth }, (_, i) => {
+                        const day = i + 1;
+                        const dateStr = `${year}-${month.padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                        const rec = recordMap[dateStr];
+                        return (
+                          <tr key={dateStr}>
+                            <td className="px-2 py-1 border">{dateStr}</td>
+                            <td className="px-2 py-1 border">{rec?.clock_in || "-"}</td>
+                            <td className="px-2 py-1 border">{rec?.clock_out || "-"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
         <DialogFooter className="flex-shrink-0">
