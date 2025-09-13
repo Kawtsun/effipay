@@ -198,30 +198,31 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                     exit={{ opacity: 0 }}
                                                     transition={{ duration: 0.2 }}
                                                 >
+                                                    {/* Dynamically render skeleton cards for future-proofing */}
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-                                                        <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-24 mb-2" />
-                                                            <Skeleton className="h-8 w-32" />
-                                                        </div>
-                                                        <div className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-36 mb-2" />
-                                                            <Skeleton className="h-8 w-32" />
-                                                        </div>
-                                                        <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-20 mb-2" />
-                                                            <Skeleton className="h-8 w-32" />
-                                                        </div>
-                                                        <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-28 mb-2" />
-                                                            <Skeleton className="h-8 w-32 mb-3" />
-                                                            <div className="flex flex-wrap gap-1 mt-2">
-                                                                <Skeleton className="h-3 w-10 rounded-full" />
-                                                                <Skeleton className="h-3 w-2 rounded-full" />
-                                                                <Skeleton className="h-3 w-10 rounded-full" />
-                                                                <Skeleton className="h-3 w-2 rounded-full" />
-                                                                <Skeleton className="h-3 w-10 rounded-full" />
+                                                        {[
+                                                            { bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-200 dark:border-orange-800', labelW: 'w-24' },
+                                                            { bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-800', labelW: 'w-36' },
+                                                            { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', labelW: 'w-20' },
+                                                            { bg: 'bg-gray-50 dark:bg-gray-800', border: 'border-gray-200 dark:border-gray-700', labelW: 'w-28', extra: true },
+                                                        ].map((card, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className={`${card.bg} p-5 rounded-2xl border ${card.border} flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full`}
+                                                            >
+                                                                <Skeleton className={`h-3 ${card.labelW} mb-2`} />
+                                                                <Skeleton className={`h-8 w-32${card.extra ? ' mb-3' : ''}`} />
+                                                                {card.extra && (
+                                                                    <div className="flex flex-wrap gap-1 mt-2">
+                                                                        <Skeleton className="h-3 w-10 rounded-full" />
+                                                                        <Skeleton className="h-3 w-2 rounded-full" />
+                                                                        <Skeleton className="h-3 w-10 rounded-full" />
+                                                                        <Skeleton className="h-3 w-2 rounded-full" />
+                                                                        <Skeleton className="h-3 w-10 rounded-full" />
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
+                                                        ))}
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
                                                         <div>
@@ -255,52 +256,62 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                     exit={{ opacity: 0 }}
                                                     transition={{ duration: 0.25 }}
                                                 >
+                                                    {/* Dynamically render timekeeping cards for future-proofing */}
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-                                                        <motion.div
-                                                            className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
-                                                            initial={{ opacity: 0, y: 10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            whileHover={{ scale: 1.02 }}
-                                                            transition={{ duration: 0.3, delay: 0.1 }}
-                                                        >
-                                                            <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
-                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.tardiness).toFixed(2)} hr(s)`}</div>
-                                                        </motion.div>
-                                                        <motion.div
-                                                            className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
-                                                            initial={{ opacity: 0, y: 10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            whileHover={{ scale: 1.02 }}
-                                                            transition={{ duration: 0.3, delay: 0.2 }}
-                                                        >
-                                                            <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
-                                                            <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.undertime).toFixed(2)} hr(s)`}</div>
-                                                        </motion.div>
-                                                        <motion.div
-                                                            className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
-                                                            initial={{ opacity: 0, y: 10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            whileHover={{ scale: 1.02 }}
-                                                            transition={{ duration: 0.3, delay: 0.3 }}
-                                                        >
-                                                            <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
-                                                            <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.overtime).toFixed(2)} hr(s)`}</div>
-                                                            <div className="text-xs text-blue-400 mt-1">
-                                                                {hasMonthData
-                                                                    ? `Weekdays: ${Number(summary.overtime_count_weekdays ?? 0).toFixed(2)} hr(s), Weekends: ${Number(summary.overtime_count_weekends ?? 0).toFixed(2)} hr(s)`
-                                                                    : ''}
-                                                            </div>
-                                                        </motion.div>
-                                                        <motion.div
-                                                            className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
-                                                            initial={{ opacity: 0, y: 10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            whileHover={{ scale: 1.02 }}
-                                                            transition={{ duration: 0.3, delay: 0.4 }}
-                                                        >
-                                                            <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
-                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{!hasMonthData ? '-' : `${Number(summary.absences).toFixed(2)} hr(s)`}</div>
-                                                        </motion.div>
+                                                        {[
+                                                            {
+                                                                label: 'Tardiness',
+                                                                value: !hasMonthData ? '-' : `${Number(summary.tardiness).toFixed(2)} hr(s)`,
+                                                                bg: 'bg-orange-50 dark:bg-orange-900/20',
+                                                                border: 'border-orange-200 dark:border-orange-800',
+                                                                text: 'text-orange-600',
+                                                                valueText: 'text-orange-700 dark:text-orange-300',
+                                                            },
+                                                            {
+                                                                label: 'Undertime',
+                                                                value: !hasMonthData ? '-' : `${Number(summary.undertime).toFixed(2)} hr(s)`,
+                                                                bg: 'bg-red-50 dark:bg-red-900/20',
+                                                                border: 'border-red-200 dark:border-red-800',
+                                                                text: 'text-red-600',
+                                                                valueText: 'text-red-700 dark:text-red-300',
+                                                            },
+                                                            {
+                                                                label: 'Overtime',
+                                                                value: !hasMonthData ? '-' : `${Number(summary.overtime).toFixed(2)} hr(s)`,
+                                                                bg: 'bg-blue-50 dark:bg-blue-900/20',
+                                                                border: 'border-blue-200 dark:border-blue-800',
+                                                                text: 'text-blue-600',
+                                                                valueText: 'text-blue-700 dark:text-blue-300',
+                                                                extra: hasMonthData
+                                                            },
+                                                            {
+                                                                label: 'Absences',
+                                                                value: !hasMonthData ? '-' : `${Number(summary.absences).toFixed(2)} hr(s)`,
+                                                                bg: 'bg-gray-50 dark:bg-gray-800',
+                                                                border: 'border-gray-200 dark:border-gray-700',
+                                                                text: 'text-gray-600',
+                                                                valueText: 'text-gray-900 dark:text-gray-100',
+                                                            },
+                                                        ].map((card, idx) => (
+                                                            <motion.div
+                                                                key={card.label}
+                                                                className={`${card.bg} p-5 rounded-2xl border ${card.border} flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full`}
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                whileHover={{ scale: 1.02 }}
+                                                                transition={{ duration: 0.3, delay: 0.1 * (idx + 1) }}
+                                                            >
+                                                                <div className={`text-xs ${card.text} font-medium mb-2`}>{card.label}</div>
+                                                                <div className={`text-xl font-bold ${card.valueText} break-words whitespace-nowrap`}>{card.value}</div>
+                                                                {card.label === 'Overtime' && card.extra && (
+                                                                    <div className="text-xs text-blue-400 mt-1">
+                                                                        {hasMonthData
+                                                                            ? `Weekdays: ${Number(summary.overtime_count_weekdays ?? 0).toFixed(2)} hr(s), Weekends: ${Number(summary.overtime_count_weekends ?? 0).toFixed(2)} hr(s)`
+                                                                            : ''}
+                                                                    </div>
+                                                                )}
+                                                            </motion.div>
+                                                        ))}
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
                                                         <div>

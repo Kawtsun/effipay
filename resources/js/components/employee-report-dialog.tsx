@@ -227,53 +227,33 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                     transition={{ duration: 0.2 }}
                                                 >
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-                                                        {/* Tardiness Skeleton */}
-                                                        <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-24 mb-2" />
-                                                            <Skeleton className="h-8 w-32" />
-                                                        </div>
-                                                        {/* Undertime Skeleton */}
-                                                        <div className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-24 mb-2" />
-                                                            <Skeleton className="h-8 w-32" />
-                                                        </div>
-                                                        {/* Overtime Skeleton */}
-                                                        <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-24 mb-2" />
-                                                            <Skeleton className="h-8 w-32" />
-                                                        </div>
-                                                        {/* Absences Skeleton */}
-                                                        <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-24 mb-2" />
-                                                            <Skeleton className="h-8 w-32" />
-                                                        </div>
-                                                        {/* Gross Pay Skeleton */}
-                                                        <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-24 mb-2" />
-                                                            <Skeleton className="h-8 w-32" />
-                                                        </div>
-                                                        {/* Deductions Skeleton */}
-                                                        <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-36 mb-2" />
-                                                            <Skeleton className="h-8 w-32" />
-                                                        </div>
-                                                        {/* Net Pay Skeleton */}
-                                                        <div className="bg-green-50 dark:bg-green-900/20 p-5 rounded-2xl border border-green-200 dark:border-green-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-20 mb-2" />
-                                                            <Skeleton className="h-8 w-32" />
-                                                        </div>
-                                                        {/* Per Payroll Skeleton */}
-                                                        <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full">
-                                                            <Skeleton className="h-3 w-28 mb-2" />
-                                                            <Skeleton className="h-8 w-32 mb-3" />
-                                                            <div className="flex flex-wrap gap-1 mt-2">
-                                                                <Skeleton className="h-3 w-10 rounded-full" />
-                                                                <Skeleton className="h-3 w-2 rounded-full" />
-                                                                <Skeleton className="h-3 w-10 rounded-full" />
-                                                                <Skeleton className="h-3 w-2 rounded-full" />
-                                                                <Skeleton className="h-3 w-10 rounded-full" />
+                                                        {[
+                                                            { bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-200 dark:border-orange-800', labelW: 'w-24' },
+                                                            { bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-800', labelW: 'w-24' },
+                                                            { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', labelW: 'w-24' },
+                                                            { bg: 'bg-gray-50 dark:bg-gray-800', border: 'border-gray-200 dark:border-gray-700', labelW: 'w-24' },
+                                                            { bg: 'bg-gray-50 dark:bg-gray-800', border: 'border-gray-200 dark:border-gray-700', labelW: 'w-24' },
+                                                            { bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-200 dark:border-orange-800', labelW: 'w-36' },
+                                                            { bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', labelW: 'w-20' },
+                                                            { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', labelW: 'w-28', extra: true },
+                                                        ].map((card, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className={`${card.bg} p-5 rounded-2xl border ${card.border} flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full`}
+                                                            >
+                                                                <Skeleton className={`h-3 ${card.labelW} mb-2`} />
+                                                                <Skeleton className={`h-8 w-32${card.extra ? ' mb-3' : ''}`} />
+                                                                {card.extra && (
+                                                                    <div className="flex flex-wrap gap-1 mt-2">
+                                                                        <Skeleton className="h-3 w-10 rounded-full" />
+                                                                        <Skeleton className="h-3 w-2 rounded-full" />
+                                                                        <Skeleton className="h-3 w-10 rounded-full" />
+                                                                        <Skeleton className="h-3 w-2 rounded-full" />
+                                                                        <Skeleton className="h-3 w-10 rounded-full" />
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
+                                                        ))}
                                                     </div>
                                                     {/* Detailed Breakdown Skeleton */}
                                                     <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
@@ -327,7 +307,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                                         {/* Tardiness Amount */}
                                                         <motion.div
-                                                            className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             whileHover={{ scale: 1.02 }}
@@ -342,7 +322,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         </motion.div>
                                                         {/* Undertime Amount */}
                                                         <motion.div
-                                                            className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             whileHover={{ scale: 1.02 }}
@@ -357,7 +337,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         </motion.div>
                                                         {/* Overtime Amount */}
                                                         <motion.div
-                                                            className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             whileHover={{ scale: 1.02 }}
@@ -372,7 +352,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         </motion.div>
                                                         {/* Absences Amount */}
                                                         <motion.div
-                                                            className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             whileHover={{ scale: 1.02 }}
@@ -387,7 +367,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         </motion.div>
                                                         {/* Gross Pay */}
                                                         <motion.div
-                                                            className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             whileHover={{ scale: 1.02 }}
@@ -400,7 +380,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         </motion.div>
                                                         {/* Deductions */}
                                                         <motion.div
-                                                            className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             whileHover={{ scale: 1.02 }}
@@ -411,7 +391,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         </motion.div>
                                                         {/* Net Pay */}
                                                         <motion.div
-                                                            className="bg-green-50 dark:bg-green-900/20 p-5 rounded-2xl border border-green-200 dark:border-green-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            className="bg-green-50 dark:bg-green-900/20 p-5 rounded-2xl border border-green-200 dark:border-green-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             whileHover={{ scale: 1.02 }}
@@ -422,7 +402,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         </motion.div>
                                                         {/* Per Payroll */}
                                                         <motion.div
-                                                            className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm h-full"
+                                                            className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             whileHover={{ scale: 1.02 }}
