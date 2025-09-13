@@ -23,7 +23,7 @@ class PayrollSeeder extends Seeder
             $month = $date->format('Y-m');
             $firstPayrollDate = $date->copy()->day(15)->format('Y-m-d');
             $lastDay = $date->copy()->endOfMonth()->day;
-            $secondPayrollDay = min(28, $lastDay);
+            $secondPayrollDay = min(30, $lastDay);
             $secondPayrollDate = $date->copy()->day($secondPayrollDay)->format('Y-m-d');
 
             foreach ($employees as $employee) {
