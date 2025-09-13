@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::table('employees', function (Blueprint $table) {
             $table->decimal('base_salary', 12, 2)->change();
-            $table->decimal('overtime_pay', 12, 2)->change();
             $table->decimal('sss', 12, 2)->change();
             $table->decimal('philhealth', 12, 2)->change();
             $table->decimal('pag_ibig', 12, 2)->change();
@@ -21,7 +20,6 @@ return new class extends Migration
         });
         Schema::table('salaries', function (Blueprint $table) {
             $table->decimal('base_salary', 12, 2)->change();
-            $table->decimal('overtime_pay', 12, 2)->change();
             $table->decimal('sss', 12, 2)->change();
             $table->decimal('philhealth', 12, 2)->change();
             $table->decimal('pag_ibig', 12, 2)->change();
@@ -36,7 +34,6 @@ return new class extends Migration
     {
         Schema::table('employees', function (Blueprint $table) {
             $table->integer('base_salary')->change();
-            $table->integer('overtime_pay')->change();
             $table->integer('sss')->change();
             $table->integer('philhealth')->change();
             $table->integer('pag_ibig')->change();
@@ -44,7 +41,6 @@ return new class extends Migration
         });
         Schema::table('salaries', function (Blueprint $table) {
             $table->integer('base_salary')->change();
-            $table->integer('overtime_pay')->change();
             $table->integer('sss')->change();
             $table->integer('philhealth')->change();
             $table->integer('pag_ibig')->change();
