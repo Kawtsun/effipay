@@ -172,7 +172,6 @@ class EmployeesSeeder extends Seeder
             }
 
             // Deductions
-            $overtimePay = number_format(fake()->numberBetween(2000, 5000), 2, '.', '');
             // SSS formula (match salaryFormulas.ts)
             $sss = 0;
             if ($baseSalary < 5250) {
@@ -349,7 +348,6 @@ class EmployeesSeeder extends Seeder
                 'roles' => $roles,
                 'college_program' => $collegeProgram,
                 'base_salary' => $baseSalary,
-                'overtime_pay' => $overtimePay,
                 'sss' => $sss,
                 'philhealth' => $philhealth,
                 'pag_ibig' => $pag_ibig,

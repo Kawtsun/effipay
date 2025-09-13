@@ -19,7 +19,6 @@ class Employees extends Model
         'roles',
         'college_program',
         'base_salary',
-        'overtime_pay',
         'sss',
         'philhealth',
         'pag_ibig',
