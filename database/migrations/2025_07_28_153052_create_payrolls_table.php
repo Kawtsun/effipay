@@ -22,6 +22,9 @@ return new class extends Migration
             $table->integer('philhealth');
             $table->integer('pag_ibig');
             $table->integer('withholding_tax');
+            $table->integer('tardiness');
+            $table->integer('undertime');
+            $table->integer('absences',);
             $table->integer('gross_pay');
             $table->integer('total_deductions');
             $table->integer('net_pay');

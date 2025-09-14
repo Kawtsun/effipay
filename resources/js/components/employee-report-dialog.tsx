@@ -84,18 +84,25 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
     const [pendingMonth, setPendingMonth] = useState('');
     // Use payroll summary from timekeeping
     const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, pendingMonth);
-    // Use payroll data for deductions if available, else fallback to employee
-    const selectedPayroll = monthlyPayrollData && monthlyPayrollData.payrolls.length > 0 ? monthlyPayrollData.payrolls[0] : null;
-    const sss = selectedPayroll ? selectedPayroll.sss : (Number(employee?.sss) || 0);
-    const philhealth = selectedPayroll ? selectedPayroll.philhealth : (Number(employee?.philhealth) || 0);
-    const pag_ibig = selectedPayroll ? selectedPayroll.pag_ibig : (Number(employee?.pag_ibig) || 0);
-    const withholding_tax = selectedPayroll ? selectedPayroll.withholding_tax : (Number(employee?.withholding_tax) || 0);
-    const totalDeductions = sss + philhealth + pag_ibig + withholding_tax;
-    // Calculate net pay as gross pay minus total deductions
-    const grossPay = typeof timekeepingSummary?.gross_pay === 'number' ? timekeepingSummary.gross_pay : 0;
-    const netPay = grossPay - totalDeductions;
-    // Calculate per payroll as net pay divided by 2
-    const perPayroll = netPay / 2;
+    // Use payroll data for all payroll fields if available, else fallback to employee/timekeeping
+    // Use the payroll with the latest payroll_date for the selected month
+    let selectedPayroll: PayrollData | null = null;
+    if (monthlyPayrollData && monthlyPayrollData.payrolls.length > 0) {
+        selectedPayroll = monthlyPayrollData.payrolls.reduce((latest, curr) => {
+            return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
+        }, monthlyPayrollData.payrolls[0]);
+    }
+    const sss = selectedPayroll ? Number(selectedPayroll.sss) : (Number(employee?.sss) || 0);
+    const philhealth = selectedPayroll ? Number(selectedPayroll.philhealth) : (Number(employee?.philhealth) || 0);
+    const pag_ibig = selectedPayroll ? Number(selectedPayroll.pag_ibig) : (Number(employee?.pag_ibig) || 0);
+    const withholding_tax = selectedPayroll ? Number(selectedPayroll.withholding_tax) : (Number(employee?.withholding_tax) || 0);
+    function safeNumber(val: unknown, fallback = 0) {
+        return typeof val === 'number' && isFinite(val) ? val : fallback;
+    }
+    const totalDeductions = safeNumber(Number(selectedPayroll?.total_deductions), sss + philhealth + pag_ibig + withholding_tax);
+    const grossPay = safeNumber(Number(selectedPayroll?.gross_pay), safeNumber(timekeepingSummary?.gross_pay, 0));
+    const netPay = safeNumber(Number(selectedPayroll?.net_pay), grossPay - totalDeductions);
+    const perPayroll = safeNumber(netPay / 2, 0);
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [loadingPayroll, setLoadingPayroll] = useState(false);
     const [minLoading, setMinLoading] = useState(false);
@@ -375,9 +382,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.25 }}
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Gross Pay</div>
-                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{typeof timekeepingSummary?.gross_pay === 'number'
-    ? timekeepingSummary.gross_pay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : '-'}</div>
+                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{typeof grossPay === 'number' ? grossPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</div>
                                                         </motion.div>
                                                         {/* Deductions */}
                                                         <motion.div
@@ -388,7 +393,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.2 }}
                                                         >
                                                             <div className="text-xs text-orange-600 font-medium mb-2">Total Deductions</div>
-                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">₱{formatWithCommas(totalDeductions)}</div>
+                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">₱{isFinite(totalDeductions) ? totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</div>
                                                         </motion.div>
                                                         {/* Net Pay */}
                                                         <motion.div
@@ -399,7 +404,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.3 }}
                                                         >
                                                             <div className="text-xs text-green-600 font-medium mb-2">Net Pay</div>
-                                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">₱{formatWithCommas(netPay)}</div>
+                                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">₱{isFinite(netPay) ? netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</div>
                                                         </motion.div>
                                                         {/* Per Payroll */}
                                                         <motion.div
@@ -410,7 +415,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.4 }}
                                                         >
                                                             <div className="text-xs text-blue-600 font-medium mb-2">Per Payroll</div>
-                                                            <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">₱{formatWithCommas(perPayroll)}</div>
+                                                            <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">₱{isFinite(perPayroll) ? perPayroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</div>
                                                             <div className="flex flex-wrap gap-1 mt-2 overflow-x-auto max-w-full text-xs">
                                                                 {monthlyPayrollData && monthlyPayrollData.payrolls.length > 0
                                                                     ? monthlyPayrollData.payrolls.map((payroll, index) => (

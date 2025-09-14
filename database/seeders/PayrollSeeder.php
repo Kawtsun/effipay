@@ -31,7 +31,87 @@ class PayrollSeeder extends Seeder
                 $monthVariation = $this->getMonthVariation($i, $employee);
 
                 $baseSalary = max(10000, $employee->base_salary + $monthVariation['base_salary_adjustment']);
-                $overtimePay = max(0, $employee->overtime_pay + $monthVariation['overtime_adjustment']);
+                // Calculate rate per day and per hour
+                $ratePerDay = ($baseSalary * 12) / 288;
+                $ratePerHour = $ratePerDay / 8;
+
+                // Get all timekeeping records for this employee in the given month
+                $tkRecords = \App\Models\TimeKeeping::where('employee_id', $employee->id)
+                    ->where('date', 'like', $month . '%')->get();
+
+                // Calculate tardiness, undertime, absences, overtime (in hours)
+                $tardiness = 0;
+                $undertime = 0;
+                $absences = 0;
+                $overtime = 0;
+                $workStart = $employee->work_start_time ?? '08:00:00';
+                $workEnd = $employee->work_end_time ?? '16:00:00';
+                $workHoursPerDay = $employee->work_hours_per_day ?? 8;
+
+                // Absences: count days with no clock_in and clock_out, then convert to decimal hours
+                $dates = [];
+                $absentDays = 0;
+                if ($tkRecords->count() > 0) {
+                    $firstDay = (new \Carbon\Carbon($month . '-01'))->startOfMonth();
+                    $lastDay = (new \Carbon\Carbon($month . '-01'))->endOfMonth();
+                    for ($d = $firstDay->copy(); $d->lte($lastDay); $d->addDay()) {
+                        $dates[] = $d->format('Y-m-d');
+                    }
+                    foreach ($dates as $date) {
+                        $dayRecords = $tkRecords->where('date', $date);
+                        $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
+                        $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
+                        if (!$hasClockIn && !$hasClockOut) {
+                            $absentDays++;
+                        }
+                    }
+                }
+                $absences = $absentDays * floatval($workHoursPerDay);
+
+                $tardinessHours = 0;
+                $undertimeHours = 0;
+                $overtimePay = 0;
+                $overtimePayTotal = 0;
+                $overtimeByDay = [];
+                foreach ($tkRecords as $tk) {
+                    $dateStr = $tk->date;
+                    $dayOfWeek = date('w', strtotime($dateStr)); // 0=Sun, 6=Sat
+                    // Tardiness (decimal hours)
+                    $lateThreshold = date('H:i:s', strtotime($workStart) + 15 * 60);
+                    if ($tk->clock_in && strtotime($tk->clock_in) > strtotime($lateThreshold)) {
+                        $lateMinutes = (strtotime($tk->clock_in) - strtotime($lateThreshold)) / 60;
+                        if ($lateMinutes > 0) {
+                            $tardinessHours += round($lateMinutes / 60, 2);
+                        }
+                    }
+                    // Undertime (decimal hours)
+                    if ($tk->clock_out && strtotime($tk->clock_out) < strtotime($workEnd)) {
+                        $earlyMinutes = (strtotime($workEnd) - strtotime($tk->clock_out)) / 60;
+                        if ($earlyMinutes > 0) {
+                            $undertimeHours += round($earlyMinutes / 60, 2);
+                        }
+                    }
+                    // Overtime (decimal hours, start counting after exactly 1 hour past work end time)
+                    if ($tk->clock_out) {
+                        $workEndTime = strtotime($workEnd);
+                        $clockOut = strtotime($tk->clock_out);
+                        if ($clockOut > $workEndTime + 3600) {
+                            $overtimeMinutes = ($clockOut - ($workEndTime + 3600)) / 60;
+                            if ($overtimeMinutes > 0) {
+                                $otHours = round($overtimeMinutes / 60, 2);
+                                $otRate = ($dayOfWeek >= 1 && $dayOfWeek <= 5) ? 0.25 : 0.30;
+                                $otPay = round($otHours * $ratePerHour * $otRate, 2);
+                                $overtimeByDay[$dateStr] = ($overtimeByDay[$dateStr] ?? 0) + $otPay;
+                            }
+                        }
+                    }
+                }
+                // Sum overtime pay for all days
+                $overtimePay = array_sum($overtimeByDay);
+                // Calculate monetary values
+                $tardiness = round($tardinessHours * $ratePerHour, 2);
+                $undertime = round($undertimeHours * $ratePerHour, 2);
+                $absences = round($absences * $ratePerHour, 2);
                     // SSS formula (match salaryFormulas.ts)
                     $sss = 0;
                     if ($baseSalary < 5250) {
@@ -113,8 +193,8 @@ class PayrollSeeder extends Seeder
                     } elseif ($baseSalary <= 24249.99) {
                         $sss = 1225.00;
                     } elseif ($baseSalary <= 24749.99) {
-                        $sss = 1250.00;
-                    } elseif ($baseSalary <= 25249.99) {
+                            // Calculate total deductions (only government deductions)
+                            $totalDeductions = $sss + $philhealth + $pagIbig + $withholdingTax;
                         $sss = 1275.00;
                     } elseif ($baseSalary <= 25749.99) {
                         $sss = 1300.00;
@@ -156,7 +236,8 @@ class PayrollSeeder extends Seeder
                         $sss = 1750.00;
                     }
                     $sss = number_format($sss, 2, '.', '');
-                $pagIbig = max(0, min($employee->pag_ibig + $monthVariation['pag_ibig_adjustment'], $baseSalary * 0.08));
+                // Pag-IBIG: minimum 200, max 8% of base salary
+                $pagIbig = max(200, min($employee->pag_ibig + $monthVariation['pag_ibig_adjustment'], $baseSalary * 0.08));
 
                 // PhilHealth calculation (match SalaryController: ($base_salary * 0.05) / 2, min 250, max 2500)
                 $philhealth = max(250, min(2500, ($baseSalary * 0.05) / 2));
@@ -179,9 +260,155 @@ class PayrollSeeder extends Seeder
                     $withholdingTax = 0;
                 }
 
-                $grossPay = $baseSalary + $overtimePay;
-                $totalDeductions = $sss + $philhealth + $pagIbig + $withholdingTax;
-                $netPay = max(0, $grossPay - $totalDeductions);
+
+                // Calculate gross pay (match salaryFormulas.ts)
+                $grossPay = $baseSalary + $overtimePay - ($tardiness + $undertime + $absences);
+
+                // SSS formula (match salaryFormulas.ts)
+                $sss = 0;
+                if ($baseSalary < 5250) {
+                    $sss = 250.00;
+                } elseif ($baseSalary <= 5749.99) {
+                    $sss = 275.00;
+                } elseif ($baseSalary <= 6249.99) {
+                    $sss = 300.00;
+                } elseif ($baseSalary <= 6749.99) {
+                    $sss = 325.00;
+                } elseif ($baseSalary <= 7249.99) {
+                    $sss = 350.00;
+                } elseif ($baseSalary <= 7749.99) {
+                    $sss = 375.00;
+                } elseif ($baseSalary <= 8249.99) {
+                    $sss = 400.00;
+                } elseif ($baseSalary <= 8749.99) {
+                    $sss = 425.00;
+                } elseif ($baseSalary <= 9249.99) {
+                    $sss = 450.00;
+                } elseif ($baseSalary <= 9749.99) {
+                    $sss = 475.00;
+                } elseif ($baseSalary <= 10249.99) {
+                    $sss = 500.00;
+                } elseif ($baseSalary <= 10749.99) {
+                    $sss = 525.00;
+                } elseif ($baseSalary <= 11249.99) {
+                    $sss = 550.00;
+                } elseif ($baseSalary <= 11749.99) {
+                    $sss = 575.00;
+                } elseif ($baseSalary <= 12249.99) {
+                    $sss = 600.00;
+                } elseif ($baseSalary <= 12749.99) {
+                    $sss = 625.00;
+                } elseif ($baseSalary <= 13249.99) {
+                    $sss = 650.00;
+                } elseif ($baseSalary <= 13749.99) {
+                    $sss = 675.00;
+                } elseif ($baseSalary <= 14249.99) {
+                    $sss = 700.00;
+                } elseif ($baseSalary <= 14749.99) {
+                    $sss = 725.00;
+                } elseif ($baseSalary <= 15249.99) {
+                    $sss = 750.00;
+                } elseif ($baseSalary <= 15749.99) {
+                    $sss = 775.00;
+                } elseif ($baseSalary <= 16249.99) {
+                    $sss = 800.00;
+                } elseif ($baseSalary <= 16749.99) {
+                    $sss = 825.00;
+                } elseif ($baseSalary <= 17249.99) {
+                    $sss = 850.00;
+                } elseif ($baseSalary <= 17749.99) {
+                    $sss = 875.00;
+                } elseif ($baseSalary <= 18249.99) {
+                    $sss = 900.00;
+                } elseif ($baseSalary <= 18749.99) {
+                    $sss = 925.00;
+                } elseif ($baseSalary <= 19249.99) {
+                    $sss = 950.00;
+                } elseif ($baseSalary <= 19749.99) {
+                    $sss = 975.00;
+                } elseif ($baseSalary <= 20249.99) {
+                    $sss = 1025.00;
+                } elseif ($baseSalary <= 20749.99) {
+                    $sss = 1050.00;
+                } elseif ($baseSalary <= 21249.99) {
+                    $sss = 1075.00;
+                } elseif ($baseSalary <= 21749.99) {
+                    $sss = 1100.00;
+                } elseif ($baseSalary <= 22249.99) {
+                    $sss = 1125.00;
+                } elseif ($baseSalary <= 22749.99) {
+                    $sss = 1150.00;
+                } elseif ($baseSalary <= 23249.99) {
+                    $sss = 1175.00;
+                } elseif ($baseSalary <= 23749.99) {
+                    $sss = 1200.00;
+                } elseif ($baseSalary <= 24249.99) {
+                    $sss = 1225.00;
+                } elseif ($baseSalary <= 24749.99) {
+                    $sss = 1250.00;
+                } elseif ($baseSalary <= 25249.99) {
+                    $sss = 1275.00;
+                } elseif ($baseSalary <= 25749.99) {
+                    $sss = 1300.00;
+                } elseif ($baseSalary <= 26249.99) {
+                    $sss = 1325.00;
+                } elseif ($baseSalary <= 26749.99) {
+                    $sss = 1350.00;
+                } elseif ($baseSalary <= 27249.99) {
+                    $sss = 1375.00;
+                } elseif ($baseSalary <= 27749.99) {
+                    $sss = 1400.00;
+                } elseif ($baseSalary <= 28249.99) {
+                    $sss = 1425.00;
+                } elseif ($baseSalary <= 28749.99) {
+                    $sss = 1450.00;
+                } elseif ($baseSalary <= 29249.99) {
+                    $sss = 1475.00;
+                } elseif ($baseSalary <= 29749.99) {
+                    $sss = 1500.00;
+                } elseif ($baseSalary <= 30249.99) {
+                    $sss = 1525.00;
+                } elseif ($baseSalary <= 30749.99) {
+                    $sss = 1550.00;
+                } elseif ($baseSalary <= 31249.99) {
+                    $sss = 1575.00;
+                } elseif ($baseSalary <= 31749.99) {
+                    $sss = 1600.00;
+                } elseif ($baseSalary <= 32249.99) {
+                    $sss = 1625.00;
+                } elseif ($baseSalary <= 32749.99) {
+                    $sss = 1650.00;
+                } elseif ($baseSalary <= 33249.99) {
+                    $sss = 1675.00;
+                } elseif ($baseSalary <= 33749.99) {
+                    $sss = 1700.00;
+                } elseif ($baseSalary <= 34249.99) {
+                    $sss = 1725.00;
+                } else {
+                    $sss = 1750.00;
+                }
+                $sss = number_format($sss, 2, '.', '');
+                $pagIbig = max(0, min($employee->pag_ibig + $monthVariation['pag_ibig_adjustment'], $baseSalary * 0.08));
+                $philhealth = max(250, min(2500, ($baseSalary * 0.05) / 2));
+                $total_compensation = $baseSalary - ($sss + $pagIbig + $philhealth);
+                if ($total_compensation <= 20832) {
+                    $withholdingTax = 0;
+                } elseif ($total_compensation >= 20833 && $total_compensation <= 33332) {
+                    $withholdingTax = ($total_compensation - 20833) * 0.15;
+                } elseif ($total_compensation >= 33333 && $total_compensation <= 66666) {
+                    $withholdingTax = ($total_compensation - 33333) * 0.20 + 1875;
+                } elseif ($total_compensation >= 66667 && $total_compensation <= 166666) {
+                    $withholdingTax = ($total_compensation - 66667) * 0.25 + 8541.80;
+                } elseif ($total_compensation >= 166667 && $total_compensation <= 666666) {
+                    $withholdingTax = ($total_compensation - 166667) * 0.30 + 33541.80;
+                } elseif ($total_compensation >= 666667) {
+                    $withholdingTax = ($total_compensation - 666667) * 0.35 + 183541.80;
+                } else {
+                    $withholdingTax = 0;
+                }
+                $totalDeductions = round($sss + $philhealth + $pagIbig + $withholdingTax, 2);
+                $netPay = round(max(0, $grossPay - $totalDeductions), 2);
+                $perPayroll = round($netPay / 2, 2);
 
                 foreach ([$firstPayrollDate, $secondPayrollDate] as $payrollDate) {
                     Payroll::updateOrCreate(
@@ -197,6 +424,9 @@ class PayrollSeeder extends Seeder
                             'philhealth' => $philhealth,
                             'pag_ibig' => $pagIbig,
                             'withholding_tax' => $withholdingTax,
+                            'tardiness' => $tardiness,
+                            'undertime' => $undertime,
+                            'absences' => $absences,
                             'gross_pay' => $grossPay,
                             'total_deductions' => $totalDeductions,
                             'net_pay' => $netPay,
