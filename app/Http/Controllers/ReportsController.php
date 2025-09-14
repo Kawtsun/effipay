@@ -46,82 +46,26 @@ class ReportsController extends Controller
         }
 
         $employees = $query->paginate(10)->withQueryString();
-        $employeesArray = array_map(function ($emp) {
-            $rate_per_day = ($emp->base_salary * 12) / 288;
-            $rate_per_hour = $rate_per_day / 8;
-            $records = \App\Models\TimeKeeping::where('employee_id', $emp->id)->get();
-            $overtime_pay_weekdays = 0;
-            $overtime_pay_weekends = 0;
-            $overtime_count_weekdays = 0;
-            $overtime_count_weekends = 0;
-            $tardiness = 0;
-            $undertime = 0;
-            $absences = 0;
-            $absent_days = 0;
-            $dates = $records->pluck('date')->unique();
-            foreach ($dates as $date) {
-                $dayRecords = $records->where('date', $date);
-                $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
-                $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
-                if (!$hasClockIn && !$hasClockOut) {
-                    $absent_days++;
-                }
+        $month = $request->input('month'); // Optionally filter by month
+        $employeesArray = array_map(function ($emp) use ($month) {
+            // Fetch payroll for this employee and month (if month provided)
+            $payroll = null;
+            if ($month) {
+                $payroll = \App\Models\Payroll::where('employee_id', $emp->id)
+                    ->where('month', $month)
+                    ->orderBy('payroll_date', 'desc')
+                    ->first();
             }
-            if (!empty($emp->work_hours_per_day)) {
-                $absences = round($absent_days * floatval($emp->work_hours_per_day), 2);
-            } else {
-                $absences = $absent_days;
-            }
-            foreach ($records as $tk) {
-                // Tardiness
-                if ($tk->clock_in && $emp->work_start_time) {
-                    $late_threshold = date('H:i:s', strtotime($emp->work_start_time) + 15 * 60);
-                    if (strtotime($tk->clock_in) > strtotime($late_threshold)) {
-                        $late_minutes = (strtotime($tk->clock_in) - strtotime($late_threshold)) / 60;
-                        if ($late_minutes > 0) {
-                            $tardiness += round($late_minutes / 60, 2);
-                        }
-                    }
-                }
-                // Undertime
-                if ($tk->clock_out && $emp->work_end_time && strtotime($tk->clock_out) < strtotime($emp->work_end_time)) {
-                    $early_minutes = (strtotime($emp->work_end_time) - strtotime($tk->clock_out)) / 60;
-                    if ($early_minutes > 0) {
-                        $undertime += round($early_minutes / 60, 2);
-                    }
-                }
-                // Overtime
-                if ($tk->clock_out && $emp->work_end_time) {
-                    $workEnd = strtotime($emp->work_end_time);
-                    $clockOut = strtotime($tk->clock_out);
-                    if ($clockOut >= $workEnd + 3600) {
-                        $overtime_minutes = ($clockOut - $workEnd) / 60 - 59;
-                        if ($overtime_minutes >= 1) {
-                            $overtime_hours = round($overtime_minutes / 60, 2);
-                            $dayOfWeek = date('N', strtotime($tk->date));
-                            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
-                                $pay = round($rate_per_hour * 0.25, 2);
-                                $overtime_count_weekdays += $overtime_hours;
-                                $overtime_pay_weekdays += $pay * $overtime_hours;
-                            } else {
-                                $pay = round($rate_per_hour * 0.30, 2);
-                                $overtime_count_weekends += $overtime_hours;
-                                $overtime_pay_weekends += $pay * $overtime_hours;
-                            }
-                        }
-                    }
-                }
-            }
-            $overtime_pay_total = $overtime_pay_weekdays + $overtime_pay_weekends;
-            // Deductions
-            $total_deductions = floatval($emp->sss) + floatval($emp->philhealth) + floatval($emp->pag_ibig) + floatval($emp->withholding_tax);
-            // Gross Pay (subtract tardiness, undertime, absences)
-            $gross_pay = floatval($emp->base_salary) + $overtime_pay_total
-                - (($rate_per_hour * $tardiness) + ($rate_per_hour * $undertime) + ($rate_per_hour * $absences));
-            // Net Pay
-            $net_pay = $gross_pay - $total_deductions;
-            // Per Payroll (for summary, just net_pay)
-            $per_payroll = $net_pay;
+            // Fallback to employee values if no payroll
+            $base_salary = $payroll ? $payroll->base_salary : $emp->base_salary;
+            $overtime_pay_total = $payroll ? $payroll->overtime_pay : 0;
+            $sss = $payroll ? $payroll->sss : $emp->sss;
+            $philhealth = $payroll ? $payroll->philhealth : $emp->philhealth;
+            $pag_ibig = $payroll ? $payroll->pag_ibig : $emp->pag_ibig;
+            $withholding_tax = $payroll ? $payroll->withholding_tax : $emp->withholding_tax;
+            $gross_pay = $payroll ? $payroll->gross_pay : null;
+            $total_deductions = $payroll ? $payroll->total_deductions : null;
+            $net_pay = $payroll ? $payroll->net_pay : null;
             return [
                 'id' => $emp->id,
                 'last_name' => $emp->last_name,
@@ -130,23 +74,21 @@ class ReportsController extends Controller
                 'employee_type' => $emp->employee_type,
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
-                'base_salary' => $emp->base_salary,
-                'overtime_pay_total' => $overtime_pay_total, // This matches the time keeping tab
-                'sss' => $emp->sss,
-                'philhealth' => $emp->philhealth,
-                'pag_ibig' => $emp->pag_ibig,
+                'base_salary' => $base_salary,
+                'overtime_pay_total' => $overtime_pay_total,
+                'sss' => $sss,
+                'philhealth' => $philhealth,
+                'pag_ibig' => $pag_ibig,
                 'college_program' => $emp->college_program,
-                'withholding_tax' => $emp->withholding_tax,
+                'withholding_tax' => $withholding_tax,
                 'work_hours_per_day' => $emp->work_hours_per_day,
                 'work_start_time' => $emp->work_start_time,
                 'work_end_time' => $emp->work_end_time,
                 'gross_pay' => $gross_pay,
                 'total_deductions' => $total_deductions,
                 'net_pay' => $net_pay,
-                'per_payroll' => $per_payroll,
-                'tardiness' => $tardiness,
-                'undertime' => $undertime,
-                'absences' => $absences,
+                'per_payroll' => $net_pay, // For summary, just net_pay
+                // Optionally add more payroll fields as needed
             ];
         }, $employees->items());
 

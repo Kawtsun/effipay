@@ -79,22 +79,23 @@ function Info({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function EmployeeReportDialog({ employee, onClose, activeRoles }: Props) {
+    const [monthlyPayrollData, setMonthlyPayrollData] = useState<MonthlyPayrollData | null>(null);
     const [selectedMonth, setSelectedMonth] = useState('');
     const [pendingMonth, setPendingMonth] = useState('');
     // Use payroll summary from timekeeping
     const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, pendingMonth);
-    // Calculate total deductions from employee values
-    const totalDeductions =
-        (Number(employee?.sss) || 0) +
-        (Number(employee?.philhealth) || 0) +
-        (Number(employee?.pag_ibig) || 0) +
-        (Number(employee?.withholding_tax) || 0);
+    // Use payroll data for deductions if available, else fallback to employee
+    const selectedPayroll = monthlyPayrollData && monthlyPayrollData.payrolls.length > 0 ? monthlyPayrollData.payrolls[0] : null;
+    const sss = selectedPayroll ? selectedPayroll.sss : (Number(employee?.sss) || 0);
+    const philhealth = selectedPayroll ? selectedPayroll.philhealth : (Number(employee?.philhealth) || 0);
+    const pag_ibig = selectedPayroll ? selectedPayroll.pag_ibig : (Number(employee?.pag_ibig) || 0);
+    const withholding_tax = selectedPayroll ? selectedPayroll.withholding_tax : (Number(employee?.withholding_tax) || 0);
+    const totalDeductions = sss + philhealth + pag_ibig + withholding_tax;
     // Calculate net pay as gross pay minus total deductions
     const grossPay = typeof timekeepingSummary?.gross_pay === 'number' ? timekeepingSummary.gross_pay : 0;
     const netPay = grossPay - totalDeductions;
     // Calculate per payroll as net pay divided by 2
     const perPayroll = netPay / 2;
-    const [monthlyPayrollData, setMonthlyPayrollData] = useState<MonthlyPayrollData | null>(null);
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [loadingPayroll, setLoadingPayroll] = useState(false);
     const [minLoading, setMinLoading] = useState(false);
@@ -437,17 +438,17 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                             <div className="space-y-3 text-sm">
-                                                                <Info label="Base Salary" value={`₱${typeof timekeepingSummary?.base_salary === 'number' ? timekeepingSummary.base_salary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.abs(Number(employee.base_salary)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                                <Info label="Base Salary" value={`₱${selectedPayroll ? Number(selectedPayroll.base_salary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.abs(Number(employee.base_salary)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                                                                 <Info label="Overtime Pay" value={`₱${typeof timekeepingSummary?.overtime_pay_total === 'number' ? timekeepingSummary.overtime_pay_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}`} />
                                                             </div>
                                                         </div>
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
                                                             <div className="space-y-3 text-sm">
-                                                                <Info label="SSS" value={`₱${formatWithCommas(employee.sss)}`} />
-                                                                <Info label="PhilHealth" value={`₱${formatWithCommas(employee.philhealth)}`} />
-                                                                <Info label="Pag-IBIG" value={`₱${formatWithCommas(employee.pag_ibig)}`} />
-                                                                <Info label="Withholding Tax" value={`₱${formatWithCommas(employee.withholding_tax)}`} />
+                                                                <Info label="SSS" value={`₱${formatWithCommas(sss)}`} />
+                                                                <Info label="PhilHealth" value={`₱${formatWithCommas(philhealth)}`} />
+                                                                <Info label="Pag-IBIG" value={`₱${formatWithCommas(pag_ibig)}`} />
+                                                                <Info label="Withholding Tax" value={`₱${formatWithCommas(withholding_tax)}`} />
                                                             </div>
                                                         </div>
                                                     </motion.div>

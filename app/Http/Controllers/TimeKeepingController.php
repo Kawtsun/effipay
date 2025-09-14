@@ -350,24 +350,34 @@ class TimeKeepingController extends Controller {
             return response()->json(['success' => false, 'error' => 'Employee not found']);
         }
 
+        // Fetch payroll data for this employee and month
+        $payroll = \App\Models\Payroll::where('employee_id', $employeeId)
+            ->where('month', $month)
+            ->orderBy('payroll_date', 'desc')
+            ->first();
+
         // Get all timekeeping records for this employee in the selected month
         $records = \App\Models\TimeKeeping::where('employee_id', $employeeId)
             ->where('date', 'like', "$month%")
             ->get();
 
         // --- Compute summary values ---
-    $late_count = 0;
-    $early_count = 0;
-    $overtime_count = 0;
-    $overtime_count_weekdays = 0;
-    $overtime_count_weekends = 0;
-    $absences = 0;
-    $overtime_pay_total = 0;
+        $late_count = 0;
+        $early_count = 0;
+        $overtime_count = 0;
+        $overtime_count_weekdays = 0;
+        $overtime_count_weekends = 0;
+        $absences = 0;
+        $overtime_pay_total = 0;
 
-        $rate_per_day = ($employee->base_salary * 12) / 288;
+        // Use payroll values if available, otherwise fallback to employee
+        $base_salary = $payroll ? $payroll->base_salary : $employee->base_salary;
+        $rate_per_day = ($base_salary * 12) / 288;
         $rate_per_hour = $rate_per_day / 8;
+        $work_start_time = $employee->work_start_time;
+        $work_end_time = $employee->work_end_time;
 
-        $late_threshold = $employee->work_start_time ? date('H:i:s', strtotime($employee->work_start_time) + 15 * 60) : null;
+        $late_threshold = $work_start_time ? date('H:i:s', strtotime($work_start_time) + 15 * 60) : null;
 
         foreach ($records as $tk) {
             // Tardiness (decimal hours)
@@ -437,10 +447,14 @@ class TimeKeepingController extends Controller {
             'overtime_count_weekdays' => $overtime_count_weekdays,
             'overtime_count_weekends' => $overtime_count_weekends,
             'absences' => $absences,
-            'base_salary' => $employee->base_salary,
+            'base_salary' => $base_salary,
             'rate_per_day' => $rate_per_day,
             'rate_per_hour' => $rate_per_hour,
             'overtime_pay_total' => $overtime_pay_total,
+            // Optionally include more payroll fields if needed
+            'payroll_gross_pay' => $payroll ? $payroll->gross_pay : null,
+            'payroll_total_deductions' => $payroll ? $payroll->total_deductions : null,
+            'payroll_net_pay' => $payroll ? $payroll->net_pay : null,
         ]);
     }
 }
