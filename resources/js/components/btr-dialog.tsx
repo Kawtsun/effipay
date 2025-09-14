@@ -170,28 +170,43 @@ export default function BTRDialog({ employee, onClose }: Props) {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <div className="animate-pulse">
-                    <table className="min-w-full border text-sm table-fixed">
+                  <div className="animate-pulse overflow-x-auto rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <table className="min-w-full text-sm table-fixed border-separate border-spacing-0">
                       <colgroup>
                         <col style={{ width: '140px' }} />
                         <col style={{ width: '120px' }} />
                         <col style={{ width: '120px' }} />
                       </colgroup>
                       <thead>
-                        <tr className="bg-muted">
-                          <th className="px-2 py-1 border"><Skeleton className="h-4 w-20" /></th>
-                          <th className="px-2 py-1 border"><Skeleton className="h-4 w-16" /></th>
-                          <th className="px-2 py-1 border"><Skeleton className="h-4 w-16" /></th>
+                        <tr className="bg-muted sticky top-0 z-10">
+                          <th className="px-4 py-2 border-b font-semibold text-left rounded-tl-lg">Date</th>
+                          <th className="px-4 py-2 border-b font-semibold text-left">Time In</th>
+                          <th className="px-4 py-2 border-b font-semibold text-left rounded-tr-lg">Time Out</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {Array.from({ length: daysInMonth || 10 }, (_, i) => (
-                          <tr key={i}>
-                            <td className="px-2 py-1 border"><Skeleton className="h-4 w-24" /></td>
-                            <td className="px-2 py-1 border"><Skeleton className="h-4 w-16" /></td>
-                            <td className="px-2 py-1 border"><Skeleton className="h-4 w-16" /></td>
-                          </tr>
-                        ))}
+                        {Array.from({ length: daysInMonth || 10 }, (_, i) => {
+                          const isEven = i % 2 === 0;
+                          return (
+                            <tr
+                              key={i}
+                              className={
+                                `${isEven ? "bg-gray-50 dark:bg-gray-900/40" : "bg-white dark:bg-gray-800/60"} ` +
+                                "hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors group"
+                              }
+                            >
+                              <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-mono text-xs group-hover:text-primary rounded-l-md">
+                                <Skeleton className="h-4 w-24" />
+                              </td>
+                              <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold group-hover:text-primary">
+                                <Skeleton className="h-4 w-16" />
+                              </td>
+                              <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold group-hover:text-primary rounded-r-md">
+                                <Skeleton className="h-4 w-16" />
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -205,35 +220,53 @@ export default function BTRDialog({ employee, onClose }: Props) {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <table className="min-w-full border text-sm table-fixed">
-                    <colgroup>
-                      <col style={{ width: '140px' }} />
-                      <col style={{ width: '120px' }} />
-                      <col style={{ width: '120px' }} />
-                    </colgroup>
-                    <thead>
-                      <tr className="bg-muted">
-                        <th className="px-2 py-1 border">Date</th>
-                        <th className="px-2 py-1 border">Time In</th>
-                        <th className="px-2 py-1 border">Time Out</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Array.from({ length: daysInMonth }, (_, i) => {
-                        const day = i + 1;
-                        const dateStr = `${year}-${month.padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                        const rec = recordMap[dateStr];
-                        // Use clock_in/clock_out for display, fallback to time_in/time_out for compatibility
-                        return (
-                          <tr key={dateStr}>
-                            <td className="px-2 py-1 border">{dateStr}</td>
-                            <td className="px-2 py-1 border">{rec?.clock_in || rec?.time_in || "-"}</td>
-                            <td className="px-2 py-1 border">{rec?.clock_out || rec?.time_out || "-"}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div className="overflow-x-auto rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <table className="min-w-full text-sm table-fixed border-separate border-spacing-0">
+                      <colgroup>
+                        <col style={{ width: '140px' }} />
+                        <col style={{ width: '120px' }} />
+                        <col style={{ width: '120px' }} />
+                      </colgroup>
+                      <thead>
+                        <tr className="bg-muted sticky top-0 z-10">
+                          <th className="px-4 py-2 border-b font-semibold text-left rounded-tl-lg">Date</th>
+                          <th className="px-4 py-2 border-b font-semibold text-left">Time In</th>
+                          <th className="px-4 py-2 border-b font-semibold text-left rounded-tr-lg">Time Out</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.from({ length: daysInMonth }, (_, i) => {
+                          const day = i + 1;
+                          const dateStr = `${year}-${month.padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                          const rec = recordMap[dateStr];
+                          const isEven = i % 2 === 0;
+                          return (
+                            <tr
+                              key={dateStr}
+                              className={
+                                `${isEven ? "bg-gray-50 dark:bg-gray-900/40" : "bg-white dark:bg-gray-800/60"} ` +
+                                "hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors group"
+                              }
+                            >
+                              <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-mono text-xs group-hover:text-primary rounded-l-md">
+                                {(() => {
+                                  const dateObj = new Date(dateStr);
+                                  const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                                  return `${dateStr}${dayName ? ` (${dayName})` : ''}`;
+                                })()}
+                              </td>
+                              <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold group-hover:text-primary">
+                                {rec?.clock_in || rec?.time_in || "-"}
+                              </td>
+                              <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold group-hover:text-primary rounded-r-md">
+                                {rec?.clock_out || rec?.time_out || "-"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
