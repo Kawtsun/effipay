@@ -23,8 +23,9 @@ import { toast } from 'sonner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 
-type Flash = { success?: string }
-type PageProps = { flash?: Flash }
+type FlashObject = { type: string; message: string };
+type Flash = { success?: string } | string | FlashObject;
+type PageProps = { flash?: Flash };
 
 interface EmployeesProps {
     employees: Employees[]
@@ -93,10 +94,23 @@ export default function Index({
 
     // Show toast on success
     useEffect(() => {
-        if (props.flash?.success) {
-            toast.success(props.flash.success)
+        if (!props.flash) return;
+        if (typeof props.flash === 'string') {
+            toast.success(props.flash);
+        } else if (typeof props.flash === 'object' && props.flash !== null) {
+            if ('success' in props.flash && props.flash.success) {
+                toast.success(props.flash.success);
+            } else if ('type' in props.flash && 'message' in props.flash) {
+                if (props.flash.type === 'error') {
+                    toast.error(props.flash.message || 'An error occurred');
+                } else if (props.flash.type === 'success') {
+                    toast.success(props.flash.message || 'Success');
+                } else {
+                    toast(props.flash.message || 'Notification');
+                }
+            }
         }
-    }, [props.flash])
+    }, [props.flash]);
 
     // Visit helper
     const visit = useCallback((params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string }>, options: { preserve?: boolean } = {}) => {

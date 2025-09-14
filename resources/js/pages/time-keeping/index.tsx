@@ -1,3 +1,5 @@
+type FilterState = { types: string[]; statuses: string[]; roles: string[] };
+const MIN_SPINNER_MS = 400;
 import EmployeeFilter from '@/components/employee-filter';
 // @ts-ignore
 import Encoding from 'encoding-japanese';
@@ -17,47 +19,22 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
-
 import { Head, router, usePage } from '@inertiajs/react';
-import { Users, Shield, GraduationCap, Book, Eye, Import, Fingerprint } from 'lucide-react';
+import { Users, Shield, GraduationCap, Book, Eye, Import, Fingerprint, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2 } from 'lucide-react';
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 // @ts-ignore
 import * as XLSX from 'xlsx';
 
-const MAX_ROWS = 10;
-const ROW_HEIGHT = 53; // px
-const MIN_SPINNER_MS = 400;
-
-const COLLEGE_PROGRAMS = [
-    { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-    { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-    { value: 'COELA', label: 'College of Education and Liberal Arts' },
-    { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-    { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-    { value: 'JD', label: 'Juris Doctor' },
-    { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-    { value: 'RLE', label: 'Related Learning Experience' },
-    { value: 'CG', label: 'Career Guidance or Computer Graphics' },
-    { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-    { value: 'GSP', label: 'GSIS Scholarship' },
-    { value: 'MBA', label: 'Master of Business Administration' },
-];
-function getCollegeProgramLabel(acronym: string) {
-    const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
-    return found ? found.label : acronym;
-}
-
-type FilterState = { types: string[]; statuses: string[]; roles: string[] };
-
 export default function TimeKeeping() {
     const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
     const [selectedBtrEmployee, setSelectedBtrEmployee] = useState<Employees | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const MAX_ROWS = 10;
+    const ROW_HEIGHT = 53; // px
 
     const handleImportClick = () => {
         if (fileInputRef.current) {
@@ -81,7 +58,7 @@ export default function TimeKeeping() {
             return;
         }
 
-        let rows = [];
+    let rows: Record<string, unknown>[] = [];
         const importToast = toast.loading('Importing file...');
         if (ext === '.csv') {
             file.arrayBuffer().then(buffer => {
@@ -103,15 +80,15 @@ export default function TimeKeeping() {
                     header: true,
                     skipEmptyLines: true,
                     transform: (value: string) => value ? value.normalize('NFC') : value,
-                    error: (err) => {
+                    error: (err: Error) => {
                         console.error('PapaParse error:', err);
                     }
                 });
                 console.log('Parsed rows:', result.data);
                 // Log and filter out empty/malformed rows
-                const validRows = result.data.filter((row: any) => row && Object.values(row).some(v => v !== null && v !== undefined && v !== ''));
-                if (validRows.length !== result.data.length) {
-                    toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${result.data.length} rows.`);
+                const validRows = (result.data as Record<string, unknown>[]).filter((row) => row && Object.values(row).some(v => v !== null && v !== undefined && v !== ''));
+                if (validRows.length !== (result.data as Record<string, unknown>[]).length) {
+                    toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${(result.data as Record<string, unknown>[]).length} rows.`);
                 }
                 rows = validRows;
                 sendImport(rows, file.name, importToast);
@@ -121,42 +98,64 @@ export default function TimeKeeping() {
                 const workbook = XLSX.read(data, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                rows = XLSX.utils.sheet_to_json(worksheet);
+                rows = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
                 sendImport(rows, file.name, importToast);
             });
         }
-    };
-    const sendImport = async (rows: any[], fileName: string, toastId: string | number) => {
-        try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            const response = await fetch('/time-keeping/import', {
+        function sendImport(rows: Record<string, unknown>[], fileName: string, toastId: string | number) {
+            fetch('/time-keeping/import', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken || '',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
                 body: JSON.stringify({ records: rows }),
-            });
-            toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
-            if (response.ok) {
-                toast.success(`Successfully imported: ${fileName}`);
-                // Automatically refresh the page to show updated time keeping data
-                router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] });
-            } else {
-                let errorMsg = 'Import failed.';
-                try {
-                    const errorData = await response.json();
-                    if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
-                        errorMsg = errorData.errors.join('\n');
+            })
+                .then(async response => {
+                    toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
+                    if (response.ok) {
+                        toast.success(`Successfully imported: ${fileName}`);
+                        router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] });
+                    } else {
+                        let errorMsg = 'Import failed.';
+                        try {
+                            const errorData = await response.json();
+                            if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+                                errorMsg = errorData.errors.join('\n');
+                            }
+                        } catch (err) {
+                            // Could not parse error JSON
+                            console.error('Error parsing import error response:', err);
+                        }
+                        toast.error(errorMsg);
                     }
-                } catch { }
-                toast.error(errorMsg);
-            }
-        } catch (err) {
-            toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
-            toast.error('Import failed.');
+                })
+                .catch((err) => {
+                    toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
+                    toast.error('Import failed.');
+                    console.error('Import failed:', err);
+                });
         }
     };
+
+    function getCollegeProgramLabel(acronym: string) {
+        const COLLEGE_PROGRAMS = [
+            { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
+            { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
+            { value: 'COELA', label: 'College of Education and Liberal Arts' },
+            { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
+            { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
+            { value: 'JD', label: 'Juris Doctor' },
+            { value: 'BSN', label: 'Bachelor of Science in Nursing' },
+            { value: 'RLE', label: 'Related Learning Experience' },
+            { value: 'CG', label: 'Career Guidance or Computer Graphics' },
+            { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
+            { value: 'GSP', label: 'GSIS Scholarship' },
+            { value: 'MBA', label: 'Master of Business Administration' },
+        ];
+        const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
+        return found ? found.label : acronym;
+    }
     const page = usePage();
     const {
         employees = [],

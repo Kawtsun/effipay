@@ -10,9 +10,83 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
-
 class PayrollController extends Controller
 {
+    /**
+     * Run payroll for a given date (placeholder implementation)
+     */
+    public function runPayroll(Request $request)
+    {
+        $request->validate([
+            'payroll_date' => 'required|date',
+        ]);
+
+        // Extract the month (YYYY-MM) from the selected payroll date
+        $payrollMonth = date('Y-m', strtotime($request->payroll_date));
+
+        // Check if there is any timekeeping data for this month
+        $hasTimekeeping = \App\Models\TimeKeeping::where('date', 'like', $payrollMonth . '%')->exists();
+        if (!$hasTimekeeping) {
+            return redirect()->back()->with([
+                'flash' => [
+                    'type' => 'error',
+                    'message' => 'No timekeeping data found for ' . date('F Y', strtotime($request->payroll_date)) . '. Cannot run payroll.'
+                ]
+            ]);
+        }
+
+        // Get all employees
+        $employees = \App\Models\Employees::all();
+        $createdCount = 0;
+        foreach ($employees as $employee) {
+            // Check if payroll already exists for this employee and month
+            $existing = \App\Models\Payroll::where('employee_id', $employee->id)
+                ->where('month', $payrollMonth)
+                ->first();
+            if ($existing) {
+                continue; // Skip if already exists
+            }
+
+            // Get salary defaults for this employee type
+            $salary = \App\Models\Salary::where('employee_type', $employee->employee_type)->first();
+            if (!$salary) {
+                continue; // Skip if no salary defaults
+            }
+
+            // Calculate gross pay (simple: base_salary, can be expanded)
+            $base_salary = $salary->base_salary;
+            $overtime_pay = $salary->overtime_pay;
+            $sss = $salary->sss;
+            $philhealth = $salary->philhealth;
+            $pag_ibig = $salary->pag_ibig;
+            $withholding_tax = $salary->withholding_tax;
+            $gross_pay = $base_salary + $overtime_pay;
+            $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax;
+            $net_pay = $gross_pay - $total_deductions;
+
+            \App\Models\Payroll::create([
+                'employee_id' => $employee->id,
+                'month' => $payrollMonth,
+                'payroll_date' => $request->payroll_date,
+                'base_salary' => $base_salary,
+                'overtime_pay' => $overtime_pay,
+                'sss' => $sss,
+                'philhealth' => $philhealth,
+                'pag_ibig' => $pag_ibig,
+                'withholding_tax' => $withholding_tax,
+                'gross_pay' => $gross_pay,
+                'total_deductions' => $total_deductions,
+                'net_pay' => $net_pay,
+            ]);
+            $createdCount++;
+        }
+
+        if ($createdCount > 0) {
+            return redirect()->back()->with('flash', 'Payroll run successfully for ' . date('F Y', strtotime($request->payroll_date)) . '. Payroll records created: ' . $createdCount);
+        } else {
+            return redirect()->back()->with('flash', 'Payroll already exists for all employees for ' . date('F Y', strtotime($request->payroll_date)) . '.');
+        }
+    }
     /**
      * Get all unique months from both Payroll and TimeKeeping, sorted descending.
      */

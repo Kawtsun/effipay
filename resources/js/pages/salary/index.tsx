@@ -31,11 +31,12 @@ type Defaults = {
   work_hours_per_day: number
 }
 
+type FlashObject = { type: string; message: string };
 type PageProps = {
-  flash?: string
-  types: string[]
-  selected: string
-  defaults: Defaults
+  flash?: string | FlashObject;
+  types: string[];
+  selected: string;
+  defaults: Defaults;
 }
 
 export default function Index() {
@@ -45,7 +46,21 @@ export default function Index() {
   const [isRunningPayroll, setIsRunningPayroll] = useState(false)
 
   useEffect(() => setType(selected || types[0]), [selected, types])
-  useEffect(() => { if (flash) toast.success(flash) }, [flash])
+  useEffect(() => {
+    if (!flash) return;
+    if (typeof flash === 'string') {
+      toast.success(flash);
+    } else if (typeof flash === 'object' && flash !== null) {
+      // If backend sends { type, message }
+      if (flash.type === 'error') {
+        toast.error(flash.message || 'An error occurred');
+      } else if (flash.type === 'success') {
+        toast.success(flash.message || 'Success');
+      } else {
+        toast(flash.message || 'Notification');
+      }
+    }
+  }, [flash])
 
   const onTypeChange = useCallback((val: string) => {
     setType(val)

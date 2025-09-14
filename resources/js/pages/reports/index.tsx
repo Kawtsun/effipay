@@ -1,5 +1,5 @@
 
-// ...existing code...
+import { toast } from 'sonner'
 import EmployeeReportDialog from '@/components/employee-report-dialog'
 import EmployeeFilter from '@/components/employee-filter'
 import EmployeePagination from '@/components/employee-pagination'
@@ -23,34 +23,33 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 
-type FilterState = { types: string[]; statuses: string[]; roles: string[] }
-
-const MIN_SPINNER_MS = 400
-const MAX_ROWS = 10
-const ROW_HEIGHT = 53 // px
-
-const COLLEGE_PROGRAMS = [
-  { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-  { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-  { value: 'COELA', label: 'College of Education and Liberal Arts' },
-  { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-  { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-  { value: 'JD', label: 'Juris Doctor' },
-  { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-  { value: 'RLE', label: 'Related Learning Experience' },
-  { value: 'CG', label: 'Career Guidance or Computer Graphics' },
-  { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-  { value: 'GSP', label: 'GSIS Scholarship' },
-  { value: 'MBA', label: 'Master of Business Administration' },
-];
-function getCollegeProgramLabel(acronym: string) {
-  const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
-  return found ? found.label : acronym;
-}
-
 export default function ReportsIndex() {
-    // Get props from Inertia page
     const page = usePage();
+    // --- State and constants ---
+    type FilterState = { types: string[]; statuses: string[]; roles: string[] };
+    const MIN_SPINNER_MS = 400;
+    const MAX_ROWS = 10;
+    const ROW_HEIGHT = 53; // px
+    const COLLEGE_PROGRAMS = [
+        { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
+        { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
+        { value: 'COELA', label: 'College of Education and Liberal Arts' },
+        { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
+        { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
+        { value: 'JD', label: 'Juris Doctor' },
+        { value: 'BSN', label: 'Bachelor of Science in Nursing' },
+        { value: 'RLE', label: 'Related Learning Experience' },
+        { value: 'CG', label: 'Career Guidance or Computer Graphics' },
+        { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
+        { value: 'GSP', label: 'GSIS Scholarship' },
+        { value: 'MBA', label: 'Master of Business Administration' },
+    ];
+    function getCollegeProgramLabel(acronym: string) {
+        const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
+        return found ? found.label : acronym;
+    }
+
+    // --- Page props and state ---
     const {
         employees = [],
         currentPage = 1,
@@ -59,24 +58,43 @@ export default function ReportsIndex() {
         filters: initialFiltersRaw = { types: [], statuses: [], roles: [], collegeProgram: '' },
     } = page.props as any;
     const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [], collegeProgram: '' };
-    const [viewing, setViewing] = useState<Employees | null>(null)
-    const [searchTerm, setSearchTerm] = useState(initialSearch)
+    const [viewing, setViewing] = useState(null as Employees | null);
+    const [searchTerm, setSearchTerm] = useState(initialSearch);
     const toArray = (val: unknown) => Array.isArray(val) ? val : val ? [val] : [];
     const [filters, setFilters] = useState<FilterState & { collegeProgram?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
-    })
+    });
     const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
-    })
-    const [loading, setLoading] = useState(false)
-    const spinnerStart = useRef<number>(0)
+    });
+    const [loading, setLoading] = useState(false);
+    const spinnerStart = useRef<number>(0);
     const hasFilters = Array.isArray(appliedFilters.types) && appliedFilters.types.length > 0
         || Array.isArray(appliedFilters.statuses) && appliedFilters.statuses.length > 0
-        || Array.isArray(appliedFilters.roles) && appliedFilters.roles.length > 0
+        || Array.isArray(appliedFilters.roles) && appliedFilters.roles.length > 0;
+    // Toast/flash logic
+    const flash = (page.props as any).flash;
+    useEffect(() => {
+        if (!flash) return;
+        if (typeof flash === 'string') {
+            toast.success(flash);
+        } else if (typeof flash === 'object' && flash !== null) {
+            if ('type' in flash && 'message' in flash) {
+                if (flash.type === 'error') {
+                    toast.error(flash.message || 'An error occurred');
+                } else if (flash.type === 'success') {
+                    toast.success(flash.message || 'Success');
+                } else {
+                    toast(flash.message || 'Notification');
+                }
+            }
+        }
+    }, [flash]);
+
 
     // Show toast on success (optional, currently not used)
 
