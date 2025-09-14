@@ -17,8 +17,8 @@ class PayrollSeeder extends Seeder
         // Generate payroll data for 6 months for all employees, with monthly and role-based variations, but using SalaryController formulas for PhilHealth and withholding_tax
         $employees = Employees::all();
 
-        $startDate = \Carbon\Carbon::create(2025, 3, 1); // March 2025
-        for ($i = 0; $i < 6; $i++) {
+        $startDate = \Carbon\Carbon::create(2025, 5, 1); // May  //   March 2025 
+        for ($i = 0; $i < 4; $i++) {
             $date = $startDate->copy()->addMonths($i);
             $month = $date->format('Y-m');
             $firstPayrollDate = $date->copy()->day(15)->format('Y-m-d');
