@@ -13,7 +13,7 @@ interface Employee {
     id: number;
     first_name: string;
     last_name: string;
-    // Add other fields as needed
+    roles?: string;
 }
 
 interface Payroll {
@@ -221,6 +221,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                     <PDFDownloadLink
                                         document={<PayslipTemplate
                                             employeeName={`${employee?.last_name}, ${employee?.first_name}`}
+                                            role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             earnings={payrollData.earnings}
                                             deductions={payrollData.deductions}

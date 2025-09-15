@@ -88,7 +88,7 @@ interface PayslipDeductions {
 
 interface PayslipTemplateProps {
   employeeName?: string;
-  jobTitle?: string;
+  role?: string;
   payPeriod?: string;
   earnings?: PayslipEarnings;
   deductions?: PayslipDeductions;
@@ -101,7 +101,7 @@ interface PayslipTemplateProps {
 
 const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
   employeeName = '-',
-  jobTitle = '-',
+  role = '-',
   payPeriod = 'May 1-31, 2025',
   earnings = {},
   deductions = {},
@@ -110,7 +110,17 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
   totalDeductions = '5,107.83',
   netPay = '14,268.32',
   netPay1530 = '7,134.16',
-}) => (
+}) => {
+  // Format role: capitalize each word and add space after commas
+  const formatRole = (roleStr: string) => {
+    if (!roleStr || roleStr === '-') return '-';
+    return roleStr
+      .split(',')
+      .map(r => r.trim().replace(/\b\w/g, c => c.toUpperCase()))
+      .join(', ');
+  };
+
+  return (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.header}>
@@ -124,7 +134,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
         <Text>Pay Period: {payPeriod}</Text>
       </View>
       <View style={styles.section}>
-        <Text>Job Title: {jobTitle}</Text>
+        <Text>Job Title: {formatRole(role)}</Text>
       </View>
       <View style={styles.table}>
         <View style={styles.tableCol}>
@@ -153,5 +163,6 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
     </Page>
   </Document>
 );
+}
 
 export default PayslipTemplate;
