@@ -92,17 +92,19 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
             return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
         }, monthlyPayrollData.payrolls[0]);
     }
-    const sss = selectedPayroll ? Number(selectedPayroll.sss) : (Number(employee?.sss) || 0);
-    const philhealth = selectedPayroll ? Number(selectedPayroll.philhealth) : (Number(employee?.philhealth) || 0);
-    const pag_ibig = selectedPayroll ? Number(selectedPayroll.pag_ibig) : (Number(employee?.pag_ibig) || 0);
-    const withholding_tax = selectedPayroll ? Number(selectedPayroll.withholding_tax) : (Number(employee?.withholding_tax) || 0);
-    function safeNumber(val: unknown, fallback = 0) {
+    // Only show/calculate salary/contributions if payroll data exists for the month
+    const hasPayroll = !!(monthlyPayrollData && monthlyPayrollData.payrolls && monthlyPayrollData.payrolls.length > 0);
+    const sss = hasPayroll ? Number(selectedPayroll?.sss) : null;
+    const philhealth = hasPayroll ? Number(selectedPayroll?.philhealth) : null;
+    const pag_ibig = hasPayroll ? Number(selectedPayroll?.pag_ibig) : null;
+    const withholding_tax = hasPayroll ? Number(selectedPayroll?.withholding_tax) : null;
+    function safeNumber(val: unknown, fallback = null) {
         return typeof val === 'number' && isFinite(val) ? val : fallback;
     }
-    const totalDeductions = safeNumber(Number(selectedPayroll?.total_deductions), sss + philhealth + pag_ibig + withholding_tax);
-    const grossPay = safeNumber(Number(selectedPayroll?.gross_pay), safeNumber(timekeepingSummary?.gross_pay, 0));
-    const netPay = safeNumber(Number(selectedPayroll?.net_pay), grossPay - totalDeductions);
-    const perPayroll = safeNumber(netPay / 2, 0);
+    const totalDeductions = hasPayroll ? safeNumber(Number(selectedPayroll?.total_deductions), null) : null;
+    const grossPay = hasPayroll ? safeNumber(Number(selectedPayroll?.gross_pay), null) : null;
+    const netPay = hasPayroll ? safeNumber(Number(selectedPayroll?.net_pay), null) : null;
+    const perPayroll = hasPayroll && netPay != null ? safeNumber(netPay / 2, null) : null;
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [loadingPayroll, setLoadingPayroll] = useState(false);
     const [minLoading, setMinLoading] = useState(false);
@@ -314,6 +316,8 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                     {/* Summary Cards: 4 timekeeping (amounts) + 4 report cards */}
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                                         {/* Tardiness Amount */}
+                                                        {/* Attendance Cards: Always show, but show '-' if no payroll data */}
+                                                        {/* Tardiness Amount */}
                                                         <motion.div
                                                             className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
@@ -323,7 +327,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         >
                                                             <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
                                                             <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">
-                                                                {typeof timekeepingSummary?.tardiness === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
+                                                                {hasPayroll && typeof timekeepingSummary?.tardiness === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
                                                                     ? `₱${(timekeepingSummary.tardiness * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                                     : '-'}
                                                             </div>
@@ -338,7 +342,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         >
                                                             <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
                                                             <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">
-                                                                {typeof timekeepingSummary?.undertime === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
+                                                                {hasPayroll && typeof timekeepingSummary?.undertime === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
                                                                     ? `₱${(timekeepingSummary.undertime * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                                     : '-'}
                                                             </div>
@@ -353,7 +357,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         >
                                                             <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
                                                             <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">
-                                                                {typeof timekeepingSummary?.overtime_pay_total === 'number'
+                                                                {hasPayroll && typeof timekeepingSummary?.overtime_pay_total === 'number'
                                                                     ? `₱${timekeepingSummary.overtime_pay_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                                     : '-'}
                                                             </div>
@@ -368,7 +372,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
                                                             <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">
-                                                                {typeof timekeepingSummary?.absences === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
+                                                                {hasPayroll && typeof timekeepingSummary?.absences === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
                                                                     ? `₱${(timekeepingSummary.absences * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                                     : '-'}
                                                             </div>
@@ -382,7 +386,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.25 }}
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Gross Pay</div>
-                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">₱{typeof grossPay === 'number' ? grossPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</div>
+                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{hasPayroll && typeof grossPay === 'number' ? `₱${grossPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
                                                         </motion.div>
                                                         {/* Deductions */}
                                                         <motion.div
@@ -393,7 +397,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.2 }}
                                                         >
                                                             <div className="text-xs text-orange-600 font-medium mb-2">Total Deductions</div>
-                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">₱{isFinite(totalDeductions) ? totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</div>
+                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{hasPayroll && typeof totalDeductions === 'number' ? `₱${totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
                                                         </motion.div>
                                                         {/* Net Pay */}
                                                         <motion.div
@@ -404,7 +408,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.3 }}
                                                         >
                                                             <div className="text-xs text-green-600 font-medium mb-2">Net Pay</div>
-                                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">₱{isFinite(netPay) ? netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</div>
+                                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">{hasPayroll && typeof netPay === 'number' ? `₱${netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
                                                         </motion.div>
                                                         {/* Per Payroll */}
                                                         <motion.div
@@ -415,9 +419,9 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.4 }}
                                                         >
                                                             <div className="text-xs text-blue-600 font-medium mb-2">Per Payroll</div>
-                                                            <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">₱{isFinite(perPayroll) ? perPayroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</div>
+                                                            <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">{hasPayroll && typeof perPayroll === 'number' ? `₱${perPayroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
                                                             <div className="flex flex-wrap gap-1 mt-2 overflow-x-auto max-w-full text-xs">
-                                                                {monthlyPayrollData && monthlyPayrollData.payrolls.length > 0
+                                                                {hasPayroll
                                                                     ? monthlyPayrollData.payrolls.map((payroll, index) => (
                                                                         <div key={payroll.id} className="flex items-center gap-1 whitespace-nowrap">
                                                                             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -443,17 +447,17 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                             <div className="space-y-3 text-sm">
-                                                                <Info label="Base Salary" value={`₱${selectedPayroll ? Number(selectedPayroll.base_salary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.abs(Number(employee.base_salary)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                                                                <Info label="Overtime Pay" value={`₱${typeof timekeepingSummary?.overtime_pay_total === 'number' ? timekeepingSummary.overtime_pay_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}`} />
+                                                                <Info label="Base Salary" value={hasPayroll && selectedPayroll ? `₱${Number(selectedPayroll.base_salary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'} />
+                                                                <Info label="Overtime Pay" value={hasPayroll && typeof timekeepingSummary?.overtime_pay_total === 'number' ? `₱${timekeepingSummary.overtime_pay_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'} />
                                                             </div>
                                                         </div>
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
                                                             <div className="space-y-3 text-sm">
-                                                                <Info label="SSS" value={`₱${formatWithCommas(sss)}`} />
-                                                                <Info label="PhilHealth" value={`₱${formatWithCommas(philhealth)}`} />
-                                                                <Info label="Pag-IBIG" value={`₱${formatWithCommas(pag_ibig)}`} />
-                                                                <Info label="Withholding Tax" value={`₱${formatWithCommas(withholding_tax)}`} />
+                                                                <Info label="SSS" value={hasPayroll && sss != null ? `₱${formatWithCommas(sss)}` : '-'} />
+                                                                <Info label="PhilHealth" value={hasPayroll && philhealth != null ? `₱${formatWithCommas(philhealth)}` : '-'} />
+                                                                <Info label="Pag-IBIG" value={hasPayroll && pag_ibig != null ? `₱${formatWithCommas(pag_ibig)}` : '-'} />
+                                                                <Info label="Withholding Tax" value={hasPayroll && withholding_tax != null ? `₱${formatWithCommas(withholding_tax)}` : '-'} />
                                                             </div>
                                                         </div>
                                                     </motion.div>
