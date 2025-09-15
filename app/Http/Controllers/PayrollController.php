@@ -16,6 +16,8 @@ class PayrollController extends Controller
      * Run payroll for a given date (placeholder implementation)
      */
     public function runPayroll(Request $request)
+            // ...existing code...
+            // Debug: Output all fetched summary data (after summary is fetched)
     {
         $request->validate([
             'payroll_date' => 'required|date',
@@ -59,95 +61,104 @@ class PayrollController extends Controller
                 ->where('date', 'like', $payrollMonth . '%')
                 ->get()->keyBy('date');
 
-            $totalOvertimeHours = 0;
-            $tardiness = 0;
-            $undertime = 0;
-            $absences = 0;
-            $overtime_pay = 0;
+                    $totalOvertimeHours = 0;
+                    $tardiness = 0;
+                    $undertime = 0;
+                    $absences = 0;
+                    $overtime_pay = 0;
 
-            for ($i = 1; $i <= $daysInMonth; $i++) {
-                $date = date('Y-m-d', strtotime($payrollMonth . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
-                $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
-                if ($dayOfWeek >= 6) continue; // skip weekends
-
-                $tk = $timekeepings->get($date);
-                // Count as absent if both clock_in and clock_out are missing, null, or only whitespace
-                if (
-                    !$tk ||
-                    ((is_null($tk->clock_in) || trim($tk->clock_in) === '') &&
-                     (is_null($tk->clock_out) || trim($tk->clock_out) === ''))
-                ) {
-                    $absences += $workHoursPerDay;
-                    continue;
-                }
-                $start = strtotime($tk->clock_in);
-                $end = strtotime($tk->clock_out);
-                $hours = ($end - $start) / 3600;
-                // Overtime: hours beyond employee's work_hours_per_day
-                if ($hours > $workHoursPerDay) {
-                    $otHours = $hours - $workHoursPerDay;
-                    $totalOvertimeHours += $otHours;
-                    // Overtime pay formula (weekday/weekend)
-                    $overtime_pay += $dayOfWeek >= 1 && $dayOfWeek <= 5
-                        ? round($employee->overtime_pay * 0.25 * $otHours, 2)
-                        : round($employee->overtime_pay * 0.30 * $otHours, 2);
-                }
-                // Tardiness: late clock-in
-                if ($employee->work_start_time) {
-                    $schedStart = strtotime($employee->work_start_time);
-                    if ($start > $schedStart) {
-                        $tardiness += ($start - $schedStart) / 3600;
+                    // Fetch timekeeping summary for this employee and month
+                    $summary = app(\App\Http\Controllers\TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
+                        'employee_id' => $employee->id,
+                        'month' => $payrollMonth
+                    ]));
+                    $summaryData = $summary->getData(true);
+                    if (isset($summaryData['overtime_pay_total'])) {
+                        $overtime_pay = round($summaryData['overtime_pay_total'], 2);
                     }
-                }
-                // Undertime: early clock-out
-                if ($employee->work_end_time) {
-                    $schedEnd = strtotime($employee->work_end_time);
-                    if ($end < $schedEnd) {
-                        $undertime += ($schedEnd - $end) / 3600;
+
+                    for ($i = 1; $i <= $daysInMonth; $i++) {
+                        $date = date('Y-m-d', strtotime($payrollMonth . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
+                        $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
+                        if ($dayOfWeek >= 6) continue; // skip weekends
+
+                        $tk = $timekeepings->get($date);
+                        // Count as absent if both clock_in and clock_out are missing, null, or only whitespace
+                        if (
+                            !$tk ||
+                            ((is_null($tk->clock_in) || trim($tk->clock_in) === '') &&
+                             (is_null($tk->clock_out) || trim($tk->clock_out) === ''))
+                        ) {
+                            $absences += $workHoursPerDay;
+                            continue;
+                        }
+                        $start = strtotime($tk->clock_in);
+                        $end = strtotime($tk->clock_out);
+                        $hours = ($end - $start) / 3600;
+                        // Overtime: hours beyond employee's work_hours_per_day
+                        if ($hours > $workHoursPerDay) {
+                            $otHours = $hours - $workHoursPerDay;
+                            $totalOvertimeHours += $otHours;
+                        }
+                        // Tardiness: late clock-in
+                        if ($employee->work_start_time) {
+                            $schedStart = strtotime($employee->work_start_time);
+                            if ($start > $schedStart) {
+                                $tardiness += ($start - $schedStart) / 3600;
+                            }
+                        }
+                        // Undertime: early clock-out
+                        if ($employee->work_end_time) {
+                            $schedEnd = strtotime($employee->work_end_time);
+                            if ($end < $schedEnd) {
+                                $undertime += ($schedEnd - $end) / 3600;
+                            }
+                        }
                     }
-                }
-            }
 
-            $sss = $employee->sss;
-            $philhealth = $employee->philhealth;
-            $pag_ibig = $employee->pag_ibig;
-            $withholding_tax = $base_salary > 0 ? (function($base_salary, $sss, $pag_ibig, $philhealth) {
-                $totalComp = $base_salary - ($sss + $pag_ibig + $philhealth);
-                if ($totalComp <= 20832) return 0;
-                if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
-                if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
-                if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
-                if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
-                return 183541.80 + 0.35 * ($totalComp - 666667);
-            })($base_salary, $sss, $pag_ibig, $philhealth) : 0;
+                    $sss = $employee->sss;
+                    $philhealth = $employee->philhealth;
+                    $pag_ibig = $employee->pag_ibig;
+                    $withholding_tax = $base_salary > 0 ? (function($base_salary, $sss, $pag_ibig, $philhealth) {
+                        $totalComp = $base_salary - ($sss + $pag_ibig + $philhealth);
+                        if ($totalComp <= 20832) return 0;
+                        if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
+                        if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
+                        if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
+                        if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
+                        return 183541.80 + 0.35 * ($totalComp - 666667);
+                    })($base_salary, $sss, $pag_ibig, $philhealth) : 0;
 
-            $gross_pay = $base_salary + $overtime_pay
-                - (($rate_per_hour * $tardiness)
-                + ($rate_per_hour * $undertime)
-                + ($rate_per_hour * $absences));
+                    $gross_pay = round($base_salary, 2)
+                        - (round($rate_per_hour * $tardiness, 2)
+                        + round($rate_per_hour * $undertime, 2)
+                        + round($rate_per_hour * $absences, 2));
+                    $gross_pay += round($overtime_pay, 2);
 
-            $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax;
-            $net_pay = $gross_pay - $total_deductions;
-
-            \App\Models\Payroll::create([
-                'employee_id' => $employee->id,
-                'month' => $payrollMonth,
-                'payroll_date' => $request->payroll_date,
-                'base_salary' => $base_salary,
-                'overtime_pay' => $overtime_pay,
-                'sss' => $sss,
-                'philhealth' => $philhealth,
-                'pag_ibig' => $pag_ibig,
-                'withholding_tax' => $withholding_tax,
-                'tardiness' => $tardiness,
-                'undertime' => $undertime,
-                'absences' => $absences,
-                'rate_per_hour' => $rate_per_hour,
-                'gross_pay' => $gross_pay,
-                'total_deductions' => $total_deductions,
-                'net_pay' => $net_pay,
-            ]);
-            $createdCount++;
+                // Create and save payroll record
+                $total_deductions = round($rate_per_hour * $tardiness, 2)
+                    + round($rate_per_hour * $undertime, 2)
+                    + round($rate_per_hour * $absences, 2)
+                    + $sss + $philhealth + $pag_ibig + $withholding_tax;
+                $net_pay = $gross_pay - $total_deductions;
+                \App\Models\Payroll::create([
+                    'employee_id' => $employee->id,
+                    'month' => $payrollMonth,
+                    'payroll_date' => $request->payroll_date,
+                    'base_salary' => $base_salary,
+                    'overtime_pay' => $overtime_pay,
+                    'tardiness' => $tardiness,
+                    'undertime' => $undertime,
+                    'absences' => $absences,
+                    'gross_pay' => $gross_pay,
+                    'sss' => $sss,
+                    'philhealth' => $philhealth,
+                    'pag_ibig' => $pag_ibig,
+                    'withholding_tax' => $withholding_tax,
+                    'total_deductions' => $total_deductions,
+                    'net_pay' => $net_pay,
+                ]);
+                $createdCount++;
         }
 
         if ($createdCount > 0) {
