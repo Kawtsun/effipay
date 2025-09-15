@@ -111,6 +111,18 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
   netPay = '14,268.32',
   netPay1530 = '7,134.16',
 }) => {
+  // Format pay period: 'YYYY-MM' or 'YYYY-MM-DD' to 'Month 1-30, Year'
+  const formatPayPeriod = (period: string) => {
+    const match = period.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
+    if (match) {
+      const year = match[1];
+      const month = match[2];
+      const monthName = new Date(`${year}-${month}-01`).toLocaleString('default', { month: 'long' });
+      const lastDay = new Date(Number(year), Number(month), 0).getDate();
+      return `${monthName} 1-${lastDay}, ${year}`;
+    }
+    return period;
+  };
   // Format role: capitalize each word and add space after commas
   const formatRole = (roleStr: string) => {
     if (!roleStr || roleStr === '-') return '-';
@@ -131,7 +143,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
       </View>
       <View style={styles.section}>
         <Text>Employee Name: {employeeName}</Text>
-        <Text>Pay Period: {payPeriod}</Text>
+  <Text>Pay Period: {formatPayPeriod(payPeriod)}</Text>
       </View>
       <View style={styles.section}>
         <Text>Job Title: {formatRole(role)}</Text>
