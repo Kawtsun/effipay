@@ -2,18 +2,70 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import PayslipTemplate from './print-templates/PayslipTemplate';
+import BiometricTimeRecordTemplate from './print-templates/BiometricTimeRecordTemplate';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MonthPicker } from './ui/month-picker';
+
+interface Employee {
+    id: number;
+    first_name: string;
+    last_name: string;
+    // Add other fields as needed
+}
+
+interface Payroll {
+    payroll_date: string;
+    base_salary?: number;
+    tardiness?: number;
+    absences?: number;
+    sss?: number;
+    sss_loan?: number;
+    pag_ibig?: number;
+    philhealth?: number;
+    tuition?: number;
+    gross_pay?: number;
+    total_deductions?: number;
+    net_pay?: number;
+}
+
+interface PayslipData {
+    earnings: {
+        monthlySalary?: string;
+        tardiness?: string;
+        absences?: string;
+    };
+    deductions: {
+        sss?: string;
+        sssLoan?: string;
+        pagibig?: string;
+        philhealth?: string;
+    };
+    otherDeductions: {
+        tuition?: string;
+    };
+    totalEarnings?: string;
+    totalDeductions?: string;
+    netPay?: string;
+    netPay1530?: string;
+}
+
+interface BTRRecord {
+    date: string;
+    dayName: string;
+    timeIn: string;
+    timeOut: string;
+}
 
 interface PrintDialogProps {
     open: boolean;
     onClose: () => void;
-    employee: any;
+    employee: Employee;
 }
 
-const fetchPayrollData = async (employeeId: number, month: string) => {
+const fetchPayrollData = async (employeeId: number, month: string): Promise<PayslipData | null> => {
     // Fetch payroll data from backend
     const response = await fetch(route('payroll.employee.monthly', {
         employee_id: employeeId,
@@ -24,7 +76,7 @@ const fetchPayrollData = async (employeeId: number, month: string) => {
         return null;
     }
     // Use the latest payroll for the month
-    const payroll = result.payrolls.reduce((latest, curr) => {
+    const payroll: Payroll = result.payrolls.reduce((latest: Payroll, curr: Payroll) => {
         return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
     }, result.payrolls[0]);
     // Map backend fields to payslip template props
@@ -52,6 +104,7 @@ const fetchPayrollData = async (employeeId: number, month: string) => {
 
 export default function PrintDialog({ open, onClose, employee }: PrintDialogProps) {
     const [selected, setSelected] = useState({ payslip: true, btr: false });
+    const [btrRecords, setBtrRecords] = useState<BTRRecord[]>([]);
     // Sync month selector with report dialog logic
     const [selectedMonth, setSelectedMonth] = useState<string>('');
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
@@ -73,22 +126,49 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
     // Fetch months on mount
     React.useEffect(() => {
         fetchAvailableMonths();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     const [showPDF, setShowPDF] = useState(false);
-    const [payrollData, setPayrollData] = useState<any>(null);
+    const [payrollData, setPayrollData] = useState<PayslipData | null>(null);
 
     const handleChange = (key: 'payslip' | 'btr') => {
         setSelected(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     const handlePrint = async () => {
+        setShowPDF(false); // Always reset before print
         if (selected.payslip) {
-            // Fetch payroll data for selected employee and month
             const data = await fetchPayrollData(employee?.id, selectedMonth);
             setPayrollData(data);
-            setShowPDF(true);
+            setTimeout(() => setShowPDF(true), 100); // Ensure PDF triggers
         }
-        // Add BTR logic here if needed
+        if (selected.btr) {
+            const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
+            const result = await response.json();
+            if (result.success && Array.isArray(result.records) && result.records.length > 0) {
+                const records: BTRRecord[] = result.records.map((rec: {
+                    date: string;
+                    clock_in?: string;
+                    time_in?: string;
+                    clock_out?: string;
+                    time_out?: string;
+                }) => {
+                    const dateObj = new Date(rec.date);
+                    const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                    return {
+                        date: rec.date,
+                        dayName,
+                        timeIn: rec.clock_in || rec.time_in || '-',
+                        timeOut: rec.clock_out || rec.time_out || '-',
+                    };
+                });
+                setBtrRecords(records);
+                setTimeout(() => setShowPDF(true), 100); // Ensure PDF triggers
+            } else {
+                setBtrRecords([]);
+                toast.error('No biometric time records found for this month.');
+            }
+        }
     };
 
     return (
@@ -154,7 +234,26 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                         fileName={`Payslip_${employee?.last_name}_${employee?.first_name}_${selectedMonth}.pdf`}
                                         style={{ display: 'none' }}
                                     >
-                                        {({ blob, url, loading, error }) => {
+                                        {({ url, loading }) => {
+                                            if (url && !loading) {
+                                                window.open(url, '_blank');
+                                                setShowPDF(false);
+                                            }
+                                            return null;
+                                        }}
+                                    </PDFDownloadLink>
+                                )}
+                                {showPDF && selected.btr && btrRecords.length > 0 && (
+                                    <PDFDownloadLink
+                                        document={<BiometricTimeRecordTemplate
+                                            employeeName={`${employee?.last_name}, ${employee?.first_name}`}
+                                            payPeriod={selectedMonth}
+                                            records={btrRecords}
+                                        />}
+                                        fileName={`BTR_${employee?.last_name}_${employee?.first_name}_${selectedMonth}.pdf`}
+                                        style={{ display: 'none' }}
+                                    >
+                                        {({ url, loading }) => {
                                             if (url && !loading) {
                                                 window.open(url, '_blank');
                                                 setShowPDF(false);
