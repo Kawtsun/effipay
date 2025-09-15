@@ -16,6 +16,7 @@ interface Employee {
     first_name: string;
     last_name: string;
     roles?: string;
+    work_hours_per_day?: number;
 }
 
 interface Payroll {
@@ -153,25 +154,65 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         setShowPDF(false); // Always reset before print
         if (selected.payslip) {
             const data = await fetchPayrollData(employee?.id, selectedMonth);
-            if (!data) {
-                toast.error('No payroll data found for the selected month.');
-                return;
+            if (selected.payslip) {
+                const payrollData = await fetchPayrollData(employee?.id, selectedMonth);
+                if (!payrollData) {
+                    toast.error('No payroll data found for the selected month.');
+                    return;
+                }
+                // Fetch timekeeping records before calculating numHours
+                const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
+                const result = await response.json();
+                let btrRecords: BTRRecord[] = [];
+                if (result.success && Array.isArray(result.records) && result.records.length > 0) {
+                    btrRecords = result.records.map((rec: {
+                        date: string;
+                        clock_in?: string;
+                        time_in?: string;
+                        clock_out?: string;
+                        time_out?: string;
+                    }) => {
+                        const dateObj = new Date(rec.date);
+                        const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                        return {
+                            date: rec.date,
+                            dayName,
+                            timeIn: rec.clock_in || rec.time_in || '-',
+                            timeOut: rec.clock_out || rec.time_out || '-',
+                        };
+                    });
+                }
+                // Calculate total worked hours from timekeeping summary
+                let numHours = 0;
+                if (timekeepingSummary) {
+                    let totalWorkedHours = 0;
+                    if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
+                        const attendedShifts = btrRecords.filter(
+                            (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
+                        ).length;
+                        totalWorkedHours = attendedShifts * employee.work_hours_per_day;
+                    }
+                    numHours = totalWorkedHours
+                        - (Number(timekeepingSummary.tardiness ?? 0))
+                        - (Number(timekeepingSummary.undertime ?? 0))
+                        - (Number(timekeepingSummary.absences ?? 0))
+                        + (Number(timekeepingSummary.overtime ?? 0));
+                    if (numHours < 0) numHours = 0;
+                }
+                setPayrollData({
+                    ...payrollData,
+                    earnings: {
+                        ...payrollData.earnings,
+                        numHours,
+                        ratePerHour: timekeepingSummary?.rate_per_hour ?? 0,
+                        tardiness: timekeepingSummary?.tardiness ?? 0,
+                        undertime: timekeepingSummary?.undertime ?? 0,
+                        absences: timekeepingSummary?.absences ?? 0,
+                        overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
+                    },
+                });
+                setTimeout(() => setShowPDF(true), 100); // Ensure PDF triggers
             }
-            // Inject timekeeping summary from useEmployeePayroll into earnings
-            setPayrollData({
-                ...data,
-                earnings: {
-                    ...data.earnings,
-                    ratePerHour: timekeepingSummary?.rate_per_hour ?? 0,
-                    tardiness: timekeepingSummary?.tardiness ?? 0,
-                    undertime: timekeepingSummary?.undertime ?? 0,
-                    absences: timekeepingSummary?.absences ?? 0,
-                    overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
-                },
-            });
-            setTimeout(() => setShowPDF(true), 100); // Ensure PDF triggers
-        }
-        if (selected.btr) {
             const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
             const result = await response.json();
             if (result.success && Array.isArray(result.records) && result.records.length > 0) {

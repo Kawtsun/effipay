@@ -183,8 +183,10 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
         <View style={styles.table}>
           <View style={styles.tableCol}>
             <Text style={styles.tableHeader}>EARNINGS</Text>
+            <View style={styles.tableRow}><Text style={styles.cell}>Monthly Salary</Text><Text style={styles.cell}>{formatWithCommas(earnings.monthlySalary ?? 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>No. of Hours</Text><Text style={styles.cell}>{formatWithCommas(earnings.numHours ?? 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Rate Per Hour</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.rate_per_hour)}</Text></View>
             <View style={styles.tableRow}><Text style={styles.cell}>Honorarium</Text><Text style={styles.cell}>{formatWithCommas(earnings.honorarium ?? 0)}</Text></View>
-      <View style={styles.tableRow}><Text style={styles.cell}>Rate Per Hour</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.rate_per_hour)}</Text></View>
       <View style={styles.tableRow}><Text style={styles.cell}>Tardiness</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.tardiness * timekeepingSummary.rate_per_hour)}</Text></View>
       <View style={styles.tableRow}><Text style={styles.cell}>Undertime</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.undertime * timekeepingSummary.rate_per_hour)}</Text></View>
       <View style={styles.tableRow}><Text style={styles.cell}>Absences</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.absences * timekeepingSummary.rate_per_hour)}</Text></View>
