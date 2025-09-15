@@ -59,7 +59,9 @@ export default function TimeKeeping() {
         }
 
     let rows: Record<string, unknown>[] = [];
-        const importToast = toast.loading('Importing file...');
+    const importToast = toast.loading('Importing file...');
+    // Show loading toast for at least 1.5s before verifying file
+    setTimeout(() => {
         if (ext === '.csv') {
             file.arrayBuffer().then(buffer => {
                 // Use encoding.js to auto-detect and convert encoding to UTF-8
@@ -88,10 +90,13 @@ export default function TimeKeeping() {
                 // Log and filter out empty/malformed rows
                 const validRows = (result.data as Record<string, unknown>[]).filter((row) => row && Object.values(row).some(v => v !== null && v !== undefined && v !== ''));
                 if (validRows.length !== (result.data as Record<string, unknown>[]).length) {
-                    toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${(result.data as Record<string, unknown>[]).length} rows.`);
+                    toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${(result.data as Record<string, unknown>[]).length} rows.`, { duration: 5000, id: `skipped-${Date.now()}` });
                 }
                 rows = validRows;
-                sendImport(rows, file.name, importToast);
+                // Add another delay before removing loading toast and showing result
+                setTimeout(() => {
+                    sendImport(rows, file.name, importToast);
+                }, 1000);
             });
         } else {
             file.arrayBuffer().then(data => {
@@ -99,9 +104,12 @@ export default function TimeKeeping() {
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 rows = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
-                sendImport(rows, file.name, importToast);
+                setTimeout(() => {
+                    sendImport(rows, file.name, importToast);
+                }, 1000);
             });
         }
+    }, 1500);
         function sendImport(rows: Record<string, unknown>[], fileName: string, toastId: string | number) {
             fetch('/time-keeping/import', {
                 method: 'POST',
@@ -112,9 +120,10 @@ export default function TimeKeeping() {
                 body: JSON.stringify({ records: rows }),
             })
                 .then(async response => {
+                    // Dismiss loading toast first, then show result toast
                     toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
                     if (response.ok) {
-                        toast.success(`Successfully imported: ${fileName}`);
+                        toast.success(`Successfully imported: ${fileName}`, { id: `success-${Date.now()}`, duration: 6000 });
                         router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] });
                     } else {
                         let errorMsg = 'Import failed.';
@@ -127,12 +136,12 @@ export default function TimeKeeping() {
                             // Could not parse error JSON
                             console.error('Error parsing import error response:', err);
                         }
-                        toast.error(errorMsg);
+                        toast.error(errorMsg, { duration: 6000 });
                     }
                 })
                 .catch((err) => {
-                    toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
                     toast.error('Import failed.');
+                    toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
                     console.error('Import failed:', err);
                 });
         }
