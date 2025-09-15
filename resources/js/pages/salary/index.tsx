@@ -49,13 +49,19 @@ export default function Index() {
   useEffect(() => {
     if (!flash) return;
     if (typeof flash === 'string') {
-      toast.success(flash);
+      if (flash === 'Payroll already run twice for this month.') {
+        toast.info(flash);
+      } else {
+        toast.success(flash);
+      }
     } else if (typeof flash === 'object' && flash !== null) {
       // If backend sends { type, message }
       if (flash.type === 'error') {
         toast.error(flash.message || 'An error occurred');
       } else if (flash.type === 'success') {
         toast.success(flash.message || 'Success');
+      } else if (flash.message === 'Payroll already run twice for this month.') {
+        toast.info(flash.message);
       } else {
         toast(flash.message || 'Notification');
       }

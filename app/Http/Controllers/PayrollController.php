@@ -41,10 +41,16 @@ class PayrollController extends Controller
         $employees = \App\Models\Employees::all();
         $createdCount = 0;
         foreach ($employees as $employee) {
-            $existing = \App\Models\Payroll::where('employee_id', $employee->id)
+            $existingPayrolls = \App\Models\Payroll::where('employee_id', $employee->id)
                 ->where('month', $payrollMonth)
-                ->first();
-            if ($existing) {
+                ->get();
+            if ($existingPayrolls->count() >= 2) {
+                // Already run twice for this month
+                continue;
+            }
+            // If already run once, only allow for the other day
+            $existingDates = $existingPayrolls->pluck('payroll_date')->toArray();
+            if (in_array($request->payroll_date, $existingDates)) {
                 continue;
             }
 
@@ -164,7 +170,7 @@ class PayrollController extends Controller
         if ($createdCount > 0) {
             return redirect()->back()->with('flash', 'Payroll run successfully for ' . date('F Y', strtotime($request->payroll_date)) . '. Payroll records created: ' . $createdCount);
         } else {
-            return redirect()->back()->with('flash', 'Payroll already exists for all employees for ' . date('F Y', strtotime($request->payroll_date)) . '.');
+            return redirect()->back()->with('flash', 'Payroll already run twice for this month.');
         }
     }
     /**
