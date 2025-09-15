@@ -71,8 +71,13 @@ class PayrollController extends Controller
                 if ($dayOfWeek >= 6) continue; // skip weekends
 
                 $tk = $timekeepings->get($date);
-                if (!$tk || !$tk->clock_in || !$tk->clock_out) {
-                    $absences++;
+                // Count as absent if both clock_in and clock_out are missing, null, or only whitespace
+                if (
+                    !$tk ||
+                    ((is_null($tk->clock_in) || trim($tk->clock_in) === '') &&
+                     (is_null($tk->clock_out) || trim($tk->clock_out) === ''))
+                ) {
+                    $absences += $workHoursPerDay;
                     continue;
                 }
                 $start = strtotime($tk->clock_in);

@@ -419,25 +419,34 @@ class TimeKeepingController extends Controller {
             }
         }
 
-        // Absences: count workdays (Mon-Fri) with no timekeeping record at all
-        $absent_days = 0;
+        // Absences: count workdays (Mon-Fri) where both clock_in and clock_out are missing, null, or whitespace
+        $absent_hours = 0;
         $monthStart = strtotime($month . '-01');
         $daysInMonth = (int)date('t', $monthStart);
-        $recordedDates = $records->pluck('date')->unique()->toArray();
+        $workHoursPerDay = !empty($employee->work_hours_per_day) ? floatval($employee->work_hours_per_day) : 8;
         for ($i = 1; $i <= $daysInMonth; $i++) {
             $date = date('Y-m-d', strtotime($month . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
             $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
             if ($dayOfWeek >= 6) continue; // skip weekends
-            if (!in_array($date, $recordedDates)) {
-                $absent_days++;
+            $tk = $records->where('date', $date);
+            // If no record, or all records for the day have missing/null/whitespace clock_in and clock_out
+            $allAbsent = true;
+            if ($tk->count() > 0) {
+                foreach ($tk as $rec) {
+                    $clockIn = trim((string)($rec->clock_in ?? ''));
+                    $clockOut = trim((string)($rec->clock_out ?? ''));
+                    if ($clockIn !== '' || $clockOut !== '') {
+                        $allAbsent = false;
+                        break;
+                    }
+                }
+            }
+            // If no record for the day, or all records have empty clock_in and clock_out
+            if ($tk->count() === 0 || $allAbsent) {
+                $absent_hours += $workHoursPerDay;
             }
         }
-        $absences = 0;
-        if (!empty($employee->work_hours_per_day)) {
-            $absences = round($absent_days * floatval($employee->work_hours_per_day), 2);
-        } else {
-            $absences = $absent_days;
-        }
+        $absences = round($absent_hours, 2);
 
         // If there is at least one record in the month, always return success and computed values
         $hasData = $records->count() > 0;
