@@ -138,11 +138,34 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         setShowPDF(false); // Always reset before print
         if (selected.payslip) {
             const data = await fetchPayrollData(employee?.id, selectedMonth);
+            // Fetch rate per hour from timekeeping
+            let ratePerHour = '';
+            try {
+                const tkRes = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
+                const tkJson = await tkRes.json();
+                console.log('Timekeeping API response:', tkJson);
+                if (tkJson.success) {
+                    if (tkJson.rate_per_hour !== undefined && tkJson.rate_per_hour !== null) {
+                        ratePerHour = Number(tkJson.rate_per_hour).toLocaleString('en-US', { minimumFractionDigits: 2 });
+                    } else if (tkJson.payroll && tkJson.payroll.rate_per_hour !== undefined) {
+                        ratePerHour = Number(tkJson.payroll.rate_per_hour).toLocaleString('en-US', { minimumFractionDigits: 2 });
+                    }
+                }
+            } catch (e) {
+                ratePerHour = '';
+            }
             if (!data) {
                 toast.error('No payroll data found for the selected month.');
                 return;
             }
-            setPayrollData(data);
+            // Inject ratePerHour into earnings
+            setPayrollData({
+                ...data,
+                earnings: {
+                    ...data.earnings,
+                    ratePerHour: ratePerHour || '-',
+                },
+            });
             setTimeout(() => setShowPDF(true), 100); // Ensure PDF triggers
         }
         if (selected.btr) {
