@@ -68,6 +68,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 2,
   },
+  indentRow: {
+    flexDirection: 'row',
+    marginBottom: 2,
+    marginLeft: 16,
+  },
   cell: {
     width: '50%',
     padding: 2,
@@ -184,8 +189,18 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
           <View style={styles.tableCol}>
             <Text style={styles.tableHeader}>EARNINGS</Text>
             <View style={styles.tableRow}><Text style={styles.cell}>Monthly Salary</Text><Text style={styles.cell}>{formatWithCommas(earnings.monthlySalary ?? 0)}</Text></View>
-            <View style={styles.tableRow}><Text style={styles.cell}>No. of Hours</Text><Text style={styles.cell}>{formatWithCommas(earnings.numHours ?? 0)}</Text></View>
-            <View style={styles.tableRow}><Text style={styles.cell}>Rate Per Hour</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.rate_per_hour)}</Text></View>
+            <View style={styles.tableRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ marginLeft: 16 }}>{'No. of Hours'}</Text>
+              </View>
+              <Text style={styles.cell}>{formatWithCommas(earnings.numHours ?? 0)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ marginLeft: 16 }}>{'Rate Per Hour'}</Text>
+              </View>
+              <Text style={styles.cell}>{formatWithCommas(timekeepingSummary.rate_per_hour)}</Text>
+            </View>
             <View style={styles.tableRow}><Text style={styles.cell}>Honorarium</Text><Text style={styles.cell}>{formatWithCommas(earnings.honorarium ?? 0)}</Text></View>
       <View style={styles.tableRow}><Text style={styles.cell}>Tardiness</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.tardiness * timekeepingSummary.rate_per_hour)}</Text></View>
       <View style={styles.tableRow}><Text style={styles.cell}>Undertime</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.undertime * timekeepingSummary.rate_per_hour)}</Text></View>
