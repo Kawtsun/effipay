@@ -57,7 +57,12 @@ export default function Index() {
     } else if (typeof flash === 'object' && flash !== null) {
       // If backend sends { type, message }
       if (flash.type === 'error') {
-        toast.error(flash.message || 'An error occurred');
+          // Show specific toast if missing time keeping data
+          if (flash.message && flash.message.toLowerCase().includes('no time keeping data')) {
+            toast.error('Some employees have no time keeping data. Please check time keeping records before running payroll.');
+          } else {
+            toast.error(flash.message || 'An error occurred');
+          }
       } else if (flash.type === 'success') {
         toast.success(flash.message || 'Success');
       } else if (flash.message === 'Payroll already run twice for this month.') {

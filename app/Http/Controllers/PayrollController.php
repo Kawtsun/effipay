@@ -26,13 +26,22 @@ class PayrollController extends Controller
         // Extract the month (YYYY-MM) from the selected payroll date
         $payrollMonth = date('Y-m', strtotime($request->payroll_date));
 
-        // Check if there is any timekeeping data for this month
-        $hasTimekeeping = \App\Models\TimeKeeping::where('date', 'like', $payrollMonth . '%')->exists();
-        if (!$hasTimekeeping) {
+        // Check for employees missing timekeeping data for this month
+        $employees = \App\Models\Employees::all();
+        $missingTK = [];
+        foreach ($employees as $employee) {
+            $hasTK = \App\Models\TimeKeeping::where('employee_id', $employee->id)
+                ->where('date', 'like', $payrollMonth . '%')
+                ->exists();
+            if (!$hasTK) {
+                $missingTK[] = $employee->first_name . ' ' . $employee->last_name;
+            }
+        }
+        if (count($missingTK) > 0) {
             return redirect()->back()->with([
                 'flash' => [
                     'type' => 'error',
-                    'message' => 'No timekeeping data found for ' . date('F Y', strtotime($request->payroll_date)) . '. Cannot run payroll.'
+                    'message' => 'Cannot run payroll. Some employees have no timekeeping data for ' . date('F Y', strtotime($request->payroll_date)) . '.'
                 ]
             ]);
         }
