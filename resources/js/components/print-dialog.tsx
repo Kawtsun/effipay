@@ -2,6 +2,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import React, { useState } from 'react';
+import { useEmployeePayroll } from '@/hooks/useEmployeePayroll';
+// ...existing code...
 import { toast } from 'sonner';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import PayslipTemplate from './print-templates/PayslipTemplate';
@@ -20,13 +22,15 @@ interface Payroll {
     payroll_date: string;
     base_salary?: number;
     tardiness?: number;
+    undertime?: number;
     absences?: number;
-    sss?: number;
-    sss_loan?: number;
-    pag_ibig?: number;
-    philhealth?: number;
-    withholding_tax?: number;
-    withholding_tax_base?: number;
+    overtime_pay?: number;
+    sss?: string;
+    sss_loan?: string;
+    pag_ibig?: string;
+    philhealth?: string;
+    withholding_tax?: string;
+    withholding_tax_base?: string;
     gross_pay?: number;
     total_deductions?: number;
     net_pay?: number;
@@ -34,9 +38,17 @@ interface Payroll {
 
 interface PayslipData {
     earnings: {
-        monthlySalary?: string;
-        tardiness?: string;
-        absences?: string;
+        monthlySalary?: string | number;
+        numHours?: string | number;
+        ratePerHour?: string | number;
+        collegeGSP?: string | number;
+        honorarium?: string | number;
+        tardiness?: number;
+        undertime?: number;
+        absences?: number;
+        overtime_pay_total?: number;
+        overload?: string | number;
+        adjustment?: string | number;
     };
     deductions: {
         sss?: string;
@@ -82,17 +94,20 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
     // Map backend fields to payslip template props
     return {
         earnings: {
-            monthlySalary: payroll.base_salary?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-            tardiness: payroll.tardiness?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-            absences: payroll.absences?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+            monthlySalary: payroll.base_salary ?? 0,
+            tardiness: payroll.tardiness ?? 0,
+            undertime: payroll.undertime ?? 0,
+            absences: payroll.absences ?? 0,
+            overtime_pay_total: payroll.overtime_pay ?? 0,
+            ratePerHour: undefined, // will be injected from timekeeping
         },
         deductions: {
-            sss: payroll.sss?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-            sssLoan: payroll.sss_loan?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-            pagibig: payroll.pag_ibig?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-            philhealth: payroll.philhealth?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-            withholdingTax: payroll.withholding_tax?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-            withholdingTaxBase: payroll.withholding_tax_base?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+            sss: payroll.sss ?? '',
+            sssLoan: payroll.sss_loan ?? '',
+            pagibig: payroll.pag_ibig ?? '',
+            philhealth: payroll.philhealth ?? '',
+            withholdingTax: payroll.withholding_tax ?? '',
+            withholdingTaxBase: payroll.withholding_tax_base ?? '',
         },
         totalEarnings: payroll.gross_pay?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
         totalDeductions: payroll.total_deductions?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
@@ -102,10 +117,10 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
 };
 
 export default function PrintDialog({ open, onClose, employee }: PrintDialogProps) {
+    const [selectedMonth, setSelectedMonth] = useState<string>('');
+    const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, selectedMonth);
     const [selected, setSelected] = useState({ payslip: true, btr: false });
     const [btrRecords, setBtrRecords] = useState<BTRRecord[]>([]);
-    // Sync month selector with report dialog logic
-    const [selectedMonth, setSelectedMonth] = useState<string>('');
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     // Fetch available months from backend
     const fetchAvailableMonths = async () => {
@@ -138,32 +153,20 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         setShowPDF(false); // Always reset before print
         if (selected.payslip) {
             const data = await fetchPayrollData(employee?.id, selectedMonth);
-            // Fetch rate per hour from timekeeping
-            let ratePerHour = '';
-            try {
-                const tkRes = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
-                const tkJson = await tkRes.json();
-                console.log('Timekeeping API response:', tkJson);
-                if (tkJson.success) {
-                    if (tkJson.rate_per_hour !== undefined && tkJson.rate_per_hour !== null) {
-                        ratePerHour = Number(tkJson.rate_per_hour).toLocaleString('en-US', { minimumFractionDigits: 2 });
-                    } else if (tkJson.payroll && tkJson.payroll.rate_per_hour !== undefined) {
-                        ratePerHour = Number(tkJson.payroll.rate_per_hour).toLocaleString('en-US', { minimumFractionDigits: 2 });
-                    }
-                }
-            } catch (e) {
-                ratePerHour = '';
-            }
             if (!data) {
                 toast.error('No payroll data found for the selected month.');
                 return;
             }
-            // Inject ratePerHour into earnings
+            // Inject timekeeping summary from useEmployeePayroll into earnings
             setPayrollData({
                 ...data,
                 earnings: {
                     ...data.earnings,
-                    ratePerHour: ratePerHour || '-',
+                    ratePerHour: timekeepingSummary?.rate_per_hour ?? 0,
+                    tardiness: timekeepingSummary?.tardiness ?? 0,
+                    undertime: timekeepingSummary?.undertime ?? 0,
+                    absences: timekeepingSummary?.absences ?? 0,
+                    overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
                 },
             });
             setTimeout(() => setShowPDF(true), 100); // Ensure PDF triggers

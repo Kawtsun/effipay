@@ -86,20 +86,17 @@ const styles = StyleSheet.create({
 });
 
 interface PayslipEarnings {
-  monthlySalary?: string;
-  numHours?: string;
-  ratePerHour?: string;
-  collegeGSP?: string;
-  honorarium?: string;
-  tardinessHours?: string;
-  tardiness?: string;
-  undertimeHours?: string;
-  undertime?: string;
-  absencesHours?: string;
-  absences?: string;
-  overtime?: string;
-  overload?: string;
-  adjustment?: string;
+  monthlySalary?: string | number;
+  numHours?: string | number;
+  ratePerHour?: string | number;
+  collegeGSP?: string | number;
+  honorarium?: string | number;
+  tardiness?: number;
+  undertime?: number;
+  absences?: number;
+  overtime_pay_total?: number;
+  overload?: string | number;
+  adjustment?: string | number;
 }
 
 interface PayslipDeductions {
@@ -158,39 +155,45 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
       .join(', ');
   };
 
+  // Use timekeepingSummary for timekeeping-based fields if available
+  const timekeepingSummary = {
+    rate_per_hour: typeof earnings.ratePerHour === 'number' ? earnings.ratePerHour : 0,
+    tardiness: typeof earnings.tardiness === 'number' ? earnings.tardiness : 0,
+    undertime: typeof earnings.undertime === 'number' ? earnings.undertime : 0,
+    absences: typeof earnings.absences === 'number' ? earnings.absences : 0,
+    overtime_pay_total: typeof earnings.overtime_pay_total === 'number' ? earnings.overtime_pay_total : 0,
+  };
+
   return (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      <View style={styles.header}>
-        <Text style={styles.title}>TOMAS CLAUDIO COLLEGES</Text>
-        <Text style={styles.subtitle}>Higher Education Pioneer in Eastern Rizal</Text>
-        <Text style={styles.subtitle}>Taghangin, Morong, Rizal Philippines</Text>
-        <Text style={styles.subtitle}>Tel. Nos.: (02) 234-5566</Text>
-      </View>
-      <View style={styles.section}>
-        <Text>Employee Name: {employeeName}</Text>
-  <Text>Pay Period: {formatPayPeriod(payPeriod)}</Text>
-      </View>
-      <View style={styles.section}>
-        <Text>Job Title: {formatRole(role)}</Text>
-      </View>
-      <View style={styles.table}>
-        <View style={styles.tableCol}>
-          <Text style={styles.tableHeader}>EARNINGS</Text>
-          <View style={styles.tableRow}><Text style={styles.cell}>Monthly Salary</Text><Text style={styles.cell}>{formatWithCommas(Number(earnings.monthlySalary) || 0)}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>No. of Hours</Text><Text style={styles.cell}>{formatWithCommas(Number(earnings.numHours) || 0)}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Rate Per Hour</Text><Text style={styles.cell}>{formatWithCommas(Number(earnings.ratePerHour) || 0)}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>College/GSP</Text><Text style={styles.cell}>{earnings.collegeGSP || '-'}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Honorarium</Text><Text style={styles.cell}>{formatWithCommas(Number(earnings.honorarium) || 0)}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Tardiness</Text><Text style={styles.cell}>{formatWithCommas(Number(earnings.tardinessHours) || 0)} {earnings.tardiness ? `/ ${formatWithCommas(Number(earnings.tardiness) || 0)}` : ''}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Undertime</Text><Text style={styles.cell}>{formatWithCommas(Number(earnings.undertimeHours) || 0)} {earnings.undertime ? `/ ${formatWithCommas(Number(earnings.undertime) || 0)}` : ''}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Absences</Text><Text style={styles.cell}>{formatWithCommas(Number(earnings.absencesHours) || 0)} {earnings.absences ? `/ ${formatWithCommas(Number(earnings.absences) || 0)}` : ''}</Text></View>
-          <Text style={{ ...styles.tableHeader, marginTop: 6 }}>Other Earnings:</Text>
-          <View style={styles.tableRow}><Text style={styles.cell}>Overtime</Text><Text style={styles.cell}>{formatWithCommas(Number(earnings.overtime) || 0)}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Overload</Text><Text style={styles.cell}>{formatWithCommas(Number(earnings.overload) || 0)}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Other: Adjustment</Text><Text style={styles.cell}>{formatWithCommas(Number(earnings.adjustment) || 0)}</Text></View>
-          <Text style={styles.total}>TOTAL: {formatWithCommas(Number(totalEarnings) || 0)}</Text>
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <Text style={styles.title}>TOMAS CLAUDIO COLLEGES</Text>
+          <Text style={styles.subtitle}>Higher Education Pioneer in Eastern Rizal</Text>
+          <Text style={styles.subtitle}>Taghangin, Morong, Rizal Philippines</Text>
+          <Text style={styles.subtitle}>Tel. Nos.: (02) 234-5566</Text>
         </View>
+        <View style={styles.section}>
+          <Text>Employee Name: {employeeName}</Text>
+          <Text>Pay Period: {formatPayPeriod(payPeriod)}</Text>
+        </View>
+        <View style={styles.section}>
+          <Text>Job Title: {formatRole(role)}</Text>
+        </View>
+        <View style={styles.table}>
+          <View style={styles.tableCol}>
+            <Text style={styles.tableHeader}>EARNINGS</Text>
+            <View style={styles.tableRow}><Text style={styles.cell}>Honorarium</Text><Text style={styles.cell}>{formatWithCommas(earnings.honorarium ?? 0)}</Text></View>
+      <View style={styles.tableRow}><Text style={styles.cell}>Rate Per Hour</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.rate_per_hour)}</Text></View>
+      <View style={styles.tableRow}><Text style={styles.cell}>Tardiness</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.tardiness * timekeepingSummary.rate_per_hour)}</Text></View>
+      <View style={styles.tableRow}><Text style={styles.cell}>Undertime</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.undertime * timekeepingSummary.rate_per_hour)}</Text></View>
+      <View style={styles.tableRow}><Text style={styles.cell}>Absences</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.absences * timekeepingSummary.rate_per_hour)}</Text></View>
+      <View style={styles.tableRow}><Text style={styles.cell}>Overtime</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.overtime_pay_total)}</Text></View>
+        <Text style={{ ...styles.tableHeader, marginTop: 6 }}>Other Earnings:</Text>
+            <View style={styles.tableRow}><Text style={styles.cell}>Overload</Text><Text style={styles.cell}>{formatWithCommas(earnings.overload ?? 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Other: Adjustment</Text><Text style={styles.cell}>{formatWithCommas(earnings.adjustment ?? 0)}</Text></View>
+            <Text style={styles.total}>TOTAL: {formatWithCommas(totalEarnings ?? 0)}</Text>
+          </View>
         <View style={styles.tableCol}>
           <Text style={styles.tableHeader}>DEDUCTIONS</Text>
           <View style={styles.tableRow}><Text style={styles.cell}>SSS Contribution</Text><Text style={styles.cell}>{formatWithCommas(Number(deductions.sss) || 0)}</Text></View>
