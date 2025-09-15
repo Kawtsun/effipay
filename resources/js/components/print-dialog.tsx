@@ -138,6 +138,10 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         setShowPDF(false); // Always reset before print
         if (selected.payslip) {
             const data = await fetchPayrollData(employee?.id, selectedMonth);
+            if (!data) {
+                toast.error('No payroll data found for the selected month.');
+                return;
+            }
             setPayrollData(data);
             setTimeout(() => setShowPDF(true), 100); // Ensure PDF triggers
         }
