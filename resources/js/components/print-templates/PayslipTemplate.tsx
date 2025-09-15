@@ -187,8 +187,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
         </View>
         <View style={styles.table}>
           <View style={styles.tableCol}>
-            <Text style={styles.tableHeader}>EARNINGS</Text>
-            <View style={styles.tableRow}><Text style={styles.cell}>Monthly Salary</Text><Text style={styles.cell}>{formatWithCommas(earnings.monthlySalary ?? 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Monthly Salary</Text><Text style={{ ...styles.cell, marginLeft: 111 }}>{formatWithCommas(earnings.monthlySalary ?? 0)}</Text></View>
             <View style={styles.tableRow}>
               <View style={{ flex: 1 }}>
                 <Text style={{ marginLeft: 16 }}>{'No. of Hours'}</Text>
@@ -201,34 +200,34 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
               </View>
               <Text style={styles.cell}>{formatWithCommas(timekeepingSummary.rate_per_hour)}</Text>
             </View>
-            <View style={styles.tableRow}><Text style={styles.cell}>Honorarium</Text><Text style={styles.cell}>{formatWithCommas(earnings.honorarium ?? 0)}</Text></View>
-      <View style={styles.tableRow}><Text style={styles.cell}>Tardiness</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.tardiness * timekeepingSummary.rate_per_hour)}</Text></View>
-      <View style={styles.tableRow}><Text style={styles.cell}>Undertime</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.undertime * timekeepingSummary.rate_per_hour)}</Text></View>
-      <View style={styles.tableRow}><Text style={styles.cell}>Absences</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.absences * timekeepingSummary.rate_per_hour)}</Text></View>
-      <View style={styles.tableRow}><Text style={styles.cell}>Overtime</Text><Text style={styles.cell}>{formatWithCommas(timekeepingSummary.overtime_pay_total)}</Text></View>
-        <Text style={{ ...styles.tableHeader, marginTop: 6 }}>Other Earnings:</Text>
-            <View style={styles.tableRow}><Text style={styles.cell}>Overload</Text><Text style={styles.cell}>{formatWithCommas(earnings.overload ?? 0)}</Text></View>
-            <View style={styles.tableRow}><Text style={styles.cell}>Other: Adjustment</Text><Text style={styles.cell}>{formatWithCommas(earnings.adjustment ?? 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Honorarium</Text><Text style={{ ...styles.cell, marginLeft: 111 }}>{formatWithCommas(earnings.honorarium ?? 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Tardiness</Text><Text style={{ ...styles.cell, marginLeft: 111 }}>{formatWithCommas(timekeepingSummary.tardiness * timekeepingSummary.rate_per_hour)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Undertime</Text><Text style={{ ...styles.cell, marginLeft: 111 }}>{formatWithCommas(timekeepingSummary.undertime * timekeepingSummary.rate_per_hour)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Absences</Text><Text style={{ ...styles.cell, marginLeft: 111 }}>{formatWithCommas(timekeepingSummary.absences * timekeepingSummary.rate_per_hour)}</Text></View>
+            <Text style={{ ...styles.tableHeader, marginTop: 6 }}>Other Earnings:</Text>
+            <View style={styles.tableRow}><Text style={styles.cell}>Overtime</Text><Text style={{ ...styles.cell, marginLeft: 111 }}>{formatWithCommas(timekeepingSummary.overtime_pay_total)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Overload</Text><Text style={{ ...styles.cell, marginLeft: 111 }}>{formatWithCommas(earnings.overload ?? 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Other: Adjustment</Text><Text style={{ ...styles.cell, marginLeft: 111 }}>{formatWithCommas(earnings.adjustment ?? 0)}</Text></View>
             <Text style={styles.total}>TOTAL: {formatWithCommas(totalEarnings ?? 0)}</Text>
           </View>
-        <View style={styles.tableCol}>
-          <Text style={styles.tableHeader}>DEDUCTIONS</Text>
-          <View style={styles.tableRow}><Text style={styles.cell}>SSS Contribution</Text><Text style={styles.cell}>{formatWithCommas(Number(deductions.sss) || 0)}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>SSS Salary Loan</Text><Text style={styles.cell}>{formatWithCommas(Number(deductions.sssLoan) || 0)}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Pag-ibig Contribution</Text><Text style={styles.cell}>{formatWithCommas(Number(deductions.pagibig) || 0)}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Philhealth</Text><Text style={styles.cell}>{formatWithCommas(Number(deductions.philhealth) || 0)}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Withholding Tax</Text><Text style={styles.cell}>{formatWithCommas(Number(deductions.withholdingTax) || 0)}</Text></View>
-          {/* Add more deductions fields as needed */}
-          <Text style={styles.total}>TOTAL: {formatWithCommas(Number(totalDeductions) || 0)}</Text>
+          <View style={styles.tableCol}>
+            <Text style={styles.tableHeader}>DEDUCTIONS</Text>
+            <View style={styles.tableRow}><Text style={styles.cell}>SSS Contribution</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.sss) || 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>SSS Salary Loan</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.sssLoan) || 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Pag-ibig Contribution</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.pagibig) || 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Philhealth</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.philhealth) || 0)}</Text></View>
+            <View style={styles.tableRow}><Text style={styles.cell}>Withholding Tax</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.withholdingTax) || 0)}</Text></View>
+            {/* Add more deductions fields as needed */}
+            <Text style={styles.total}>TOTAL: {formatWithCommas(Number(totalDeductions) || 0)}</Text>
+          </View>
         </View>
-      </View>
-      <View style={styles.section}>
-  <Text style={styles.netPay}>NET PAY: {formatWithCommas(Number(netPay) || 0)}</Text>
-  <Text>(Net Pay for 15 & 30): {formatWithCommas(Number(netPay1530) || 0)}</Text>
-      </View>
-    </Page>
-  </Document>
-);
+        <View style={styles.section}>
+          <Text style={styles.netPay}>NET PAY: {formatWithCommas(Number(netPay) || 0)}</Text>
+          <Text>(Net Pay for 15 & 30): {formatWithCommas(Number(netPay1530) || 0)}</Text>
+        </View>
+      </Page>
+    </Document>
+  );
 }
 
 export default PayslipTemplate;
