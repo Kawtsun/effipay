@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, router, usePage } from '@inertiajs/react'
 import { Eye, Printer, Users, Shield, GraduationCap, Book } from 'lucide-react'
+import PrintDialog from '@/components/print-dialog';
 import { Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -59,6 +60,7 @@ export default function ReportsIndex() {
     } = page.props as any;
     const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [], collegeProgram: '' };
     const [viewing, setViewing] = useState(null as Employees | null);
+    const [printDialog, setPrintDialog] = useState<{ open: boolean, employee: Employees | null }>({ open: false, employee: null });
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const toArray = (val: unknown) => Array.isArray(val) ? val : val ? [val] : [];
     const [filters, setFilters] = useState<FilterState & { collegeProgram?: string }>({
@@ -376,7 +378,7 @@ export default function ReportsIndex() {
                                                             <Eye />
                                                             View
                                                         </Button>
-                                                        <Button variant="default" disabled>
+                                                        <Button variant="default" onClick={() => setPrintDialog({ open: true, employee: emp })}>
                                                             <Printer />
                                                             Print
                                                         </Button>
@@ -404,6 +406,11 @@ export default function ReportsIndex() {
                         employee={viewing}
                         onClose={() => setViewing(null)}
                         activeRoles={appliedFilters.roles}
+                    />
+                    <PrintDialog
+                        open={printDialog.open}
+                        onClose={() => setPrintDialog({ open: false, employee: null })}
+                        employee={printDialog.employee}
                     />
 
                     <div className="mt-4 flex min-h-[56px] justify-center">
