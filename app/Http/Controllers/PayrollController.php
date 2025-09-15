@@ -142,10 +142,7 @@ class PayrollController extends Controller
                     $gross_pay += round($overtime_pay, 2);
 
                 // Create and save payroll record
-                $total_deductions = round($rate_per_hour * $tardiness, 2)
-                    + round($rate_per_hour * $undertime, 2)
-                    + round($rate_per_hour * $absences, 2)
-                    + $sss + $philhealth + $pag_ibig + $withholding_tax;
+                $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax;
                 $net_pay = $gross_pay - $total_deductions;
                 \App\Models\Payroll::create([
                     'employee_id' => $employee->id,

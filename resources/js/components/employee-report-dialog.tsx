@@ -101,7 +101,9 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
     function safeNumber(val: unknown, fallback = null) {
         return typeof val === 'number' && isFinite(val) ? val : fallback;
     }
-    const totalDeductions = hasPayroll ? safeNumber(Number(selectedPayroll?.total_deductions), null) : null;
+    const totalDeductions = hasPayroll
+        ? [sss, philhealth, pag_ibig, withholding_tax].reduce((sum: number, val) => sum + (typeof val === 'number' && isFinite(val) ? val : 0), 0)
+        : null;
     const grossPay = hasPayroll ? safeNumber(Number(selectedPayroll?.gross_pay), null) : null;
     const netPay = hasPayroll ? safeNumber(Number(selectedPayroll?.net_pay), null) : null;
     const perPayroll = hasPayroll && netPay != null ? safeNumber(netPay / 2, null) : null;
