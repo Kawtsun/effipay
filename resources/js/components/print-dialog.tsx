@@ -197,7 +197,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                     className="w-full"
                                 />
                             </div>
-                            <div className="flex flex-col gap-2 mb-4">
+                            <div className="flex flex-col gap-2 mb-4 select-none">
                                 <label className="flex items-center gap-2">
                                     <Checkbox
                                         checked={selected.payslip}
