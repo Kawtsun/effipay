@@ -90,6 +90,7 @@ export default function TimeKeeping() {
                 // Log and filter out empty/malformed rows
                 const validRows = (result.data as Record<string, unknown>[]).filter((row) => row && Object.values(row).some(v => v !== null && v !== undefined && v !== ''));
                 if (validRows.length !== (result.data as Record<string, unknown>[]).length) {
+                    toast.dismiss(importToast);
                     toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${(result.data as Record<string, unknown>[]).length} rows.`, { duration: 5000, id: `skipped-${Date.now()}` });
                 }
                 rows = validRows;
