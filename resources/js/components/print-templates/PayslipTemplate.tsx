@@ -81,13 +81,10 @@ interface PayslipDeductions {
   sssLoan?: string;
   pagibig?: string;
   philhealth?: string;
+  withholdingTax?: string;
   // Add more fields as needed
 }
 
-interface PayslipOtherDeductions {
-  tuition?: string;
-  // Add more fields as needed
-}
 
 interface PayslipTemplateProps {
   employeeName?: string;
@@ -95,7 +92,7 @@ interface PayslipTemplateProps {
   payPeriod?: string;
   earnings?: PayslipEarnings;
   deductions?: PayslipDeductions;
-  otherDeductions?: PayslipOtherDeductions;
+  // otherDeductions?: PayslipOtherDeductions;
   totalEarnings?: string;
   totalDeductions?: string;
   netPay?: string;
@@ -108,7 +105,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
   payPeriod = 'May 1-31, 2025',
   earnings = {},
   deductions = {},
-  otherDeductions = {},
+  // otherDeductions = {},
   totalEarnings = '19,376.15',
   totalDeductions = '5,107.83',
   netPay = '14,268.32',
@@ -144,7 +141,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
           <View style={styles.tableRow}><Text style={styles.cell}>SSS Salary Loan</Text><Text style={styles.cell}>{deductions.sssLoan || '1,845.80'}</Text></View>
           <View style={styles.tableRow}><Text style={styles.cell}>Pag-ibig Contribution</Text><Text style={styles.cell}>{deductions.pagibig || '500.00'}</Text></View>
           <View style={styles.tableRow}><Text style={styles.cell}>Philhealth</Text><Text style={styles.cell}>{deductions.philhealth || '587.03'}</Text></View>
-          <View style={styles.tableRow}><Text style={styles.cell}>Tuition</Text><Text style={styles.cell}>{otherDeductions.tuition || '1,000.00'}</Text></View>
+          <View style={styles.tableRow}><Text style={styles.cell}>Withholding Tax</Text><Text style={styles.cell}>{deductions.withholdingTax || '1,000.00'}</Text></View>
           {/* Add more deductions fields as needed */}
           <Text style={styles.total}>TOTAL: {totalDeductions}</Text>
         </View>

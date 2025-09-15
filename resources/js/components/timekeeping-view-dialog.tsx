@@ -337,13 +337,13 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
                                                             <div className="space-y-3 text-sm">
-                                                                <Info label="Monthly Salary" value={`₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
-                                                                <Info label="Total Overtime Pay" value={`₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
-                                                                <Info label="Gross Pay" value={`₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
+                                                                <Info label="Monthly Salary" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
+                                                                <Info label="Total Overtime Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
+                                                                <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
                                                             </div>
                                                             <div className="space-y-3 text-sm mt-4">
-                                                                <Info label="Rate per Day" value={`₱${formatNumberWithCommasAndFixed(summary?.rate_per_day ?? 0)}`} />
-                                                                <Info label="Rate per Hour" value={`₱${formatNumberWithCommasAndFixed(summary?.rate_per_hour ?? 0)}`} />
+                                                                <Info label="Rate per Day" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_day ?? 0)}`} />
+                                                                <Info label="Rate per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_hour ?? 0)}`} />
                                                             </div>
                                                         </div>
                                                     </div>

@@ -25,7 +25,8 @@ interface Payroll {
     sss_loan?: number;
     pag_ibig?: number;
     philhealth?: number;
-    tuition?: number;
+    withholding_tax?: number;
+    withholding_tax_base?: number;
     gross_pay?: number;
     total_deductions?: number;
     net_pay?: number;
@@ -42,9 +43,8 @@ interface PayslipData {
         sssLoan?: string;
         pagibig?: string;
         philhealth?: string;
-    };
-    otherDeductions: {
-        tuition?: string;
+        withholdingTax?: string;
+        withholdingTaxBase?: string;
     };
     totalEarnings?: string;
     totalDeductions?: string;
@@ -91,9 +91,8 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             sssLoan: payroll.sss_loan?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
             pagibig: payroll.pag_ibig?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
             philhealth: payroll.philhealth?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-        },
-        otherDeductions: {
-            tuition: payroll.tuition?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+            withholdingTax: payroll.withholding_tax?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+            withholdingTaxBase: payroll.withholding_tax_base?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
         },
         totalEarnings: payroll.gross_pay?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
         totalDeductions: payroll.total_deductions?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
@@ -225,7 +224,6 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             payPeriod={selectedMonth}
                                             earnings={payrollData.earnings}
                                             deductions={payrollData.deductions}
-                                            otherDeductions={payrollData.otherDeductions}
                                             totalEarnings={payrollData.totalEarnings}
                                             totalDeductions={payrollData.totalDeductions}
                                             netPay={payrollData.netPay}

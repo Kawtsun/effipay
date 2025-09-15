@@ -91,7 +91,7 @@ export default function TimeKeeping() {
                 const validRows = (result.data as Record<string, unknown>[]).filter((row) => row && Object.values(row).some(v => v !== null && v !== undefined && v !== ''));
                 if (validRows.length !== (result.data as Record<string, unknown>[]).length) {
                     toast.dismiss(importToast);
-                    toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${(result.data as Record<string, unknown>[]).length} rows.`, { duration: 5000, id: `skipped-${Date.now()}` });
+                    toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${(result.data as Record<string, unknown>[]).length} rows.`, { duration: 3000, id: `skipped-${Date.now()}` });
                 }
                 rows = validRows;
                 // Add another delay before removing loading toast and showing result
@@ -124,7 +124,7 @@ export default function TimeKeeping() {
                     // Dismiss loading toast first, then show result toast
                     toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
                     if (response.ok) {
-                        toast.success(`Successfully imported: ${fileName}`, { id: `success-${Date.now()}`, duration: 6000 });
+                        toast.success(`Successfully imported: ${fileName}`, { id: `success-${Date.now()}`, duration: 1000 });
                         router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] });
                     } else {
                         let errorMsg = 'Import failed.';
@@ -137,7 +137,7 @@ export default function TimeKeeping() {
                             // Could not parse error JSON
                             console.error('Error parsing import error response:', err);
                         }
-                        toast.error(errorMsg, { duration: 6000 });
+                        toast.error(errorMsg, { duration: 3000 });
                     }
                 })
                 .catch((err) => {
