@@ -39,28 +39,88 @@ class PayrollController extends Controller
         $employees = \App\Models\Employees::all();
         $createdCount = 0;
         foreach ($employees as $employee) {
-            // Check if payroll already exists for this employee and month
             $existing = \App\Models\Payroll::where('employee_id', $employee->id)
                 ->where('month', $payrollMonth)
                 ->first();
             if ($existing) {
-                continue; // Skip if already exists
+                continue;
             }
 
-            // Get salary defaults for this employee type
-            $salary = \App\Models\Salary::where('employee_type', $employee->employee_type)->first();
-            if (!$salary) {
-                continue; // Skip if no salary defaults
+            $workHoursPerDay = $employee->work_hours_per_day ?? 8;
+            $base_salary = $employee->base_salary;
+            $rate_per_hour = $workHoursPerDay > 0 ? ($base_salary * 12 / 288) / $workHoursPerDay : 0;
+
+            // Get all workdays in the month (Mon-Fri)
+            $monthStart = strtotime($payrollMonth . '-01');
+            $monthEnd = strtotime(date('Y-m-t', $monthStart));
+            $daysInMonth = (int)date('t', $monthStart);
+
+            $timekeepings = \App\Models\TimeKeeping::where('employee_id', $employee->id)
+                ->where('date', 'like', $payrollMonth . '%')
+                ->get()->keyBy('date');
+
+            $totalOvertimeHours = 0;
+            $tardiness = 0;
+            $undertime = 0;
+            $absences = 0;
+            $overtime_pay = 0;
+
+            for ($i = 1; $i <= $daysInMonth; $i++) {
+                $date = date('Y-m-d', strtotime($payrollMonth . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
+                $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
+                if ($dayOfWeek >= 6) continue; // skip weekends
+
+                $tk = $timekeepings->get($date);
+                if (!$tk || !$tk->clock_in || !$tk->clock_out) {
+                    $absences++;
+                    continue;
+                }
+                $start = strtotime($tk->clock_in);
+                $end = strtotime($tk->clock_out);
+                $hours = ($end - $start) / 3600;
+                // Overtime: hours beyond employee's work_hours_per_day
+                if ($hours > $workHoursPerDay) {
+                    $otHours = $hours - $workHoursPerDay;
+                    $totalOvertimeHours += $otHours;
+                    // Overtime pay formula (weekday/weekend)
+                    $overtime_pay += $dayOfWeek >= 1 && $dayOfWeek <= 5
+                        ? round($employee->overtime_pay * 0.25 * $otHours, 2)
+                        : round($employee->overtime_pay * 0.30 * $otHours, 2);
+                }
+                // Tardiness: late clock-in
+                if ($employee->work_start_time) {
+                    $schedStart = strtotime($employee->work_start_time);
+                    if ($start > $schedStart) {
+                        $tardiness += ($start - $schedStart) / 3600;
+                    }
+                }
+                // Undertime: early clock-out
+                if ($employee->work_end_time) {
+                    $schedEnd = strtotime($employee->work_end_time);
+                    if ($end < $schedEnd) {
+                        $undertime += ($schedEnd - $end) / 3600;
+                    }
+                }
             }
 
-            // Calculate gross pay (simple: base_salary, can be expanded)
-            $base_salary = $salary->base_salary;
-            $overtime_pay = $salary->overtime_pay;
-            $sss = $salary->sss;
-            $philhealth = $salary->philhealth;
-            $pag_ibig = $salary->pag_ibig;
-            $withholding_tax = $salary->withholding_tax;
-            $gross_pay = $base_salary + $overtime_pay;
+            $sss = $employee->sss;
+            $philhealth = $employee->philhealth;
+            $pag_ibig = $employee->pag_ibig;
+            $withholding_tax = $base_salary > 0 ? (function($base_salary, $sss, $pag_ibig, $philhealth) {
+                $totalComp = $base_salary - ($sss + $pag_ibig + $philhealth);
+                if ($totalComp <= 20832) return 0;
+                if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
+                if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
+                if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
+                if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
+                return 183541.80 + 0.35 * ($totalComp - 666667);
+            })($base_salary, $sss, $pag_ibig, $philhealth) : 0;
+
+            $gross_pay = $base_salary + $overtime_pay
+                - (($rate_per_hour * $tardiness)
+                + ($rate_per_hour * $undertime)
+                + ($rate_per_hour * $absences));
+
             $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax;
             $net_pay = $gross_pay - $total_deductions;
 
@@ -74,6 +134,10 @@ class PayrollController extends Controller
                 'philhealth' => $philhealth,
                 'pag_ibig' => $pag_ibig,
                 'withholding_tax' => $withholding_tax,
+                'tardiness' => $tardiness,
+                'undertime' => $undertime,
+                'absences' => $absences,
+                'rate_per_hour' => $rate_per_hour,
                 'gross_pay' => $gross_pay,
                 'total_deductions' => $total_deductions,
                 'net_pay' => $net_pay,

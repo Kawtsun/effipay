@@ -419,14 +419,16 @@ class TimeKeepingController extends Controller {
             }
         }
 
-        // Absences: count days with no clock_in and clock_out, then convert to decimal hours
+        // Absences: count workdays (Mon-Fri) with no timekeeping record at all
         $absent_days = 0;
-        $dates = $records->pluck('date')->unique();
-        foreach ($dates as $date) {
-            $dayRecords = $records->where('date', $date);
-            $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
-            $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
-            if (!$hasClockIn && !$hasClockOut) {
+        $monthStart = strtotime($month . '-01');
+        $daysInMonth = (int)date('t', $monthStart);
+        $recordedDates = $records->pluck('date')->unique()->toArray();
+        for ($i = 1; $i <= $daysInMonth; $i++) {
+            $date = date('Y-m-d', strtotime($month . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
+            $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
+            if ($dayOfWeek >= 6) continue; // skip weekends
+            if (!in_array($date, $recordedDates)) {
                 $absent_days++;
             }
         }
