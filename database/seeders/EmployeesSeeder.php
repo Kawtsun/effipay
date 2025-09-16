@@ -116,10 +116,10 @@ class EmployeesSeeder extends Seeder
         ];
 
         $employeeNames2 = [
-            'Francisco Morpheus Joshua Sumiquiab',
             'Dizon Isaac Rossdale Manzano',
+            'Vilaga Arwin Paul Bausista',
             'Tañega Nicolle Daban',
-            'Vilaga Arwin Paul Bausista'
+            'Francisco Morpheus Joshua Sumiquiab',
         ];
 
         // Create a matching ID for each name in $employeeNames
