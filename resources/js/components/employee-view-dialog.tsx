@@ -211,20 +211,39 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                     <div className="pt-2">
                                         <h4 className="font-semibold text-lg mb-6">Salary & Contributions</h4>
                                         <div className="grid grid-cols-2 gap-16 items-start mb-10"> {/* Increased gap and margin */}
-                                            <div>
-                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
-                                                <div className="space-y-3 text-sm"> {/* Increased gap */}
-                                                    <Info label="Base Salary" value={`₱${formatWithCommas(employee.base_salary)}`} />
+                                            <div className="grid grid-cols-3 gap-12 items-start w-full"> {/* Three columns layout */}
+                                                {/* Income & Benefits */}
+                                                <div className="px-8 min-h-[200px] flex flex-col justify-start">
+                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
+                                                    <div className="space-y-3 text-sm">
+                                                        <Info label="Base Salary" value={`₱${formatWithCommas(employee.base_salary)}`} />
+                                                        <Info label="Honorarium" value={`₱${formatWithCommas(employee.honorarium ?? 0)}`} />
+                                                        <Info label="Overtime Pay" value={`₱${formatWithCommas(employee.overtime_pay ?? 0)}`} />
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            <div>
-                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
-                                                <div className="space-y-3 text-sm"> {/* Increased gap */}
-                                                    <Info label="SSS" value={`₱${formatWithCommas(employee.sss)}`} />
-                                                    <Info label="PhilHealth" value={`₱${formatWithCommas(employee.philhealth)}`} />
-                                                    <Info label="Pag-IBIG" value={`₱${formatWithCommas(employee.pag_ibig)}`} />
-                                                    <Info label="Withholding Tax" value={`₱${formatWithCommas(employee.withholding_tax)}`} />
+                                                {/* Deductions */}
+                                                <div className="px-8 min-h-[200px] flex flex-col justify-start">
+                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
+                                                    <div className="space-y-3 text-sm">
+                                                        <Info label="SSS" value={`₱${formatWithCommas(employee.sss)}`} />
+                                                        <Info label="PhilHealth" value={`₱${formatWithCommas(employee.philhealth)}`} />
+                                                        <Info label="Pag-IBIG" value={`₱${formatWithCommas(employee.pag_ibig)}`} />
+                                                        <Info label="Withholding Tax" value={`₱${formatWithCommas(employee.withholding_tax)}`} />
+                                                    </div>
+                                                </div>
+
+                                                {/* Other Deductions */}
+                                                <div className="px-8 min-h-[200px] flex flex-col justify-start">
+                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Other Deductions</h5>
+                                                    <div className="space-y-3 text-sm">
+                                                        <Info label="Salary Loan" value={`₱${formatWithCommas(employee.salary_loan ?? 0)}`} />
+                                                        <Info label="PERAA Con." value={`₱${formatWithCommas(employee.peraa_con ?? 0)}`} />
+                                                        <Info label="China Bank" value={`₱${formatWithCommas(employee.china_bank ?? 0)}`} />
+                                                        <Info label="TEA" value={`₱${formatWithCommas(employee.tea ?? 0)}`} />
+                                                        <Info label="Calamity Loan" value={`₱${formatWithCommas(employee.calamity_loan ?? 0)}`} />
+                                                        <Info label="Multipurpose Loan" value={`₱${formatWithCommas(employee.multipurpose_loan ?? 0)}`} />
+                                                    </div>
                                                 </div>
                                             </div>
 

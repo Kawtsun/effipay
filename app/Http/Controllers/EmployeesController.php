@@ -69,6 +69,12 @@ class EmployeesController extends Controller
                 'work_hours_per_day' => $emp->work_hours_per_day,
                 'work_start_time' => $emp->work_start_time,
                 'work_end_time' => $emp->work_end_time,
+                'salary_loan' => $emp->salary_loan,
+                'peraa_con' => $emp->peraa_con,
+                'china_bank' => $emp->china_bank,
+                'tea' => $emp->tea,
+                'calamity_loan' => $emp->calamity_loan,
+                'multipurpose_loan' => $emp->multipurpose_loan,
             ];
         }, $employees->items());
 
@@ -208,6 +214,12 @@ class EmployeesController extends Controller
                 'work_hours_per_day' => $employee->work_hours_per_day,
                 'work_start_time' => $employee->work_start_time,
                 'work_end_time' => $employee->work_end_time,
+                'salary_loan' => $employee->salary_loan,
+                'peraa_con' => $employee->peraa_con,
+                'china_bank' => $employee->china_bank,
+                'tea' => $employee->tea,
+                'calamity_loan' => $employee->calamity_loan,
+                'multipurpose_loan' => $employee->multipurpose_loan,
             ],
             'search'   => $request->input('search', ''),
             'filters'  => [

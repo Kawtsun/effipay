@@ -22,7 +22,7 @@ class StoreEmployeesRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+    return [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -65,6 +65,12 @@ class StoreEmployeesRequest extends FormRequest
                 'string',
                 'max:255',
             ],
+            'salary_loan' => 'nullable|numeric|min:0',
+            'peraa_con' => 'nullable|numeric|min:0',
+            'china_bank' => 'nullable|numeric|min:0',
+            'tea' => 'nullable|numeric|min:0',
+            'calamity_loan' => 'nullable|numeric|min:0',
+            'multipurpose_loan' => 'nullable|numeric|min:0',
         ];
     }
 }

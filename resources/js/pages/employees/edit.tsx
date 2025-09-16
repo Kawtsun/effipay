@@ -30,28 +30,18 @@ type Props = {
         sss: number;
         philhealth: number;
         pag_ibig: number;
-        college_program?: string;
         withholding_tax: number;
         work_hours_per_day: number;
         work_start_time: string;
         work_end_time: string;
+        salary_loan?: number;
+        peraa_con?: number;
+        china_bank?: number;
+        tea?: number;
+        calamity_loan?: number;
+        multipurpose_loan?: number;
+        honorarium?: number;
     };
-    search: string;
-    filters: { types: string[]; statuses: string[]; category?: string };
-    page: number;
-
-    // ← NEW props from controller
-    salaryDefaults: Record<
-        string,
-        {
-            base_salary: number;
-            sss: number;
-            philhealth: number;
-            pag_ibig: number;
-            withholding_tax: number;
-            work_hours_per_day: number;
-        }
-    >;
     employeeCategory?: string;
 };
 
@@ -87,6 +77,13 @@ export default function Edit({
         work_start_time: trimToHM(employee.work_start_time),
         work_end_time: trimToHM(employee.work_end_time),
         college_program: employee.college_program || '',
+    salary_loan: employee.salary_loan?.toString() || '',
+    peraa_con: employee.peraa_con?.toString() || '',
+    china_bank: employee.china_bank?.toString() || '',
+    tea: employee.tea?.toString() || '',
+    calamity_loan: employee.calamity_loan?.toString() || '',
+    multipurpose_loan: employee.multipurpose_loan?.toString() || '',
+    honorarium: employee.honorarium?.toString() || '',
     });
 
     const [collegeProgram, setCollegeProgram] = useState(employee.college_program || '');
@@ -446,6 +443,13 @@ export default function Edit({
                                         {/* Work hours per day is auto-derived; input removed */}
                                         <div className='flex flex-row gap-6'>
                                             <div className='flex flex-col gap-3'>
+                                            <div className='flex flex-col gap-3'>
+                                                <Label htmlFor="honorarium">Honorarium <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input id="honorarium" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="Honorarium" className="pl-8" min={0} value={formatWithCommas(data.honorarium ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('honorarium', raw); }} />
+                                                </div>
+                                            </div>
                                                 <TimePicker
                                                     value={data.work_start_time}
                                                     onChange={(value) => setData('work_start_time', value)}
@@ -508,6 +512,15 @@ export default function Edit({
                                                             setData('philhealth', calculatedPhilHealth.toString());
                                                         }}
                                                     />
+                                                </div>
+
+                                                {/* Honorarium (optional) */}
+                                                <div className='flex flex-col gap-3'>
+                                                    <Label htmlFor="honorarium">Honorarium <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                                                    <div className='relative'>
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                        <Input id="honorarium" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="Honorarium" className="pl-8" min={0} value={formatWithCommas(data.honorarium ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('honorarium', raw); }} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -600,9 +613,7 @@ export default function Edit({
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="withholding_tax">
-                                                    Withholding Tax
-                                                </Label>
+                                                <Label htmlFor="withholding_tax">Withholding Tax</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
                                                     <Input
@@ -626,6 +637,55 @@ export default function Edit({
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
                                                     Automated
                                                 </p>
+                                            </div>
+
+                                            {/* Salary Loan */}
+                                            <div className='flex flex-col gap-3'>
+                                                <Label htmlFor="salary_loan">Salary Loan</Label>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input id="salary_loan" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="Salary Loan" className="pl-8" min={0} value={formatWithCommas(data.salary_loan ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('salary_loan', raw); }} />
+                                                </div>
+                                            </div>
+                                            {/* PERAA Con. */}
+                                            <div className='flex flex-col gap-3'>
+                                                <Label htmlFor="peraa_con">PERAA Con.</Label>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input id="peraa_con" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="PERAA Contribution" className="pl-8" min={0} value={formatWithCommas(data.peraa_con ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('peraa_con', raw); }} />
+                                                </div>
+                                            </div>
+                                            {/* China Bank */}
+                                            <div className='flex flex-col gap-3'>
+                                                <Label htmlFor="china_bank">China Bank</Label>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input id="china_bank" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="China Bank" className="pl-8" min={0} value={formatWithCommas(data.china_bank ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('china_bank', raw); }} />
+                                                </div>
+                                            </div>
+                                            {/* TEA */}
+                                            <div className='flex flex-col gap-3'>
+                                                <Label htmlFor="tea">TEA</Label>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input id="tea" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="TEA" className="pl-8" min={0} value={formatWithCommas(data.tea ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('tea', raw); }} />
+                                                </div>
+                                            </div>
+                                            {/* Calamity Loan */}
+                                            <div className='flex flex-col gap-3'>
+                                                <Label htmlFor="calamity_loan">Calamity Loan</Label>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input id="calamity_loan" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="Calamity Loan" className="pl-8" min={0} value={formatWithCommas(data.calamity_loan ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('calamity_loan', raw); }} />
+                                                </div>
+                                            </div>
+                                            {/* Multipurpose Loan */}
+                                            <div className='flex flex-col gap-3'>
+                                                <Label htmlFor="multipurpose_loan">Multipurpose Loan</Label>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input id="multipurpose_loan" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="Multipurpose Loan" className="pl-8" min={0} value={formatWithCommas(data.multipurpose_loan ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('multipurpose_loan', raw); }} />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

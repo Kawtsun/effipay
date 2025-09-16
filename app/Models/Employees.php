@@ -26,6 +26,12 @@ class Employees extends Model
         'work_hours_per_day',
         'work_start_time',
         'work_end_time',
+        'salary_loan',
+        'peraa_con',
+        'china_bank',
+        'tea',
+        'calamity_loan',
+        'multipurpose_loan',
     ];
 
     public function payrolls()

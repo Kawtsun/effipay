@@ -73,6 +73,12 @@ export interface Employees {
     total_deductions?: number;
     net_pay?: number;
     per_payroll?: number;
+    salary_loan?: number;
+    peraa_con?: number;
+    china_bank?: number;
+    tea?: number;
+    calamity_loan?: number;
+    multipurpose_loan?: number;
 }
 
 export interface Salary {
