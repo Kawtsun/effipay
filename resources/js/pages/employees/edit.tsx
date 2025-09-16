@@ -41,8 +41,13 @@ type Props = {
         calamity_loan?: number;
         multipurpose_loan?: number;
         honorarium?: number;
+        college_program?: string;
     };
     employeeCategory?: string;
+    search?: string;
+    filters?: any;
+    page?: number;
+    salaryDefaults?: any;
 };
 
 function formatWithCommas(value: string) {
@@ -77,13 +82,13 @@ export default function Edit({
         work_start_time: trimToHM(employee.work_start_time),
         work_end_time: trimToHM(employee.work_end_time),
         college_program: employee.college_program || '',
-    salary_loan: employee.salary_loan?.toString() || '',
-    peraa_con: employee.peraa_con?.toString() || '',
-    china_bank: employee.china_bank?.toString() || '',
-    tea: employee.tea?.toString() || '',
-    calamity_loan: employee.calamity_loan?.toString() || '',
-    multipurpose_loan: employee.multipurpose_loan?.toString() || '',
-    honorarium: employee.honorarium?.toString() || '',
+        salary_loan: employee.salary_loan?.toString() || '',
+        peraa_con: employee.peraa_con?.toString() || '',
+        china_bank: employee.china_bank?.toString() || '',
+        tea: employee.tea?.toString() || '',
+        calamity_loan: employee.calamity_loan?.toString() || '',
+        multipurpose_loan: employee.multipurpose_loan?.toString() || '',
+        honorarium: employee.honorarium?.toString() || '',
     });
 
     const [collegeProgram, setCollegeProgram] = useState(employee.college_program || '');
@@ -116,7 +121,7 @@ export default function Edit({
             setData('employee_type', 'Full Time');
             return;
         }
-        
+
         // Validate Pag-IBIG minimum
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
         if (pagIbigValue < 200) {
@@ -250,23 +255,23 @@ export default function Edit({
     useEffect(() => {
         const startTime = data.work_start_time;
         const endTime = data.work_end_time;
-        
+
         if (startTime && endTime) {
             const [startHour, startMinute] = startTime.split(':').map(Number);
             const [endHour, endMinute] = endTime.split(':').map(Number);
-            
+
             // Convert to minutes for easier calculation
             const startMinutes = startHour * 60 + startMinute;
             const endMinutes = endHour * 60 + endMinute;
-            
+
             // Handle overnight shifts (end time is next day)
             let actualWorkMinutes = endMinutes - startMinutes;
             if (actualWorkMinutes <= 0) {
                 actualWorkMinutes += 24 * 60; // Add 24 hours
             }
-            
+
             const actualWorkHours = Math.round(actualWorkMinutes / 60);
-            
+
             // Only update if the calculated hours are reasonable (1-24 hours)
             if (actualWorkHours >= 1 && actualWorkHours <= 24) {
                 setData('work_hours_per_day', actualWorkHours.toString());
@@ -297,36 +302,36 @@ export default function Edit({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-                <Head title="Edit Employee" />
-                <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
-                    <div className="mb-4">
-                        <Link
-                            href={route('employees.index', {
-                                search,
-                                types: filters.types,
-                                statuses: filters.statuses,
-                                page,
-                            })}
-                        >
-                            <Button variant='outline'>
-                                <ArrowLeft className='w-4 h-4' />
-                                Back
-                            </Button>
-                        </Link>
-                    </div>
-                    <div className='w-full max-w-6xl mx-auto'>
-                        <form
-                            className='space-y-8'
-                            onSubmit={handleUpdate}
-                        >
-                            {/* Two Column Layout */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-32">
-                                {/* Left Column - Employee Info & Work Schedule */}
-                                <div className="space-y-8">
-                                    {/* Employee Information */}
-                                    <div>
-                                        <h1 className='font-bold text-xl mb-6'>Employee Information</h1>
-                                        <div className='space-y-6'>
+            <Head title="Edit Employee" />
+            <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
+                <div className="mb-4">
+                    <Link
+                        href={route('employees.index', {
+                            search,
+                            types: filters.types,
+                            statuses: filters.statuses,
+                            page,
+                        })}
+                    >
+                        <Button variant='outline'>
+                            <ArrowLeft className='w-4 h-4' />
+                            Back
+                        </Button>
+                    </Link>
+                </div>
+                <div className='w-full max-w-6xl mx-auto'>
+                    <form
+                        className='space-y-8'
+                        onSubmit={handleUpdate}
+                    >
+                        {/* Two Column Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-32">
+                            {/* Left Column - Employee Info & Work Schedule */}
+                            <div className="space-y-8">
+                                {/* Employee Information */}
+                                <div>
+                                    <h1 className='font-bold text-xl mb-6'>Employee Information</h1>
+                                    <div className='space-y-6'>
                                         <div className="flex flex-col gap-3">
                                             <Label>Last Name</Label>
                                             <Input id="last_name" type="text" required placeholder="Last Name" value={data.last_name} onChange={e => setData('last_name', e.target.value)} />
@@ -443,13 +448,6 @@ export default function Edit({
                                         {/* Work hours per day is auto-derived; input removed */}
                                         <div className='flex flex-row gap-6'>
                                             <div className='flex flex-col gap-3'>
-                                            <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="honorarium">Honorarium <span className="text-xs text-muted-foreground">(optional)</span></Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="honorarium" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="Honorarium" className="pl-8" min={0} value={formatWithCommas(data.honorarium ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('honorarium', raw); }} />
-                                                </div>
-                                            </div>
                                                 <TimePicker
                                                     value={data.work_start_time}
                                                     onChange={(value) => setData('work_start_time', value)}
@@ -699,6 +697,6 @@ export default function Edit({
                     </form>
                 </div>
             </div>
-    </AppLayout>
+        </AppLayout>
     );
 }

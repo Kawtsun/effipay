@@ -1,9 +1,9 @@
 function formatWithCommas(value: string): string {
-  if (!value) return '';
-  const [int, dec] = value.split('.');
-  return dec !== undefined
-    ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
-    : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (!value) return '';
+    const [int, dec] = value.split('.');
+    return dec !== undefined
+        ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
+        : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 import { EmployeeStatus } from '@/components/employee-status';
@@ -65,13 +65,13 @@ export default function Create(props: Props) {
         work_start_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '08:00' : (salaryDefaults['Full Time']?.work_hours_per_day === 6 ? '09:00' : '08:00')),
         work_end_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '16:00' : (salaryDefaults['Full Time']?.work_hours_per_day === 6 ? '15:00' : '17:00')),
         college_program: '', // NEW
-    salary_loan: '',
-    peraa_con: '',
-    china_bank: '',
-    tea: '',
-    calamity_loan: '',
-    multipurpose_loan: '',
-    honorarium: '',
+        salary_loan: '',
+        peraa_con: '',
+        china_bank: '',
+        tea: '',
+        calamity_loan: '',
+        multipurpose_loan: '',
+        honorarium: '',
     });
     const [collegeProgram, setCollegeProgram] = useState('');
     const [collegeProgramError, setCollegeProgramError] = useState('');
@@ -115,7 +115,7 @@ export default function Create(props: Props) {
             setData('employee_type', 'Full Time');
             return;
         }
-        
+
         // Validate Pag-IBIG minimum
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
         if (pagIbigValue < 200) {
@@ -139,7 +139,7 @@ export default function Create(props: Props) {
             workHours = Math.round(actualWorkMinutes / 60);
         }
 
-    const employee_name = `${data.last_name}, ${data.first_name}, ${data.middle_name}`;
+        const employee_name = `${data.last_name}, ${data.first_name}, ${data.middle_name}`;
         const cleanedData = {
             ...data,
             employee_name: employee_name,
@@ -274,23 +274,23 @@ export default function Create(props: Props) {
     useEffect(() => {
         const startTime = data.work_start_time;
         const endTime = data.work_end_time;
-        
+
         if (startTime && endTime) {
             const [startHour, startMinute] = startTime.split(':').map(Number);
             const [endHour, endMinute] = endTime.split(':').map(Number);
-            
+
             // Convert to minutes for easier calculation
             const startMinutes = startHour * 60 + startMinute;
             const endMinutes = endHour * 60 + endMinute;
-            
+
             // Handle overnight shifts (end time is next day)
             let actualWorkMinutes = endMinutes - startMinutes;
             if (actualWorkMinutes <= 0) {
                 actualWorkMinutes += 24 * 60; // Add 24 hours
             }
-            
+
             const actualWorkHours = Math.round(actualWorkMinutes / 60);
-            
+
             // Only update if the calculated hours are reasonable (1-24 hours)
             if (actualWorkHours >= 1 && actualWorkHours <= 24) {
                 setData('work_hours_per_day', actualWorkHours.toString());
@@ -454,13 +454,6 @@ export default function Create(props: Props) {
                                         {/* Work hours per day is auto-derived; input removed */}
                                         <div className='flex flex-row gap-6'>
                                             <div className='flex flex-col gap-3'>
-                                            <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="honorarium">Honorarium <span className="text-xs text-muted-foreground">(optional)</span></Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="honorarium" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="Honorarium" className="pl-8" min={0} value={formatWithCommas(data.honorarium ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('honorarium', raw); }} />
-                                                </div>
-                                            </div>
                                                 <TimePicker
                                                     value={data.work_start_time}
                                                     onChange={(value) => setData('work_start_time', value)}
@@ -610,13 +603,13 @@ export default function Create(props: Props) {
                                 </div>
                             </div>
                         </div>
-                    <div className='flex justify-end'>
-                        <Button type='submit' disabled={!canSubmit}>Add Employee</Button>
-                    </div>
-                </form>
+                        <div className='flex justify-end'>
+                            <Button type='submit' disabled={!canSubmit}>Add Employee</Button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </div>
-    </AppLayout>
+        </AppLayout>
     );
 }
 
