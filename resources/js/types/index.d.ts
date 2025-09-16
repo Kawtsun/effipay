@@ -51,6 +51,7 @@ export interface Employees {
     employee_status: string;
     roles: string;
     base_salary: number;
+    honorarium: number;
     overtime_pay: number;
     sss: number;
     philhealth: number;
