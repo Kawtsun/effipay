@@ -151,7 +151,16 @@ class PayrollController extends Controller
                     $gross_pay += round($overtime_pay, 2);
 
                 // Create and save payroll record
-                $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax;
+                // Get other deductions from employee
+                $salary_loan = $employee->salary_loan ?? 0;
+                $peraa_con = $employee->peraa_con ?? 0;
+                $china_bank = $employee->china_bank ?? 0;
+                $tea = $employee->tea ?? 0;
+                $calamity_loan = $employee->calamity_loan ?? 0;
+                $multipurpose_loan = $employee->multipurpose_loan ?? 0;
+
+                $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax
+                    + $salary_loan + $peraa_con + $china_bank + $tea + $calamity_loan + $multipurpose_loan;
                 $net_pay = $gross_pay - $total_deductions;
                 \App\Models\Payroll::create([
                     'employee_id' => $employee->id,
@@ -167,6 +176,12 @@ class PayrollController extends Controller
                     'philhealth' => $philhealth,
                     'pag_ibig' => $pag_ibig,
                     'withholding_tax' => $withholding_tax,
+                    'salary_loan' => $salary_loan,
+                    'peraa_con' => $peraa_con,
+                    'china_bank' => $china_bank,
+                    'tea' => $tea,
+                    'calamity_loan' => $calamity_loan,
+                    'multipurpose_loan' => $multipurpose_loan,
                     'total_deductions' => $total_deductions,
                     'net_pay' => $net_pay,
                 ]);

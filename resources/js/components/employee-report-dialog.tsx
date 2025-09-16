@@ -107,11 +107,17 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
     const philhealth = hasPayroll ? Number(selectedPayroll?.philhealth) : null;
     const pag_ibig = hasPayroll ? Number(selectedPayroll?.pag_ibig) : null;
     const withholding_tax = hasPayroll ? Number(selectedPayroll?.withholding_tax) : null;
+    const salary_loan = hasPayroll ? Number(selectedPayroll?.salary_loan ?? 0) : null;
+    const peraa_con = hasPayroll ? Number(selectedPayroll?.peraa_con ?? 0) : null;
+    const china_bank = hasPayroll ? Number(selectedPayroll?.china_bank ?? 0) : null;
+    const tea = hasPayroll ? Number(selectedPayroll?.tea ?? 0) : null;
+    const calamity_loan = hasPayroll ? Number(selectedPayroll?.calamity_loan ?? 0) : null;
+    const multipurpose_loan = hasPayroll ? Number(selectedPayroll?.multipurpose_loan ?? 0) : null;
     function safeNumber(val: unknown, fallback = null) {
         return typeof val === 'number' && isFinite(val) ? val : fallback;
     }
     const totalDeductions = hasPayroll
-        ? [sss, philhealth, pag_ibig, withholding_tax].reduce((sum: number, val) => sum + (typeof val === 'number' && isFinite(val) ? val : 0), 0)
+        ? [sss, philhealth, pag_ibig, withholding_tax, salary_loan, peraa_con, china_bank, tea, calamity_loan, multipurpose_loan].reduce((sum: number, val) => sum + (typeof val === 'number' && isFinite(val) ? val : 0), 0)
         : null;
     const grossPay = hasPayroll ? safeNumber(Number(selectedPayroll?.gross_pay), null) : null;
     const netPay = hasPayroll ? safeNumber(Number(selectedPayroll?.net_pay), null) : null;
