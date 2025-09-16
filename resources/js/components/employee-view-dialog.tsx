@@ -210,8 +210,8 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                     {/* Salary & Contributions Section */}
                                     <div className="pt-2">
                                         <h4 className="font-semibold text-lg mb-6">Salary & Contributions</h4>
-                                        <div className="grid grid-cols-2 gap-16 items-start mb-10"> {/* Increased gap and margin */}
-                                            <div className="grid grid-cols-3 gap-12 items-start w-full"> {/* Three columns layout */}
+                                        {/* <div className="grid grid-cols-2 gap-16 items-start mb-10"> Increased gap and margin */}
+                                            <div className="grid grid-cols-3 gap-3 items-start w-full"> {/* Three columns layout */}
                                                 {/* Income & Benefits */}
                                                 <div className="px-8 min-h-[200px] flex flex-col justify-start">
                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
@@ -222,8 +222,8 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                                     </div>
                                                 </div>
 
-                                                {/* Deductions */}
-                                                <div className="px-8 min-h-[200px] flex flex-col justify-start">
+                                                {/* Deductions (center column) */}
+                                                <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-2 col-end-3">
                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
                                                     <div className="space-y-3 text-sm">
                                                         <Info label="SSS" value={`₱${formatWithCommas(employee.sss)}`} />
@@ -233,8 +233,8 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                                     </div>
                                                 </div>
 
-                                                {/* Other Deductions */}
-                                                <div className="px-8 min-h-[200px] flex flex-col justify-start">
+                                                {/* Other Deductions (right column) */}
+                                                <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-3 col-end-4">
                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Other Deductions</h5>
                                                     <div className="space-y-3 text-sm">
                                                         <Info label="Salary Loan" value={`₱${formatWithCommas(employee.salary_loan ?? 0)}`} />
@@ -248,7 +248,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                             </div>
 
 
-                                        </div>
+                                        {/* </div> */}
                                         {/* Only show payroll data if showPayroll is true */}
                                         {showPayroll && (
                                             <>
