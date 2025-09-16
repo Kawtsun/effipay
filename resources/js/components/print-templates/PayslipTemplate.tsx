@@ -235,7 +235,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
         </View>
         <View style={styles.section}>
           <Text style={styles.netPay}>NET PAY: {formatWithCommas(Number(netPay) || 0)}</Text>
-          <Text>(Net Pay for 15 & 30): {formatWithCommas(Number(netPay1530) || 0)}</Text>
+          <Text>(Net Pay for 15 & 30): {formatWithCommas(Number(netPay) ? Number(netPay) / 2 : 0)}</Text>
         </View>
       </Page>
     </Document>
