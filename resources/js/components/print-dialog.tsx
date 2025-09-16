@@ -35,6 +35,12 @@ interface Payroll {
     gross_pay?: number;
     total_deductions?: number;
     net_pay?: number;
+    salary_loan?: string | number;
+    peraa_con?: string | number;
+    china_bank?: string | number;
+    tea?: string | number;
+    calamity_loan?: string | number;
+    multipurpose_loan?: string | number;
 }
 
 interface PayslipData {
@@ -58,6 +64,12 @@ interface PayslipData {
         philhealth?: string;
         withholdingTax?: string;
         withholdingTaxBase?: string;
+        salaryLoan?: string | number;
+        peraaCon?: string | number;
+        chinaBank?: string | number;
+        tea?: string | number;
+        calamityLoan?: string | number;
+        multipurposeLoan?: string | number;
     };
     totalEarnings?: string;
     totalDeductions?: string;
@@ -108,7 +120,12 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             pagibig: payroll.pag_ibig ?? '',
             philhealth: payroll.philhealth ?? '',
             withholdingTax: payroll.withholding_tax ?? '',
-            withholdingTaxBase: payroll.withholding_tax_base ?? '',
+            salaryLoan: payroll.salary_loan ?? '',
+            peraaCon: payroll.peraa_con ?? '',
+            chinaBank: payroll.china_bank ?? '',
+            tea: payroll.tea ?? '',
+            calamityLoan: payroll.calamity_loan ?? '',
+            multipurposeLoan: payroll.multipurpose_loan ?? '',
         },
         totalEarnings: payroll.gross_pay?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
         totalDeductions: payroll.total_deductions?.toLocaleString('en-US', { minimumFractionDigits: 2 }),

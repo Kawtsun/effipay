@@ -110,7 +110,12 @@ interface PayslipDeductions {
   pagibig?: string;
   philhealth?: string;
   withholdingTax?: string;
-  // Add more fields as needed
+  salaryLoan?: string | number;
+  peraaCon?: string | number;
+  chinaBank?: string | number;
+  tea?: string | number;
+  calamityLoan?: string | number;
+  multipurposeLoan?: string | number;
 }
 
 
@@ -217,7 +222,14 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
             <View style={styles.tableRow}><Text style={styles.cell}>Pag-ibig Contribution</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.pagibig) || 0)}</Text></View>
             <View style={styles.tableRow}><Text style={styles.cell}>Philhealth</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.philhealth) || 0)}</Text></View>
             <View style={styles.tableRow}><Text style={styles.cell}>Withholding Tax</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.withholdingTax) || 0)}</Text></View>
-            {/* Add more deductions fields as needed */}
+            {/* Other Deductions Section */}
+            <Text style={{ ...styles.tableHeader, marginTop: 6 }}>Other Deductions:</Text>
+            <View style={styles.indentRow}><Text style={styles.cell}>Salary Loan</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.salaryLoan) || 0)}</Text></View>
+            <View style={styles.indentRow}><Text style={styles.cell}>PERAA Con.</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.peraaCon) || 0)}</Text></View>
+            <View style={styles.indentRow}><Text style={styles.cell}>China Bank</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.chinaBank) || 0)}</Text></View>
+            <View style={styles.indentRow}><Text style={styles.cell}>TEA</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.tea) || 0)}</Text></View>
+            <View style={styles.indentRow}><Text style={styles.cell}>Calamity Loan</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.calamityLoan) || 0)}</Text></View>
+            <View style={styles.indentRow}><Text style={styles.cell}>Multipurpose Loan</Text><Text style={{ ...styles.cell}}>{formatWithCommas(Number(deductions.multipurposeLoan) || 0)}</Text></View>
             <Text style={styles.total}>TOTAL: {formatWithCommas(Number(totalDeductions) || 0)}</Text>
           </View>
         </View>
