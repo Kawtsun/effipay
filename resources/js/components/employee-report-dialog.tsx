@@ -86,6 +86,8 @@ function Info({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function EmployeeReportDialog({ employee, onClose, activeRoles }: Props) {
+    // Debug: log the employee object to verify values
+    console.log('Employee object in dialog:', employee);
     const [monthlyPayrollData, setMonthlyPayrollData] = useState<MonthlyPayrollData | null>(null);
     const [selectedMonth, setSelectedMonth] = useState('');
     const [pendingMonth, setPendingMonth] = useState('');

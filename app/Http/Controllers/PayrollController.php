@@ -279,9 +279,22 @@ class PayrollController extends Controller
             ], 404);
         }
 
+        // Always merge latest employee loan values into each payroll record before returning
+        $employee = Employees::find($request->employee_id);
+        $loanFields = [
+            'salary_loan', 'peraa_con', 'china_bank', 'tea', 'calamity_loan', 'multipurpose_loan'
+        ];
+        $payrollsArray = $payrolls->map(function($payroll) use ($employee, $loanFields) {
+            $data = $payroll->toArray();
+            foreach ($loanFields as $field) {
+                $data[$field] = $employee ? $employee->$field : null;
+            }
+            return $data;
+        });
+
         return response()->json([
             'success' => true,
-            'payrolls' => $payrolls,
+            'payrolls' => $payrollsArray,
             'month' => $request->month,
         ]);
     }
