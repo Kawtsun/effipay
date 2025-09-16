@@ -75,6 +75,7 @@ class EmployeesController extends Controller
                 'tea' => $emp->tea,
                 'calamity_loan' => $emp->calamity_loan,
                 'multipurpose_loan' => $emp->multipurpose_loan,
+                'honorarium' => $emp->honorarium,
             ];
         }, $employees->items());
 
@@ -124,6 +125,9 @@ class EmployeesController extends Controller
             'page'            => $page,
             'employeeTypes'   => $employeeTypes,
             'salaryDefaults'  => $salaryDefaults,
+            'employee'        => [
+                'honorarium' => '', // default empty for new employee
+            ],
         ]);
     }
 
@@ -220,6 +224,7 @@ class EmployeesController extends Controller
                 'tea' => $employee->tea,
                 'calamity_loan' => $employee->calamity_loan,
                 'multipurpose_loan' => $employee->multipurpose_loan,
+                'honorarium' => $employee->honorarium,
             ],
             'search'   => $request->input('search', ''),
             'filters'  => [

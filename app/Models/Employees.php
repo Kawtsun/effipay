@@ -32,6 +32,7 @@ class Employees extends Model
         'tea',
         'calamity_loan',
         'multipurpose_loan',
+        'honorarium',
     ];
 
     public function payrolls()

@@ -158,6 +158,7 @@ class PayrollController extends Controller
                 $tea = $employee->tea ?? 0;
                 $calamity_loan = $employee->calamity_loan ?? 0;
                 $multipurpose_loan = $employee->multipurpose_loan ?? 0;
+                $honorarium = $employee->honorarium ?? 0;
 
                 $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax
                     + $salary_loan + $peraa_con + $china_bank + $tea + $calamity_loan + $multipurpose_loan;
@@ -167,6 +168,7 @@ class PayrollController extends Controller
                     'month' => $payrollMonth,
                     'payroll_date' => $request->payroll_date,
                     'base_salary' => $base_salary,
+                    'honorarium' => $honorarium,
                     'overtime_pay' => $overtime_pay,
                     'tardiness' => $tardiness,
                     'undertime' => $undertime,

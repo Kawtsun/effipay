@@ -71,6 +71,7 @@ class StoreEmployeesRequest extends FormRequest
             'tea' => 'nullable|numeric|min:0',
             'calamity_loan' => 'nullable|numeric|min:0',
             'multipurpose_loan' => 'nullable|numeric|min:0',
+            'honorarium' => 'nullable|numeric|min:0',
         ];
     }
 }
