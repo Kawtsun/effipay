@@ -641,7 +641,7 @@ export default function Create(props: Props) {
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        placeholder="Enter SSS Salary Loan"
+                                                        placeholder="SSS Salary Loan"
                                                         className="pl-8"
                                                         min={0}
                                                         value={formatWithCommas(data.salary_loan ?? '')}
@@ -671,7 +671,7 @@ export default function Create(props: Props) {
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        placeholder="Enter SSS Calamity Loan"
+                                                        placeholder="SSS Calamity Loan"
                                                         className="pl-8"
                                                         min={0}
                                                         value={formatWithCommas(data.calamity_loan ?? '')}
@@ -701,7 +701,7 @@ export default function Create(props: Props) {
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        placeholder="Enter Pag-IBIG Multi Purpose Loan"
+                                                        placeholder="Pag-IBIG Multi Purpose Loan"
                                                         className="pl-8"
                                                         min={0}
                                                         value={formatWithCommas(data.multipurpose_loan ?? '')}
@@ -731,7 +731,7 @@ export default function Create(props: Props) {
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        placeholder="Enter Pag-IBIG Calamity Loan"
+                                                        placeholder="Pag-IBIG Calamity Loan"
                                                         className="pl-8"
                                                         min={0}
                                                         value={formatWithCommas(data.pagibig_calamity_loan ?? '')}
@@ -761,7 +761,7 @@ export default function Create(props: Props) {
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        placeholder="Enter PERAA Contribution"
+                                                        placeholder="PERAA Contribution"
                                                         className="pl-8"
                                                         min={0}
                                                         value={formatWithCommas(data.peraa_con ?? '')}
@@ -794,7 +794,7 @@ export default function Create(props: Props) {
                                                             type="text"
                                                             inputMode="numeric"
                                                             pattern="[0-9.,]*"
-                                                            placeholder="Enter Tuition Deduction"
+                                                            placeholder="Tuition Deduction"
                                                             className="pl-8"
                                                             min={0}
                                                             value={formatWithCommas(data.tuition ?? '')}
@@ -824,7 +824,7 @@ export default function Create(props: Props) {
                                                             type="text"
                                                             inputMode="numeric"
                                                             pattern="[0-9.,]*"
-                                                            placeholder="Enter China Bank Deduction"
+                                                            placeholder="China Bank Deduction"
                                                             className="pl-8"
                                                             min={0}
                                                             value={formatWithCommas(data.china_bank ?? '')}
@@ -854,7 +854,7 @@ export default function Create(props: Props) {
                                                             type="text"
                                                             inputMode="numeric"
                                                             pattern="[0-9.,]*"
-                                                            placeholder="Enter TEA Deduction"
+                                                            placeholder="TEA Deduction"
                                                             className="pl-8"
                                                             min={0}
                                                             value={formatWithCommas(data.tea ?? '')}
