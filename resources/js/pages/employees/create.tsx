@@ -47,6 +47,16 @@ type Props = {
 
 export default function Create(props: Props) {
     const { search, filters, page, salaryDefaults } = props;
+    // Add state for showing/hiding Salary Loan input
+    const [showSalaryLoanInput, setShowSalaryLoanInput] = useState(false);
+    const [showCalamityLoanInput, setShowCalamityLoanInput] = useState(false);
+    const [showPagibigMultiInput, setShowPagibigMultiInput] = useState(false);
+    const [showPagibigCalamityInput, setShowPagibigCalamityInput] = useState(false);
+    const [showPERAAConInput, setShowPERAAConInput] = useState(false);
+    // Other Deductions
+    const [showTuitionInput, setShowTuitionInput] = useState(false);
+    const [showChinaBankInput, setShowChinaBankInput] = useState(false);
+    const [showTEAInput, setShowTEAInput] = useState(false);
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
     const { data, setData, post } = useForm({
         first_name: '',
@@ -327,8 +337,8 @@ export default function Create(props: Props) {
                         className='space-y-8'
                         onSubmit={handleSubmit}
                     >
-                        {/* Two Column Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-32">
+                        {/* Three Column Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-32">
                             {/* Left Column - Employee Info & Work Schedule */}
                             <div className="space-y-8">
                                 {/* Employee Information */}
@@ -610,8 +620,258 @@ export default function Create(props: Props) {
                                     </div>
                                 </div>
                             </div>
+                            {/* Third Column - Loans */}
+                            <div>
+                                <h1 className='font-bold text-xl mb-6'>Loans</h1>
+                                <div className='space-y-8'>
+                                    {/* SSS Salary Loan */}
+                                    <div className='mb-4'>
+                                        <div className='flex items-center gap-2 mb-2'>
+                                            <Label>SSS Salary Loan</Label>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setShowSalaryLoanInput(!showSalaryLoanInput)}>
+                                                {showSalaryLoanInput ? '-' : '+'}
+                                            </Button>
+                                        </div>
+                                        {showSalaryLoanInput && (
+                                            <div className='flex flex-col gap-3'>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input
+                                                        id="salary_loan"
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9.,]*"
+                                                        placeholder="Enter SSS Salary Loan"
+                                                        className="pl-8"
+                                                        min={0}
+                                                        value={formatWithCommas(data.salary_loan ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('salary_loan', raw);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* SSS Calamity Loan */}
+                                    <div className='mb-4'>
+                                        <div className='flex items-center gap-2 mb-2'>
+                                            <Label>SSS Calamity Loan</Label>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setShowCalamityLoanInput(!showCalamityLoanInput)}>
+                                                {showCalamityLoanInput ? '-' : '+'}
+                                            </Button>
+                                        </div>
+                                        {showCalamityLoanInput && (
+                                            <div className='flex flex-col gap-3'>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input
+                                                        id="calamity_loan"
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9.,]*"
+                                                        placeholder="Enter SSS Calamity Loan"
+                                                        className="pl-8"
+                                                        min={0}
+                                                        value={formatWithCommas(data.calamity_loan ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('calamity_loan', raw);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Pag-IBIG Multi Purpose Loan */}
+                                    <div className='mb-4'>
+                                        <div className='flex items-center gap-2 mb-2'>
+                                            <Label>Pag-IBIG Multi Purpose Loan</Label>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setShowPagibigMultiInput(!showPagibigMultiInput)}>
+                                                {showPagibigMultiInput ? '-' : '+'}
+                                            </Button>
+                                        </div>
+                                        {showPagibigMultiInput && (
+                                            <div className='flex flex-col gap-3'>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input
+                                                        id="multipurpose_loan"
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9.,]*"
+                                                        placeholder="Enter Pag-IBIG Multi Purpose Loan"
+                                                        className="pl-8"
+                                                        min={0}
+                                                        value={formatWithCommas(data.multipurpose_loan ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('multipurpose_loan', raw);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Pag-IBIG Calamity Loan */}
+                                    <div className='mb-4'>
+                                        <div className='flex items-center gap-2 mb-2'>
+                                            <Label>Pag-IBIG Calamity Loan</Label>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setShowPagibigCalamityInput(!showPagibigCalamityInput)}>
+                                                {showPagibigCalamityInput ? '-' : '+'}
+                                            </Button>
+                                        </div>
+                                        {showPagibigCalamityInput && (
+                                            <div className='flex flex-col gap-3'>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input
+                                                        id="pagibig_calamity_loan"
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9.,]*"
+                                                        placeholder="Enter Pag-IBIG Calamity Loan"
+                                                        className="pl-8"
+                                                        min={0}
+                                                        value={formatWithCommas(data.pagibig_calamity_loan ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('pagibig_calamity_loan', raw);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* PERAA Con. */}
+                                    <div className='mb-4'>
+                                        <div className='flex items-center gap-2 mb-2'>
+                                            <Label>PERAA Con.</Label>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setShowPERAAConInput(!showPERAAConInput)}>
+                                                {showPERAAConInput ? '-' : '+'}
+                                            </Button>
+                                        </div>
+                                        {showPERAAConInput && (
+                                            <div className='flex flex-col gap-3'>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input
+                                                        id="peraa_con"
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9.,]*"
+                                                        placeholder="Enter PERAA Contribution"
+                                                        className="pl-8"
+                                                        min={0}
+                                                        value={formatWithCommas(data.peraa_con ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('peraa_con', raw);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Other Deductions */}
+                                    <div className='mt-8'>
+                                        <h2 className='font-semibold text-lg mb-4'>Other Deductions</h2>
+                                        {/* Tuition */}
+                                        <div className='mb-4'>
+                                            <div className='flex items-center gap-2 mb-2'>
+                                                <Label>Tuition</Label>
+                                                <Button type="button" size="sm" variant="outline" onClick={() => setShowTuitionInput(!showTuitionInput)}>
+                                                    {showTuitionInput ? '-' : '+'}
+                                                </Button>
+                                            </div>
+                                            {showTuitionInput && (
+                                                <div className='flex flex-col gap-3'>
+                                                    <div className='relative'>
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                        <Input
+                                                            id="tuition"
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9.,]*"
+                                                            placeholder="Enter Tuition Deduction"
+                                                            className="pl-8"
+                                                            min={0}
+                                                            value={formatWithCommas(data.tuition ?? '')}
+                                                            onChange={e => {
+                                                                const raw = e.target.value.replace(/,/g, '');
+                                                                setData('tuition', raw);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* China Bank */}
+                                        <div className='mb-4'>
+                                            <div className='flex items-center gap-2 mb-2'>
+                                                <Label>China Bank</Label>
+                                                <Button type="button" size="sm" variant="outline" onClick={() => setShowChinaBankInput(!showChinaBankInput)}>
+                                                    {showChinaBankInput ? '-' : '+'}
+                                                </Button>
+                                            </div>
+                                            {showChinaBankInput && (
+                                                <div className='flex flex-col gap-3'>
+                                                    <div className='relative'>
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                        <Input
+                                                            id="china_bank"
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9.,]*"
+                                                            placeholder="Enter China Bank Deduction"
+                                                            className="pl-8"
+                                                            min={0}
+                                                            value={formatWithCommas(data.china_bank ?? '')}
+                                                            onChange={e => {
+                                                                const raw = e.target.value.replace(/,/g, '');
+                                                                setData('china_bank', raw);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* TEA */}
+                                        <div className='mb-4'>
+                                            <div className='flex items-center gap-2 mb-2'>
+                                                <Label>TEA</Label>
+                                                <Button type="button" size="sm" variant="outline" onClick={() => setShowTEAInput(!showTEAInput)}>
+                                                    {showTEAInput ? '-' : '+'}
+                                                </Button>
+                                            </div>
+                                            {showTEAInput && (
+                                                <div className='flex flex-col gap-3'>
+                                                    <div className='relative'>
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                        <Input
+                                                            id="tea"
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9.,]*"
+                                                            placeholder="Enter TEA Deduction"
+                                                            className="pl-8"
+                                                            min={0}
+                                                            value={formatWithCommas(data.tea ?? '')}
+                                                            onChange={e => {
+                                                                const raw = e.target.value.replace(/,/g, '');
+                                                                setData('tea', raw);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className='flex justify-end'>
+                        <div className='flex justify-end mt-8'>
                             <Button type='submit' disabled={!canSubmit}>Add Employee</Button>
                         </div>
                     </form>
