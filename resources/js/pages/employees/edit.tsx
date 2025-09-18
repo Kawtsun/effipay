@@ -637,54 +637,6 @@ export default function Edit({
                                                 </p>
                                             </div>
 
-                                            {/* Salary Loan */}
-                                            <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="salary_loan">Salary Loan</Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="salary_loan" type="text" inputMode="decimal" pattern="[0-9,.]*" placeholder="Salary Loan" className="pl-8" min={0} value={formatWithCommas(data.salary_loan ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('salary_loan', raw); }} />
-                                                </div>
-                                            </div>
-                                            {/* PERAA Con. */}
-                                            <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="peraa_con">PERAA Con.</Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="peraa_con" type="text" inputMode="decimal" pattern="[0-9,.]*" placeholder="PERAA Contribution" className="pl-8" min={0} value={formatWithCommas(data.peraa_con ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('peraa_con', raw); }} />
-                                                </div>
-                                            </div>
-                                            {/* China Bank */}
-                                            <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="china_bank">China Bank</Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="china_bank" type="text" inputMode="decimal" pattern="[0-9,.]*" placeholder="China Bank" className="pl-8" min={0} value={formatWithCommas(data.china_bank ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('china_bank', raw); }} />
-                                                </div>
-                                            </div>
-                                            {/* TEA */}
-                                            <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="tea">TEA</Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="tea" type="text" inputMode="decimal" pattern="[0-9,.]*" placeholder="TEA" className="pl-8" min={0} value={formatWithCommas(data.tea ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('tea', raw); }} />
-                                                </div>
-                                            </div>
-                                            {/* Calamity Loan */}
-                                            <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="calamity_loan">Calamity Loan</Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="calamity_loan" type="text" inputMode="decimal" pattern="[0-9,.]*" placeholder="Calamity Loan" className="pl-8" min={0} value={formatWithCommas(data.calamity_loan ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('calamity_loan', raw); }} />
-                                                </div>
-                                            </div>
-                                            {/* Multipurpose Loan */}
-                                            <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="multipurpose_loan">Multipurpose Loan</Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="multipurpose_loan" type="text" inputMode="decimal" pattern="[0-9,.]*" placeholder="Multipurpose Loan" className="pl-8" min={0} value={formatWithCommas(data.multipurpose_loan ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('multipurpose_loan', raw); }} />
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
