@@ -65,16 +65,16 @@ export default function Edit({
     page,
     salaryDefaults,
 }: Props) {
-    // Add state for showing/hiding Salary Loan input
-    const [showSalaryLoanInput, setShowSalaryLoanInput] = useState(false);
-    const [showCalamityLoanInput, setShowCalamityLoanInput] = useState(false);
-    const [showPagibigMultiInput, setShowPagibigMultiInput] = useState(false);
-    const [showPagibigCalamityInput, setShowPagibigCalamityInput] = useState(false);
-    const [showPERAAConInput, setShowPERAAConInput] = useState(false);
+    // Show input fields by default if value exists
+    const [showSalaryLoanInput, setShowSalaryLoanInput] = useState(!!employee.salary_loan);
+    const [showCalamityLoanInput, setShowCalamityLoanInput] = useState(!!employee.calamity_loan);
+    const [showPagibigMultiInput, setShowPagibigMultiInput] = useState(!!employee.multipurpose_loan);
+    const [showPagibigCalamityInput, setShowPagibigCalamityInput] = useState(!!employee.calamity_loan);
+    const [showPERAAConInput, setShowPERAAConInput] = useState(!!employee.peraa_con);
     // Other Deductions
-    const [showTuitionInput, setShowTuitionInput] = useState(false);
-    const [showChinaBankInput, setShowChinaBankInput] = useState(false);
-    const [showTEAInput, setShowTEAInput] = useState(false);
+    const [showTuitionInput, setShowTuitionInput] = useState(false); // No tuition in employee type, default to false
+    const [showChinaBankInput, setShowChinaBankInput] = useState(!!employee.china_bank);
+    const [showTEAInput, setShowTEAInput] = useState(!!employee.tea);
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
     const { data, setData, put } = useForm({
         last_name: employee.last_name || '',
