@@ -639,7 +639,12 @@ export default function Create(props: Props) {
                                     <div className='mb-4'>
                                         <div className='flex items-center gap-2 mb-2'>
                                             <Label>SSS Salary Loan</Label>
-                                            <Button type="button" size="sm" variant="outline" onClick={() => setShowSalaryLoanInput(!showSalaryLoanInput)}>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                if (showSalaryLoanInput && data.sss_salary_loan) {
+                                                    setData('sss_salary_loan', '');
+                                                }
+                                                setShowSalaryLoanInput(!showSalaryLoanInput);
+                                            }}>
                                                 {showSalaryLoanInput ? '-' : '+'}
                                             </Button>
                                         </div>
@@ -669,7 +674,12 @@ export default function Create(props: Props) {
                                     <div className='mb-4'>
                                         <div className='flex items-center gap-2 mb-2'>
                                             <Label>SSS Calamity Loan</Label>
-                                            <Button type="button" size="sm" variant="outline" onClick={() => setShowCalamityLoanInput(!showCalamityLoanInput)}>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                if (showCalamityLoanInput && data.sss_calamity_loan) {
+                                                    setData('sss_calamity_loan', '');
+                                                }
+                                                setShowCalamityLoanInput(!showCalamityLoanInput);
+                                            }}>
                                                 {showCalamityLoanInput ? '-' : '+'}
                                             </Button>
                                         </div>
@@ -699,7 +709,12 @@ export default function Create(props: Props) {
                                     <div className='mb-4'>
                                         <div className='flex items-center gap-2 mb-2'>
                                             <Label>Pag-IBIG Multi Purpose Loan</Label>
-                                            <Button type="button" size="sm" variant="outline" onClick={() => setShowPagibigMultiInput(!showPagibigMultiInput)}>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                if (showPagibigMultiInput && data.pagibig_multi_loan) {
+                                                    setData('pagibig_multi_loan', '');
+                                                }
+                                                setShowPagibigMultiInput(!showPagibigMultiInput);
+                                            }}>
                                                 {showPagibigMultiInput ? '-' : '+'}
                                             </Button>
                                         </div>
@@ -729,7 +744,12 @@ export default function Create(props: Props) {
                                     <div className='mb-4'>
                                         <div className='flex items-center gap-2 mb-2'>
                                             <Label>Pag-IBIG Calamity Loan</Label>
-                                            <Button type="button" size="sm" variant="outline" onClick={() => setShowPagibigCalamityInput(!showPagibigCalamityInput)}>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                if (showPagibigCalamityInput && data.pagibig_calamity_loan) {
+                                                    setData('pagibig_calamity_loan', '');
+                                                }
+                                                setShowPagibigCalamityInput(!showPagibigCalamityInput);
+                                            }}>
                                                 {showPagibigCalamityInput ? '-' : '+'}
                                             </Button>
                                         </div>
@@ -759,7 +779,12 @@ export default function Create(props: Props) {
                                     <div className='mb-4'>
                                         <div className='flex items-center gap-2 mb-2'>
                                             <Label>PERAA Con.</Label>
-                                            <Button type="button" size="sm" variant="outline" onClick={() => setShowPERAAConInput(!showPERAAConInput)}>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                if (showPERAAConInput && data.peraa_con) {
+                                                    setData('peraa_con', '');
+                                                }
+                                                setShowPERAAConInput(!showPERAAConInput);
+                                            }}>
                                                 {showPERAAConInput ? '-' : '+'}
                                             </Button>
                                         </div>
@@ -792,7 +817,12 @@ export default function Create(props: Props) {
                                         <div className='mb-4'>
                                             <div className='flex items-center gap-2 mb-2'>
                                                 <Label>Tuition</Label>
-                                                <Button type="button" size="sm" variant="outline" onClick={() => setShowTuitionInput(!showTuitionInput)}>
+                                                <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                    if (showTuitionInput && data.tuition) {
+                                                        setData('tuition', '');
+                                                    }
+                                                    setShowTuitionInput(!showTuitionInput);
+                                                }}>
                                                     {showTuitionInput ? '-' : '+'}
                                                 </Button>
                                             </div>
@@ -822,7 +852,12 @@ export default function Create(props: Props) {
                                         <div className='mb-4'>
                                             <div className='flex items-center gap-2 mb-2'>
                                                 <Label>China Bank</Label>
-                                                <Button type="button" size="sm" variant="outline" onClick={() => setShowChinaBankInput(!showChinaBankInput)}>
+                                                <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                    if (showChinaBankInput && data.china_bank) {
+                                                        setData('china_bank', '');
+                                                    }
+                                                    setShowChinaBankInput(!showChinaBankInput);
+                                                }}>
                                                     {showChinaBankInput ? '-' : '+'}
                                                 </Button>
                                             </div>
@@ -852,7 +887,12 @@ export default function Create(props: Props) {
                                         <div className='mb-4'>
                                             <div className='flex items-center gap-2 mb-2'>
                                                 <Label>TEA</Label>
-                                                <Button type="button" size="sm" variant="outline" onClick={() => setShowTEAInput(!showTEAInput)}>
+                                                <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                    if (showTEAInput && data.tea) {
+                                                        setData('tea', '');
+                                                    }
+                                                    setShowTEAInput(!showTEAInput);
+                                                }}>
                                                     {showTEAInput ? '-' : '+'}
                                                 </Button>
                                             </div>
