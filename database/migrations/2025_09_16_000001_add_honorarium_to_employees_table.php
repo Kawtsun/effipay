@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('employees', function (Blueprint $table) {
-            $table->decimal('honorarium', 12, 2)->nullable()->after('overtime_pay');
+            $table->decimal('honorarium', 12, 2)->nullable()->after('withholding_tax');
         });
     }
 

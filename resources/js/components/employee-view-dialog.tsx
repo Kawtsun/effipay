@@ -1,3 +1,7 @@
+// Removed duplicate import
+// Removed duplicate import
+// Removed duplicate import
+// Removed import of Employees to use local interface
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
     const parts = time.split(':');
@@ -48,11 +52,40 @@ interface MonthlyPayrollData {
     month: string
 }
 
+interface Employees {
+    overtime_pay: number;
+    id: number;
+    last_name: string;
+    first_name: string;
+    middle_name: string;
+    employee_type: string;
+    employee_status: string;
+    roles: string;
+    base_salary: number;
+    sss: number;
+    philhealth: number;
+    pag_ibig: number;
+    withholding_tax: number;
+    work_hours_per_day: number;
+    work_start_time: string;
+    work_end_time: string;
+    sss_salary_loan?: number;
+    sss_calamity_loan?: number;
+    pagibig_multi_loan?: number;
+    pagibig_calamity_loan?: number;
+    peraa_con?: number;
+    tuition?: number;
+    china_bank?: number;
+    tea?: number;
+    honorarium: number;
+    college_program?: string;
+}
+
 interface Props {
-    employee: Employees | null
-    onClose: () => void
-    activeRoles?: string[]
-    showPayroll?: boolean
+    employee: Employees | null;
+    onClose: () => void;
+    activeRoles?: string[];
+    showPayroll?: boolean;
 }
 
 function formatWithCommas(value: string | number): string {
@@ -79,80 +112,81 @@ function Info({ label, value }: { label: string; value: string | number }) {
 
 
 export default function EmployeeViewDialog({ employee, onClose, activeRoles, showPayroll = false }: Props) {
-    const [selectedMonth, setSelectedMonth] = useState('')
-    const [pendingMonth, setPendingMonth] = useState('') // for delayed update
-    const [monthlyPayrollData, setMonthlyPayrollData] = useState<MonthlyPayrollData | null>(null)
-    const [availableMonths, setAvailableMonths] = useState<string[]>([])
-    const [loadingPayroll, setLoadingPayroll] = useState(false)
-    const [minLoading, setMinLoading] = useState(false)
-    const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null)
+    const [selectedMonth, setSelectedMonth] = useState('');
+    const [pendingMonth, setPendingMonth] = useState(''); // for delayed update
+    const [monthlyPayrollData, setMonthlyPayrollData] = useState<MonthlyPayrollData | null>(null);
+    const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+    const [loadingPayroll, setLoadingPayroll] = useState(false);
+    const [minLoading, setMinLoading] = useState(false);
+    const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
 
     // Fetch available months when employee changes
     useEffect(() => {
         if (employee) {
-            fetchAvailableMonths()
+            fetchAvailableMonths();
         }
-    }, [employee])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [employee]);
 
     // Fetch monthly payroll data when month changes
     useEffect(() => {
         if (employee && pendingMonth) {
-            fetchMonthlyPayrollData()
+            fetchMonthlyPayrollData();
         } else {
-            setMonthlyPayrollData(null)
+            setMonthlyPayrollData(null);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [employee, pendingMonth])
+    }, [employee, pendingMonth]);
 
     const fetchAvailableMonths = async () => {
-        if (!employee) return
+        if (!employee) return;
         try {
-            const response = await fetch(route('payroll.employee.months', { employee_id: employee.id }))
-            const result = await response.json()
+            const response = await fetch(route('payroll.employee.months', { employee_id: employee.id }));
+            const result = await response.json();
             if (result.success) {
-                setAvailableMonths(result.months)
+                setAvailableMonths(result.months);
                 // Auto-select the most recent month if available
                 if (result.months.length > 0 && !selectedMonth) {
-                    setSelectedMonth(result.months[0])
-                    setPendingMonth(result.months[0]) // trigger payroll fetch on first load
+                    setSelectedMonth(result.months[0]);
+                    setPendingMonth(result.months[0]); // trigger payroll fetch on first load
                 }
             }
         } catch (error) {
-            console.error('Error fetching available months:', error)
+            console.error('Error fetching available months:', error);
         }
     }
 
     const fetchMonthlyPayrollData = async () => {
-        if (!employee || !pendingMonth) return
-        setLoadingPayroll(true)
-        setMinLoading(true)
-        if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current)
-        minLoadingTimeout.current = setTimeout(() => setMinLoading(false), 400)
+        if (!employee || !pendingMonth) return;
+        setLoadingPayroll(true);
+        setMinLoading(true);
+        if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
+        minLoadingTimeout.current = setTimeout(() => setMinLoading(false), 400);
         try {
             const response = await fetch(route('payroll.employee.monthly', {
                 employee_id: employee.id,
                 month: pendingMonth
-            }))
-            const result = await response.json()
+            }));
+            const result = await response.json();
             if (result.success) {
-                setMonthlyPayrollData(result)
+                setMonthlyPayrollData(result);
                 // Do not update selectedMonth here; it's already set in handleMonthChange
             } else {
-                setMonthlyPayrollData(null)
+                setMonthlyPayrollData(null);
             }
         } catch (error) {
-            console.error('Error fetching monthly payroll data:', error)
-            setMonthlyPayrollData(null)
+            console.error('Error fetching monthly payroll data:', error);
+            setMonthlyPayrollData(null);
         } finally {
-            setTimeout(() => setLoadingPayroll(false), 100) // allow animation to finish
+            setTimeout(() => setLoadingPayroll(false), 100); // allow animation to finish
         }
     }
 
     // When user picks a month, set both selectedMonth and pendingMonth
     const handleMonthChange = (month: string) => {
         if (month !== selectedMonth) {
-            setSelectedMonth(month)
-            setPendingMonth(month)
+            setSelectedMonth(month);
+            setPendingMonth(month);
         }
     }
 
@@ -236,9 +270,9 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                                 <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-3 col-end-4">
                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Loans</h5>
                                                     <div className="space-y-3 text-sm mb-8">
-                                                        <Info label="SSS Salary Loan" value={`₱${formatWithCommas(employee.salary_loan ?? 0)}`} />
-                                                        <Info label="SSS Calamity Loan" value={`₱${formatWithCommas(employee.calamity_loan ?? 0)}`} />
-                                                        <Info label="Pag-IBIG Multi Purpose Loan" value={`₱${formatWithCommas(employee.multipurpose_loan ?? 0)}`} />
+                                                        <Info label="SSS Salary Loan" value={`₱${formatWithCommas(employee.sss_salary_loan ?? 0)}`} />
+                                                        <Info label="SSS Calamity Loan" value={`₱${formatWithCommas(employee.sss_calamity_loan ?? 0)}`} />
+                                                        <Info label="Pag-IBIG Multi Purpose Loan" value={`₱${formatWithCommas(employee.pagibig_multi_loan ?? 0)}`} />
                                                         <Info label="Pag-IBIG Calamity Loan" value={`₱${formatWithCommas(employee.pagibig_calamity_loan ?? 0)}`} />
                                                         <Info label="PERAA Con." value={`₱${formatWithCommas(employee.peraa_con ?? 0)}`} />
                                                     </div>

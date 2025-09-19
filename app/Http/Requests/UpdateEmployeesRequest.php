@@ -65,12 +65,14 @@ class UpdateEmployeesRequest extends FormRequest
                 'string',
                 'max:255',
             ],
-            'salary_loan' => 'nullable|numeric|min:0',
+            'sss_salary_loan' => 'nullable|numeric|min:0',
+            'sss_calamity_loan' => 'nullable|numeric|min:0',
+            'pagibig_multi_loan' => 'nullable|numeric|min:0',
+            'pagibig_calamity_loan' => 'nullable|numeric|min:0',
             'peraa_con' => 'nullable|numeric|min:0',
+            'tuition' => 'nullable|numeric|min:0',
             'china_bank' => 'nullable|numeric|min:0',
             'tea' => 'nullable|numeric|min:0',
-            'calamity_loan' => 'nullable|numeric|min:0',
-            'multipurpose_loan' => 'nullable|numeric|min:0',
             'honorarium' => 'nullable|numeric|min:0',
         ];
     }

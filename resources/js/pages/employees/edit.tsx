@@ -34,20 +34,29 @@ type Props = {
         work_hours_per_day: number;
         work_start_time: string;
         work_end_time: string;
-        salary_loan?: number;
+        sss_salary_loan?: number;
+        sss_calamity_loan?: number;
+        pagibig_multi_loan?: number;
+        pagibig_calamity_loan?: number;
         peraa_con?: number;
+        tuition?: number;
         china_bank?: number;
         tea?: number;
-        calamity_loan?: number;
-        multipurpose_loan?: number;
         honorarium?: number;
         college_program?: string;
     };
     employeeCategory?: string;
     search?: string;
-    filters?: any;
+    filters?: Record<string, unknown>;
     page?: number;
-    salaryDefaults?: any;
+    salaryDefaults?: Record<string, {
+        base_salary: number;
+        sss: number;
+        philhealth: number;
+        pag_ibig: number;
+        withholding_tax: number;
+        work_hours_per_day: number;
+    }>;
 };
 
 function formatWithCommas(value: string) {
@@ -66,17 +75,17 @@ export default function Edit({
     salaryDefaults,
 }: Props) {
     // Show input fields by default if value exists
-    const [showSalaryLoanInput, setShowSalaryLoanInput] = useState(!!employee.salary_loan);
-    const [showCalamityLoanInput, setShowCalamityLoanInput] = useState(!!employee.calamity_loan);
-    const [showPagibigMultiInput, setShowPagibigMultiInput] = useState(!!employee.multipurpose_loan);
-    const [showPagibigCalamityInput, setShowPagibigCalamityInput] = useState(!!employee.calamity_loan);
+    const [showSalaryLoanInput, setShowSalaryLoanInput] = useState(!!employee.sss_salary_loan);
+    const [showCalamityLoanInput, setShowCalamityLoanInput] = useState(!!employee.sss_calamity_loan);
+    const [showPagibigMultiInput, setShowPagibigMultiInput] = useState(!!employee.pagibig_multi_loan);
+    const [showPagibigCalamityInput, setShowPagibigCalamityInput] = useState(!!employee.pagibig_calamity_loan);
     const [showPERAAConInput, setShowPERAAConInput] = useState(!!employee.peraa_con);
     // Other Deductions
-    const [showTuitionInput, setShowTuitionInput] = useState(false); // No tuition in employee type, default to false
+    const [showTuitionInput, setShowTuitionInput] = useState(!!employee.tuition);
     const [showChinaBankInput, setShowChinaBankInput] = useState(!!employee.china_bank);
     const [showTEAInput, setShowTEAInput] = useState(!!employee.tea);
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
-    const { data, setData, put } = useForm({
+    const { data, setData } = useForm({
         last_name: employee.last_name || '',
         first_name: employee.first_name || '',
         middle_name: employee.middle_name || '',
@@ -92,12 +101,14 @@ export default function Edit({
         work_start_time: trimToHM(employee.work_start_time),
         work_end_time: trimToHM(employee.work_end_time),
         college_program: employee.college_program || '',
-        salary_loan: employee.salary_loan?.toString() || '',
+        sss_salary_loan: employee.sss_salary_loan?.toString() || '',
+        sss_calamity_loan: employee.sss_calamity_loan?.toString() || '',
+        pagibig_multi_loan: employee.pagibig_multi_loan?.toString() || '',
+        pagibig_calamity_loan: employee.pagibig_calamity_loan?.toString() || '',
         peraa_con: employee.peraa_con?.toString() || '',
+        tuition: employee.tuition?.toString() || '',
         china_bank: employee.china_bank?.toString() || '',
         tea: employee.tea?.toString() || '',
-        calamity_loan: employee.calamity_loan?.toString() || '',
-        multipurpose_loan: employee.multipurpose_loan?.toString() || '',
         honorarium: employee.honorarium?.toString() || '',
     });
 
@@ -165,6 +176,15 @@ export default function Edit({
             work_hours_per_day: workHours,
             work_start_time: startTime,
             work_end_time: endTime,
+            sss_salary_loan: Number(data.sss_salary_loan.replace(/,/g, '')) || 0,
+            sss_calamity_loan: Number(data.sss_calamity_loan.replace(/,/g, '')) || 0,
+            pagibig_multi_loan: Number(data.pagibig_multi_loan.replace(/,/g, '')) || 0,
+            pagibig_calamity_loan: Number(data.pagibig_calamity_loan.replace(/,/g, '')) || 0,
+            peraa_con: Number(data.peraa_con.replace(/,/g, '')) || 0,
+            tuition: Number(data.tuition.replace(/,/g, '')) || 0,
+            china_bank: Number(data.china_bank.replace(/,/g, '')) || 0,
+            tea: Number(data.tea.replace(/,/g, '')) || 0,
+            honorarium: Number(data.honorarium.replace(/,/g, '')) || 0,
         };
 
         // Submit via PUT with correct route params
@@ -185,8 +205,8 @@ export default function Edit({
             title: 'Employees',
             href: route('employees.index', {
                 search,
-                types: filters.types,
-                statuses: filters.statuses,
+                types: filters?.types,
+                statuses: filters?.statuses,
                 page,
             }),
         },
@@ -287,7 +307,7 @@ export default function Edit({
                 setData('work_hours_per_day', actualWorkHours.toString());
             }
         }
-    }, [data.work_start_time, data.work_end_time]);
+    }, [data.work_start_time, data.work_end_time, setData]);
 
     // When collegeProgram changes, sync to form state
 
@@ -318,8 +338,8 @@ export default function Edit({
                     <Link
                         href={route('employees.index', {
                             search,
-                            types: filters.types,
-                            statuses: filters.statuses,
+                            types: filters?.types,
+                            statuses: filters?.statuses,
                             page,
                         })}
                     >
@@ -593,27 +613,10 @@ export default function Edit({
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="pag-ibig">
-                                                    Pag-IBIG
-                                                </Label>
+                                                <Label htmlFor="pag-ibig">Pag-IBIG</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input
-                                                        id="pag-ibig"
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9.,]*"
-                                                        required
-                                                        placeholder="Pag-IBIG"
-                                                        className="pl-8"
-                                                        min={200}
-                                                        value={formatWithCommas(data.pag_ibig ?? '')}
-                                                        onChange={e => {
-                                                            const raw = e.target.value.replace(/,/g, '');
-                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                            setData('pag_ibig', raw);
-                                                        }}
-                                                    />
+                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="[0-9]+(\\.[0-9]{1,2})?" required placeholder="Pag-IBIG" className="pl-8" min={200} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.]/g, ''); setData('pag_ibig', raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
@@ -668,17 +671,17 @@ export default function Edit({
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
                                                     <Input
-                                                        id="salary_loan"
+                                                        id="sss_salary_loan"
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
                                                         placeholder="SSS Salary Loan"
                                                         className="pl-8"
                                                         min={0}
-                                                        value={formatWithCommas(data.salary_loan ?? '')}
+                                                        value={formatWithCommas(data.sss_salary_loan ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
-                                                            setData('salary_loan', raw);
+                                                            setData('sss_salary_loan', raw);
                                                         }}
                                                     />
                                                 </div>
@@ -698,17 +701,17 @@ export default function Edit({
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
                                                     <Input
-                                                        id="calamity_loan"
+                                                        id="sss_calamity_loan"
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
                                                         placeholder="SSS Calamity Loan"
                                                         className="pl-8"
                                                         min={0}
-                                                        value={formatWithCommas(data.calamity_loan ?? '')}
+                                                        value={formatWithCommas(data.sss_calamity_loan ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
-                                                            setData('calamity_loan', raw);
+                                                            setData('sss_calamity_loan', raw);
                                                         }}
                                                     />
                                                 </div>
@@ -728,17 +731,17 @@ export default function Edit({
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
                                                     <Input
-                                                        id="multipurpose_loan"
+                                                        id="pagibig_multi_loan"
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
                                                         placeholder="Pag-IBIG Multi Purpose Loan"
                                                         className="pl-8"
                                                         min={0}
-                                                        value={formatWithCommas(data.multipurpose_loan ?? '')}
+                                                        value={formatWithCommas(data.pagibig_multi_loan ?? '')}
                                                         onChange={e => {
                                                             const raw = e.target.value.replace(/,/g, '');
-                                                            setData('multipurpose_loan', raw);
+                                                            setData('pagibig_multi_loan', raw);
                                                         }}
                                                     />
                                                 </div>

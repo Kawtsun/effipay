@@ -26,12 +26,14 @@ class Employees extends Model
         'work_hours_per_day',
         'work_start_time',
         'work_end_time',
-        'salary_loan',
+        'sss_salary_loan',
+        'sss_calamity_loan',
+        'pagibig_multi_loan',
+        'pagibig_calamity_loan',
         'peraa_con',
+        'tuition',
         'china_bank',
         'tea',
-        'calamity_loan',
-        'multipurpose_loan',
         'honorarium',
     ];
 
