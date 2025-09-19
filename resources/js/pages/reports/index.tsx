@@ -1,6 +1,6 @@
 
 import { toast } from 'sonner'
-import EmployeeReportDialog from '@/components/employee-report-dialog'
+import ReportViewDialog from '@/components/report-view-dialog'
 import EmployeeFilter from '@/components/employee-filter'
 import EmployeePagination from '@/components/employee-pagination'
 import EmployeeSearch from '@/components/employee-search'
@@ -402,7 +402,7 @@ export default function ReportsIndex() {
                             </TableBody>
                         </Table>
                     </div>
-                    <EmployeeReportDialog
+                    <ReportViewDialog
                         employee={viewing}
                         onClose={() => setViewing(null)}
                         activeRoles={appliedFilters.roles}
