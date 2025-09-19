@@ -176,15 +176,15 @@ export default function Edit({
             work_hours_per_day: workHours,
             work_start_time: startTime,
             work_end_time: endTime,
-            sss_salary_loan: Number(data.sss_salary_loan.replace(/,/g, '')) || 0,
-            sss_calamity_loan: Number(data.sss_calamity_loan.replace(/,/g, '')) || 0,
-            pagibig_multi_loan: Number(data.pagibig_multi_loan.replace(/,/g, '')) || 0,
-            pagibig_calamity_loan: Number(data.pagibig_calamity_loan.replace(/,/g, '')) || 0,
-            peraa_con: Number(data.peraa_con.replace(/,/g, '')) || 0,
-            tuition: Number(data.tuition.replace(/,/g, '')) || 0,
-            china_bank: Number(data.china_bank.replace(/,/g, '')) || 0,
-            tea: Number(data.tea.replace(/,/g, '')) || 0,
-            honorarium: Number(data.honorarium.replace(/,/g, '')) || 0,
+            sss_salary_loan: data.sss_salary_loan === '' ? null : Number(data.sss_salary_loan.replace(/,/g, '')),
+            sss_calamity_loan: data.sss_calamity_loan === '' ? null : Number(data.sss_calamity_loan.replace(/,/g, '')),
+            pagibig_multi_loan: data.pagibig_multi_loan === '' ? null : Number(data.pagibig_multi_loan.replace(/,/g, '')),
+            pagibig_calamity_loan: data.pagibig_calamity_loan === '' ? null : Number(data.pagibig_calamity_loan.replace(/,/g, '')),
+            peraa_con: data.peraa_con === '' ? null : Number(data.peraa_con.replace(/,/g, '')),
+            tuition: data.tuition === '' ? null : Number(data.tuition.replace(/,/g, '')),
+            china_bank: data.china_bank === '' ? null : Number(data.china_bank.replace(/,/g, '')),
+            tea: data.tea === '' ? null : Number(data.tea.replace(/,/g, '')),
+            honorarium: data.honorarium === '' ? null : Number(data.honorarium.replace(/,/g, '')),
         };
 
         // Submit via PUT with correct route params
@@ -616,7 +616,7 @@ export default function Edit({
                                                 <Label htmlFor="pag-ibig">Pag-IBIG</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="[0-9]+(\\.[0-9]{1,2})?" required placeholder="Pag-IBIG" className="pl-8" min={200} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.]/g, ''); setData('pag_ibig', raw); }} />
+                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^\d+(\.\d{1,2})?$" required placeholder="Pag-IBIG" className="pl-8" min={200} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.]/g, ''); setData('pag_ibig', raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
