@@ -29,8 +29,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   logo: {
-    width: 40,
-    height: 40,
+    width: 54,
+    height: 54,
     marginRight: 12,
     objectFit: 'contain',
   },
@@ -45,6 +45,7 @@ const styles = StyleSheet.create({
     color: '#028102',
     textAlign: 'left',
     fontFamily: 'Helvetica',
+    marginTop: 6,
   },
   subtitle: {
     fontSize: 10,
@@ -55,19 +56,58 @@ const styles = StyleSheet.create({
   },
 });
 
-const PayslipTemplate: React.FC = () => (
+
+interface PayslipTemplateProps {
+  payPeriod?: string; // 'YYYY-MM' or 'YYYY-MM-DD'
+}
+
+const getPayPeriodString = (period?: string) => {
+  let date = new Date();
+  let year = date.getFullYear();
+  let month = date.getMonth() + 1;
+  if (period) {
+    const match = period.match(/^(\d{4})-(\d{2})/);
+    if (match) {
+      year = parseInt(match[1], 10);
+      month = parseInt(match[2], 10);
+    }
+  }
+  const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' });
+  const lastDay = new Date(year, month, 0).getDate();
+  return `Pay Period:     ${monthName} 1-${lastDay}, ${year}`;
+};
+
+const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      <View style={styles.headerRow}>
-        <Image
-          style={styles.logo}
-          src="/img/tcc_logo2.jpg"
-        />
-        <View style={styles.headerTextCol}>
-          <Text style={styles.title}>TOMAS CLAUDIO COLLEGES</Text>
-          <Text style={styles.subtitle}>Higher Education Pioneer in Eastern Rizal</Text>
-          <Text style={styles.subtitle}>Taghangin, Morong, Rizal Philippines</Text>
-          <Text style={styles.subtitle}>Tel. Nos.: (02) 234-5566</Text>
+      <View style={{ ...styles.headerRow, justifyContent: 'space-between', alignItems: 'flex-end' }}>
+  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Image
+            style={styles.logo}
+            src="/img/tcc_logo2.jpg"
+          />
+          <View style={styles.headerTextCol}>
+            <Text style={styles.title}>TOMAS CLAUDIO COLLEGES</Text>
+            <Text style={styles.subtitle}>Higher Education Pioneer in Eastern Rizal</Text>
+            <Text style={styles.subtitle}>Taghangin, Morong, Rizal Philippines</Text>
+            <Text style={styles.subtitle}>Tel. Nos.: (02) 234-5566</Text>
+          </View>
+        </View>
+        <View style={{ alignItems: 'flex-end', justifyContent: 'flex-end', minWidth: 140, marginBottom: 0 }}>
+          {(() => {
+            const payPeriodStr = getPayPeriodString(payPeriod);
+            // payPeriodStr: 'Pay Period: September 1-30, 2025'
+            const match = payPeriodStr.match(/^(Pay Period: )(.*)$/);
+            if (match) {
+              return (
+                <Text>
+                  {match[1]}
+                  <Text style={{ fontWeight: 'bold' }}>{match[2]}</Text>
+                </Text>
+              );
+            }
+            return <Text>{payPeriodStr}</Text>;
+          })()}
         </View>
       </View>
     </Page>
