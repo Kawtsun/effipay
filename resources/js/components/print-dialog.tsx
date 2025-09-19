@@ -34,8 +34,11 @@ interface Payroll {
     absences?: number;
     overtime_pay?: number;
     sss?: string;
-    sss_loan?: string;
+    sss_salary_loan?: string;
+    sss_calamity_loan?: string;
     pag_ibig?: string;
+    pagibig_multi_loan?: string;
+    pagibig_calamity_loan?: string;
     philhealth?: string;
     withholding_tax?: string;
     withholding_tax_base?: string;
@@ -44,10 +47,9 @@ interface Payroll {
     net_pay?: number;
     salary_loan?: string | number;
     peraa_con?: string | number;
+    tuition?: string | number;
     china_bank?: string | number;
     tea?: string | number;
-    calamity_loan?: string | number;
-    multipurpose_loan?: string | number;
 }
 
 interface PayslipData {
@@ -66,17 +68,17 @@ interface PayslipData {
     };
     deductions: {
         sss?: string;
-        sssLoan?: string;
-        pagibig?: string;
         philhealth?: string;
+        pagibig?: string;
         withholdingTax?: string;
-        withholdingTaxBase?: string;
-        salaryLoan?: string | number;
+        sssSalaryLoan?: string;
+        sssCalamityLoan?: string;
+        pagibigMultiLoan?: string;
+        pagibigCalamityLoan?: string;
         peraaCon?: string | number;
+        tuition?: string | number;
         chinaBank?: string | number;
         tea?: string | number;
-        calamityLoan?: string | number;
-        multipurposeLoan?: string | number;
     };
     totalEarnings?: string;
     totalDeductions?: string;
@@ -123,14 +125,18 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
         },
         deductions: {
             sss: payroll.sss ?? '',
-            sssLoan: payroll.sss_loan ?? '',
-            pagibig: payroll.pag_ibig ?? '',
             philhealth: payroll.philhealth ?? '',
+            pagibig: payroll.pag_ibig ?? '',
             withholdingTax: payroll.withholding_tax ?? '',
-            salaryLoan: payroll.salary_loan ?? '',
+            sssSalaryLoan: payroll.sss_salary_loan ?? '',
+            sssCalamityLoan: payroll.sss_calamity_loan ?? '',
+            pagibigMultiLoan: payroll.pagibig_multi_loan ?? '',
+            pagibigCalamityLoan: payroll.pagibig_calamity_loan ?? '',
             peraaCon: payroll.peraa_con ?? '',
+            tuition: payroll.tuition ?? '',
             chinaBank: payroll.china_bank ?? '',
             tea: payroll.tea ?? '',
+            salaryLoan: payroll.salary_loan ?? '',
             calamityLoan: payroll.calamity_loan ?? '',
             multipurposeLoan: payroll.multipurpose_loan ?? '',
         },
