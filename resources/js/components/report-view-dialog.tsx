@@ -300,7 +300,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         ))}
                                                     </div>
                                                     {/* Detailed Breakdown Skeleton */}
-                                                    <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
+                                                    <div className="grid grid-cols-3 gap-10 max-[900px]:grid-cols-1">
                                                         {/* Earnings */}
                                                         <div>
                                                             <Skeleton className="h-6 w-36 mb-4" />
@@ -335,6 +335,31 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                                     <Skeleton className="h-3 w-32 mb-1" />
                                                                     <Skeleton className="h-4 w-40" />
                                                                 </div>
+                                                            </div>
+                                                        </div>
+                                                        {/* Loans and Other Deductions Skeleton */}
+                                                        <div>
+                                                            <Skeleton className="h-6 w-32 mb-4" />
+                                                            <div className="space-y-3 text-sm mb-8">
+                                                                <Skeleton className="h-3 w-32 mb-1" />
+                                                                <Skeleton className="h-4 w-32" />
+                                                                <Skeleton className="h-3 w-32 mb-1" />
+                                                                <Skeleton className="h-4 w-32" />
+                                                                <Skeleton className="h-3 w-40 mb-1" />
+                                                                <Skeleton className="h-4 w-40" />
+                                                                <Skeleton className="h-3 w-40 mb-1" />
+                                                                <Skeleton className="h-4 w-40" />
+                                                                <Skeleton className="h-3 w-32 mb-1" />
+                                                                <Skeleton className="h-4 w-32" />
+                                                            </div>
+                                                            <Skeleton className="h-6 w-32 mb-4" />
+                                                            <div className="space-y-3 text-sm">
+                                                                <Skeleton className="h-3 w-32 mb-1" />
+                                                                <Skeleton className="h-4 w-32" />
+                                                                <Skeleton className="h-3 w-32 mb-1" />
+                                                                <Skeleton className="h-4 w-32" />
+                                                                <Skeleton className="h-3 w-32 mb-1" />
+                                                                <Skeleton className="h-4 w-32" />
                                                             </div>
                                                         </div>
                                                     </div>
@@ -487,7 +512,6 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                                     <div className="space-y-3 text-sm">
                                                                         <Info label="Base Salary" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.base_salary : 0)}`} />
                                                                         <Info label="Honorarium" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.honorarium ?? 0 : 0)}`} />
-                                                                        <Info label="Overtime Pay" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.overtime_pay ?? 0 : 0)}`} />
                                                                     </div>
                                                                 </div>
                                                                 {/* Deductions (center column) */}
