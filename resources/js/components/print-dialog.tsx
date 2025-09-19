@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+// Removed Checkbox import
 import React, { useState } from 'react';
 import { useEmployeePayroll } from '@/hooks/useEmployeePayroll';
 // ...existing code...
@@ -9,6 +9,7 @@ import { PDFDownloadLink } from '@react-pdf/renderer';
 import PayslipTemplate from './print-templates/PayslipTemplate';
 import BiometricTimeRecordTemplate from './print-templates/BiometricTimeRecordTemplate';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Printer, FileText } from 'lucide-react';
 import { MonthPicker } from './ui/month-picker';
 
 interface Employee {
@@ -137,7 +138,7 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
 export default function PrintDialog({ open, onClose, employee }: PrintDialogProps) {
     const [selectedMonth, setSelectedMonth] = useState<string>('');
     const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, selectedMonth);
-    const [selected, setSelected] = useState({ payslip: true, btr: false });
+    // Removed selected state
     const [btrRecords, setBtrRecords] = useState<BTRRecord[]>([]);
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     // Fetch available months from backend
@@ -160,103 +161,93 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         fetchAvailableMonths();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-    const [showPDF, setShowPDF] = useState(false);
+    // Removed duplicate showPDF state
     const [payrollData, setPayrollData] = useState<PayslipData | null>(null);
 
-    const handleChange = (key: 'payslip' | 'btr') => {
-        setSelected(prev => ({ ...prev, [key]: !prev[key] }));
+
+    // showPDF: false | 'payslip' | 'btr'
+    const [showPDF, setShowPDF] = useState<false | 'payslip' | 'btr'>(false);
+
+    // Print Payslip handler
+    const handlePrintPayslip = async () => {
+        setShowPDF(false);
+        const data = await fetchPayrollData(employee?.id, selectedMonth);
+        if (!data) {
+            toast.error('No payroll data found for the selected month.');
+            return;
+        }
+        // Fetch timekeeping records before calculating numHours
+        const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
+        const result = await response.json();
+        let btrRecords: BTRRecord[] = [];
+        if (result.success && Array.isArray(result.records) && result.records.length > 0) {
+            btrRecords = result.records.map((rec: any) => {
+                const dateObj = new Date(rec.date);
+                const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                return {
+                    date: rec.date,
+                    dayName,
+                    timeIn: rec.clock_in || rec.time_in || '-',
+                    timeOut: rec.clock_out || rec.time_out || '-',
+                };
+            });
+        }
+        let numHours = 0;
+        if (timekeepingSummary) {
+            let totalWorkedHours = 0;
+            if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
+                const attendedShifts = btrRecords.filter(
+                    (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
+                ).length;
+                totalWorkedHours = attendedShifts * employee.work_hours_per_day;
+            }
+            numHours = totalWorkedHours
+                - (Number(timekeepingSummary.tardiness ?? 0))
+                - (Number(timekeepingSummary.undertime ?? 0))
+                - (Number(timekeepingSummary.absences ?? 0))
+                + (Number(timekeepingSummary.overtime ?? 0));
+            if (numHours < 0) numHours = 0;
+        }
+        setPayrollData({
+            ...data,
+            earnings: {
+                ...data.earnings,
+                numHours,
+                ratePerHour: timekeepingSummary?.rate_per_hour ?? 0,
+                tardiness: timekeepingSummary?.tardiness ?? 0,
+                undertime: timekeepingSummary?.undertime ?? 0,
+                absences: timekeepingSummary?.absences ?? 0,
+                overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
+            },
+        });
+        setTimeout(() => setShowPDF('payslip'), 100);
     };
 
-    const handlePrint = async () => {
-        setShowPDF(false); // Always reset before print
-        if (selected.payslip) {
-            const data = await fetchPayrollData(employee?.id, selectedMonth);
-            if (selected.payslip) {
-                const payrollData = await fetchPayrollData(employee?.id, selectedMonth);
-                if (!payrollData) {
-                    toast.error('No payroll data found for the selected month.');
-                    return;
-                }
-                // Fetch timekeeping records before calculating numHours
-                const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
-                const result = await response.json();
-                let btrRecords: BTRRecord[] = [];
-                if (result.success && Array.isArray(result.records) && result.records.length > 0) {
-                    btrRecords = result.records.map((rec: {
-                        date: string;
-                        clock_in?: string;
-                        time_in?: string;
-                        clock_out?: string;
-                        time_out?: string;
-                    }) => {
-                        const dateObj = new Date(rec.date);
-                        const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
-                        return {
-                            date: rec.date,
-                            dayName,
-                            timeIn: rec.clock_in || rec.time_in || '-',
-                            timeOut: rec.clock_out || rec.time_out || '-',
-                        };
-                    });
-                }
-                // Calculate total worked hours from timekeeping summary
-                let numHours = 0;
-                if (timekeepingSummary) {
-                    let totalWorkedHours = 0;
-                    if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
-                        const attendedShifts = btrRecords.filter(
-                            (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
-                        ).length;
-                        totalWorkedHours = attendedShifts * employee.work_hours_per_day;
-                    }
-                    numHours = totalWorkedHours
-                        - (Number(timekeepingSummary.tardiness ?? 0))
-                        - (Number(timekeepingSummary.undertime ?? 0))
-                        - (Number(timekeepingSummary.absences ?? 0))
-                        + (Number(timekeepingSummary.overtime ?? 0));
-                    if (numHours < 0) numHours = 0;
-                }
-                setPayrollData({
-                    ...payrollData,
-                    earnings: {
-                        ...payrollData.earnings,
-                        numHours,
-                        ratePerHour: timekeepingSummary?.rate_per_hour ?? 0,
-                        tardiness: timekeepingSummary?.tardiness ?? 0,
-                        undertime: timekeepingSummary?.undertime ?? 0,
-                        absences: timekeepingSummary?.absences ?? 0,
-                        overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
-                    },
-                });
-                setTimeout(() => setShowPDF(true), 100); // Ensure PDF triggers
-            }
-            const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
-            const result = await response.json();
-            if (result.success && Array.isArray(result.records) && result.records.length > 0) {
-                const records: BTRRecord[] = result.records.map((rec: {
-                    date: string;
-                    clock_in?: string;
-                    time_in?: string;
-                    clock_out?: string;
-                    time_out?: string;
-                }) => {
-                    const dateObj = new Date(rec.date);
-                    const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
-                    return {
-                        date: rec.date,
-                        dayName,
-                        timeIn: rec.clock_in || rec.time_in || '-',
-                        timeOut: rec.clock_out || rec.time_out || '-',
-                    };
-                });
-                setBtrRecords(records);
-                setTimeout(() => setShowPDF(true), 100); // Ensure PDF triggers
-            } else {
-                setBtrRecords([]);
-                toast.error('No biometric time records found for this month.');
-            }
+    // Print BTR handler
+    const handlePrintBTR = async () => {
+        setShowPDF(false);
+        const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
+        const result = await response.json();
+        if (result.success && Array.isArray(result.records) && result.records.length > 0) {
+            const records: BTRRecord[] = result.records.map((rec: any) => {
+                const dateObj = new Date(rec.date);
+                const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                return {
+                    date: rec.date,
+                    dayName,
+                    timeIn: rec.clock_in || rec.time_in || '-',
+                    timeOut: rec.clock_out || rec.time_out || '-',
+                };
+            });
+            setBtrRecords(records);
+            setTimeout(() => setShowPDF('btr'), 100);
+        } else {
+            setBtrRecords([]);
+            toast.error('No biometric time records found for this month.');
         }
     };
+
+    // Removed unused handlePrint and selected logic
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
@@ -268,15 +259,15 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                         exit={{ opacity: 0, y: -20, scale: 0.98 }}
                         transition={{ duration: 0.35, ease: 'easeOut' }}
                     >
-                        <DialogContent style={{ maxWidth: 340, padding: '1.5rem' }}>
+                        <DialogContent style={{ maxWidth: 320, padding: '1.5rem 1.5rem 1.2rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <DialogHeader>
                                 <DialogTitle>Print Employee Report</DialogTitle>
                             </DialogHeader>
-                            <div className="mb-4 text-sm text-muted-foreground">
+                            <div className="mb-4 text-sm text-muted-foreground text-center w-full">
                                 What would you like to print for <span className="font-semibold">{employee?.last_name}, {employee?.first_name}</span>?
                             </div>
-                            <div className="mb-4">
-                                <label className="block text-xs font-semibold mb-1">Select Month</label>
+                            <div className="mb-4 w-full flex flex-col items-center">
+                                <label className="block text-xs font-semibold mb-1 text-center w-full">Select Month</label>
                                 <MonthPicker
                                     value={selectedMonth}
                                     onValueChange={setSelectedMonth}
@@ -284,28 +275,19 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                     className="w-full"
                                 />
                             </div>
-                            <div className="flex flex-col gap-2 mb-4 select-none">
-                                <label className="flex items-center gap-2">
-                                    <Checkbox
-                                        checked={selected.payslip}
-                                        onCheckedChange={() => handleChange('payslip')}
-                                        className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-                                    />
-                                    Payslip
-                                </label>
-                                <label className="flex items-center gap-2">
-                                    <Checkbox
-                                        checked={selected.btr}
-                                        onCheckedChange={() => handleChange('btr')}
-                                        className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-                                    />
-                                    Biometric Time Record (BTR)
-                                </label>
+                            <div className="flex flex-col gap-2 mb-4 select-none w-full items-center">
+                                <Button className="w-full flex items-center gap-2 justify-center" variant="default" onClick={handlePrintPayslip} disabled={!selectedMonth}>
+                                    <FileText className="w-4 h-4" />
+                                    Print Payslip
+                                </Button>
+                                <Button className="w-full flex items-center gap-2 justify-center" variant="default" onClick={handlePrintBTR} disabled={!selectedMonth}>
+                                    <Printer className="w-4 h-4" />
+                                    Print Biometric Time Record (BTR)
+                                </Button>
                             </div>
                             <DialogFooter>
-                                <Button onClick={onClose} variant="secondary">Cancel</Button>
-                                <Button disabled={!selected.payslip && !selected.btr} onClick={handlePrint}>Print Selected</Button>
-                                {showPDF && selected.payslip && payrollData && (
+                                <Button onClick={onClose} variant="secondary">Close</Button>
+                                {showPDF === 'payslip' && payrollData && (
                                     <PDFDownloadLink
                                         document={<PayslipTemplate
                                             employeeName={`${employee?.last_name}, ${employee?.first_name}`}
@@ -330,7 +312,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                         }}
                                     </PDFDownloadLink>
                                 )}
-                                {showPDF && selected.btr && btrRecords.length > 0 && (
+                                {showPDF === 'btr' && btrRecords.length > 0 && (
                                     <PDFDownloadLink
                                         document={<BiometricTimeRecordTemplate
                                             employeeName={`${employee?.last_name}, ${employee?.first_name}`}
