@@ -1,3 +1,11 @@
+function formatWithCommas(value: string) {
+    if (!value) return '';
+    const [int, dec] = value.split('.');
+    return dec !== undefined
+        ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
+        : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 import { calculatePhilHealth, calculateWithholdingTax } from '@/utils/salaryFormulas';
 import { calculateSSS } from '@/utils/salaryFormulas';
 import { EmployeeStatus } from '@/components/employee-status';
@@ -59,13 +67,7 @@ type Props = {
     }>;
 };
 
-function formatWithCommas(value: string) {
-    if (!value) return '';
-    const [int, dec] = value.split('.');
-    return dec !== undefined
-        ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
-        : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
+
 
 export default function Edit({
     employee,
@@ -270,13 +272,13 @@ export default function Edit({
     useEffect(() => {
         if (salaryDefaults && salaryDefaults[data.employee_type]) {
             const def = salaryDefaults[data.employee_type];
-            // Only set defaults if the field is empty (for create, not edit)
-            if (!data.base_salary) setData('base_salary', def.base_salary.toString());
-            if (!data.sss) setData('sss', def.sss.toString());
-            if (!data.philhealth) setData('philhealth', def.philhealth.toString());
-            if (!data.pag_ibig) setData('pag_ibig', def.pag_ibig.toString());
-            if (!data.withholding_tax) setData('withholding_tax', def.withholding_tax.toString());
-            if (!data.work_hours_per_day) setData('work_hours_per_day', def.work_hours_per_day.toString());
+            // Only set defaults if the field is truly undefined or null, not just empty string
+            if (data.base_salary === undefined || data.base_salary === null) setData('base_salary', def.base_salary.toString());
+            if (data.sss === undefined || data.sss === null) setData('sss', def.sss.toString());
+            if (data.philhealth === undefined || data.philhealth === null) setData('philhealth', def.philhealth.toString());
+            if (data.pag_ibig === undefined || data.pag_ibig === null) setData('pag_ibig', def.pag_ibig.toString());
+            if (data.withholding_tax === undefined || data.withholding_tax === null) setData('withholding_tax', def.withholding_tax.toString());
+            if (data.work_hours_per_day === undefined || data.work_hours_per_day === null) setData('work_hours_per_day', def.work_hours_per_day.toString());
             // Do NOT override existing work start/end times on edit.
         }
     }, [data.employee_type, salaryDefaults, data.base_salary, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, data.work_hours_per_day, setData]);
@@ -547,7 +549,7 @@ export default function Edit({
                                                     <Label htmlFor="honorarium">Honorarium <span className="text-xs text-muted-foreground">(optional)</span></Label>
                                                     <div className='relative'>
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                        <Input id="honorarium" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="Honorarium" className="pl-8" min={0} value={formatWithCommas(data.honorarium ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('honorarium', raw); }} />
+                                                        <Input id="honorarium" type="text" inputMode="numeric" pattern="[0-9.,]*" placeholder="Honorarium" className="pl-8" min={0} value={formatWithCommas(data.honorarium ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('honorarium', raw); }} />
                                                     </div>
                                                 </div>
                                             </div>
