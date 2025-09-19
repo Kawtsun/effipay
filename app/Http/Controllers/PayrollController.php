@@ -6,6 +6,7 @@ use App\Models\Employees;
 use App\Models\Payroll;
 use App\Models\Salary;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -16,6 +17,7 @@ class PayrollController extends Controller
      * Run payroll for a given date (placeholder implementation)
      */
     public function runPayroll(Request $request)
+                // ...existing code...
             // ...existing code...
             // Debug: Output all fetched summary data (after summary is fetched)
     {
@@ -100,18 +102,41 @@ class PayrollController extends Controller
             $gross_pay += round($overtime_pay, 2);
 
                 // Create and save payroll record
-                // Get other deductions from employee
-                $salary_loan = $employee->salary_loan ?? 0;
-                $peraa_con = $employee->peraa_con ?? 0;
-                $china_bank = $employee->china_bank ?? 0;
-                $tea = $employee->tea ?? 0;
-                $calamity_loan = $employee->calamity_loan ?? 0;
-                $multipurpose_loan = $employee->multipurpose_loan ?? 0;
-                $honorarium = $employee->honorarium ?? 0;
+                // Get all loan and deduction fields from employee
+                // Always reference all new fields, fallback to 0 if missing
+                $sss_salary_loan = !is_null($employee->sss_salary_loan) ? $employee->sss_salary_loan : 0;
+                $sss_calamity_loan = !is_null($employee->sss_calamity_loan) ? $employee->sss_calamity_loan : 0;
+                $pagibig_multi_loan = !is_null($employee->pagibig_multi_loan) ? $employee->pagibig_multi_loan : 0;
+                $pagibig_calamity_loan = !is_null($employee->pagibig_calamity_loan) ? $employee->pagibig_calamity_loan : 0;
+                $peraa_con = !is_null($employee->peraa_con) ? $employee->peraa_con : 0;
+                $tuition = !is_null($employee->tuition) ? $employee->tuition : 0;
+                $china_bank = !is_null($employee->china_bank) ? $employee->china_bank : 0;
+                $tea = !is_null($employee->tea) ? $employee->tea : 0;
+                $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
+                $salary_loan = !is_null($employee->salary_loan) ? $employee->salary_loan : 0;
+                $calamity_loan = !is_null($employee->calamity_loan) ? $employee->calamity_loan : 0;
+                $multipurpose_loan = !is_null($employee->multipurpose_loan) ? $employee->multipurpose_loan : 0;
 
                 $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax
-                    + $salary_loan + $peraa_con + $china_bank + $tea + $calamity_loan + $multipurpose_loan;
+                    + $sss_salary_loan + $sss_calamity_loan + $pagibig_multi_loan + $pagibig_calamity_loan
+                    + $peraa_con + $tuition + $china_bank + $tea + $honorarium
+                    + $salary_loan + $calamity_loan + $multipurpose_loan;
                 $net_pay = $gross_pay - $total_deductions;
+                \Illuminate\Support\Facades\Log::info([
+                    'employee_id' => $employee->id,
+                    'sss_salary_loan' => $sss_salary_loan,
+                    'sss_calamity_loan' => $sss_calamity_loan,
+                    'pagibig_multi_loan' => $pagibig_multi_loan,
+                    'pagibig_calamity_loan' => $pagibig_calamity_loan,
+                    'peraa_con' => $peraa_con,
+                    'tuition' => $tuition,
+                    'china_bank' => $china_bank,
+                    'tea' => $tea,
+                    'honorarium' => $honorarium,
+                    'salary_loan' => $salary_loan,
+                    'calamity_loan' => $calamity_loan,
+                    'multipurpose_loan' => $multipurpose_loan,
+                ]);
                 \App\Models\Payroll::create([
                     'employee_id' => $employee->id,
                     'month' => $payrollMonth,
@@ -127,10 +152,15 @@ class PayrollController extends Controller
                     'philhealth' => $philhealth,
                     'pag_ibig' => $pag_ibig,
                     'withholding_tax' => $withholding_tax,
-                    'salary_loan' => $salary_loan,
+                    'sss_salary_loan' => $sss_salary_loan,
+                    'sss_calamity_loan' => $sss_calamity_loan,
+                    'pagibig_multi_loan' => $pagibig_multi_loan,
+                    'pagibig_calamity_loan' => $pagibig_calamity_loan,
                     'peraa_con' => $peraa_con,
+                    'tuition' => $tuition,
                     'china_bank' => $china_bank,
                     'tea' => $tea,
+                    'salary_loan' => $salary_loan,
                     'calamity_loan' => $calamity_loan,
                     'multipurpose_loan' => $multipurpose_loan,
                     'total_deductions' => $total_deductions,
