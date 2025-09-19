@@ -81,7 +81,8 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
             // Optionally log error
         }
     };
-    // Only render dashboard content when month is set (prevents stale/empty animation)
+    // Render dashboard content if month is set OR if there are no available months (empty selector)
+    const shouldShowDashboard = month || availableMonths.length === 0;
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
@@ -96,7 +97,7 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
                 </div>
 
                 {/* Month selector aligned above cards, like reports */}
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-end select-none">
                     <MonthPicker
                         value={month}
                         onValueChange={(val: string) => handleMonthChange({ target: { value: val } })}
@@ -106,7 +107,7 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
                     />
                 </div>
 
-                {month && (
+                {shouldShowDashboard && (
                     <div>
                         {/* Stats cards */}
                         <div className="grid auto-rows-min gap-4 md:grid-cols-3">
@@ -153,7 +154,7 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
                         </div>
 
                         {/* Charts row: Bar chart and Pie chart side by side on desktop, stacked on mobile */}
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch mt-4">
                             <div className="md:col-span-8 col-span-1">
                                 <NetpayMonthlyChart
                                     {...(isFirstRender.current ? { key: month + '-' + availableMonths.join(',') + '-chart' } : {})}
