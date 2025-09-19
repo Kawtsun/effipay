@@ -218,7 +218,6 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                                     <div className="space-y-3 text-sm">
                                                         <Info label="Base Salary" value={`₱${formatWithCommas(employee.base_salary)}`} />
                                                         <Info label="Honorarium" value={`₱${formatWithCommas(employee.honorarium ?? 0)}`} />
-                                                        <Info label="Overtime Pay" value={`₱${formatWithCommas(employee.overtime_pay ?? 0)}`} />
                                                     </div>
                                                 </div>
 
@@ -233,16 +232,21 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                                     </div>
                                                 </div>
 
-                                                {/* Other Deductions (right column) */}
+                                                {/* Loans and Other Deductions (right column) - match image labels and order */}
                                                 <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-3 col-end-4">
+                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Loans</h5>
+                                                    <div className="space-y-3 text-sm mb-8">
+                                                        <Info label="SSS Salary Loan" value={`₱${formatWithCommas(employee.salary_loan ?? 0)}`} />
+                                                        <Info label="SSS Calamity Loan" value={`₱${formatWithCommas(employee.calamity_loan ?? 0)}`} />
+                                                        <Info label="Pag-IBIG Multi Purpose Loan" value={`₱${formatWithCommas(employee.multipurpose_loan ?? 0)}`} />
+                                                        <Info label="Pag-IBIG Calamity Loan" value={`₱${formatWithCommas(employee.pagibig_calamity_loan ?? 0)}`} />
+                                                        <Info label="PERAA Con." value={`₱${formatWithCommas(employee.peraa_con ?? 0)}`} />
+                                                    </div>
                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Other Deductions</h5>
                                                     <div className="space-y-3 text-sm">
-                                                        <Info label="Salary Loan" value={`₱${formatWithCommas(employee.salary_loan ?? 0)}`} />
-                                                        <Info label="PERAA Con." value={`₱${formatWithCommas(employee.peraa_con ?? 0)}`} />
+                                                        <Info label="Tuition" value={`₱${formatWithCommas(employee.tuition ?? 0)}`} />
                                                         <Info label="China Bank" value={`₱${formatWithCommas(employee.china_bank ?? 0)}`} />
                                                         <Info label="TEA" value={`₱${formatWithCommas(employee.tea ?? 0)}`} />
-                                                        <Info label="Calamity Loan" value={`₱${formatWithCommas(employee.calamity_loan ?? 0)}`} />
-                                                        <Info label="Multipurpose Loan" value={`₱${formatWithCommas(employee.multipurpose_loan ?? 0)}`} />
                                                     </div>
                                                 </div>
                                             </div>
