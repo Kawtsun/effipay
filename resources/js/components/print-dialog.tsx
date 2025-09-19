@@ -1,3 +1,7 @@
+// Utility to sanitize file names (remove spaces, special chars)
+function sanitizeFile(str?: string) {
+    return (str || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 // Removed Checkbox import
@@ -300,12 +304,18 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             netPay={payrollData.netPay}
                                             netPay1530={payrollData.netPay1530}
                                         />}
-                                        fileName={`Payslip_${employee?.last_name}_${employee?.first_name}_${selectedMonth}.pdf`}
+                                        fileName={`Payslip_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`}
+                                        download
                                         style={{ display: 'none' }}
                                     >
                                         {({ url, loading }) => {
-                                            if (url && !loading) {
-                                                window.open(url, '_blank');
+                                            if (url && !loading && url) {
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = `Payslip_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
                                                 setShowPDF(false);
                                             }
                                             return null;
@@ -319,12 +329,18 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             payPeriod={selectedMonth}
                                             records={btrRecords}
                                         />}
-                                        fileName={`BTR_${employee?.last_name}_${employee?.first_name}_${selectedMonth}.pdf`}
+                                        fileName={`BTR_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`}
+                                        download
                                         style={{ display: 'none' }}
                                     >
                                         {({ url, loading }) => {
-                                            if (url && !loading) {
-                                                window.open(url, '_blank');
+                                            if (url && !loading && url) {
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = `BTR_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
                                                 setShowPDF(false);
                                             }
                                             return null;
