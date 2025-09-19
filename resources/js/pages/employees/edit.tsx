@@ -329,13 +329,13 @@ export default function Edit({
                         </Button>
                     </Link>
                 </div>
-                <div className='w-full max-w-6xl mx-auto'>
+                <div className='w-full max-w-7xl mx-auto'>
                     <form
                         className='space-y-8'
                         onSubmit={handleUpdate}
                     >
                         {/* Two Column Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-32">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-42">
                             {/* Left Column - Employee Info & Work Schedule */}
                             <div className="space-y-8">
                                 {/* Employee Information */}
