@@ -232,21 +232,39 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         setShowPDF(false);
         const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
         const result = await response.json();
-        if (result.success && Array.isArray(result.records) && result.records.length > 0) {
-            const records: BTRRecord[] = result.records.map((rec: any) => {
-                const dateObj = new Date(rec.date);
-                const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
-                return {
-                    date: rec.date,
-                    dayName,
-                    timeIn: rec.clock_in || rec.time_in || '-',
-                    timeOut: rec.clock_out || rec.time_out || '-',
-                };
-            });
-            setBtrRecords(records);
+        // Get all days in the selected month
+        let allDates: string[] = [];
+        if (selectedMonth) {
+            const [year, month] = selectedMonth.split('-').map(Number);
+            if (!isNaN(year) && !isNaN(month)) {
+                const daysInMonth = new Date(year, month, 0).getDate();
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const date = new Date(year, month - 1, d);
+                    allDates.push(date.toISOString().slice(0, 10));
+                }
+            }
+        }
+        let recordMap: Record<string, any> = {};
+        if (result.success && Array.isArray(result.records)) {
+            for (const rec of result.records) {
+                recordMap[rec.date] = rec;
+            }
+        }
+        const records: BTRRecord[] = allDates.map(dateStr => {
+            const rec = recordMap[dateStr];
+            const dateObj = new Date(dateStr);
+            const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+            return {
+                date: dateStr,
+                dayName,
+                timeIn: rec ? (rec.clock_in || rec.time_in || '-') : '-',
+                timeOut: rec ? (rec.clock_out || rec.time_out || '-') : '-',
+            };
+        });
+        setBtrRecords(records);
+        if (records.length > 0) {
             setTimeout(() => setShowPDF('btr'), 100);
         } else {
-            setBtrRecords([]);
             toast.error('No biometric time records found for this month.');
         }
     };
