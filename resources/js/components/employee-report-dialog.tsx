@@ -44,25 +44,30 @@ interface PayrollData {
     month: string;
     payroll_date: string;
     base_salary: number;
+    honorarium?: number;
     overtime_pay: number;
     sss: number;
     philhealth: number;
     pag_ibig: number;
     withholding_tax: number;
-    gross_pay: number;
-    total_deductions: number;
-    net_pay: number;
-    rate_per_hour?: number;
     tardiness?: number;
     undertime?: number;
     absences?: number;
-    honorarium?: number;
-    salary_loan?: number;
+    gross_pay: number;
+    sss_salary_loan?: number;
+    sss_calamity_loan?: number;
+    pagibig_multi_loan?: number;
+    pagibig_calamity_loan?: number;
     peraa_con?: number;
+    tuition?: number;
     china_bank?: number;
     tea?: number;
+    salary_loan?: number;
     calamity_loan?: number;
     multipurpose_loan?: number;
+    total_deductions: number;
+    net_pay: number;
+    rate_per_hour?: number;
 }
 
 interface MonthlyPayrollData {
@@ -218,7 +223,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                             <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
-                                                 <Info label="Schedule" value={
+                                                <Info label="Schedule" value={
                                                     employee.work_start_time && employee.work_end_time && employee.work_hours_per_day
                                                         ? `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${employee.work_hours_per_day} hours)`
                                                         : '-'
@@ -233,7 +238,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                         </div>
                                     </div>
                                     <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
-                                    
+
                                     <div className="pt-2">
                                         <div className="flex items-center justify-between mb-4">
                                             <h4 className="font-semibold text-lg">Salary & Contributions</h4>
@@ -404,7 +409,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.25 }}
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Gross Pay</div>
-                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{hasPayroll && typeof grossPay === 'number' ? `₱${grossPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
+                                                            <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">{hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.gross_pay)}` : '-'}</div>
                                                         </motion.div>
                                                         {/* Deductions */}
                                                         <motion.div
@@ -415,7 +420,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.2 }}
                                                         >
                                                             <div className="text-xs text-orange-600 font-medium mb-2">Total Deductions</div>
-                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{hasPayroll && typeof totalDeductions === 'number' ? `₱${totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
+                                                            <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">{hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.total_deductions)}` : '-'}</div>
                                                         </motion.div>
                                                         {/* Net Pay */}
                                                         <motion.div
@@ -426,7 +431,7 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                             transition={{ duration: 0.3, delay: 0.3 }}
                                                         >
                                                             <div className="text-xs text-green-600 font-medium mb-2">Net Pay</div>
-                                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">{hasPayroll && typeof netPay === 'number' ? `₱${netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</div>
+                                                            <div className="text-xl font-bold text-green-700 dark:text-green-300 break-words whitespace-nowrap">{hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.net_pay)}` : '-'}</div>
                                                         </motion.div>
                                                         {/* Per Payroll */}
                                                         <motion.div
@@ -463,41 +468,46 @@ export default function EmployeeReportDialog({ employee, onClose, activeRoles }:
                                                         transition={{ duration: 0.3, delay: 0.5 }}
                                                     >
                                                         {/* Salary & Contributions Section - Three Columns */}
-                                    <div className="pt-2">
-                                        <div className="grid grid-cols-3 gap-3 items-start w-full"> {/* Three columns layout */}
-                                            {/* Income & Benefits */}
-                                            <div className="px-8 min-h-[200px] flex flex-col justify-start">
-                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
-                                                <div className="space-y-3 text-sm">
-                                                    <Info label="Base Salary" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.base_salary)}` : `₱${formatWithCommas(employee?.base_salary ?? 0)}`} />
-                                                    <Info label="Honorarium" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.honorarium ?? 0)}` : `₱${formatWithCommas(employee?.honorarium ?? 0)}`} />
-                                                    <Info label="Overtime Pay" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.overtime_pay ?? 0)}` : `₱${formatWithCommas(employee?.overtime_pay ?? 0)}`} />
-                                                </div>
-                                            </div>
-                                            {/* Deductions (center column) */}
-                                            <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-2 col-end-3">
-                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
-                                                <div className="space-y-3 text-sm">
-                                                    <Info label="SSS" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.sss)}` : `₱${formatWithCommas(employee?.sss ?? 0)}`} />
-                                                    <Info label="PhilHealth" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.philhealth)}` : `₱${formatWithCommas(employee?.philhealth ?? 0)}`} />
-                                                    <Info label="Pag-IBIG" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.pag_ibig)}` : `₱${formatWithCommas(employee?.pag_ibig ?? 0)}`} />
-                                                    <Info label="Withholding Tax" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.withholding_tax)}` : `₱${formatWithCommas(employee?.withholding_tax ?? 0)}`} />
-                                                </div>
-                                            </div>
-                                            {/* Other Deductions (right column) */}
-                                            <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-3 col-end-4">
-                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Other Deductions</h5>
-                                                <div className="space-y-3 text-sm">
-                                                    <Info label="Salary Loan" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.salary_loan ?? 0)}` : `₱${formatWithCommas(employee?.salary_loan ?? 0)}`} />
-                                                    <Info label="PERAA Con." value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.peraa_con ?? 0)}` : `₱${formatWithCommas(employee?.peraa_con ?? 0)}`} />
-                                                    <Info label="China Bank" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.china_bank ?? 0)}` : `₱${formatWithCommas(employee?.china_bank ?? 0)}`} />
-                                                    <Info label="TEA" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.tea ?? 0)}` : `₱${formatWithCommas(employee?.tea ?? 0)}`} />
-                                                    <Info label="Calamity Loan" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.calamity_loan ?? 0)}` : `₱${formatWithCommas(employee?.calamity_loan ?? 0)}`} />
-                                                    <Info label="Multipurpose Loan" value={hasPayroll && selectedPayroll ? `₱${formatWithCommas(selectedPayroll.multipurpose_loan ?? 0)}` : `₱${formatWithCommas(employee?.multipurpose_loan ?? 0)}`} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                                        <div className="pt-2">
+                                                            <div className="grid grid-cols-3 gap-3 items-start w-full"> {/* Three columns layout */}
+                                                                {/* Income & Benefits */}
+                                                                <div className="px-8 min-h-[200px] flex flex-col justify-start">
+                                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
+                                                                    <div className="space-y-3 text-sm">
+                                                                        <Info label="Base Salary" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.base_salary : 0)}`} />
+                                                                        <Info label="Honorarium" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.honorarium ?? 0 : 0)}`} />
+                                                                        <Info label="Overtime Pay" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.overtime_pay ?? 0 : 0)}`} />
+                                                                    </div>
+                                                                </div>
+                                                                {/* Deductions (center column) */}
+                                                                <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-2 col-end-3">
+                                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
+                                                                    <div className="space-y-3 text-sm">
+                                                                        <Info label="SSS" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.sss : 0)}`} />
+                                                                        <Info label="PhilHealth" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.philhealth : 0)}`} />
+                                                                        <Info label="Pag-IBIG" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.pag_ibig : 0)}`} />
+                                                                        <Info label="Withholding Tax" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.withholding_tax : 0)}`} />
+                                                                    </div>
+                                                                </div>
+                                                                {/* Loans and Other Deductions (right column) - match image labels and order */}
+                                                                <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-3 col-end-4">
+                                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Loans</h5>
+                                                                    <div className="space-y-3 text-sm mb-8">
+                                                                        <Info label="SSS Salary Loan" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.sss_salary_loan ?? 0 : 0)}`} />
+                                                                        <Info label="SSS Calamity Loan" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.sss_calamity_loan ?? 0 : 0)}`} />
+                                                                        <Info label="Pag-IBIG Multi Purpose Loan" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.pagibig_multi_loan ?? 0 : 0)}`} />
+                                                                        <Info label="Pag-IBIG Calamity Loan" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.pagibig_calamity_loan ?? 0 : 0)}`} />
+                                                                        <Info label="PERAA Con." value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.peraa_con ?? 0 : 0)}`} />
+                                                                    </div>
+                                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Other Deductions</h5>
+                                                                    <div className="space-y-3 text-sm">
+                                                                        <Info label="Tuition" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.tuition ?? 0 : 0)}`} />
+                                                                        <Info label="China Bank" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.china_bank ?? 0 : 0)}`} />
+                                                                        <Info label="TEA" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.tea ?? 0 : 0)}`} />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </motion.div>
                                                 </motion.div>
                                             )}
