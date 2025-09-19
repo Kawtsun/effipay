@@ -22,16 +22,17 @@ class UpdateEmployeesRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'employee_name' => 'required|string|max:255',
+    return [
+            'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name' => 'required|string|max:255',
             'employee_type' => 'required|string|max:255',
             'employee_status' => 'required|string|max:255',
-            'base_salary' => 'required|integer|min:0',
-            'overtime_pay' => 'required|integer|min:0',
-            'sss' => 'required|integer|min:0',
-            'philhealth' => 'required|integer|min:250|max:2500',
-            'pag_ibig' => 'required|integer|min:200',
-            'withholding_tax' => 'required|integer|min:0',
+            'base_salary' => 'required|numeric|min:0',
+            'sss' => 'required|numeric|min:0',
+            'philhealth' => 'required|numeric|min:250|max:2500',
+            'pag_ibig' => 'required|numeric|min:200',
+            'withholding_tax' => 'required|numeric|min:0',
             'work_hours_per_day' => 'required|integer|min:1|max:24',
             'work_start_time' => 'required|date_format:H:i',
             'work_end_time' => 'required|date_format:H:i|after:work_start_time',
@@ -64,6 +65,15 @@ class UpdateEmployeesRequest extends FormRequest
                 'string',
                 'max:255',
             ],
+            'sss_salary_loan' => 'nullable|numeric|min:0',
+            'sss_calamity_loan' => 'nullable|numeric|min:0',
+            'pagibig_multi_loan' => 'nullable|numeric|min:0',
+            'pagibig_calamity_loan' => 'nullable|numeric|min:0',
+            'peraa_con' => 'nullable|numeric|min:0',
+            'tuition' => 'nullable|numeric|min:0',
+            'china_bank' => 'nullable|numeric|min:0',
+            'tea' => 'nullable|numeric|min:0',
+            'honorarium' => 'nullable|numeric|min:0',
         ];
     }
 }

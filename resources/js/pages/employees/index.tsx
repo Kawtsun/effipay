@@ -1,3 +1,4 @@
+// ...existing code...
 import EmployeeDelete from '@/components/employee-delete'
 import EmployeeFilter from '@/components/employee-filter'
 import EmployeePagination from '@/components/employee-pagination'
@@ -16,14 +17,15 @@ import AppLayout from '@/layouts/app-layout'
 import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, Link, router, usePage } from '@inertiajs/react'
-import { Eye, Loader2, Pencil, Plus, Trash, Users, Shield, GraduationCap, Book } from 'lucide-react'
+import { Eye, Loader2, Pencil, Trash, Users, Shield, GraduationCap, Book, UserPlus2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 
-type Flash = { success?: string }
-type PageProps = { flash?: Flash }
+type FlashObject = { type: string; message: string };
+type Flash = { success?: string } | string | FlashObject;
+type PageProps = { flash?: Flash };
 
 interface EmployeesProps {
     employees: Employees[]
@@ -92,10 +94,23 @@ export default function Index({
 
     // Show toast on success
     useEffect(() => {
-        if (props.flash?.success) {
-            toast.success(props.flash.success)
+        if (!props.flash) return;
+        if (typeof props.flash === 'string') {
+            toast.success(props.flash);
+        } else if (typeof props.flash === 'object' && props.flash !== null) {
+            if ('success' in props.flash && props.flash.success) {
+                toast.success(props.flash.success);
+            } else if ('type' in props.flash && 'message' in props.flash) {
+                if (props.flash.type === 'error') {
+                    toast.error(props.flash.message || 'An error occurred');
+                } else if (props.flash.type === 'success') {
+                    toast.success(props.flash.message || 'Success');
+                } else {
+                    toast(props.flash.message || 'Notification');
+                }
+            }
         }
-    }, [props.flash])
+    }, [props.flash]);
 
     // Visit helper
     const visit = useCallback((params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string }>, options: { preserve?: boolean } = {}) => {
@@ -216,7 +231,9 @@ export default function Index({
                         <Users className="h-6 w-6 text-primary" />
                         Employees
                     </h1>
-                    <p className="text-sm text-muted-foreground">Manage your organization's employee type, status, and salary.</p>
+                    <p className="text-sm text-muted-foreground">
+                        Manage employee information, status, and salaries.
+                    </p>
                 </div>
 
                 {/* SEARCH & CONTROLS */}
@@ -249,8 +266,8 @@ export default function Index({
                                 })}
                             >
                                 <Button className="flex items-center gap-2 whitespace-nowrap">
-                                    <Plus className="w-4 h-4" />
-                                    Add Employee
+                                    <UserPlus2 className="w-4 h-4" />
+                                    Add
                                 </Button>
                             </Link>
                         </div>
@@ -285,7 +302,7 @@ export default function Index({
                             <TableHeader className=''>
                                 <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
                                     <TableHead style={{ width: 120 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
-                                    <TableHead style={{ width: 200 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
+                                    <TableHead style={{ width: 400 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
                                     <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
                                     <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
                                     <TableHead style={{ width: 350 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Roles</TableHead>
@@ -308,15 +325,15 @@ export default function Index({
                                                 className={`transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}
                                             >
                                                 <TableCell style={{ width: 120 }} className="px-4 py-2">{emp.id}</TableCell>
-                                                <TableCell style={{ width: 200 }} className="px-4 py-2">{emp.employee_name}</TableCell>
+                                                <TableCell style={{ width: 400 }} className="px-4 py-2">{`${emp.last_name}, ${emp.first_name} ${emp.middle_name}`.toLocaleUpperCase('en-US')}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
                                                 <TableCell style={{ width: 350 }} className="px-4 py-2 min-w-[160px]">
+                                                    {/* Roles display logic unchanged */}
                                                     {(() => {
                                                         if (!emp.roles) return '';
                                                         const rolesArr = emp.roles.split(',').map(r => r.trim()).filter(Boolean);
                                                         const order = ['administrator', 'college instructor', 'basic education instructor'];
-                                                        // Prioritize filtered role if applied
                                                         let displayRoles = rolesArr;
                                                         if (appliedFilters.roles.length > 0) {
                                                             const filtered = appliedFilters.roles.filter(r => rolesArr.includes(r));
@@ -340,7 +357,6 @@ export default function Index({
                                                             color = 'warning';
                                                             icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                         }
-                                                        // Tooltip: all roles as badges, with full program name for college instructor
                                                         const tooltipContent = (
                                                             <div className="flex flex-wrap gap-2">
                                                                 {displayRoles.map(role => {
@@ -368,7 +384,6 @@ export default function Index({
                                                                 })}
                                                             </div>
                                                         );
-                                                        // Main badge: show acronym for college instructor, +N for additional roles
                                                         const badgeContent = (
                                                             <span className="inline-flex items-center gap-1">
                                                                 <Badge key={mainRole} variant={color} className="capitalize flex items-center">
@@ -379,12 +394,9 @@ export default function Index({
                                                                 )}
                                                             </span>
                                                         );
-                                                        // Tooltip logic
-                                                        // Only one role and not college instructor: no tooltip
                                                         if (displayRoles.length === 1 && mainRole !== 'college instructor') {
                                                             return badgeContent;
                                                         }
-                                                        // Otherwise, show tooltip (for college instructor or multiple roles)
                                                         return (
                                                             <TooltipProvider>
                                                                 <Tooltip>

@@ -38,7 +38,7 @@ class SalaryController extends Controller
             'types'     => $types,
             'selected'  => $selected,
             'defaults'  => $defaults,
-            'flash'     => session('success'),
+            'flash'     => session('flash') ?? session('success'),
         ]);
     }
 
@@ -85,8 +85,28 @@ class SalaryController extends Controller
         
         // If base_salary is being updated, automatically calculate PhilHealth
         if (isset($data['base_salary'])) {
-            $calculatedPhilHealth = ($data['base_salary'] * 0.05) / 4;
+            $calculatedPhilHealth = ($data['base_salary'] * 0.05) / 2;
             $data['philhealth'] = max(250, min(2500, $calculatedPhilHealth));
+        }
+
+        // Automate withholding tax: if total_compensation is 20,832 or below, set withholding_tax to 0
+        $base_salary = isset($data['base_salary']) ? $data['base_salary'] : $salary->base_salary;
+        $sss = isset($data['sss']) ? $data['sss'] : $salary->sss;
+        $pag_ibig = isset($data['pag_ibig']) ? $data['pag_ibig'] : $salary->pag_ibig;
+        $philhealth = isset($data['philhealth']) ? $data['philhealth'] : $salary->philhealth;
+        $total_compensation = $base_salary - ($sss + $pag_ibig + $philhealth);
+        if ($total_compensation <= 20832) {
+            $data['withholding_tax'] = 0;
+        } elseif ($total_compensation >= 20833 && $total_compensation <= 33332) {
+            $data['withholding_tax'] = ($total_compensation - 20833) * 0.15;
+        } elseif ($total_compensation >= 33333 && $total_compensation <= 66666) {
+            $data['withholding_tax'] = ($total_compensation - 33333) * 0.20 + 1875;
+        } elseif ($total_compensation >= 66667 && $total_compensation <= 166666) {
+            $data['withholding_tax'] = ($total_compensation - 66667) * 0.25 + 8541.80;
+        } elseif ($total_compensation >= 166667 && $total_compensation <= 666666) {
+            $data['withholding_tax'] = ($total_compensation - 166667) * 0.30 + 33541.80;
+        } elseif ($total_compensation >= 666667) {
+            $data['withholding_tax'] = ($total_compensation - 666667) * 0.35 + 183541.80;
         }
         
         $salary->update($data);

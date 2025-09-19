@@ -19,8 +19,12 @@ class EmployeesController extends Controller
     {
         $query = Employees::query();
 
-        if ($request->filled('search')) {
-            $query->where('employee_name', 'like', '%' . $request->search . '%');
+                if ($request->filled('search')) {
+                        $query->where(function($q) use ($request) {
+                                $q->where('last_name', 'like', '%' . $request->search . '%')
+                                    ->orWhere('first_name', 'like', '%' . $request->search . '%')
+                                    ->orWhere('middle_name', 'like', '%' . $request->search . '%');
+                        });
         }
 
         if ($request->filled('types')) {
@@ -50,12 +54,13 @@ class EmployeesController extends Controller
         $employeesArray = array_map(function ($emp) {
             return [
                 'id' => $emp->id,
-                'employee_name' => $emp->employee_name,
+                'last_name' => $emp->last_name,
+                'first_name' => $emp->first_name,
+                'middle_name' => $emp->middle_name,
                 'employee_type' => $emp->employee_type,
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
                 'base_salary' => $emp->base_salary,
-                'overtime_pay' => $emp->overtime_pay,
                 'sss' => $emp->sss,
                 'philhealth' => $emp->philhealth,
                 'pag_ibig' => $emp->pag_ibig,
@@ -64,6 +69,15 @@ class EmployeesController extends Controller
                 'work_hours_per_day' => $emp->work_hours_per_day,
                 'work_start_time' => $emp->work_start_time,
                 'work_end_time' => $emp->work_end_time,
+                'sss_salary_loan' => $emp->sss_salary_loan,
+                'sss_calamity_loan' => $emp->sss_calamity_loan,
+                'pagibig_multi_loan' => $emp->pagibig_multi_loan,
+                'pagibig_calamity_loan' => $emp->pagibig_calamity_loan,
+                'peraa_con' => $emp->peraa_con,
+                'tuition' => $emp->tuition,
+                'china_bank' => $emp->china_bank,
+                'tea' => $emp->tea,
+                'honorarium' => $emp->honorarium,
             ];
         }, $employees->items());
 
@@ -98,7 +112,6 @@ class EmployeesController extends Controller
             ->mapWithKeys(fn($row) => [
                 $row->employee_type => [
                     'base_salary'     => $row->base_salary,
-                    'overtime_pay'    => $row->overtime_pay,
                     'sss'             => $row->sss,
                     'philhealth'      => $row->philhealth,
                     'pag_ibig'        => $row->pag_ibig,
@@ -114,6 +127,9 @@ class EmployeesController extends Controller
             'page'            => $page,
             'employeeTypes'   => $employeeTypes,
             'salaryDefaults'  => $salaryDefaults,
+            'employee'        => [
+                'honorarium' => '', // default empty for new employee
+            ],
         ]);
     }
 
@@ -122,11 +138,18 @@ class EmployeesController extends Controller
      */
     public function store(StoreEmployeesRequest $request)
     {
-        Employees::create($request->validated());
+    $data = $request->validated();
+    // Recalculate PhilHealth using new formula (divide by 2)
+    if (isset($data['base_salary'])) {
+        $base_salary = (float) $data['base_salary'];
+        $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
+        $data['philhealth'] = round($philhealth, 2);
+    }
+    Employees::create($data);
 
         // Restore previous filters from referer
         $redirectParams = [];
-        $referer = $request->headers->get('referer');
+    $referer = request()->header('referer');
         if ($referer) {
             $query = parse_url($referer, PHP_URL_QUERY);
             if ($query) {
@@ -171,7 +194,6 @@ class EmployeesController extends Controller
             ->mapWithKeys(fn($row) => [
                 $row->employee_type => [
                     'base_salary'     => $row->base_salary,
-                    'overtime_pay'    => $row->overtime_pay,
                     'sss'             => $row->sss,
                     'philhealth'      => $row->philhealth,
                     'pag_ibig'        => $row->pag_ibig,
@@ -181,7 +203,33 @@ class EmployeesController extends Controller
             ])
             ->toArray();
         return Inertia::render('employees/edit', [
-            'employee' => $employee,
+            'employee' => [
+                'id' => $employee->id,
+                'last_name' => $employee->last_name,
+                'first_name' => $employee->first_name,
+                'middle_name' => $employee->middle_name,
+                'employee_type' => $employee->employee_type,
+                'employee_status' => $employee->employee_status,
+                'roles' => $employee->roles,
+                'base_salary' => $employee->base_salary,
+                'sss' => $employee->sss,
+                'philhealth' => $employee->philhealth,
+                'pag_ibig' => $employee->pag_ibig,
+                'college_program' => $employee->college_program,
+                'withholding_tax' => $employee->withholding_tax,
+                'work_hours_per_day' => $employee->work_hours_per_day,
+                'work_start_time' => $employee->work_start_time,
+                'work_end_time' => $employee->work_end_time,
+                'sss_salary_loan' => $employee->sss_salary_loan,
+                'sss_calamity_loan' => $employee->sss_calamity_loan,
+                'pagibig_multi_loan' => $employee->pagibig_multi_loan,
+                'pagibig_calamity_loan' => $employee->pagibig_calamity_loan,
+                'peraa_con' => $employee->peraa_con,
+                'tuition' => $employee->tuition,
+                'china_bank' => $employee->china_bank,
+                'tea' => $employee->tea,
+                'honorarium' => $employee->honorarium,
+            ],
             'search'   => $request->input('search', ''),
             'filters'  => [
                 'types'    => $types,
@@ -199,11 +247,18 @@ class EmployeesController extends Controller
      */
     public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
-        $employee->update($request->validated());
+    $data = $request->validated();
+    // Recalculate PhilHealth using new formula (divide by 2)
+    if (isset($data['base_salary'])) {
+        $base_salary = (float) $data['base_salary'];
+        $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
+        $data['philhealth'] = round($philhealth, 2);
+    }
+    $employee->update($data);
 
         // Restore previous filters from referer
         $redirectParams = [];
-        $referer = $request->headers->get('referer');
+    $referer = request()->header('referer');
         if ($referer) {
             $query = parse_url($referer, PHP_URL_QUERY);
             if ($query) {

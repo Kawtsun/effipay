@@ -1,6 +1,7 @@
-
-
-// Helper to format time as 12-hour string (supports HH:MM or HH:MM:SS)
+// Removed duplicate import
+// Removed duplicate import
+// Removed duplicate import
+// Removed import of Employees to use local interface
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
     const parts = time.split(':');
@@ -37,7 +38,6 @@ interface PayrollData {
     month: string
     payroll_date: string
     base_salary: number
-    overtime_pay: number
     sss: number
     philhealth: number
     pag_ibig: number
@@ -52,11 +52,51 @@ interface MonthlyPayrollData {
     month: string
 }
 
+interface Employees {
+    overtime_pay: number;
+    id: number;
+    last_name: string;
+    first_name: string;
+    middle_name: string;
+    employee_type: string;
+    employee_status: string;
+    roles: string;
+    base_salary: number;
+    sss: number;
+    philhealth: number;
+    pag_ibig: number;
+    withholding_tax: number;
+    work_hours_per_day: number;
+    work_start_time: string;
+    work_end_time: string;
+    sss_salary_loan?: number;
+    sss_calamity_loan?: number;
+    pagibig_multi_loan?: number;
+    pagibig_calamity_loan?: number;
+    peraa_con?: number;
+    tuition?: number;
+    china_bank?: number;
+    tea?: number;
+    honorarium: number;
+    college_program?: string;
+}
+
 interface Props {
-    employee: Employees | null
-    onClose: () => void
-    activeRoles?: string[]
-    showPayroll?: boolean
+    employee: Employees | null;
+    onClose: () => void;
+    activeRoles?: string[];
+    showPayroll?: boolean;
+}
+
+function formatWithCommas(value: string | number): string {
+    let num = 0;
+    if (value === null || value === undefined || value === '') {
+        num = 0;
+    } else {
+        num = typeof value === 'number' ? value : Number(value);
+        if (isNaN(num)) num = 0;
+    }
+    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function Info({ label, value }: { label: string; value: string | number }) {
@@ -72,80 +112,81 @@ function Info({ label, value }: { label: string; value: string | number }) {
 
 
 export default function EmployeeViewDialog({ employee, onClose, activeRoles, showPayroll = false }: Props) {
-    const [selectedMonth, setSelectedMonth] = useState('')
-    const [pendingMonth, setPendingMonth] = useState('') // for delayed update
-    const [monthlyPayrollData, setMonthlyPayrollData] = useState<MonthlyPayrollData | null>(null)
-    const [availableMonths, setAvailableMonths] = useState<string[]>([])
-    const [loadingPayroll, setLoadingPayroll] = useState(false)
-    const [minLoading, setMinLoading] = useState(false)
-    const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null)
+    const [selectedMonth, setSelectedMonth] = useState('');
+    const [pendingMonth, setPendingMonth] = useState(''); // for delayed update
+    const [monthlyPayrollData, setMonthlyPayrollData] = useState<MonthlyPayrollData | null>(null);
+    const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+    const [loadingPayroll, setLoadingPayroll] = useState(false);
+    const [minLoading, setMinLoading] = useState(false);
+    const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
 
     // Fetch available months when employee changes
     useEffect(() => {
         if (employee) {
-            fetchAvailableMonths()
+            fetchAvailableMonths();
         }
-    }, [employee])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [employee]);
 
     // Fetch monthly payroll data when month changes
     useEffect(() => {
         if (employee && pendingMonth) {
-            fetchMonthlyPayrollData()
+            fetchMonthlyPayrollData();
         } else {
-            setMonthlyPayrollData(null)
+            setMonthlyPayrollData(null);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [employee, pendingMonth])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [employee, pendingMonth]);
 
     const fetchAvailableMonths = async () => {
-        if (!employee) return
+        if (!employee) return;
         try {
-            const response = await fetch(route('payroll.employee.months', { employee_id: employee.id }))
-            const result = await response.json()
+            const response = await fetch(route('payroll.employee.months', { employee_id: employee.id }));
+            const result = await response.json();
             if (result.success) {
-                setAvailableMonths(result.months)
+                setAvailableMonths(result.months);
                 // Auto-select the most recent month if available
                 if (result.months.length > 0 && !selectedMonth) {
-                    setSelectedMonth(result.months[0])
-                    setPendingMonth(result.months[0]) // trigger payroll fetch on first load
+                    setSelectedMonth(result.months[0]);
+                    setPendingMonth(result.months[0]); // trigger payroll fetch on first load
                 }
             }
         } catch (error) {
-            console.error('Error fetching available months:', error)
+            console.error('Error fetching available months:', error);
         }
     }
 
     const fetchMonthlyPayrollData = async () => {
-        if (!employee || !pendingMonth) return
-        setLoadingPayroll(true)
-        setMinLoading(true)
-        if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current)
-        minLoadingTimeout.current = setTimeout(() => setMinLoading(false), 400)
+        if (!employee || !pendingMonth) return;
+        setLoadingPayroll(true);
+        setMinLoading(true);
+        if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
+        minLoadingTimeout.current = setTimeout(() => setMinLoading(false), 400);
         try {
-            const response = await fetch(route('payroll.employee.monthly', { 
-                employee_id: employee.id, 
-                month: pendingMonth 
-            }))
-            const result = await response.json()
+            const response = await fetch(route('payroll.employee.monthly', {
+                employee_id: employee.id,
+                month: pendingMonth
+            }));
+            const result = await response.json();
             if (result.success) {
-                setMonthlyPayrollData(result)
+                setMonthlyPayrollData(result);
                 // Do not update selectedMonth here; it's already set in handleMonthChange
             } else {
-                setMonthlyPayrollData(null)
+                setMonthlyPayrollData(null);
             }
         } catch (error) {
-            console.error('Error fetching monthly payroll data:', error)
-            setMonthlyPayrollData(null)
+            console.error('Error fetching monthly payroll data:', error);
+            setMonthlyPayrollData(null);
         } finally {
-            setTimeout(() => setLoadingPayroll(false), 100) // allow animation to finish
+            setTimeout(() => setLoadingPayroll(false), 100); // allow animation to finish
         }
     }
 
     // When user picks a month, set both selectedMonth and pendingMonth
     const handleMonthChange = (month: string) => {
         if (month !== selectedMonth) {
-            setSelectedMonth(month)
-            setPendingMonth(month)
+            setSelectedMonth(month);
+            setPendingMonth(month);
         }
     }
 
@@ -157,7 +198,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                         initial={{ opacity: 0, scale: 0.99 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.99 }}
-                        transition={{ 
+                        transition={{
                             duration: 0.2,
                             ease: "easeOut"
                         }}
@@ -171,22 +212,34 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                 {/* Show skeleton if loading, else show real data */}
                                 <div className="space-y-12 text-base"> {/* Increased gap */}
                                     {/* Employee Header */}
-                                    <div className="border-b pb-6 mb-4"> {/* Increased bottom margin */}
-                                        <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {employee.employee_name}</h3>
+                                    <div className="border-b pb-6 mb-2"> {/* Increased bottom margin */}
+                                        <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {`${employee.last_name}, ${employee.first_name} ${employee.middle_name}`.toLocaleUpperCase('en-US')}</h3>
+
                                     </div>
                                     {/* Header Row */}
-                                    <div className="grid grid-cols-2 gap-16 items-start mb-10"> {/* Increased gap and margin */}
+                                    <div className="grid grid-cols-2 gap-10 items-start mb-6"> {/* Increased gap and margin */}
                                         {/* General Info */}
                                         <div>
                                             <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
-                                            <div className="space-y-4 text-sm"> {/* Increased gap */}
+                                            <div className="space-y-2 text-sm"> {/* Increased gap */}
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
-                                                <Info label="Schedule" value={
-                                                    employee.work_start_time && employee.work_end_time && employee.work_hours_per_day
-                                                        ? `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${employee.work_hours_per_day} hours)`
-                                                        : '-'
-                                                } />
+                                                <Info label="Schedule" value={(() => {
+                                                    if (employee.work_start_time && employee.work_end_time) {
+                                                        const [startHour, startMinute] = employee.work_start_time.split(':').map(Number);
+                                                        const [endHour, endMinute] = employee.work_end_time.split(':').map(Number);
+                                                        const startMinutes = startHour * 60 + startMinute;
+                                                        const endMinutes = endHour * 60 + endMinute;
+                                                        let actualWorkMinutes = endMinutes - startMinutes;
+                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                        const hours = Math.floor(totalMinutes / 60);
+                                                        const minutes = totalMinutes % 60;
+                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                        return `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${durationText})`;
+                                                    }
+                                                    return '-';
+                                                })()} />
                                             </div>
                                         </div>
                                         {/* Roles Section */}
@@ -202,18 +255,49 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                     {/* Salary & Contributions Section */}
                                     <div className="pt-2">
                                         <h4 className="font-semibold text-lg mb-6">Salary & Contributions</h4>
-                                        <div className="grid grid-cols-2 gap-16 items-start mb-10"> {/* Increased gap and margin */}
-                                            <div className="space-y-4"> {/* Increased gap */}
-                                                <Info label="Base Salary" value={`₱${employee.base_salary.toLocaleString()}`} />
-                                                <Info label="Overtime Pay" value={`₱${employee.overtime_pay?.toLocaleString?.() ?? '-'}`} />
+                                        {/* <div className="grid grid-cols-2 gap-16 items-start mb-10"> Increased gap and margin */}
+                                            <div className="grid grid-cols-3 gap-3 items-start w-full"> {/* Three columns layout */}
+                                                {/* Income & Benefits */}
+                                                <div className="px-8 min-h-[200px] flex flex-col justify-start">
+                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
+                                                    <div className="space-y-3 text-sm">
+                                                        <Info label="Base Salary" value={`₱${formatWithCommas(employee.base_salary)}`} />
+                                                        <Info label="Honorarium" value={`₱${formatWithCommas(employee.honorarium ?? 0)}`} />
+                                                    </div>
+                                                </div>
+
+                                                {/* Deductions (center column) */}
+                                                <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-2 col-end-3">
+                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
+                                                    <div className="space-y-3 text-sm">
+                                                        <Info label="SSS" value={`₱${formatWithCommas(employee.sss)}`} />
+                                                        <Info label="PhilHealth" value={`₱${formatWithCommas(employee.philhealth)}`} />
+                                                        <Info label="Pag-IBIG" value={`₱${formatWithCommas(employee.pag_ibig)}`} />
+                                                        <Info label="Withholding Tax" value={`₱${formatWithCommas(employee.withholding_tax)}`} />
+                                                    </div>
+                                                </div>
+
+                                                {/* Loans and Other Deductions (right column) - match image labels and order */}
+                                                <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-3 col-end-4">
+                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Loans</h5>
+                                                    <div className="space-y-3 text-sm mb-8">
+                                                        <Info label="SSS Salary Loan" value={`₱${formatWithCommas(employee.sss_salary_loan ?? 0)}`} />
+                                                        <Info label="SSS Calamity Loan" value={`₱${formatWithCommas(employee.sss_calamity_loan ?? 0)}`} />
+                                                        <Info label="Pag-IBIG Multi Purpose Loan" value={`₱${formatWithCommas(employee.pagibig_multi_loan ?? 0)}`} />
+                                                        <Info label="Pag-IBIG Calamity Loan" value={`₱${formatWithCommas(employee.pagibig_calamity_loan ?? 0)}`} />
+                                                        <Info label="PERAA Con." value={`₱${formatWithCommas(employee.peraa_con ?? 0)}`} />
+                                                    </div>
+                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Other Deductions</h5>
+                                                    <div className="space-y-3 text-sm">
+                                                        <Info label="Tuition" value={`₱${formatWithCommas(employee.tuition ?? 0)}`} />
+                                                        <Info label="China Bank" value={`₱${formatWithCommas(employee.china_bank ?? 0)}`} />
+                                                        <Info label="TEA" value={`₱${formatWithCommas(employee.tea ?? 0)}`} />
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="space-y-4"> {/* Increased gap */}
-                                                <Info label="SSS" value={`₱${employee.sss.toLocaleString()}`} />
-                                                <Info label="PhilHealth" value={`₱${employee.philhealth.toLocaleString()}`} />
-                                                <Info label="Pag-IBIG" value={`₱${employee.pag_ibig.toLocaleString()}`} />
-                                                <Info label="Withholding Tax" value={`₱${employee.withholding_tax.toLocaleString()}`} />
-                                            </div>
-                                        </div>
+
+
+                                        {/* </div> */}
                                         {/* Only show payroll data if showPayroll is true */}
                                         {showPayroll && (
                                             <>
@@ -233,13 +317,13 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                     </div>
                                 </div>
                             </div>
-                            <DialogFooter className="flex-shrink-0"> 
-                                <Button onClick={onClose}>Close</Button> 
+                            <DialogFooter className="flex-shrink-0">
+                                <Button onClick={onClose}>Close</Button>
                             </DialogFooter>
                         </DialogContent>
                     </motion.div>
                 )}
             </AnimatePresence>
         </Dialog>
-)
+    )
 }

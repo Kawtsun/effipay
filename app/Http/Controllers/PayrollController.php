@@ -6,86 +6,213 @@ use App\Models\Employees;
 use App\Models\Payroll;
 use App\Models\Salary;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
 class PayrollController extends Controller
 {
     /**
-     * Run payroll calculation for all employees for a specific month
+     * Run payroll for a given date (placeholder implementation)
      */
-    public function runPayroll(Request $request): JsonResponse
+    public function runPayroll(Request $request)
+                // ...existing code...
+            // ...existing code...
+            // Debug: Output all fetched summary data (after summary is fetched)
     {
         $request->validate([
             'payroll_date' => 'required|date',
         ]);
 
-        $payrollDate = $request->input('payroll_date');
-        $month = date('Y-m', strtotime($payrollDate));
-        
-        // Get all employees
-        $employees = Employees::all();
-        
-        $processedCount = 0;
-        $errors = [];
+        // Extract the month (YYYY-MM) from the selected payroll date
+        $payrollMonth = date('Y-m', strtotime($request->payroll_date));
 
+        // Check for employees missing timekeeping data for this month
+        $employees = \App\Models\Employees::all();
+        $missingTK = [];
         foreach ($employees as $employee) {
-            try {
-                // Get salary defaults for employee type
-                $salaryDefaults = Salary::where('employee_type', $employee->employee_type)->first();
-                
-                if (!$salaryDefaults) {
-                    $errors[] = "No salary defaults found for employee type: {$employee->employee_type}";
-                    continue;
-                }
-
-                // Calculate PhilHealth based on base salary
-                $philhealth = ($employee->base_salary * 0.05) / 4;
-                $philhealth = max(250, min(2500, $philhealth));
-
-                // Calculate payroll components
-                $baseSalary = $employee->base_salary;
-                $overtimePay = $employee->overtime_pay;
-                $sss = $employee->sss;
-                $pagIbig = $employee->pag_ibig;
-                $withholdingTax = $employee->withholding_tax;
-
-                // Calculate totals
-                $grossPay = $baseSalary + $overtimePay;
-                $totalDeductions = $sss + $philhealth + $pagIbig + $withholdingTax;
-                $netPay = $grossPay - $totalDeductions;
-
-                // Create or update payroll record
-                Payroll::updateOrCreate(
-                    [
-                        'employee_id' => $employee->id,
-                        'payroll_date' => $payrollDate,
-                    ],
-                    [
-                        'month' => $month,
-                        'base_salary' => $baseSalary,
-                        'overtime_pay' => $overtimePay,
-                        'sss' => $sss,
-                        'philhealth' => $philhealth,
-                        'pag_ibig' => $pagIbig,
-                        'withholding_tax' => $withholdingTax,
-                        'gross_pay' => $grossPay,
-                        'total_deductions' => $totalDeductions,
-                        'net_pay' => $netPay,
-                    ]
-                );
-
-                $processedCount++;
-            } catch (\Exception $e) {
-                $errors[] = "Error processing employee {$employee->employee_name}: " . $e->getMessage();
+            $hasTK = \App\Models\TimeKeeping::where('employee_id', $employee->id)
+                ->where('date', 'like', $payrollMonth . '%')
+                ->exists();
+            if (!$hasTK) {
+                $missingTK[] = $employee->first_name . ' ' . $employee->last_name;
             }
         }
+        if (count($missingTK) > 0) {
+            return redirect()->back()->with([
+                'flash' => [
+                    'type' => 'error',
+                    'message' => 'Cannot run payroll. Some employees have no timekeeping data for ' . date('F Y', strtotime($request->payroll_date)) . '.'
+                ]
+            ]);
+        }
+
+        // Get all employees
+        $employees = \App\Models\Employees::all();
+        $createdCount = 0;
+        foreach ($employees as $employee) {
+            $existingPayrolls = \App\Models\Payroll::where('employee_id', $employee->id)
+                ->where('month', $payrollMonth)
+                ->get();
+            if ($existingPayrolls->count() >= 2) {
+                // Already run twice for this month
+                continue;
+            }
+            // If already run once, only allow for the other day
+            $existingDates = $existingPayrolls->pluck('payroll_date')->toArray();
+            if (in_array($request->payroll_date, $existingDates)) {
+                continue;
+            }
+
+
+            // Fetch timekeeping summary for this employee and month
+            $summary = app(\App\Http\Controllers\TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
+                'employee_id' => $employee->id,
+                'month' => $payrollMonth
+            ]));
+            $summaryData = $summary->getData(true);
+
+            // Use all calculated values from timekeeping summary
+            $workHoursPerDay = $employee->work_hours_per_day ?? 8;
+            $base_salary = isset($summaryData['base_salary']) ? $summaryData['base_salary'] : $employee->base_salary;
+            $rate_per_hour = isset($summaryData['rate_per_hour']) ? $summaryData['rate_per_hour'] : ($workHoursPerDay > 0 ? ($base_salary * 12 / 288) / $workHoursPerDay : 0);
+            $tardiness = isset($summaryData['tardiness']) ? $summaryData['tardiness'] : 0;
+            // Calculate work hours per day from start/end, minus 1 hour for break
+            if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
+                $start = strtotime($employee->work_start_time);
+                $end = strtotime($employee->work_end_time);
+                $workMinutes = $end - $start;
+                if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
+                $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
+            }
+            $undertime = isset($summaryData['undertime']) ? $summaryData['undertime'] : 0;
+            $absences = isset($summaryData['absences']) ? $summaryData['absences'] : 0;
+            $overtime_pay = isset($summaryData['overtime_pay_total']) ? $summaryData['overtime_pay_total'] : 0;
+
+            $sss = $employee->sss;
+            $philhealth = $employee->philhealth;
+            $pag_ibig = $employee->pag_ibig;
+            $withholding_tax = $base_salary > 0 ? (function($base_salary, $sss, $pag_ibig, $philhealth) {
+                $totalComp = $base_salary - ($sss + $pag_ibig + $philhealth);
+                if ($totalComp <= 20832) return 0;
+                if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
+                if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
+                if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
+                if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
+                return 183541.80 + 0.35 * ($totalComp - 666667);
+            })($base_salary, $sss, $pag_ibig, $philhealth) : 0;
+
+            $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
+            $gross_pay = round($base_salary, 2)
+                - (round($rate_per_hour * $tardiness, 2)
+                + round($rate_per_hour * $undertime, 2)
+                + round($rate_per_hour * $absences, 2));
+            $gross_pay += round($overtime_pay, 2);
+            $gross_pay += round($honorarium, 2);
+
+                // Create and save payroll record
+                // Get all loan and deduction fields from employee
+                // Always reference all new fields, fallback to 0 if missing
+                $sss_salary_loan = !is_null($employee->sss_salary_loan) ? $employee->sss_salary_loan : 0;
+                $sss_calamity_loan = !is_null($employee->sss_calamity_loan) ? $employee->sss_calamity_loan : 0;
+                $pagibig_multi_loan = !is_null($employee->pagibig_multi_loan) ? $employee->pagibig_multi_loan : 0;
+                $pagibig_calamity_loan = !is_null($employee->pagibig_calamity_loan) ? $employee->pagibig_calamity_loan : 0;
+                $peraa_con = !is_null($employee->peraa_con) ? $employee->peraa_con : 0;
+                $tuition = !is_null($employee->tuition) ? $employee->tuition : 0;
+                $china_bank = !is_null($employee->china_bank) ? $employee->china_bank : 0;
+                $tea = !is_null($employee->tea) ? $employee->tea : 0;
+                $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
+                $salary_loan = !is_null($employee->salary_loan) ? $employee->salary_loan : 0;
+                $calamity_loan = !is_null($employee->calamity_loan) ? $employee->calamity_loan : 0;
+                $multipurpose_loan = !is_null($employee->multipurpose_loan) ? $employee->multipurpose_loan : 0;
+
+                $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax
+                    + $sss_salary_loan + $sss_calamity_loan + $pagibig_multi_loan + $pagibig_calamity_loan
+                    + $peraa_con + $tuition + $china_bank + $tea + $honorarium
+                    + $salary_loan + $calamity_loan + $multipurpose_loan;
+                $net_pay = $gross_pay - $total_deductions;
+                \Illuminate\Support\Facades\Log::info([
+                    'employee_id' => $employee->id,
+                    'sss_salary_loan' => $sss_salary_loan,
+                    'sss_calamity_loan' => $sss_calamity_loan,
+                    'pagibig_multi_loan' => $pagibig_multi_loan,
+                    'pagibig_calamity_loan' => $pagibig_calamity_loan,
+                    'peraa_con' => $peraa_con,
+                    'tuition' => $tuition,
+                    'china_bank' => $china_bank,
+                    'tea' => $tea,
+                    'honorarium' => $honorarium,
+                    'salary_loan' => $salary_loan,
+                    'calamity_loan' => $calamity_loan,
+                    'multipurpose_loan' => $multipurpose_loan,
+                ]);
+                \App\Models\Payroll::create([
+                    'employee_id' => $employee->id,
+                    'month' => $payrollMonth,
+                    'payroll_date' => $request->payroll_date,
+                    'base_salary' => $base_salary,
+                    'honorarium' => $honorarium,
+                    'overtime_pay' => $overtime_pay,
+                    'tardiness' => $tardiness,
+                    'undertime' => $undertime,
+                    'absences' => $absences,
+                    'gross_pay' => $gross_pay,
+                    'sss' => $sss,
+                    'philhealth' => $philhealth,
+                    'pag_ibig' => $pag_ibig,
+                    'withholding_tax' => $withholding_tax,
+                    'sss_salary_loan' => $sss_salary_loan,
+                    'sss_calamity_loan' => $sss_calamity_loan,
+                    'pagibig_multi_loan' => $pagibig_multi_loan,
+                    'pagibig_calamity_loan' => $pagibig_calamity_loan,
+                    'peraa_con' => $peraa_con,
+                    'tuition' => $tuition,
+                    'china_bank' => $china_bank,
+                    'tea' => $tea,
+                    'salary_loan' => $salary_loan,
+                    'calamity_loan' => $calamity_loan,
+                    'multipurpose_loan' => $multipurpose_loan,
+                    'total_deductions' => $total_deductions,
+                    'net_pay' => $net_pay,
+                ]);
+                $createdCount++;
+        }
+
+        if ($createdCount > 0) {
+            return redirect()->back()->with('flash', 'Payroll run successfully for ' . date('F Y', strtotime($request->payroll_date)) . '. Payroll records created: ' . $createdCount);
+        } else {
+            return redirect()->back()->with('flash', 'Payroll already run twice for this month.');
+        }
+    }
+    /**
+     * Get all unique months from both Payroll and TimeKeeping, sorted descending.
+     */
+    public function getAllAvailableMonths(Request $request): JsonResponse
+    {
+        // Get months from payrolls
+        $payrollMonths = \App\Models\Payroll::orderBy('month', 'desc')
+            ->pluck('month')
+            ->filter()
+            ->unique();
+
+        // Get months from timekeeping (extract YYYY-MM from date)
+        $tkMonths = \App\Models\TimeKeeping::selectRaw('DISTINCT LEFT(date, 7) as month')
+            ->orderBy('month', 'desc')
+            ->pluck('month')
+            ->filter()
+            ->unique();
+
+        // Merge, deduplicate, sort descending
+        $allMonths = $payrollMonths->merge($tkMonths)
+            ->unique()
+            ->sortDesc()
+            ->values();
+
 
         return response()->json([
             'success' => true,
-            'message' => "Payroll processed for {$processedCount} employees for " . date('F j, Y', strtotime($payrollDate)),
-            'processed_count' => $processedCount,
-            'errors' => $errors,
+            'months' => $allMonths,
         ]);
     }
 
@@ -158,9 +285,22 @@ class PayrollController extends Controller
             ], 404);
         }
 
+        // Always merge latest employee loan values into each payroll record before returning
+        $employee = Employees::find($request->employee_id);
+        $loanFields = [
+            'salary_loan', 'peraa_con', 'china_bank', 'tea', 'calamity_loan', 'multipurpose_loan'
+        ];
+        $payrollsArray = $payrolls->map(function($payroll) use ($employee, $loanFields) {
+            $data = $payroll->toArray();
+            foreach ($loanFields as $field) {
+                $data[$field] = $employee ? $employee->$field : null;
+            }
+            return $data;
+        });
+
         return response()->json([
             'success' => true,
-            'payrolls' => $payrolls,
+            'payrolls' => $payrollsArray,
             'month' => $request->month,
         ]);
     }
@@ -224,7 +364,8 @@ class PayrollController extends Controller
 
         return response()->json([
             'success' => true,
-            'months' => $finalMonths,
+            'months' => isset($finalMonths) ? $finalMonths : [],
         ]);
     }
+
 }

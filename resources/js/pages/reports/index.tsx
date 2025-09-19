@@ -1,5 +1,6 @@
 
-import EmployeeReportDialog from '@/components/employee-report-dialog'
+import { toast } from 'sonner'
+import ReportViewDialog from '@/components/report-view-dialog'
 import EmployeeFilter from '@/components/employee-filter'
 import EmployeePagination from '@/components/employee-pagination'
 import EmployeeSearch from '@/components/employee-search'
@@ -17,39 +18,39 @@ import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, router, usePage } from '@inertiajs/react'
 import { Eye, Printer, Users, Shield, GraduationCap, Book } from 'lucide-react'
+import PrintDialog from '@/components/print-dialog';
 import { Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 
-type FilterState = { types: string[]; statuses: string[]; roles: string[] }
-
-const MIN_SPINNER_MS = 400
-const MAX_ROWS = 10
-const ROW_HEIGHT = 53 // px
-
-const COLLEGE_PROGRAMS = [
-  { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-  { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-  { value: 'COELA', label: 'College of Education and Liberal Arts' },
-  { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-  { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-  { value: 'JD', label: 'Juris Doctor' },
-  { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-  { value: 'RLE', label: 'Related Learning Experience' },
-  { value: 'CG', label: 'Career Guidance or Computer Graphics' },
-  { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-  { value: 'GSP', label: 'GSIS Scholarship' },
-  { value: 'MBA', label: 'Master of Business Administration' },
-];
-function getCollegeProgramLabel(acronym: string) {
-  const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
-  return found ? found.label : acronym;
-}
-
 export default function ReportsIndex() {
-    // Get props from Inertia page
     const page = usePage();
+    // --- State and constants ---
+    type FilterState = { types: string[]; statuses: string[]; roles: string[] };
+    const MIN_SPINNER_MS = 400;
+    const MAX_ROWS = 10;
+    const ROW_HEIGHT = 53; // px
+    const COLLEGE_PROGRAMS = [
+        { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
+        { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
+        { value: 'COELA', label: 'College of Education and Liberal Arts' },
+        { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
+        { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
+        { value: 'JD', label: 'Juris Doctor' },
+        { value: 'BSN', label: 'Bachelor of Science in Nursing' },
+        { value: 'RLE', label: 'Related Learning Experience' },
+        { value: 'CG', label: 'Career Guidance or Computer Graphics' },
+        { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
+        { value: 'GSP', label: 'GSIS Scholarship' },
+        { value: 'MBA', label: 'Master of Business Administration' },
+    ];
+    function getCollegeProgramLabel(acronym: string) {
+        const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
+        return found ? found.label : acronym;
+    }
+
+    // --- Page props and state ---
     const {
         employees = [],
         currentPage = 1,
@@ -58,24 +59,44 @@ export default function ReportsIndex() {
         filters: initialFiltersRaw = { types: [], statuses: [], roles: [], collegeProgram: '' },
     } = page.props as any;
     const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [], collegeProgram: '' };
-    const [viewing, setViewing] = useState<Employees | null>(null)
-    const [searchTerm, setSearchTerm] = useState(initialSearch)
+    const [viewing, setViewing] = useState(null as Employees | null);
+    const [printDialog, setPrintDialog] = useState<{ open: boolean, employee: Employees | null }>({ open: false, employee: null });
+    const [searchTerm, setSearchTerm] = useState(initialSearch);
     const toArray = (val: unknown) => Array.isArray(val) ? val : val ? [val] : [];
     const [filters, setFilters] = useState<FilterState & { collegeProgram?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
-    })
+    });
     const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
-    })
-    const [loading, setLoading] = useState(false)
-    const spinnerStart = useRef<number>(0)
+    });
+    const [loading, setLoading] = useState(false);
+    const spinnerStart = useRef<number>(0);
     const hasFilters = Array.isArray(appliedFilters.types) && appliedFilters.types.length > 0
         || Array.isArray(appliedFilters.statuses) && appliedFilters.statuses.length > 0
-        || Array.isArray(appliedFilters.roles) && appliedFilters.roles.length > 0
+        || Array.isArray(appliedFilters.roles) && appliedFilters.roles.length > 0;
+    // Toast/flash logic
+    const flash = (page.props as any).flash;
+    useEffect(() => {
+        if (!flash) return;
+        if (typeof flash === 'string') {
+            toast.success(flash);
+        } else if (typeof flash === 'object' && flash !== null) {
+            if ('type' in flash && 'message' in flash) {
+                if (flash.type === 'error') {
+                    toast.error(flash.message || 'An error occurred');
+                } else if (flash.type === 'success') {
+                    toast.success(flash.message || 'Success');
+                } else {
+                    toast(flash.message || 'Notification');
+                }
+            }
+        }
+    }, [flash]);
+
 
     // Show toast on success (optional, currently not used)
 
@@ -246,7 +267,7 @@ export default function ReportsIndex() {
                             <TableHeader className=''>
                                 <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
                                     <TableHead style={{ width: 120 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
-                                    <TableHead style={{ width: 200 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
+                                    <TableHead style={{ width: 400 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
                                     <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
                                     <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
                                     <TableHead style={{ width: 350 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Roles</TableHead>
@@ -269,15 +290,15 @@ export default function ReportsIndex() {
                                                 className={`transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}
                                             >
                                                 <TableCell style={{ width: 120 }} className="px-4 py-2">{emp.id}</TableCell>
-                                                <TableCell style={{ width: 200 }} className="px-4 py-2">{emp.employee_name}</TableCell>
+                                                <TableCell style={{ width: 400 }} className="px-4 py-2">{`${emp.last_name}, ${emp.first_name} ${emp.middle_name}`.toLocaleUpperCase('en-US')}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
                                                 <TableCell style={{ width: 350 }} className="px-4 py-2 min-w-[160px]">
+                                                    {/* Roles display logic unchanged */}
                                                     {(() => {
                                                         if (!emp.roles) return '';
                                                         const rolesArr = emp.roles.split(',').map((r: string) => r.trim()).filter(Boolean);
                                                         const order = ['administrator', 'college instructor', 'basic education instructor'];
-                                                        // Prioritize filtered role if applied
                                                         let displayRoles = rolesArr;
                                                         if (appliedFilters.roles.length > 0) {
                                                             const filtered = appliedFilters.roles.filter(r => rolesArr.includes(r));
@@ -301,7 +322,6 @@ export default function ReportsIndex() {
                                                             color = 'warning';
                                                             icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                         }
-                                                        // Tooltip: all roles as badges, with full program name for college instructor
                                                         const tooltipContent = (
                                                             <div className="flex flex-wrap gap-2">
                                                                 {displayRoles.map(role => {
@@ -329,7 +349,6 @@ export default function ReportsIndex() {
                                                                 })}
                                                             </div>
                                                         );
-                                                        // Main badge: show acronym for college instructor, +N for additional roles
                                                         const badgeContent = (
                                                             <span className="inline-flex items-center gap-1">
                                                                 <Badge key={mainRole} variant={color} className="capitalize flex items-center">
@@ -340,12 +359,9 @@ export default function ReportsIndex() {
                                                                 )}
                                                             </span>
                                                         );
-                                                        // Tooltip logic
-                                                        // Only one role and not college instructor: no tooltip
                                                         if (displayRoles.length === 1 && mainRole !== 'college instructor') {
                                                             return badgeContent;
                                                         }
-                                                        // Otherwise, show tooltip (for college instructor or multiple roles)
                                                         return (
                                                             <TooltipProvider>
                                                                 <Tooltip>
@@ -362,7 +378,7 @@ export default function ReportsIndex() {
                                                             <Eye />
                                                             View
                                                         </Button>
-                                                        <Button variant="default" disabled>
+                                                        <Button variant="default" onClick={() => setPrintDialog({ open: true, employee: emp })}>
                                                             <Printer />
                                                             Print
                                                         </Button>
@@ -386,10 +402,15 @@ export default function ReportsIndex() {
                             </TableBody>
                         </Table>
                     </div>
-                    <EmployeeReportDialog
+                    <ReportViewDialog
                         employee={viewing}
                         onClose={() => setViewing(null)}
                         activeRoles={appliedFilters.roles}
+                    />
+                    <PrintDialog
+                        open={printDialog.open}
+                        onClose={() => setPrintDialog({ open: false, employee: null })}
+                        employee={printDialog.employee}
                     />
 
                     <div className="mt-4 flex min-h-[56px] justify-center">

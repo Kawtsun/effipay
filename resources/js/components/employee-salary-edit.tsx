@@ -1,4 +1,12 @@
-"use client"
+function formatWithCommas(value: string) {
+  if (!value) return '';
+  const [int, dec] = value.split('.');
+  return dec !== undefined
+    ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
+    : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+import { calculateSSS } from '@/utils/salaryFormulas'
 
 import * as React from "react"
 import { useForm } from "@inertiajs/react"
@@ -14,7 +22,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Pencil } from "lucide-react"
+import { Lightbulb, Pencil } from "lucide-react"
 import { router } from "@inertiajs/react"
 
 interface Props {
@@ -66,11 +74,15 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    const numeric = data[field] === "" ? 0 : parseInt(data[field], 10)
+    // Always send latest values for base_salary, sss, and pag_ibig
+    const baseSalary = data.base_salary ? parseInt(data.base_salary, 10) : 0;
+  const sss = field === 'base_salary' ? calculateSSS(baseSalary) : (data.sss ? parseInt(data.sss, 10) : 0);
+    const pagIbig = data.pag_ibig ? parseInt(data.pag_ibig, 10) : 0;
+    const fieldValue = data[field] === "" ? 0 : parseInt(data[field], 10);
 
     // Validate PhilHealth range
     if (field === 'philhealth') {
-      if (numeric < 250 || numeric > 2500) {
+      if (fieldValue < 250 || fieldValue > 2500) {
         toast.error('PhilHealth must be between ₱250 and ₱2,500')
         return
       }
@@ -78,7 +90,7 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
 
     // Validate Pag-IBIG minimum
     if (field === 'pag_ibig') {
-      if (numeric < 200) {
+      if (fieldValue < 200) {
         toast.error('Pag-IBIG must be at least ₱200')
         return
       }
@@ -86,20 +98,20 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
 
     // Validate work hours
     if (field === 'work_hours_per_day') {
-      if (numeric < 1 || numeric > 24) {
+      if (fieldValue < 1 || fieldValue > 24) {
         toast.error('Work hours must be between 1 and 24 hours')
         return
       }
     }
 
-    // If updating base salary, also update PhilHealth automatically
-    let updateData = { [field]: numeric }
-    if (field === 'base_salary') {
-      const calculatedPhilHealth = calculatePhilHealth(numeric)
+    // Always send all three fields for backend automation
+    let updateData: any = { [field]: fieldValue };
+    if (['base_salary', 'sss', 'pag_ibig'].includes(field)) {
       updateData = {
-        [field]: numeric,
-        philhealth: calculatedPhilHealth
-      }
+        base_salary: field === 'base_salary' ? fieldValue : baseSalary,
+    sss: field === "base_salary" ? calculateSSS(fieldValue) : (field === "sss" ? fieldValue : sss),
+        pag_ibig: field === 'pag_ibig' ? fieldValue : pagIbig,
+      };
     }
 
     put(
@@ -117,6 +129,22 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
     )
   }
 
+  // Disable edit for SSS, show hint
+  if (field === 'sss') {
+    return (
+      <div className="flex flex-col items-end">
+        <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
+          <Pencil className="w-4 h-4" />
+          Edit
+        </Button>
+        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
+          <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+          Automated
+        </p>
+      </div>
+    )
+  }
+  // ...existing code for other fields...
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -125,12 +153,10 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
           Edit
         </Button>
       </DialogTrigger>
-
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit {label}</DialogTitle>
         </DialogHeader>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex flex-col gap-1">
             <Label htmlFor={field}>{label}</Label>
@@ -144,26 +170,20 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
                 id={field}
                 type="text"
                 inputMode="numeric"
-                pattern="[0-9,]*"
+                pattern="[0-9.,]*"
                 className={field === 'work_hours_per_day' ? "" : "pl-8"}
                 min={field === 'philhealth' ? 250 : field === 'pag_ibig' ? 200 : field === 'work_hours_per_day' ? 1 : undefined}
                 max={field === 'philhealth' ? 2500 : field === 'work_hours_per_day' ? 24 : undefined}
-                value={formatDisplay(data[field], field === 'work_hours_per_day')}
+                value={formatWithCommas(data[field] ?? '')}
                 onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                  if (!/[\d]/.test((e as InputEvent).data ?? "")) {
+                  if (!/[\d,.]/.test((e as InputEvent).data ?? "")) {
                     e.preventDefault()
                   }
                 }}
-                onInput={(e) => {
-                  const input = e.target as HTMLInputElement
-                  const raw = input.value.replace(/\D/g, "")
-                  input.value = formatDisplay(raw, field === 'work_hours_per_day')
+                onChange={e => {
+                  const raw = e.target.value.replace(/,/g, '');
+                  setData(field as keyof typeof data, raw);
                 }}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, "")
-                  setData(field as keyof typeof data, raw)
-                }}
-              // no autoFocus here
               />
             </div>
             {field === 'philhealth' && (
@@ -172,7 +192,8 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
               </p>
             )}
             {field === 'pag_ibig' && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
+                <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
                 Must be at least ₱200
               </p>
             )}
@@ -187,10 +208,9 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
               </p>
             )}
           </div>
-
           <DialogFooter className="flex justify-end gap-2">
             <Button
-              type="button"                // ← prevent this from submitting the form
+              type="button"
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={processing}

@@ -44,11 +44,14 @@ export interface User {
 
 export interface Employees {
     id: number;
-    employee_name: string;
+    last_name: string;
+    first_name: string;
+    middle_name: string;
     employee_type: string;
     employee_status: string;
     roles: string;
     base_salary: number;
+    honorarium: number;
     overtime_pay: number;
     sss: number;
     philhealth: number;
@@ -58,6 +61,25 @@ export interface Employees {
     work_hours_per_day: number;
     work_start_time: string;
     work_end_time: string;
+        late_count?: number;
+        early_count?: number;
+        overtime_count?: number;
+        overtime_count_weekdays?: number;
+        overtime_count_weekends?: number;
+        overtime_pay_total?: number;
+        absences?: number;
+    rate_per_day?: number;
+    rate_per_hour?: number;
+    gross_pay?: number;
+    total_deductions?: number;
+    net_pay?: number;
+    per_payroll?: number;
+    salary_loan?: number;
+    peraa_con?: number;
+    china_bank?: number;
+    tea?: number;
+    calamity_loan?: number;
+    multipurpose_loan?: number;
 }
 
 export interface Salary {

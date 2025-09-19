@@ -1,3 +1,13 @@
+function formatWithCommas(value: string) {
+    if (!value) return '';
+    const [int, dec] = value.split('.');
+    return dec !== undefined
+        ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
+        : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+import { calculatePhilHealth, calculateWithholdingTax } from '@/utils/salaryFormulas';
+import { calculateSSS } from '@/utils/salaryFormulas';
 import { EmployeeStatus } from '@/components/employee-status';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +16,7 @@ import { TimePicker } from '@/components/ui/time-picker';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Lightbulb } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { EmployeeType } from '@/components/employee-type';
@@ -18,40 +28,46 @@ import { AnimatePresence, motion } from 'framer-motion';
 type Props = {
     employee: {
         id: number;
-        employee_name: string;
+        last_name: string;
+        first_name: string;
+        middle_name: string;
         employee_type: string;
         employee_status: string;
         roles: string;
         base_salary: number;
-        overtime_pay: number;
         sss: number;
         philhealth: number;
         pag_ibig: number;
-        college_program?: string;
         withholding_tax: number;
         work_hours_per_day: number;
         work_start_time: string;
         work_end_time: string;
+        sss_salary_loan?: number;
+        sss_calamity_loan?: number;
+        pagibig_multi_loan?: number;
+        pagibig_calamity_loan?: number;
+        peraa_con?: number;
+        tuition?: number;
+        china_bank?: number;
+        tea?: number;
+        honorarium?: number;
+        college_program?: string;
     };
-    search: string;
-    filters: { types: string[]; statuses: string[]; category?: string };
-    page: number;
-
-    // ← NEW props from controller
-    salaryDefaults: Record<
-        string,
-        {
-            base_salary: number;
-            overtime_pay: number;
-            sss: number;
-            philhealth: number;
-            pag_ibig: number;
-            withholding_tax: number;
-            work_hours_per_day: number;
-        }
-    >;
     employeeCategory?: string;
+    search?: string;
+    filters?: Record<string, unknown>;
+    page?: number;
+    salaryDefaults?: Record<string, {
+        base_salary: number;
+        sss: number;
+        philhealth: number;
+        pag_ibig: number;
+        withholding_tax: number;
+        work_hours_per_day: number;
+    }>;
 };
+
+
 
 export default function Edit({
     employee,
@@ -60,15 +76,26 @@ export default function Edit({
     page,
     salaryDefaults,
 }: Props) {
+    // Show input fields by default if value exists
+    const [showSalaryLoanInput, setShowSalaryLoanInput] = useState(!!employee.sss_salary_loan);
+    const [showCalamityLoanInput, setShowCalamityLoanInput] = useState(!!employee.sss_calamity_loan);
+    const [showPagibigMultiInput, setShowPagibigMultiInput] = useState(!!employee.pagibig_multi_loan);
+    const [showPagibigCalamityInput, setShowPagibigCalamityInput] = useState(!!employee.pagibig_calamity_loan);
+    const [showPERAAConInput, setShowPERAAConInput] = useState(!!employee.peraa_con);
+    // Other Deductions
+    const [showTuitionInput, setShowTuitionInput] = useState(!!employee.tuition);
+    const [showChinaBankInput, setShowChinaBankInput] = useState(!!employee.china_bank);
+    const [showTEAInput, setShowTEAInput] = useState(!!employee.tea);
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
-    const { data, setData, put } = useForm({
-        employee_name: employee.employee_name,
+    const { data, setData } = useForm({
+        last_name: employee.last_name || '',
+        first_name: employee.first_name || '',
+        middle_name: employee.middle_name || '',
         employee_type: employee.employee_type,
         employee_status: employee.employee_status,
         roles: employee.roles,
         base_salary: employee.base_salary.toString(),
-        overtime_pay: employee.overtime_pay.toString(),
-        sss: employee.sss.toString(),
+        sss: calculateSSS(employee.base_salary).toString(),
         philhealth: employee.philhealth.toString(),
         pag_ibig: employee.pag_ibig.toString(),
         withholding_tax: employee.withholding_tax.toString(),
@@ -76,6 +103,15 @@ export default function Edit({
         work_start_time: trimToHM(employee.work_start_time),
         work_end_time: trimToHM(employee.work_end_time),
         college_program: employee.college_program || '',
+        sss_salary_loan: employee.sss_salary_loan?.toString() || '',
+        sss_calamity_loan: employee.sss_calamity_loan?.toString() || '',
+        pagibig_multi_loan: employee.pagibig_multi_loan?.toString() || '',
+        pagibig_calamity_loan: employee.pagibig_calamity_loan?.toString() || '',
+        peraa_con: employee.peraa_con?.toString() || '',
+        tuition: employee.tuition?.toString() || '',
+        china_bank: employee.china_bank?.toString() || '',
+        tea: employee.tea?.toString() || '',
+        honorarium: employee.honorarium?.toString() || '',
     });
 
     const [collegeProgram, setCollegeProgram] = useState(employee.college_program || '');
@@ -91,6 +127,11 @@ export default function Edit({
         return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
     };
 
+    // Auto-calculate SSS when base_salary changes
+    useEffect(() => {
+        setData('sss', calculateSSS(Number(data.base_salary.replace(/,/g, '')) || 0).toString());
+    }, [data.base_salary, setData]);
+
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         if (data.roles.split(',').includes('college instructor') && !collegeProgram) {
@@ -103,7 +144,7 @@ export default function Edit({
             setData('employee_type', 'Full Time');
             return;
         }
-        
+
         // Validate Pag-IBIG minimum
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
         if (pagIbigValue < 200) {
@@ -122,13 +163,14 @@ export default function Edit({
             const endMinutes = endHour * 60 + endMinute;
             let actualWorkMinutes = endMinutes - startMinutes;
             if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-            workHours = Math.round(actualWorkMinutes / 60);
+            workHours = Math.max(1, Math.round(actualWorkMinutes / 60) - 1); // Subtract 1 hour for break
         }
 
+        const employee_name = `${data.last_name}, ${data.first_name}, ${data.middle_name}`;
         const cleanedData = {
             ...data,
+            employee_name,
             base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
-            overtime_pay: Number(data.overtime_pay.replace(/,/g, '')) || 0,
             sss: Number(data.sss.replace(/,/g, '')) || 0,
             philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
             pag_ibig: pagIbigValue,
@@ -136,13 +178,22 @@ export default function Edit({
             work_hours_per_day: workHours,
             work_start_time: startTime,
             work_end_time: endTime,
+            sss_salary_loan: data.sss_salary_loan === '' ? null : Number(data.sss_salary_loan.replace(/,/g, '')),
+            sss_calamity_loan: data.sss_calamity_loan === '' ? null : Number(data.sss_calamity_loan.replace(/,/g, '')),
+            pagibig_multi_loan: data.pagibig_multi_loan === '' ? null : Number(data.pagibig_multi_loan.replace(/,/g, '')),
+            pagibig_calamity_loan: data.pagibig_calamity_loan === '' ? null : Number(data.pagibig_calamity_loan.replace(/,/g, '')),
+            peraa_con: data.peraa_con === '' ? null : Number(data.peraa_con.replace(/,/g, '')),
+            tuition: data.tuition === '' ? null : Number(data.tuition.replace(/,/g, '')),
+            china_bank: data.china_bank === '' ? null : Number(data.china_bank.replace(/,/g, '')),
+            tea: data.tea === '' ? null : Number(data.tea.replace(/,/g, '')),
+            honorarium: data.honorarium === '' ? null : Number(data.honorarium.replace(/,/g, '')),
         };
 
         // Submit via PUT with correct route params
         router.put(route('employees.update', { employee: employee.id }), cleanedData, {
             preserveScroll: true,
             onSuccess: () => {
-                router.reload({ only: ['employeeClassifications'] });
+                router.reload(); // Reload all props and pages to reflect updated info everywhere
             },
             onError: (errors) => {
                 const first = Object.values(errors)[0] as string | undefined;
@@ -156,8 +207,8 @@ export default function Edit({
             title: 'Employees',
             href: route('employees.index', {
                 search,
-                types: filters.types,
-                statuses: filters.statuses,
+                types: filters?.types,
+                statuses: filters?.statuses,
                 page,
             }),
         },
@@ -221,50 +272,65 @@ export default function Edit({
     useEffect(() => {
         if (salaryDefaults && salaryDefaults[data.employee_type]) {
             const def = salaryDefaults[data.employee_type];
-            setData('base_salary', def.base_salary.toString());
-            setData('overtime_pay', def.overtime_pay.toString());
-            setData('sss', def.sss.toString());
-            setData('philhealth', def.philhealth.toString());
-            setData('pag_ibig', def.pag_ibig.toString());
-            setData('withholding_tax', def.withholding_tax.toString());
-            setData('work_hours_per_day', def.work_hours_per_day.toString());
-
+            // Only set defaults if the field is truly undefined or null, not just empty string
+            if (data.base_salary === undefined || data.base_salary === null) setData('base_salary', def.base_salary.toString());
+            if (data.sss === undefined || data.sss === null) setData('sss', def.sss.toString());
+            if (data.philhealth === undefined || data.philhealth === null) setData('philhealth', def.philhealth.toString());
+            if (data.pag_ibig === undefined || data.pag_ibig === null) setData('pag_ibig', def.pag_ibig.toString());
+            if (data.withholding_tax === undefined || data.withholding_tax === null) setData('withholding_tax', def.withholding_tax.toString());
+            if (data.work_hours_per_day === undefined || data.work_hours_per_day === null) setData('work_hours_per_day', def.work_hours_per_day.toString());
             // Do NOT override existing work start/end times on edit.
         }
-    }, [data.employee_type, salaryDefaults]);
+    }, [data.employee_type, salaryDefaults, data.base_salary, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, data.work_hours_per_day, setData]);
 
     // Auto-calculate work hours when start/end times change
     useEffect(() => {
         const startTime = data.work_start_time;
         const endTime = data.work_end_time;
-        
+
         if (startTime && endTime) {
             const [startHour, startMinute] = startTime.split(':').map(Number);
             const [endHour, endMinute] = endTime.split(':').map(Number);
-            
+
             // Convert to minutes for easier calculation
             const startMinutes = startHour * 60 + startMinute;
             const endMinutes = endHour * 60 + endMinute;
-            
+
             // Handle overnight shifts (end time is next day)
             let actualWorkMinutes = endMinutes - startMinutes;
             if (actualWorkMinutes <= 0) {
                 actualWorkMinutes += 24 * 60; // Add 24 hours
             }
-            
-            const actualWorkHours = Math.round(actualWorkMinutes / 60);
-            
+
+            const actualWorkHours = Math.max(1, Math.round(actualWorkMinutes / 60) - 1); // Subtract 1 hour for break
+
             // Only update if the calculated hours are reasonable (1-24 hours)
             if (actualWorkHours >= 1 && actualWorkHours <= 24) {
                 setData('work_hours_per_day', actualWorkHours.toString());
             }
         }
-    }, [data.work_start_time, data.work_end_time]);
+    }, [data.work_start_time, data.work_end_time, setData]);
 
     // When collegeProgram changes, sync to form state
+
+    // useEffect: When base_salary, sss, or pag_ibig change, recalculate PhilHealth and Withholding Tax
+    useEffect(() => {
+        const baseSalary = Number(data.base_salary.replace(/,/g, '')) || 0;
+        const sss = Number(data.sss.replace(/,/g, '')) || 0;
+        const pagIbig = Number(data.pag_ibig.replace(/,/g, '')) || 0;
+        const calculatedPhilHealth = calculatePhilHealth(baseSalary);
+        if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
+            setData('philhealth', calculatedPhilHealth.toFixed(2));
+        }
+        const calculatedWithholdingTax = calculateWithholdingTax(baseSalary, sss, pagIbig, calculatedPhilHealth);
+        if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
+            setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
+        }
+    }, [data.base_salary, data.sss, data.pag_ibig, data.philhealth, data.withholding_tax, setData]);
+
     useEffect(() => {
         setData('college_program', collegeProgram);
-    }, [collegeProgram]);
+    }, [collegeProgram, setData]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -274,24 +340,24 @@ export default function Edit({
                     <Link
                         href={route('employees.index', {
                             search,
-                            types: filters.types,
-                            statuses: filters.statuses,
+                            types: filters?.types,
+                            statuses: filters?.statuses,
                             page,
                         })}
                     >
                         <Button variant='outline'>
                             <ArrowLeft className='w-4 h-4' />
-                            Go Back
+                            Back
                         </Button>
                     </Link>
                 </div>
-                <div className='w-full max-w-6xl mx-auto'>
+                <div className='w-full max-w-7xl mx-auto'>
                     <form
                         className='space-y-8'
                         onSubmit={handleUpdate}
                     >
                         {/* Two Column Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-32">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-42">
                             {/* Left Column - Employee Info & Work Schedule */}
                             <div className="space-y-8">
                                 {/* Employee Information */}
@@ -299,17 +365,16 @@ export default function Edit({
                                     <h1 className='font-bold text-xl mb-6'>Employee Information</h1>
                                     <div className='space-y-6'>
                                         <div className="flex flex-col gap-3">
-                                            <Label htmlFor="employee_name">
-                                                Employee Name
-                                            </Label>
-                                            <Input
-                                                id="employee_name"
-                                                type="text"
-                                                required
-                                                placeholder="Name"
-                                                value={data.employee_name}
-                                                onChange={(e) => setData('employee_name', e.target.value)}
-                                            />
+                                            <Label>Last Name</Label>
+                                            <Input id="last_name" type="text" required placeholder="Last Name" value={data.last_name} onChange={e => setData('last_name', e.target.value)} />
+                                        </div>
+                                        <div className="flex flex-col gap-3">
+                                            <Label>First Name</Label>
+                                            <Input id="first_name" type="text" required placeholder="First Name" value={data.first_name} onChange={e => setData('first_name', e.target.value)} />
+                                        </div>
+                                        <div className="flex flex-col gap-3">
+                                            <Label>Middle Name</Label>
+                                            <Input id="middle_name" type="text" placeholder="Middle Name" value={data.middle_name} onChange={e => setData('middle_name', e.target.value)} />
                                         </div>
                                         <div className="flex flex-col gap-3">
                                             <Label>Employee Roles</Label>
@@ -329,20 +394,37 @@ export default function Edit({
                                                     />
                                                     Administrator
                                                 </label>
-                                                <div className="mt-2 mb-1 text-xs font-semibold text-muted-foreground select-none">Instructor</div>
-                                                <EmployeeInstructorRadioRole
-                                                    value={data.roles.split(',').find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
-                                                    onChange={val => {
-                                                        // Remove any instructor role, add the new one
-                                                        const rolesArr = data.roles.split(',').filter(r => r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
-                                                        setData('roles', [val, ...rolesArr].filter(Boolean).join(','));
-                                                        if (val === 'college instructor') {
-                                                            setTimeout(() => {
-                                                                collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                            }, 100);
-                                                        }
-                                                    }}
-                                                />
+                                                <label className="flex items-center gap-2 text-sm select-none mt-2">
+                                                    <Checkbox
+                                                        checked={data.roles.split(',').some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
+                                                        onCheckedChange={(checked) => {
+                                                            const rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
+                                                            if (checked) {
+                                                                setData('roles', [...rolesArr, 'instructor'].filter(Boolean).join(','));
+                                                            } else {
+                                                                setData('roles', rolesArr.join(','));
+                                                            }
+                                                        }}
+                                                        className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                                                    />
+                                                    Instructor
+                                                </label>
+                                                <div className="pl-6 mt-1">
+                                                    <EmployeeInstructorRadioRole
+                                                        value={data.roles.split(',').find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
+                                                        onChange={val => {
+                                                            // Remove any instructor and teaching role, add the new teaching role only
+                                                            const rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
+                                                            setData('roles', [val, ...rolesArr].filter(Boolean).join(','));
+                                                            if (val === 'college instructor') {
+                                                                setTimeout(() => {
+                                                                    collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                }, 100);
+                                                            }
+                                                        }}
+                                                        disabled={!data.roles.split(',').some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
+                                                    />
+                                                </div>
                                                 <AnimatePresence>
                                                     {data.roles.split(',').includes('college instructor') && (
                                                         <motion.div
@@ -376,7 +458,7 @@ export default function Edit({
                                                 value={data.employee_type}
                                                 onChange={val => setData('employee_type', val)}
                                                 roles={data.roles ? data.roles.split(',') : []}
-                                                disabled={data.roles === ''}
+                                                disabled={!(data.roles.split(',').includes('administrator') || data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))}
                                             />
                                         </div>
                                         <div className="flex flex-col gap-3">
@@ -385,7 +467,7 @@ export default function Edit({
                                                 value={data.employee_status}
                                                 onChange={val => setData('employee_status', val)}
                                                 statuses={availableStatuses}
-                                                disabled={data.roles === ''}
+                                                disabled={!(data.roles.split(',').includes('administrator') || data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))}
                                             />
                                         </div>
                                     </div>
@@ -417,7 +499,24 @@ export default function Edit({
                                         {data.work_start_time && data.work_end_time && (
                                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                                                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                                                    📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({data.work_hours_per_day} hours)
+                                                    {(() => {
+                                                        const [startHour, startMinute] = data.work_start_time.split(':').map(Number);
+                                                        const [endHour, endMinute] = data.work_end_time.split(':').map(Number);
+                                                        let startMinutes = startHour * 60 + startMinute;
+                                                        let endMinutes = endHour * 60 + endMinute;
+                                                        let actualWorkMinutes = endMinutes - startMinutes;
+                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                                        let totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                        const hours = Math.floor(totalMinutes / 60);
+                                                        const minutes = totalMinutes % 60;
+                                                        let durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                        return (
+                                                            <>
+                                                                📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({durationText})<br />
+                                                                <span className="text-xs text-blue-600 dark:text-blue-400">*Break time is included. 1 hour is subtracted from total work hours.</span>
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </p>
                                             </div>
                                         )}
@@ -443,77 +542,32 @@ export default function Edit({
                                                         id="base_salary"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="Salary"
                                                         className="pl-8"
                                                         min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.base_salary ? Number(data.base_salary.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => {
-                                                            const newBaseSalary = e.target.value.replace(/,/g, '');
-                                                            setData('base_salary', newBaseSalary);
+                                                        value={formatWithCommas(data.base_salary ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            // Only allow numbers and period
+                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                            setData('base_salary', raw);
                                                             // Auto-calculate PhilHealth based on base salary
-                                                            const baseSalaryNum = Number(newBaseSalary) || 0;
-                                                            const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 4));
+                                                            const baseSalaryNum = Number(raw) || 0;
+                                                            const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
                                                             setData('philhealth', calculatedPhilHealth.toString());
                                                         }}
                                                     />
                                                 </div>
-                                            </div>
-                                            <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="overtime_pay">
-                                                    Overtime Pay
-                                                </Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input
-                                                        id="overtime_pay"
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9,]*"
-                                                        required
-                                                        placeholder="Overtime Pay"
-                                                        className="pl-8"
-                                                        min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.overtime_pay ? Number(data.overtime_pay.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('overtime_pay', e.target.value.replace(/,/g, ''))}
-                                                    />
+
+                                                {/* Honorarium (optional) */}
+                                                <div className='flex flex-col gap-3'>
+                                                    <Label htmlFor="honorarium">Honorarium <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                                                    <div className='relative'>
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                        <Input id="honorarium" type="text" inputMode="numeric" pattern="[0-9.,]*" placeholder="Honorarium" className="pl-8" min={0} value={formatWithCommas(data.honorarium ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('honorarium', raw); }} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -533,33 +587,19 @@ export default function Edit({
                                                         id="sss"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="SSS"
-                                                        className="pl-8"
+                                                        className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
                                                         min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.sss ? Number(data.sss.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('sss', e.target.value.replace(/,/g, ''))}
+                                                        value={formatWithCommas(Number(data.sss ?? 0).toFixed(2))}
+                                                        disabled
                                                     />
                                                 </div>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+                                                    Automated
+                                                </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
                                                 <Label htmlFor="philhealth">
@@ -571,7 +611,7 @@ export default function Edit({
                                                         id="philhealth"
                                                         type="text"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         required
                                                         placeholder="PhilHealth"
                                                         className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
@@ -579,80 +619,31 @@ export default function Edit({
                                                         min={250}
                                                         max={2500}
                                                         disabled
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
+                                                        value={formatWithCommas(data.philhealth ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('philhealth', raw);
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 250) {
-                                                                value = '250';
-                                                            }
-                                                            if (value && Number(value) > 2500) {
-                                                                value = '2500';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.philhealth ? Number(data.philhealth.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('philhealth', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    💡 Auto-calculated based on base salary
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+                                                    Automated
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="pag-ibig">
-                                                    Pag-IBIG
-                                                </Label>
+                                                <Label htmlFor="pag-ibig">Pag-IBIG</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input
-                                                        id="pag-ibig"
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9,]*"
-                                                        required
-                                                        placeholder="Pag-IBIG"
-                                                        className="pl-8"
-                                                        min={200}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
-                                                        }}
-                                                        value={data.pag_ibig ? Number(data.pag_ibig.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('pag_ibig', e.target.value.replace(/,/g, ''))}
-                                                    />
+                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^\d+(\.\d{1,2})?$" required placeholder="Pag-IBIG" className="pl-8" min={200} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.]/g, ''); setData('pag_ibig', raw); }} />
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
                                                     Must be at least ₱200
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="withholding_tax">
-                                                    Withholding Tax
-                                                </Label>
+                                                <Label htmlFor="withholding_tax">Withholding Tax</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
                                                     <Input
@@ -660,33 +651,314 @@ export default function Edit({
                                                         type="text"
                                                         required
                                                         placeholder="Withholding Tax"
-                                                        className="pl-8"
+                                                        className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
                                                         inputMode="numeric"
-                                                        pattern="[0-9,]*"
+                                                        pattern="[0-9.,]*"
                                                         min={0}
-                                                        onBeforeInput={(e: React.FormEvent<HTMLInputElement> & InputEvent) => {
-                                                            // Prevent non-numeric and non-comma input
-                                                            if (!/[\d,]/.test((e as InputEvent).data ?? '')) {
-                                                                e.preventDefault();
-                                                            }
+                                                        disabled
+                                                        value={formatWithCommas(data.withholding_tax ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('withholding_tax', raw);
                                                         }}
-                                                        onInput={e => {
-                                                            const input = e.target as HTMLInputElement;
-                                                            let value = input.value.replace(/,/g, '');
-                                                            if (value && Number(value) < 0) {
-                                                                value = '0';
-                                                            }
-                                                            if (value) {
-                                                                input.value = Number(value).toLocaleString();
-                                                            } else {
-                                                                input.value = '';
-                                                            }
+                                                    />
+                                                </div>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
+                                                    Automated
+                                                </p>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Third Column - Loans */}
+                            <div>
+                                <h1 className='font-bold text-xl mb-6'>Loans</h1>
+                                <div className='space-y-8'>
+                                    {/* SSS Salary Loan */}
+                                    <div className='mb-4'>
+                                        <div className='flex items-center gap-2 mb-2'>
+                                            <Label>SSS Salary Loan</Label>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                if (showSalaryLoanInput && data.sss_salary_loan) {
+                                                    setData('sss_salary_loan', '');
+                                                }
+                                                setShowSalaryLoanInput(!showSalaryLoanInput);
+                                            }}>
+                                                {showSalaryLoanInput ? '-' : '+'}
+                                            </Button>
+                                        </div>
+                                        {showSalaryLoanInput && (
+                                            <div className='flex flex-col gap-3'>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input
+                                                        id="sss_salary_loan"
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9.,]*"
+                                                        placeholder="SSS Salary Loan"
+                                                        className="pl-8"
+                                                        min={0}
+                                                        value={formatWithCommas(data.sss_salary_loan ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('sss_salary_loan', raw);
                                                         }}
-                                                        value={data.withholding_tax ? Number(data.withholding_tax.replace(/,/g, '')).toLocaleString() : ''}
-                                                        onChange={(e) => setData('withholding_tax', e.target.value.replace(/,/g, ''))}
                                                     />
                                                 </div>
                                             </div>
+                                        )}
+                                    </div>
+                                    {/* SSS Calamity Loan */}
+                                    <div className='mb-4'>
+                                        <div className='flex items-center gap-2 mb-2'>
+                                            <Label>SSS Calamity Loan</Label>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                if (showCalamityLoanInput && data.sss_calamity_loan) {
+                                                    setData('sss_calamity_loan', '');
+                                                }
+                                                setShowCalamityLoanInput(!showCalamityLoanInput);
+                                            }}>
+                                                {showCalamityLoanInput ? '-' : '+'}
+                                            </Button>
+                                        </div>
+                                        {showCalamityLoanInput && (
+                                            <div className='flex flex-col gap-3'>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input
+                                                        id="sss_calamity_loan"
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9.,]*"
+                                                        placeholder="SSS Calamity Loan"
+                                                        className="pl-8"
+                                                        min={0}
+                                                        value={formatWithCommas(data.sss_calamity_loan ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('sss_calamity_loan', raw);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Pag-IBIG Multi Purpose Loan */}
+                                    <div className='mb-4'>
+                                        <div className='flex items-center gap-2 mb-2'>
+                                            <Label>Pag-IBIG Multi Purpose Loan</Label>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                if (showPagibigMultiInput && data.pagibig_multi_loan) {
+                                                    setData('pagibig_multi_loan', '');
+                                                }
+                                                setShowPagibigMultiInput(!showPagibigMultiInput);
+                                            }}>
+                                                {showPagibigMultiInput ? '-' : '+'}
+                                            </Button>
+                                        </div>
+                                        {showPagibigMultiInput && (
+                                            <div className='flex flex-col gap-3'>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input
+                                                        id="pagibig_multi_loan"
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9.,]*"
+                                                        placeholder="Pag-IBIG Multi Purpose Loan"
+                                                        className="pl-8"
+                                                        min={0}
+                                                        value={formatWithCommas(data.pagibig_multi_loan ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('pagibig_multi_loan', raw);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Pag-IBIG Calamity Loan */}
+                                    <div className='mb-4'>
+                                        <div className='flex items-center gap-2 mb-2'>
+                                            <Label>Pag-IBIG Calamity Loan</Label>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                if (showPagibigCalamityInput && data.pagibig_calamity_loan) {
+                                                    setData('pagibig_calamity_loan', '');
+                                                }
+                                                setShowPagibigCalamityInput(!showPagibigCalamityInput);
+                                            }}>
+                                                {showPagibigCalamityInput ? '-' : '+'}
+                                            </Button>
+                                        </div>
+                                        {showPagibigCalamityInput && (
+                                            <div className='flex flex-col gap-3'>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input
+                                                        id="pagibig_calamity_loan"
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9.,]*"
+                                                        placeholder="Pag-IBIG Calamity Loan"
+                                                        className="pl-8"
+                                                        min={0}
+                                                        value={formatWithCommas(data.pagibig_calamity_loan ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('pagibig_calamity_loan', raw);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* PERAA Con. */}
+                                    <div className='mb-4'>
+                                        <div className='flex items-center gap-2 mb-2'>
+                                            <Label>PERAA Con.</Label>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                if (showPERAAConInput && data.peraa_con) {
+                                                    setData('peraa_con', '');
+                                                }
+                                                setShowPERAAConInput(!showPERAAConInput);
+                                            }}>
+                                                {showPERAAConInput ? '-' : '+'}
+                                            </Button>
+                                        </div>
+                                        {showPERAAConInput && (
+                                            <div className='flex flex-col gap-3'>
+                                                <div className='relative'>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                    <Input
+                                                        id="peraa_con"
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        pattern="[0-9.,]*"
+                                                        placeholder="PERAA Contribution"
+                                                        className="pl-8"
+                                                        min={0}
+                                                        value={formatWithCommas(data.peraa_con ?? '')}
+                                                        onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('peraa_con', raw);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Other Deductions */}
+                                    <div className='mt-8'>
+                                        <h2 className='font-semibold text-lg mb-4'>Other Deductions</h2>
+                                        {/* Tuition */}
+                                        <div className='mb-4'>
+                                            <div className='flex items-center gap-2 mb-2'>
+                                                <Label>Tuition</Label>
+                                                <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                    if (showTuitionInput && data.tuition) {
+                                                        setData('tuition', '');
+                                                    }
+                                                    setShowTuitionInput(!showTuitionInput);
+                                                }}>
+                                                    {showTuitionInput ? '-' : '+'}
+                                                </Button>
+                                            </div>
+                                            {showTuitionInput && (
+                                                <div className='flex flex-col gap-3'>
+                                                    <div className='relative'>
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                        <Input
+                                                            id="tuition"
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9.,]*"
+                                                            placeholder="Tuition Deduction"
+                                                            className="pl-8"
+                                                            min={0}
+                                                            value={formatWithCommas(data.tuition ?? '')}
+                                                            onChange={e => {
+                                                                const raw = e.target.value.replace(/,/g, '');
+                                                                setData('tuition', raw);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* China Bank */}
+                                        <div className='mb-4'>
+                                            <div className='flex items-center gap-2 mb-2'>
+                                                <Label>China Bank</Label>
+                                                <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                    if (showChinaBankInput && data.china_bank) {
+                                                        setData('china_bank', '');
+                                                    }
+                                                    setShowChinaBankInput(!showChinaBankInput);
+                                                }}>
+                                                    {showChinaBankInput ? '-' : '+'}
+                                                </Button>
+                                            </div>
+                                            {showChinaBankInput && (
+                                                <div className='flex flex-col gap-3'>
+                                                    <div className='relative'>
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                        <Input
+                                                            id="china_bank"
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9.,]*"
+                                                            placeholder="China Bank Deduction"
+                                                            className="pl-8"
+                                                            min={0}
+                                                            value={formatWithCommas(data.china_bank ?? '')}
+                                                            onChange={e => {
+                                                                const raw = e.target.value.replace(/,/g, '');
+                                                                setData('china_bank', raw);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* TEA */}
+                                        <div className='mb-4'>
+                                            <div className='flex items-center gap-2 mb-2'>
+                                                <Label>TEA</Label>
+                                                <Button type="button" size="sm" variant="outline" onClick={() => {
+                                                    if (showTEAInput && data.tea) {
+                                                        setData('tea', '');
+                                                    }
+                                                    setShowTEAInput(!showTEAInput);
+                                                }}>
+                                                    {showTEAInput ? '-' : '+'}
+                                                </Button>
+                                            </div>
+                                            {showTEAInput && (
+                                                <div className='flex flex-col gap-3'>
+                                                    <div className='relative'>
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                        <Input
+                                                            id="tea"
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9.,]*"
+                                                            placeholder="TEA Deduction"
+                                                            className="pl-8"
+                                                            min={0}
+                                                            value={formatWithCommas(data.tea ?? '')}
+                                                            onChange={e => {
+                                                                const raw = e.target.value.replace(/,/g, '');
+                                                                setData('tea', raw);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
