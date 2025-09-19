@@ -223,11 +223,22 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                             <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
-                                                <Info label="Schedule" value={
-                                                    employee.work_start_time && employee.work_end_time && employee.work_hours_per_day
-                                                        ? `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${employee.work_hours_per_day} hours)`
-                                                        : '-'
-                                                } />
+                                                <Info label="Schedule" value={(() => {
+                                                    if (employee.work_start_time && employee.work_end_time) {
+                                                        const [startHour, startMinute] = employee.work_start_time.split(':').map(Number);
+                                                        const [endHour, endMinute] = employee.work_end_time.split(':').map(Number);
+                                                        const startMinutes = startHour * 60 + startMinute;
+                                                        const endMinutes = endHour * 60 + endMinute;
+                                                        let actualWorkMinutes = endMinutes - startMinutes;
+                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                        const hours = Math.floor(totalMinutes / 60);
+                                                        const minutes = totalMinutes % 60;
+                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                        return `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${durationText})`;
+                                                    }
+                                                    return '-';
+                                                })()} />
                                             </div>
                                         </div>
                                         <div>

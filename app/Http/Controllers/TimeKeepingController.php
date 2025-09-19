@@ -34,7 +34,7 @@ class TimeKeepingController extends Controller {
         $employee = \App\Models\Employees::find($employeeId);
         $base_salary = $employee ? $employee->base_salary : 0;
         $work_hours_per_day = $employee && $employee->work_hours_per_day ? $employee->work_hours_per_day : 8;
-        $rate_per_day = ($base_salary * 12) / 288;
+        $rate_per_day = ($base_salary * 12) / 262;
         $rate_per_hour = $work_hours_per_day > 0 ? $rate_per_day / $work_hours_per_day : 0;
 
         // Format clock_in and clock_out as 12-hour time (h:i A)
@@ -211,7 +211,17 @@ class TimeKeepingController extends Controller {
             }
             $absences = 0;
             if (!empty($emp->work_hours_per_day)) {
-                $absences = round($absent_days * floatval($emp->work_hours_per_day), 2); // decimal hours
+                        // Calculate work hours per day from start/end, minus 1 hour for break
+                        if (!empty($emp->work_start_time) && !empty($emp->work_end_time)) {
+                            $start = strtotime($emp->work_start_time);
+                            $end = strtotime($emp->work_end_time);
+                            $workMinutes = $end - $start;
+                            if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
+                            $workHours = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
+                        } else {
+                            $workHours = floatval($emp->work_hours_per_day);
+                        }
+                        $absences = round($absent_days * $workHours, 2); // decimal hours
             } else {
                 $absences = $absent_days; // fallback to days if no schedule
             }
@@ -383,7 +393,7 @@ class TimeKeepingController extends Controller {
 
         // Use payroll values if available, otherwise fallback to employee
         $base_salary = $payroll ? $payroll->base_salary : $employee->base_salary;
-        $rate_per_day = ($base_salary * 12) / 288;
+        $rate_per_day = ($base_salary * 12) / 262;
         $rate_per_hour = $rate_per_day / 8;
         $work_start_time = $employee->work_start_time;
         $work_end_time = $employee->work_end_time;
@@ -435,6 +445,14 @@ class TimeKeepingController extends Controller {
         $monthStart = strtotime($month . '-01');
         $daysInMonth = (int)date('t', $monthStart);
         $workHoursPerDay = !empty($employee->work_hours_per_day) ? floatval($employee->work_hours_per_day) : 8;
+        // Calculate work hours per day from start/end, minus 1 hour for break
+        if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
+            $start = strtotime($employee->work_start_time);
+            $end = strtotime($employee->work_end_time);
+            $workMinutes = $end - $start;
+            if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
+            $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
+        }
         for ($i = 1; $i <= $daysInMonth; $i++) {
             $date = date('Y-m-d', strtotime($month . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
             $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun

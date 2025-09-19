@@ -78,6 +78,14 @@ class PayrollController extends Controller
             $base_salary = isset($summaryData['base_salary']) ? $summaryData['base_salary'] : $employee->base_salary;
             $rate_per_hour = isset($summaryData['rate_per_hour']) ? $summaryData['rate_per_hour'] : ($workHoursPerDay > 0 ? ($base_salary * 12 / 288) / $workHoursPerDay : 0);
             $tardiness = isset($summaryData['tardiness']) ? $summaryData['tardiness'] : 0;
+            // Calculate work hours per day from start/end, minus 1 hour for break
+            if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
+                $start = strtotime($employee->work_start_time);
+                $end = strtotime($employee->work_end_time);
+                $workMinutes = $end - $start;
+                if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
+                $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
+            }
             $undertime = isset($summaryData['undertime']) ? $summaryData['undertime'] : 0;
             $absences = isset($summaryData['absences']) ? $summaryData['absences'] : 0;
             $overtime_pay = isset($summaryData['overtime_pay_total']) ? $summaryData['overtime_pay_total'] : 0;

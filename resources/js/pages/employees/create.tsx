@@ -148,7 +148,7 @@ export default function Create(props: Props) {
             // Auto-calculate PhilHealth and Withholding Tax
             let actualWorkMinutes = endMinutes - startMinutes;
             if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-            workHours = Math.round(actualWorkMinutes / 60);
+            workHours = Math.max(1, Math.round(actualWorkMinutes / 60) - 1); // Subtract 1 hour for break
         }
 
         const employee_name = `${data.last_name}, ${data.first_name}, ${data.middle_name}`;
@@ -310,7 +310,7 @@ export default function Create(props: Props) {
                 actualWorkMinutes += 24 * 60; // Add 24 hours
             }
 
-            const actualWorkHours = Math.round(actualWorkMinutes / 60);
+            const actualWorkHours = Math.max(1, Math.round(actualWorkMinutes / 60) - 1); // Subtract 1 hour for break
 
             // Only update if the calculated hours are reasonable (1-24 hours)
             if (actualWorkHours >= 1 && actualWorkHours <= 24) {
@@ -494,7 +494,24 @@ export default function Create(props: Props) {
                                         {data.work_start_time && data.work_end_time && (
                                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                                                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                                                    📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({data.work_hours_per_day} hours)
+                                                    {(() => {
+                                                        const [startHour, startMinute] = data.work_start_time.split(':').map(Number);
+                                                        const [endHour, endMinute] = data.work_end_time.split(':').map(Number);
+                                                        let startMinutes = startHour * 60 + startMinute;
+                                                        let endMinutes = endHour * 60 + endMinute;
+                                                        let actualWorkMinutes = endMinutes - startMinutes;
+                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                                        let totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                        const hours = Math.floor(totalMinutes / 60);
+                                                        const minutes = totalMinutes % 60;
+                                                        let durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                        return (
+                                                            <>
+                                                                📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({durationText})<br />
+                                                                <span className="text-xs text-blue-600 dark:text-blue-400">*Break time is included. 1 hour is subtracted from total work hours.</span>
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </p>
                                             </div>
                                         )}
