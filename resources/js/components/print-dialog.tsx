@@ -1,3 +1,5 @@
+// Toggle for auto-download vs. view in new tab
+const AUTO_DOWNLOAD = false; // Set to true to enable auto-download, false for view in new tab
 // Utility to sanitize file names (remove spaces, special chars)
 function sanitizeFile(str?: string) {
     return (str || '').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -328,12 +330,16 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                     >
                                         {({ url, loading }) => {
                                             if (url && !loading && url) {
-                                                const a = document.createElement('a');
-                                                a.href = url;
-                                                a.download = `Payslip_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`;
-                                                document.body.appendChild(a);
-                                                a.click();
-                                                document.body.removeChild(a);
+                                                if (AUTO_DOWNLOAD) {
+                                                    const a = document.createElement('a');
+                                                    a.href = url;
+                                                    a.download = `Payslip_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`;
+                                                    document.body.appendChild(a);
+                                                    a.click();
+                                                    document.body.removeChild(a);
+                                                } else {
+                                                    window.open(url, '_blank');
+                                                }
                                                 setShowPDF(false);
                                             }
                                             return null;
@@ -353,12 +359,16 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                     >
                                         {({ url, loading }) => {
                                             if (url && !loading && url) {
-                                                const a = document.createElement('a');
-                                                a.href = url;
-                                                a.download = `BTR_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`;
-                                                document.body.appendChild(a);
-                                                a.click();
-                                                document.body.removeChild(a);
+                                                if (AUTO_DOWNLOAD) {
+                                                    const a = document.createElement('a');
+                                                    a.href = url;
+                                                    a.download = `BTR_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`;
+                                                    document.body.appendChild(a);
+                                                    a.click();
+                                                    document.body.removeChild(a);
+                                                } else {
+                                                    window.open(url, '_blank');
+                                                }
                                                 setShowPDF(false);
                                             }
                                             return null;
