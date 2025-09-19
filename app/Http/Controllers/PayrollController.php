@@ -95,11 +95,13 @@ class PayrollController extends Controller
                 return 183541.80 + 0.35 * ($totalComp - 666667);
             })($base_salary, $sss, $pag_ibig, $philhealth) : 0;
 
+            $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
             $gross_pay = round($base_salary, 2)
                 - (round($rate_per_hour * $tardiness, 2)
                 + round($rate_per_hour * $undertime, 2)
                 + round($rate_per_hour * $absences, 2));
             $gross_pay += round($overtime_pay, 2);
+            $gross_pay += round($honorarium, 2);
 
                 // Create and save payroll record
                 // Get all loan and deduction fields from employee
