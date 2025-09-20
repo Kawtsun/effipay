@@ -19,6 +19,7 @@ import { BreadcrumbItem, Employees } from '@/types'
 import { Head, router, usePage } from '@inertiajs/react'
 import { Eye, Printer, Users, Shield, GraduationCap, Book } from 'lucide-react'
 import PrintDialog from '@/components/print-dialog';
+import PrintAllDialog from '@/components/print-all-dialog';
 import { Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -62,6 +63,7 @@ export default function ReportsIndex() {
     const [viewing, setViewing] = useState(null as Employees | null);
     const [printDialog, setPrintDialog] = useState<{ open: boolean, employee: Employees | null }>({ open: false, employee: null });
     const [searchTerm, setSearchTerm] = useState(initialSearch);
+    const [printAllDialogOpen, setPrintAllDialogOpen] = useState(false);
     const toArray = (val: unknown) => Array.isArray(val) ? val : val ? [val] : [];
     const [filters, setFilters] = useState<FilterState & { collegeProgram?: string }>({
         ...initialFilters,
@@ -221,7 +223,7 @@ export default function ReportsIndex() {
                         <div className="min-w-[200px] flex-1">
                             <EmployeeSearch initialSearch={searchTerm} onSearch={handleSearch} />
                         </div>
-                        {/* Reset / Filter */}
+                        {/* Reset / Filter / Print All */}
                         <div className="flex items-center gap-2">
                             {(filters.types.length > 0 || filters.statuses.length > 0 || filters.roles.length > 0) && (
                                 <Button variant="ghost" size="sm" onClick={resetFilters}>
@@ -235,6 +237,10 @@ export default function ReportsIndex() {
                                 collegeProgram={filters.collegeProgram}
                                 onChange={newFilters => handleFilterChange({ ...filters, ...newFilters })}
                             />
+                            <Button variant="default" onClick={() => setPrintAllDialogOpen(true)}>
+                                <Printer />
+                                Print All
+                            </Button>
                         </div>
                     </div>
                     {/* Category filter and Active Filters Preview in one line */}
@@ -402,6 +408,7 @@ export default function ReportsIndex() {
                             </TableBody>
                         </Table>
                     </div>
+
                     <ReportViewDialog
                         employee={viewing}
                         onClose={() => setViewing(null)}
@@ -411,6 +418,10 @@ export default function ReportsIndex() {
                         open={printDialog.open}
                         onClose={() => setPrintDialog({ open: false, employee: null })}
                         employee={printDialog.employee}
+                    />
+                    <PrintAllDialog
+                        open={printAllDialogOpen}
+                        onClose={() => setPrintAllDialogOpen(false)}
                     />
 
                     <div className="mt-4 flex min-h-[56px] justify-center">
