@@ -46,6 +46,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     fontFamily: 'Helvetica',
     marginTop: 6,
+    marginBottom: 3,
   },
   subtitle: {
     fontSize: 10,
