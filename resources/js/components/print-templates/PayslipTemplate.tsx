@@ -87,6 +87,7 @@ interface EarningsProps {
     pagibigCalamityLoan?: string | number;
     philhealth?: string | number;
     peraaCon?: string | number;
+    withholdingTax?: string | number;
   }
 
 interface PayslipTemplateProps {
@@ -452,6 +453,19 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
                 deductions?.peraaCon === undefined || deductions?.peraaCon === null || deductions?.peraaCon === '' || Number(deductions?.peraaCon) === 0
                   ? '-'
                   : formatWithCommas(deductions?.peraaCon)
+              }
+            </Text>
+          </View>
+
+          {/* Withholding Tax row */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }}>Withholding Tax</Text>
+            <Text style={{ minWidth: 80, marginLeft: 32 }} />
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.withholdingTax === undefined || deductions?.withholdingTax === null || deductions?.withholdingTax === '' || Number(deductions?.withholdingTax) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.withholdingTax)
               }
             </Text>
           </View>
