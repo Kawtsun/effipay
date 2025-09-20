@@ -100,6 +100,7 @@ interface PayslipTemplateProps {
   role?: string;
   earnings?: EarningsProps;
   deductions?: DeductionsProps;
+  totalDeductions?: string | number;
 }
 
 const getPayPeriodString = (period?: string) => {
@@ -119,7 +120,7 @@ const getPayPeriodString = (period?: string) => {
 };
 
 
-const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '', earnings, deductions }) => {
+const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '', earnings, deductions, totalDeductions }) => {
   const monthlySalary = earnings?.monthlySalary;
 
   // Always show monthly salary value regardless of role
@@ -509,6 +510,18 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
                 deductions?.tea === undefined || deductions?.tea === null || deductions?.tea === '' || Number(deductions?.tea) === 0
                   ? '-'
                   : formatWithCommas(deductions?.tea)
+              }
+            </Text>
+          </View>
+
+          {/* TOTAL DEDUCTIONS row */}
+          <View style={{ flexDirection: 'row', marginTop: 8, marginBottom: 2 }}>
+            <Text style={{ minWidth: 110, fontWeight: 'bold', textTransform: 'uppercase' }}>TOTAL:</Text>
+            <Text style={{ flex: 1, textAlign: 'right', fontWeight: 'bold' }}>
+              {
+                (typeof totalDeductions !== 'undefined' && totalDeductions !== null && totalDeductions !== '' && totalDeductions !== 0 && totalDeductions !== '0' && totalDeductions !== '0.00')
+                  ? formatWithCommas(totalDeductions as string | number)
+                  : '-'
               }
             </Text>
           </View>

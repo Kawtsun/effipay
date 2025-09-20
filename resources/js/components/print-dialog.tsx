@@ -335,6 +335,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             payPeriod={selectedMonth}
                                             earnings={payrollData.earnings}
                                             deductions={payrollData.deductions}
+                                            totalDeductions={payrollData.totalDeductions}
                                         />}
                                         fileName={`Payslip_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`}
                                         download
