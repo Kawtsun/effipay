@@ -29,8 +29,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   logo: {
-    width: 54,
-    height: 54,
+    width: 35,
+    height: 35,
     marginRight: 12,
     objectFit: 'contain',
   },
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#028102',
     textAlign: 'left',
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 8,
     marginBottom: 2,
     textAlign: 'center',
     fontFamily: 'Times-Italic',
