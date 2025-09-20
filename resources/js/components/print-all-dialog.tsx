@@ -1,3 +1,9 @@
+// Toggle for auto-download vs. view in new tab
+const AUTO_DOWNLOAD = false; // Set to true to enable auto-download, false for view in new tab
+// Utility to sanitize file names (remove spaces, special chars)
+function sanitizeFile(str?: string) {
+  return (str || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
 
 
 import React, { useState, useEffect } from 'react';
@@ -142,14 +148,26 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
         setLoadingBatchPayslips(false);
         return;
       }
-      // Immediately generate and open PDF blob
+      // Immediately generate and open PDF blob or download
       setGeneratingPDF(true);
       try {
         const doc = <PayslipBatchTemplate payslips={filtered} />;
         const asPdf = pdf(doc);
         const blob = await asPdf.toBlob();
         const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+        if (AUTO_DOWNLOAD) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Payslip_All_${sanitizeFile(selectedMonth)}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+        } else {
+          window.open(url, '_blank');
+        }
       } catch {
         setBatchPayslipError('Failed to generate PDF.');
       } finally {
