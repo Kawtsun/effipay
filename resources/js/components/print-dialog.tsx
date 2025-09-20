@@ -153,9 +153,14 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
 export default function PrintDialog({ open, onClose, employee }: PrintDialogProps) {
     const [selectedMonth, setSelectedMonth] = useState<string>('');
     const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, selectedMonth);
-    // Removed selected state
     const [btrRecords, setBtrRecords] = useState<BTRRecord[]>([]);
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+    const [payrollData, setPayrollData] = useState<PayslipData | null>(null);
+    const [showPDF, setShowPDF] = useState<false | 'payslip' | 'btr'>(false);
+    // Loading states for buttons
+    const [loadingPayslip, setLoadingPayslip] = useState(false);
+    const [loadingBTR, setLoadingBTR] = useState(false);
+
     // Fetch available months from backend
     const fetchAvailableMonths = async () => {
         try {
@@ -171,24 +176,19 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             console.error('Error fetching available months:', error);
         }
     };
-    // Fetch months on mount
     React.useEffect(() => {
         fetchAvailableMonths();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-    // Removed duplicate showPDF state
-    const [payrollData, setPayrollData] = useState<PayslipData | null>(null);
-
-
-    // showPDF: false | 'payslip' | 'btr'
-    const [showPDF, setShowPDF] = useState<false | 'payslip' | 'btr'>(false);
 
     // Print Payslip handler
     const handlePrintPayslip = async () => {
+        setLoadingPayslip(true);
         setShowPDF(false);
         const data = await fetchPayrollData(employee?.id, selectedMonth);
         if (!data) {
             toast.error('No payroll data found for the selected month.');
+            setLoadingPayslip(false);
             return;
         }
         // Fetch timekeeping records before calculating numHours
@@ -242,16 +242,20 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 overload: data.earnings?.overload ?? undefined,
             },
         });
-        setTimeout(() => setShowPDF('payslip'), 100);
+        setTimeout(() => {
+            setShowPDF('payslip');
+            setLoadingPayslip(false);
+        }, 100);
     };
 
     // Print BTR handler
     const handlePrintBTR = async () => {
+        setLoadingBTR(true);
         setShowPDF(false);
         const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
         const result = await response.json();
         // Get all days in the selected month
-    const allDates: string[] = [];
+        const allDates: string[] = [];
         if (selectedMonth) {
             const [year, month] = selectedMonth.split('-').map(Number);
             if (!isNaN(year) && !isNaN(month)) {
@@ -281,13 +285,15 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         });
         setBtrRecords(records);
         if (records.length > 0) {
-            setTimeout(() => setShowPDF('btr'), 100);
+            setTimeout(() => {
+                setShowPDF('btr');
+                setLoadingBTR(false);
+            }, 100);
         } else {
             toast.error('No biometric time records found for this month.');
+            setLoadingBTR(false);
         }
     };
-
-    // Removed unused handlePrint and selected logic
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
@@ -316,13 +322,13 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 />
                             </div>
                             <div className="flex flex-col gap-2 mb-4 select-none w-full items-center">
-                                <Button className="w-full flex items-center gap-2 justify-center" variant="default" onClick={handlePrintPayslip} disabled={!selectedMonth}>
+                                <Button className="w-full flex items-center gap-2 justify-center" variant="default" onClick={handlePrintPayslip} disabled={!selectedMonth || loadingPayslip}>
                                     <FileText className="w-4 h-4" />
-                                    Print Payslip
+                                    {loadingPayslip ? 'Loading Payslip...' : 'Print Payslip'}
                                 </Button>
-                                <Button className="w-full flex items-center gap-2 justify-center" variant="default" onClick={handlePrintBTR} disabled={!selectedMonth}>
+                                <Button className="w-full flex items-center gap-2 justify-center" variant="default" onClick={handlePrintBTR} disabled={!selectedMonth || loadingBTR}>
                                     <Printer className="w-4 h-4" />
-                                    Print Biometric Time Record (BTR)
+                                    {loadingBTR ? 'Loading BTR...' : 'Print BTR'}
                                 </Button>
                             </div>
                             <DialogFooter>
