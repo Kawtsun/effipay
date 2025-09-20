@@ -63,10 +63,13 @@ interface EarningsProps {
   ratePerHour?: number | string;
   collegeGSP?: number | string;
   honorarium?: number | string;
-  tardiness?: number;
-  undertime?: number;
-  absences?: number;
-  overtime_pay_total?: number;
+  tardiness?: number | string;
+  tardinessAmount?: number | string;
+  undertime?: number | string;
+  undertimeAmount?: number | string;
+  absences?: number | string;
+  absencesAmount?: number | string;
+  overtime_pay_total?: number | string;
   overload?: number | string;
   adjustment?: number | string;
 }
@@ -98,11 +101,31 @@ const getPayPeriodString = (period?: string) => {
 
 const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '', earnings }) => {
   const monthlySalary = earnings?.monthlySalary;
-  const totalHours = earnings?.numHours;
-  const ratePerHour = earnings?.ratePerHour;
 
   // Always show monthly salary value regardless of role
   const monthlySalaryValue: number | string | undefined = monthlySalary;
+  // Helper to get numeric value
+  const getNum = (v: string | number | undefined) => {
+    if (v === undefined || v === null || v === '') return 0;
+    if (typeof v === 'string') return Number(v.replace(/,/g, ''));
+    return v;
+  };
+
+  // Calculate amounts if not provided
+  const ratePerHour = getNum(earnings?.ratePerHour);
+  const tardinessHours = getNum(earnings?.tardiness);
+  const undertimeHours = getNum(earnings?.undertime);
+  const absencesHours = getNum(earnings?.absences);
+  const tardinessAmount = earnings?.tardinessAmount !== undefined && earnings?.tardinessAmount !== null && earnings?.tardinessAmount !== ''
+    ? getNum(earnings?.tardinessAmount)
+    : parseFloat((tardinessHours * ratePerHour).toFixed(2));
+  const undertimeAmount = earnings?.undertimeAmount !== undefined && earnings?.undertimeAmount !== null && earnings?.undertimeAmount !== ''
+    ? getNum(earnings?.undertimeAmount)
+    : parseFloat((undertimeHours * ratePerHour).toFixed(2));
+  const absencesAmount = earnings?.absencesAmount !== undefined && earnings?.absencesAmount !== null && earnings?.absencesAmount !== ''
+    ? getNum(earnings?.absencesAmount)
+    : parseFloat((absencesHours * ratePerHour).toFixed(2));
+
   return (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -211,6 +234,47 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
                 ? '-'
                 : formatWithCommas(earnings?.honorarium)
             }</Text>
+          </View>
+
+          {/* Less: No. of Hours section */}
+          <View style={{ flexDirection: 'row', marginBottom: 2 }}>
+            <Text>Less:  No. of Hours</Text>
+          </View>
+          {/* Tardiness row */}
+          <View style={{ flexDirection: 'row', marginLeft: 16, marginBottom: 2 }}>
+            <Text style={{ minWidth: 80 }}>Tardiness</Text>
+            <View style={{ flex: 1, flexDirection: 'row' }}>
+              <Text style={{ flex: 1, textAlign: 'right' }}>
+                {tardinessHours === 0 ? '-' : formatWithCommas(tardinessHours)}
+              </Text>
+              <Text style={{ flex: 1, textAlign: 'right' }}>
+                {tardinessAmount === 0 ? '-' : formatWithCommas(tardinessAmount)}
+              </Text>
+            </View>
+          </View>
+          {/* Undertime row */}
+          <View style={{ flexDirection: 'row', marginLeft: 16, marginBottom: 2 }}>
+            <Text style={{ minWidth: 80 }}>Undertime</Text>
+            <View style={{ flex: 1, flexDirection: 'row' }}>
+              <Text style={{ flex: 1, textAlign: 'right' }}>
+                {undertimeHours === 0 ? '-' : formatWithCommas(undertimeHours)}
+              </Text>
+              <Text style={{ flex: 1, textAlign: 'right' }}>
+                {undertimeAmount === 0 ? '-' : formatWithCommas(undertimeAmount)}
+              </Text>
+            </View>
+          </View>
+          {/* Absences row */}
+          <View style={{ flexDirection: 'row', marginLeft: 16, marginBottom: 2 }}>
+            <Text style={{ minWidth: 80 }}>Absences</Text>
+            <View style={{ flex: 1, flexDirection: 'row' }}>
+              <Text style={{ flex: 1, textAlign: 'right' }}>
+                {absencesHours === 0 ? '-' : formatWithCommas(absencesHours)}
+              </Text>
+              <Text style={{ flex: 1, textAlign: 'right' }}>
+                {absencesAmount === 0 ? '-' : formatWithCommas(absencesAmount)}
+              </Text>
+            </View>
           </View>
         </View>
         {/* Deductions Column (empty for now, add margin for gap) */}
