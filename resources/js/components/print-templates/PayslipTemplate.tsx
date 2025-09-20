@@ -57,12 +57,26 @@ const styles = StyleSheet.create({
   },
 });
 
+interface EarningsProps {
+  monthlySalary?: number | string;
+  numHours?: number | string;
+  ratePerHour?: number | string;
+  collegeGSP?: number | string;
+  honorarium?: number | string;
+  tardiness?: number;
+  undertime?: number;
+  absences?: number;
+  overtime_pay_total?: number;
+  overload?: number | string;
+  adjustment?: number | string;
+}
 
 interface PayslipTemplateProps {
   payPeriod?: string; // 'YYYY-MM' or 'YYYY-MM-DD'
   employeeName?: string;
   jobTitle?: string;
   role?: string;
+  earnings?: EarningsProps;
 }
 
 const getPayPeriodString = (period?: string) => {
@@ -82,7 +96,11 @@ const getPayPeriodString = (period?: string) => {
 };
 
 
-const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '' }) => (
+const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '', earnings }) => {
+  const monthlySalary = earnings?.monthlySalary;
+  const totalHours = earnings?.numHours;
+  const ratePerHour = earnings?.ratePerHour;
+  return (
   <Document>
     <Page size="A4" style={styles.page}>
       {/* Header Row */}
@@ -144,7 +162,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
         </View>
       </View>
       {/* Earnings and Deductions Header Row */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginTop: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 0, marginTop: 8 }}>
         {/* Earnings Column (focus here for now) */}
         <View style={{ flex: 1, alignItems: 'flex-start' }}>
           <Text style={{ fontWeight: 'bold' }}>EARNINGS</Text>
@@ -154,8 +172,42 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
           <Text style={{ fontWeight: 'bold' }}>DEDUCTIONS</Text>
         </View>
       </View>
+
+      {/* Earnings and Deductions Content Row with gap */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
+        {/* Earnings Column */}
+        <View style={{ flex: 1, paddingRight: 32 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+            <Text>Monthly Salary</Text>
+            <Text>{
+              monthlySalary === undefined || monthlySalary === null || monthlySalary === '' || Number(monthlySalary) === 0
+                ? '-'
+                : formatWithCommas(monthlySalary)
+            }</Text>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
+            <Text>No. of hours</Text>
+            <Text>{
+              totalHours === undefined || totalHours === null || totalHours === '' || Number(totalHours) === 0
+                ? '-'
+                : formatWithCommas(totalHours)
+            }</Text>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16 }}>
+            <Text>Rate Per Hour</Text>
+            <Text>{
+              ratePerHour === undefined || ratePerHour === null || ratePerHour === '' || Number(ratePerHour) === 0
+                ? '-'
+                : formatWithCommas(ratePerHour)
+            }</Text>
+          </View>
+        </View>
+        {/* Deductions Column (empty for now, add margin for gap) */}
+        <View style={{ flex: 1, paddingLeft: 32 }} />
+      </View>
     </Page>
   </Document>
-);
+  );
+}
 
 export default PayslipTemplate;
