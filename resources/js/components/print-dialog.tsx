@@ -1,15 +1,7 @@
-// Toggle for auto-download vs. view in new tab
-const AUTO_DOWNLOAD = false; // Set to true to enable auto-download, false for view in new tab
-// Utility to sanitize file names (remove spaces, special chars)
-function sanitizeFile(str?: string) {
-    return (str || '').replace(/[^a-zA-Z0-9_-]/g, '_');
-}
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-// Removed Checkbox import
-import React, { useState } from 'react';
 import { useEmployeePayroll } from '@/hooks/useEmployeePayroll';
-// ...existing code...
 import { toast } from 'sonner';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import PayslipTemplate from './print-templates/PayslipTemplate';
@@ -17,7 +9,6 @@ import BiometricTimeRecordTemplate from './print-templates/BiometricTimeRecordTe
 import { AnimatePresence, motion } from 'framer-motion';
 import { Printer, FileText } from 'lucide-react';
 import { MonthPicker } from './ui/month-picker';
-
 interface Employee {
     id: number;
     first_name: string;
@@ -72,6 +63,7 @@ interface PayslipData {
         overload?: number | string;
         adjustment?: number | string;
         gross_pay?: number | string;
+        net_pay?: number | string;
     };
     deductions: {
         sss?: string;
@@ -101,9 +93,16 @@ interface BTRRecord {
 }
 
 interface PrintDialogProps {
-    open: boolean;
-    onClose: () => void;
-    employee: Employee;
+  open: boolean;
+  onClose: () => void;
+  employee: Employee;
+}
+
+// Toggle for auto-download vs. view in new tab
+const AUTO_DOWNLOAD = false; // Set to true to enable auto-download, false for view in new tab
+// Utility to sanitize file names (remove spaces, special chars)
+function sanitizeFile(str?: string) {
+    return (str || '').replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
 const fetchPayrollData = async (employeeId: number, month: string): Promise<PayslipData | null> => {
@@ -236,6 +235,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
                 overtime: timekeepingSummary?.overtime ?? undefined,
                 gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
+                net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
                 adjustment: data.earnings?.adjustment ?? undefined,
                 honorarium: data.earnings?.honorarium ?? undefined,
                 collegeGSP: data.earnings?.collegeGSP ?? undefined,

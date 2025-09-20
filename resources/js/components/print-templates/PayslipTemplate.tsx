@@ -75,6 +75,7 @@ interface EarningsProps {
   overload?: number | string;
   adjustment?: number | string;
   gross_pay?: number | string;
+  net_pay?: number | string;
 }
 
 interface PayslipTemplateProps {
@@ -333,6 +334,16 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
                   {earnings?.gross_pay === undefined || earnings?.gross_pay === null || earnings?.gross_pay === '' || earnings?.gross_pay === 0 || earnings?.gross_pay === '0' || earnings?.gross_pay === '0.00' || Number(earnings?.gross_pay) === 0
                     ? '-'
                     : formatWithCommas(earnings?.gross_pay)}
+                </Text>
+              </View>
+
+              {/* NET PAY row */}
+              <View style={{ flexDirection: 'row', marginTop: 8, marginBottom: 2 }}>
+                <Text style={{ minWidth: 110, fontWeight: 'bold', textTransform: 'uppercase' }}>NET PAY</Text>
+                <Text style={{ flex: 1, textAlign: 'right', fontWeight: 'bold' }}>
+                  {earnings?.net_pay === undefined || earnings?.net_pay === null || earnings?.net_pay === '' || earnings?.net_pay === 0 || earnings?.net_pay === '0' || earnings?.net_pay === '0.00' || Number(earnings?.net_pay) === 0
+                    ? '-'
+                    : formatWithCommas(earnings?.net_pay)}
                 </Text>
               </View>
         </View>
