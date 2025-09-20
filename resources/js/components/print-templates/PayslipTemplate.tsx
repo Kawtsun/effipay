@@ -203,6 +203,15 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
             <Text>College/GSP</Text>
             <Text>-</Text>
           </View>
+          {/* Honorarium row */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+            <Text>Honorarium</Text>
+            <Text>{
+              earnings?.honorarium === undefined || earnings?.honorarium === null || earnings?.honorarium === '' || Number(earnings?.honorarium) === 0
+                ? '-'
+                : formatWithCommas(earnings?.honorarium)
+            }</Text>
+          </View>
         </View>
         {/* Deductions Column (empty for now, add margin for gap) */}
         <View style={{ flex: 1, paddingLeft: 32 }} />
