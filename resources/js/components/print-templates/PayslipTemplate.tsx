@@ -88,6 +88,9 @@ interface EarningsProps {
     philhealth?: string | number;
     peraaCon?: string | number;
     withholdingTax?: string | number;
+    tuition?: string | number;
+    chinaBank?: string | number;
+    tea?: string | number;
   }
 
 interface PayslipTemplateProps {
@@ -466,6 +469,46 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
                 deductions?.withholdingTax === undefined || deductions?.withholdingTax === null || deductions?.withholdingTax === '' || Number(deductions?.withholdingTax) === 0
                   ? '-'
                   : formatWithCommas(deductions?.withholdingTax)
+              }
+            </Text>
+          </View>
+          {/* Other Deductions section */}
+          <View style={{ flexDirection: 'row', marginBottom: 2 }}>
+            <Text style={{ fontWeight: 'bold' }}>Other Deductions:</Text>
+          </View>
+          {/* Tuition row */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }}>Tuition</Text>
+            <Text style={{ minWidth: 80, marginLeft: 32 }} />
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.tuition === undefined || deductions?.tuition === null || deductions?.tuition === '' || Number(deductions?.tuition) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.tuition)
+              }
+            </Text>
+          </View>
+          {/* China Bank row */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }}>China Bank</Text>
+            <Text style={{ minWidth: 80, marginLeft: 32 }} />
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.chinaBank === undefined || deductions?.chinaBank === null || deductions?.chinaBank === '' || Number(deductions?.chinaBank) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.chinaBank)
+              }
+            </Text>
+          </View>
+          {/* TEA row */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }}>TEA</Text>
+            <Text style={{ minWidth: 80, marginLeft: 32 }} />
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.tea === undefined || deductions?.tea === null || deductions?.tea === '' || Number(deductions?.tea) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.tea)
               }
             </Text>
           </View>
