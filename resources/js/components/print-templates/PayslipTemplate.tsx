@@ -299,7 +299,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
             <Text style={{ minWidth: 80 }}>Overtime</Text>
             <View style={{ flex: 1, flexDirection: 'row' }}>
               <Text style={{ flex: 1, textAlign: 'right' }}>
-                {overtimeHours === undefined || overtimeHours === null ? '-' : formatWithCommas(overtimeHours)}
+                {overtimeHours === undefined || overtimeHours === null || overtimeHours === 0 ? '-' : formatWithCommas(overtimeHours)}
               </Text>
               <Text style={{ flex: 1, textAlign: 'right' }}>
                 {overtimeAmount === 0 ? '-' : formatWithCommas(overtimeAmount)}
