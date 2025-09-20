@@ -78,15 +78,16 @@ interface EarningsProps {
   net_pay?: number | string;
 }
 
-interface DeductionsProps {
-  sss?: string | number;
-  sssSalaryLoan?: string | number;
-  sssCalamityLoan?: string | number;
-  pagibig?: string | number;
-  pagibigMultiLoan?: string | number;
-  pagibigCalamityLoan?: string | number;
-  philhealth?: string | number;
-}
+  interface DeductionsProps {
+    sss?: string | number;
+    sssSalaryLoan?: string | number;
+    sssCalamityLoan?: string | number;
+    pagibig?: string | number;
+    pagibigMultiLoan?: string | number;
+    pagibigCalamityLoan?: string | number;
+    philhealth?: string | number;
+    peraaCon?: string | number;
+  }
 
 interface PayslipTemplateProps {
   payPeriod?: string; // 'YYYY-MM' or 'YYYY-MM-DD'
@@ -430,17 +431,30 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
             </Text>
           </View>
           {/* Philhealth row */}
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
-              <Text style={{ minWidth: 60 }}>Philhealth</Text>
-              <Text style={{ minWidth: 80, marginLeft: 32 }} />
-              <Text style={{ flex: 1, textAlign: 'right' }}>
-                {
-                  deductions?.philhealth === undefined || deductions?.philhealth === null || deductions?.philhealth === '' || Number(deductions?.philhealth) === 0
-                    ? '-'
-                    : formatWithCommas(deductions?.philhealth)
-                }
-              </Text>
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }}>Philhealth</Text>
+            <Text style={{ minWidth: 80, marginLeft: 32 }} />
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.philhealth === undefined || deductions?.philhealth === null || deductions?.philhealth === '' || Number(deductions?.philhealth) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.philhealth)
+              }
+            </Text>
+          </View>
+
+          {/* PERAA Con. row */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }}>PERAA Con.</Text>
+            <Text style={{ minWidth: 80, marginLeft: 32 }} />
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.peraaCon === undefined || deductions?.peraaCon === null || deductions?.peraaCon === '' || Number(deductions?.peraaCon) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.peraaCon)
+              }
+            </Text>
+          </View>
         </View>
       </View>
     </Page>
