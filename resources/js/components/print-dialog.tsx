@@ -64,6 +64,7 @@ interface PayslipData {
         undertime?: number;
         absences?: number;
         overtime_pay_total?: number;
+        overtime?: number;
         overload?: string | number;
         adjustment?: string | number;
     };
@@ -228,6 +229,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 undertime: timekeepingSummary?.undertime ?? 0,
                 absences: timekeepingSummary?.absences ?? 0,
                 overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
+                overtime: timekeepingSummary?.overtime ?? undefined,
             },
         });
         setTimeout(() => setShowPDF('payslip'), 100);

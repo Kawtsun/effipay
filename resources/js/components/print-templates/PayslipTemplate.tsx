@@ -70,6 +70,8 @@ interface EarningsProps {
   absences?: number | string;
   absencesAmount?: number | string;
   overtime_pay_total?: number | string;
+  overtime_hours?: number | string;
+  overtime?: number | string;
   overload?: number | string;
   adjustment?: number | string;
 }
@@ -125,6 +127,17 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
   const absencesAmount = earnings?.absencesAmount !== undefined && earnings?.absencesAmount !== null && earnings?.absencesAmount !== ''
     ? getNum(earnings?.absencesAmount)
     : parseFloat((absencesHours * ratePerHour).toFixed(2));
+
+  // Overtime and Overload logic (match timekeeping dialog: summary.overtime)
+  let overtimeHours = undefined;
+  if (earnings?.overtime !== undefined && earnings?.overtime !== null && earnings?.overtime !== '') {
+    overtimeHours = getNum(earnings?.overtime);
+  } else if (earnings?.overtime_hours !== undefined && earnings?.overtime_hours !== null && earnings?.overtime_hours !== '') {
+    overtimeHours = getNum(earnings?.overtime_hours);
+  }
+  const overtimeAmount = earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== ''
+    ? getNum(earnings?.overtime_pay_total)
+    : 0;
 
   return (
   <Document>
@@ -274,6 +287,31 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
               <Text style={{ flex: 1, textAlign: 'right' }}>
                 {absencesAmount === 0 ? '-' : formatWithCommas(absencesAmount)}
               </Text>
+            </View>
+          </View>
+
+          {/* Other Earnings section */}
+          <View style={{ flexDirection: 'row', marginBottom: 2 }}>
+            <Text style={{ fontWeight: 'bold' }}>Other Earnings:</Text>
+          </View>
+          {/* Overtime row */}
+          <View style={{ flexDirection: 'row', marginLeft: 16, marginBottom: 2 }}>
+            <Text style={{ minWidth: 80 }}>Overtime</Text>
+            <View style={{ flex: 1, flexDirection: 'row' }}>
+              <Text style={{ flex: 1, textAlign: 'right' }}>
+                {overtimeHours === undefined || overtimeHours === null ? '-' : formatWithCommas(overtimeHours)}
+              </Text>
+              <Text style={{ flex: 1, textAlign: 'right' }}>
+                {overtimeAmount === 0 ? '-' : formatWithCommas(overtimeAmount)}
+              </Text>
+            </View>
+          </View>
+          {/* Overload row */}
+          <View style={{ flexDirection: 'row', marginLeft: 16, marginBottom: 2 }}>
+            <Text style={{ minWidth: 80 }}>Overload</Text>
+            <View style={{ flex: 1, flexDirection: 'row' }}>
+              <Text style={{ flex: 1, textAlign: 'right' }}>-</Text>
+              <Text style={{ flex: 1, textAlign: 'right' }}>-</Text>
             </View>
           </View>
         </View>
