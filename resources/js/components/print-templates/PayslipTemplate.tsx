@@ -80,8 +80,11 @@ interface EarningsProps {
 
 interface DeductionsProps {
   sss?: string | number;
-  sss_salary_loan?: string | number;
-  sss_calamity_loan?: string | number;
+  sssSalaryLoan?: string | number;
+  sssCalamityLoan?: string | number;
+  pagibig?: string | number;
+  pagibigMultiLoan?: string | number;
+  pagibigCalamityLoan?: string | number;
 }
 
 interface PayslipTemplateProps {
@@ -356,7 +359,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
         </View>
         {/* Deductions Column */}
         <View style={{ flex: 1 }}>
-          {/* SSS Contribution row with label alignment */}
+          {/* SSS Contribution group */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
             <Text style={{ minWidth: 60 }}>SSS</Text>
             <Text style={{ minWidth: 80, marginLeft: 32 }}>Contribution</Text>
@@ -368,15 +371,14 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
               }
             </Text>
           </View>
-          {/* Indented sub-items: Salary Loan, Calamity Loan, lined up under Contribution */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
             <Text style={{ minWidth: 60 }} />
             <Text style={{ minWidth: 80, marginLeft: 32 }}>Salary Loan</Text>
             <Text style={{ flex: 1, textAlign: 'right' }}>
               {
-                deductions?.sss_salary_loan === undefined || deductions?.sss_salary_loan === null || deductions?.sss_salary_loan === '' || Number(deductions?.sss_salary_loan) === 0
+                deductions?.sssSalaryLoan === undefined || deductions?.sssSalaryLoan === null || deductions?.sssSalaryLoan === '' || Number(deductions?.sssSalaryLoan) === 0
                   ? '-'
-                  : formatWithCommas(deductions?.sss_salary_loan)
+                  : formatWithCommas(deductions?.sssSalaryLoan)
               }
             </Text>
           </View>
@@ -385,9 +387,44 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
             <Text style={{ minWidth: 80, marginLeft: 32 }}>Calamity Loan</Text>
             <Text style={{ flex: 1, textAlign: 'right' }}>
               {
-                deductions?.sss_calamity_loan === undefined || deductions?.sss_calamity_loan === null || deductions?.sss_calamity_loan === '' || Number(deductions?.sss_calamity_loan) === 0
+                deductions?.sssCalamityLoan === undefined || deductions?.sssCalamityLoan === null || deductions?.sssCalamityLoan === '' || Number(deductions?.sssCalamityLoan) === 0
                   ? '-'
-                  : formatWithCommas(deductions?.sss_calamity_loan)
+                  : formatWithCommas(deductions?.sssCalamityLoan)
+              }
+            </Text>
+          </View>
+
+          {/* Pag-Ibig Contribution group */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2}}>
+            <Text style={{ minWidth: 60 }}>Pag-Ibig</Text>
+            <Text style={{ minWidth: 80, marginLeft: 32 }}>Contribution</Text>
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.pagibig === undefined || deductions?.pagibig === null || deductions?.pagibig === '' || Number(deductions?.pagibig) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.pagibig)
+              }
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }} />
+            <Text style={{ minWidth: 80, marginLeft: 32 }}>Multi Purpose Loan</Text>
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.pagibigMultiLoan === undefined || deductions?.pagibigMultiLoan === null || deductions?.pagibigMultiLoan === '' || Number(deductions?.pagibigMultiLoan) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.pagibigMultiLoan)
+              }
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }} />
+            <Text style={{ minWidth: 80, marginLeft: 32 }}>Calamity Loan</Text>
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.pagibigCalamityLoan === undefined || deductions?.pagibigCalamityLoan === null || deductions?.pagibigCalamityLoan === '' || Number(deductions?.pagibigCalamityLoan) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.pagibigCalamityLoan)
               }
             </Text>
           </View>
