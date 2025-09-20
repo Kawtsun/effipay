@@ -55,26 +55,26 @@ const PayslipBatchTemplate: React.FC<PayslipBatchTemplateProps> = ({ payslips })
   // 2 payslips per page, stacked vertically (each takes half page height)
   const payslipPairs = chunkArray(payslips, 2);
   return (
-    <Document>
-      {payslipPairs.map((pair, pageIdx) => (
-        <Page key={pageIdx} size="A4" style={styles.page} wrap={false}>
-          <View style={styles.payslipStack} wrap={false}>
-            {pair.map((data, idx) => (
-              <View key={idx} style={styles.payslipHalf} wrap={false}>
-                <PayslipBox
-                  employeeName={data.employeeName}
-                  role={data.role}
-                  payPeriod={data.payPeriod}
-                  earnings={data.earnings}
-                  deductions={data.deductions}
-                  totalDeductions={data.totalDeductions}
-                />
+        <Document>
+          {payslipPairs.map((pair, pageIdx) => (
+            <Page key={pageIdx} size="A4" style={styles.page} wrap={false}>
+              <View style={{ flex: 1, flexDirection: 'column', justifyContent: 'space-between' }} wrap={false}>
+                {pair.map((data, idx) => (
+                  <View key={idx} style={styles.payslipHalf} wrap={false}>
+                    <PayslipBox
+                      employeeName={data.employeeName}
+                      role={data.role}
+                      payPeriod={data.payPeriod}
+                      earnings={data.earnings}
+                      deductions={data.deductions}
+                      totalDeductions={data.totalDeductions}
+                    />
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
-        </Page>
-      ))}
-    </Document>
+            </Page>
+          ))}
+        </Document>
   );
 };
 
