@@ -365,6 +365,24 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             employeeName={`${employee?.last_name}, ${employee?.first_name} ${employee?.middle_name}`}
                                             payPeriod={selectedMonth}
                                             records={btrRecords}
+                                            totalHours={(() => {
+                                                let totalWorkedHours = 0;
+                                                if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
+                                                    const attendedShifts = btrRecords.filter(
+                                                        (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
+                                                    ).length;
+                                                    totalWorkedHours = attendedShifts * employee.work_hours_per_day;
+                                                }
+                                                return totalWorkedHours
+                                                    - (Number(timekeepingSummary?.tardiness ?? 0))
+                                                    - (Number(timekeepingSummary?.undertime ?? 0))
+                                                    - (Number(timekeepingSummary?.absences ?? 0))
+                                                    + (Number(timekeepingSummary?.overtime ?? 0));
+                                            })()}
+                                            tardiness={timekeepingSummary?.tardiness ?? 0}
+                                            undertime={timekeepingSummary?.undertime ?? 0}
+                                            overtime={timekeepingSummary?.overtime ?? 0}
+                                            absences={timekeepingSummary?.absences ?? 0}
                                         />}
                                         fileName={`BTR_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`}
                                         download

@@ -107,6 +107,11 @@ interface BiometricTimeRecordTemplateProps {
   employeeName?: string;
   payPeriod?: string; // 'YYYY-MM' or 'YYYY-MM-DD'
   records?: TimeRecord[];
+  totalHours?: number | string;
+  tardiness?: number | string;
+  undertime?: number | string;
+  overtime?: number | string;
+  absences?: number | string;
 }
 
 const getPayPeriodString = (period?: string) => {
@@ -198,7 +203,41 @@ const TimekeepingTable: React.FC<TableProps> = ({ records, payPeriod }) => {
   );
 };
 
-const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = ({ employeeName = '-', payPeriod, records = [] }) => (
+
+
+// Format numbers with commas and 2 decimal places (copied from PayslipTemplate)
+const formatWithCommas = (value: string | number): string => {
+  let num = 0;
+  if (value === null || value === undefined || value === '') {
+    num = 0;
+  } else {
+    if (typeof value === 'string') {
+      num = Number(value.replace(/,/g, ''));
+    } else {
+      num = value;
+    }
+    if (isNaN(num)) num = 0;
+  }
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+// Helper to get numeric value
+const getNum = (v: string | number | undefined | null) => {
+  if (v === undefined || v === null || v === '') return 0;
+  if (typeof v === 'string') return Number(v.replace(/,/g, ''));
+  return v;
+};
+
+const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = ({
+  employeeName = '-',
+  payPeriod,
+  records = [],
+  totalHours = 0,
+  tardiness = 0,
+  undertime = 0,
+  overtime = 0,
+  absences = 0,
+}) => (
   <Document>
     <Page size="A4" style={styles.page}>
       {/* Centered Header Row */}
@@ -231,7 +270,28 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
       </View>
       {/* Timekeeping Table */}
       <TimekeepingTable records={records} payPeriod={payPeriod} />
-      {/* Space left for labels below the table */}
+      {/* Summary Label */}
+      <View style={{marginBottom: 2 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 8 }}>Summary:</Text>
+      </View>
+      {/* Summary Row */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 0, marginBottom: 0, fontSize: 8 }}>
+        <Text style={{ flex: 1, textAlign: 'left' }}>
+          TOTAL HOURS: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(totalHours))}</Text>
+        </Text>
+        <Text style={{ flex: 1, textAlign: 'center' }}>
+          TARDINESS: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(tardiness))}</Text>
+        </Text>
+        <Text style={{ flex: 1, textAlign: 'center' }}>
+          UNDERTIME: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(undertime))}</Text>
+        </Text>
+        <Text style={{ flex: 1, textAlign: 'center' }}>
+          OVERTIME: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(overtime))}</Text>
+        </Text>
+        <Text style={{ flex: 1, textAlign: 'right' }}>
+          ABSENCES: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(absences))}</Text>
+        </Text>
+      </View>
     </Page>
   </Document>
 );
