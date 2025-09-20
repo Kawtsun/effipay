@@ -292,6 +292,35 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
           ABSENCES: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(absences))}</Text>
         </Text>
       </View>
+
+
+      {/* Conforme/Verified Signature Lines and Labels (inline underline) */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 32, marginBottom: 0 }}>
+        {/* Conforme */}
+        <View style={{ flex: 1, alignItems: 'flex-start' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text>CONFORME:</Text>
+            <View style={{ borderBottomWidth: 1, borderColor: '#222', minWidth: 120, marginLeft: 4, marginRight: 4 }}>
+              <Text style={{ color: 'transparent' }}>{' '.repeat(32)}</Text>
+            </View>
+          </View>
+          <View style={{ alignItems: 'center', marginTop: 2, minWidth: 120, marginLeft: 60 }}>
+            <Text style={{ fontSize: 7 }}>(Signature over Printed Name)</Text>
+          </View>
+        </View>
+        {/* Verified */}
+        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+            <Text>VERIFIED:</Text>
+            <View style={{ borderBottomWidth: 1, borderColor: '#222', minWidth: 120, marginLeft: 4, marginRight: 4 }}>
+              <Text style={{ color: 'transparent' }}>{' '.repeat(32)}</Text>
+            </View>
+          </View>
+          <View style={{ alignItems: 'center', marginTop: 2, minWidth: 120, marginRight: 0 }}>
+            <Text style={{ fontSize: 7 }}>(Signature over Printed Name)</Text>
+          </View>
+        </View>
+      </View>
     </Page>
   </Document>
 );
