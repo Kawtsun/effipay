@@ -525,6 +525,18 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
               }
             </Text>
           </View>
+
+          {/* Net Pay for 15 & 30 row */}
+          <View style={{ flexDirection: 'row',  marginTop: 8, marginBottom: 2 }}>
+            <Text style={{ minWidth: 110, fontWeight: 'bold'}}>(Net Pay for 15 & 30)</Text>
+            <Text style={{ flex: 1, textAlign: 'right', fontWeight: 'bold' }}>
+              {
+                earnings?.net_pay !== undefined && earnings?.net_pay !== null && earnings?.net_pay !== '' && earnings?.net_pay !== 0 && earnings?.net_pay !== '0' && earnings?.net_pay !== '0.00' && !isNaN(Number(earnings?.net_pay))
+                  ? formatWithCommas(Number(earnings.net_pay) / 2)
+                  : '-'
+              }
+            </Text>
+          </View>
         </View>
       </View>
     </Page>
