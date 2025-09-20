@@ -100,6 +100,9 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
   const monthlySalary = earnings?.monthlySalary;
   const totalHours = earnings?.numHours;
   const ratePerHour = earnings?.ratePerHour;
+
+  // Always show monthly salary value regardless of role
+  const monthlySalaryValue: number | string | undefined = monthlySalary;
   return (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -177,29 +180,28 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
         {/* Earnings Column */}
         <View style={{ flex: 1, paddingRight: 32 }}>
+          {/* Monthly Salary row */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
             <Text>Monthly Salary</Text>
             <Text>{
-              monthlySalary === undefined || monthlySalary === null || monthlySalary === '' || Number(monthlySalary) === 0
+              monthlySalaryValue === undefined || monthlySalaryValue === null || monthlySalaryValue === '' || Number(monthlySalaryValue) === 0
                 ? '-'
-                : formatWithCommas(monthlySalary)
+                : formatWithCommas(monthlySalaryValue)
             }</Text>
           </View>
+          {/* Indented sub-items: always show under Monthly Salary */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
             <Text>No. of hours</Text>
-            <Text>{
-              totalHours === undefined || totalHours === null || totalHours === '' || Number(totalHours) === 0
-                ? '-'
-                : formatWithCommas(totalHours)
-            }</Text>
+            <Text>-</Text>
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
             <Text>Rate Per Hour</Text>
-            <Text>{
-              ratePerHour === undefined || ratePerHour === null || ratePerHour === '' || Number(ratePerHour) === 0
-                ? '-'
-                : formatWithCommas(ratePerHour)
-            }</Text>
+            <Text>-</Text>
+          </View>
+          {/* College/GSP row */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+            <Text>College/GSP</Text>
+            <Text>-</Text>
           </View>
         </View>
         {/* Deductions Column (empty for now, add margin for gap) */}
