@@ -334,7 +334,11 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             earnings={payrollData.earnings}
-                                            // ...other props as needed
+                                            deductions={{
+                                                sss: payrollData.deductions?.sss,
+                                                sss_salary_loan: payrollData.deductions?.sssSalaryLoan,
+                                                sss_calamity_loan: payrollData.deductions?.sssCalamityLoan,
+                                            }}
                                         />}
                                         fileName={`Payslip_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`}
                                         download

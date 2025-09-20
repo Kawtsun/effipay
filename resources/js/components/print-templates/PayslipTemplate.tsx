@@ -78,12 +78,19 @@ interface EarningsProps {
   net_pay?: number | string;
 }
 
+interface DeductionsProps {
+  sss?: string | number;
+  sss_salary_loan?: string | number;
+  sss_calamity_loan?: string | number;
+}
+
 interface PayslipTemplateProps {
   payPeriod?: string; // 'YYYY-MM' or 'YYYY-MM-DD'
   employeeName?: string;
   jobTitle?: string;
   role?: string;
   earnings?: EarningsProps;
+  deductions?: DeductionsProps;
 }
 
 const getPayPeriodString = (period?: string) => {
@@ -103,7 +110,7 @@ const getPayPeriodString = (period?: string) => {
 };
 
 
-const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '', earnings }) => {
+const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '', earnings, deductions }) => {
   const monthlySalary = earnings?.monthlySalary;
 
   // Always show monthly salary value regardless of role
@@ -209,7 +216,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
           <Text style={{ fontWeight: 'bold' }}>EARNINGS</Text>
         </View>
         {/* Deductions Column (for future use) */}
-        <View style={{ flex: 1, alignItems: 'flex-start' }}>
+        <View style={{ flex: 1, paddingLeft: 32, alignItems: 'flex-start' }}>
           <Text style={{ fontWeight: 'bold' }}>DEDUCTIONS</Text>
         </View>
       </View>
@@ -347,8 +354,44 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
                 </Text>
               </View>
         </View>
-        {/* Deductions Column (empty for now, add margin for gap) */}
-        <View style={{ flex: 1, paddingLeft: 32 }} />
+        {/* Deductions Column */}
+        <View style={{ flex: 1 }}>
+          {/* SSS Contribution row with label alignment */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }}>SSS</Text>
+            <Text style={{ minWidth: 80, marginLeft: 32 }}>Contribution</Text>
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.sss === undefined || deductions?.sss === null || deductions?.sss === '' || Number(deductions?.sss) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.sss)
+              }
+            </Text>
+          </View>
+          {/* Indented sub-items: Salary Loan, Calamity Loan, lined up under Contribution */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }} />
+            <Text style={{ minWidth: 80, marginLeft: 32 }}>Salary Loan</Text>
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.sss_salary_loan === undefined || deductions?.sss_salary_loan === null || deductions?.sss_salary_loan === '' || Number(deductions?.sss_salary_loan) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.sss_salary_loan)
+              }
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+            <Text style={{ minWidth: 60 }} />
+            <Text style={{ minWidth: 80, marginLeft: 32 }}>Calamity Loan</Text>
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {
+                deductions?.sss_calamity_loan === undefined || deductions?.sss_calamity_loan === null || deductions?.sss_calamity_loan === '' || Number(deductions?.sss_calamity_loan) === 0
+                  ? '-'
+                  : formatWithCommas(deductions?.sss_calamity_loan)
+              }
+            </Text>
+          </View>
+        </View>
       </View>
     </Page>
   </Document>
