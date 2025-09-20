@@ -60,13 +60,18 @@ interface PayslipData {
         ratePerHour?: string | number;
         collegeGSP?: string | number;
         honorarium?: string | number;
-        tardiness?: number;
-        undertime?: number;
-        absences?: number;
-        overtime_pay_total?: number;
-        overtime?: number;
-        overload?: string | number;
-        adjustment?: string | number;
+        tardiness?: number | string;
+        tardinessAmount?: number | string;
+        undertime?: number | string;
+        undertimeAmount?: number | string;
+        absences?: number | string;
+        absencesAmount?: number | string;
+        overtime_pay_total?: number | string;
+        overtime_hours?: number | string;
+        overtime?: number | string;
+        overload?: number | string;
+        adjustment?: number | string;
+        gross_pay?: number | string;
     };
     deductions: {
         sss?: string;
@@ -192,14 +197,14 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         const result = await response.json();
         let btrRecords: BTRRecord[] = [];
         if (result.success && Array.isArray(result.records) && result.records.length > 0) {
-            btrRecords = result.records.map((rec: any) => {
-                const dateObj = new Date(rec.date);
+            btrRecords = result.records.map((rec: Record<string, unknown>) => {
+                const dateObj = new Date(rec.date as string);
                 const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
                 return {
-                    date: rec.date,
+                    date: rec.date as string,
                     dayName,
-                    timeIn: rec.clock_in || rec.time_in || '-',
-                    timeOut: rec.clock_out || rec.time_out || '-',
+                    timeIn: (rec.clock_in as string) || (rec.time_in as string) || '-',
+                    timeOut: (rec.clock_out as string) || (rec.time_out as string) || '-',
                 };
             });
         }
@@ -230,6 +235,11 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 absences: timekeepingSummary?.absences ?? 0,
                 overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
                 overtime: timekeepingSummary?.overtime ?? undefined,
+                gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
+                adjustment: data.earnings?.adjustment ?? undefined,
+                honorarium: data.earnings?.honorarium ?? undefined,
+                collegeGSP: data.earnings?.collegeGSP ?? undefined,
+                overload: data.earnings?.overload ?? undefined,
             },
         });
         setTimeout(() => setShowPDF('payslip'), 100);
@@ -241,7 +251,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
         const result = await response.json();
         // Get all days in the selected month
-        let allDates: string[] = [];
+    const allDates: string[] = [];
         if (selectedMonth) {
             const [year, month] = selectedMonth.split('-').map(Number);
             if (!isNaN(year) && !isNaN(month)) {
@@ -252,7 +262,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 }
             }
         }
-        let recordMap: Record<string, any> = {};
+        const recordMap: Record<string, Partial<BTRRecord> & { clock_in?: string; time_in?: string; clock_out?: string; time_out?: string }> = {};
         if (result.success && Array.isArray(result.records)) {
             for (const rec of result.records) {
                 recordMap[rec.date] = rec;

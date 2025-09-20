@@ -74,6 +74,7 @@ interface EarningsProps {
   overtime?: number | string;
   overload?: number | string;
   adjustment?: number | string;
+  gross_pay?: number | string;
 }
 
 interface PayslipTemplateProps {
@@ -315,15 +316,25 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
             </View>
           </View>
 
-          {/* Other: Adjustment row */}
-          <View style={{ flexDirection: 'row', marginLeft: 0, marginBottom: 2 }}>
-            <Text style={{ minWidth: 110}}>Other: Adjustment</Text>
-            <Text style={{ flex: 1, textAlign: 'right' }}>
-              {earnings?.adjustment === undefined || earnings?.adjustment === null || earnings?.adjustment === '' || Number(earnings?.adjustment) === 0
-                ? '-'
-                : formatWithCommas(earnings?.adjustment)}
-            </Text>
-          </View>
+              {/* Other: Adjustment row */}
+              <View style={{ flexDirection: 'row', marginLeft: 0, marginBottom: 2 }}>
+                <Text style={{ minWidth: 110}}>Other: Adjustment</Text>
+                <Text style={{ flex: 1, textAlign: 'right' }}>
+                  {earnings?.adjustment === undefined || earnings?.adjustment === null || earnings?.adjustment === '' || Number(earnings?.adjustment) === 0
+                    ? '-'
+                    : formatWithCommas(earnings?.adjustment)}
+                </Text>
+              </View>
+
+              {/* TOTAL row */}
+              <View style={{ flexDirection: 'row', marginTop: 8, marginBottom: 2 }}>
+                <Text style={{ minWidth: 110, fontWeight: 'bold', textTransform: 'uppercase' }}>TOTAL:</Text>
+                <Text style={{ flex: 1, textAlign: 'right', fontWeight: 'bold' }}>
+                  {earnings?.gross_pay === undefined || earnings?.gross_pay === null || earnings?.gross_pay === '' || earnings?.gross_pay === 0 || earnings?.gross_pay === '0' || earnings?.gross_pay === '0.00' || Number(earnings?.gross_pay) === 0
+                    ? '-'
+                    : formatWithCommas(earnings?.gross_pay)}
+                </Text>
+              </View>
         </View>
         {/* Deductions Column (empty for now, add margin for gap) */}
         <View style={{ flex: 1, paddingLeft: 32 }} />
