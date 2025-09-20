@@ -314,6 +314,16 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
               <Text style={{ flex: 1, textAlign: 'right' }}>-</Text>
             </View>
           </View>
+
+          {/* Other: Adjustment row */}
+          <View style={{ flexDirection: 'row', marginLeft: 0, marginBottom: 2 }}>
+            <Text style={{ minWidth: 110}}>Other: Adjustment</Text>
+            <Text style={{ flex: 1, textAlign: 'right' }}>
+              {earnings?.adjustment === undefined || earnings?.adjustment === null || earnings?.adjustment === '' || Number(earnings?.adjustment) === 0
+                ? '-'
+                : formatWithCommas(earnings?.adjustment)}
+            </Text>
+          </View>
         </View>
         {/* Deductions Column (empty for now, add margin for gap) */}
         <View style={{ flex: 1, paddingLeft: 32 }} />
