@@ -21,6 +21,7 @@ import { MonthPicker } from './ui/month-picker';
 interface Employee {
     id: number;
     first_name: string;
+    middle_name: string;
     last_name: string;
     roles?: string;
     work_hours_per_day?: number;
@@ -136,9 +137,6 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             tuition: payroll.tuition ?? '',
             chinaBank: payroll.china_bank ?? '',
             tea: payroll.tea ?? '',
-            salaryLoan: payroll.salary_loan ?? '',
-            calamityLoan: payroll.calamity_loan ?? '',
-            multipurposeLoan: payroll.multipurpose_loan ?? '',
         },
         totalEarnings: payroll.gross_pay?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
         totalDeductions: payroll.total_deductions?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
@@ -294,7 +292,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 <DialogTitle>Print Employee Report</DialogTitle>
                             </DialogHeader>
                             <div className="mb-4 text-sm text-muted-foreground text-center w-full">
-                                What would you like to print for <span className="font-semibold">{employee?.last_name}, {employee?.first_name}</span>?
+                                What would you like to print for <span className="font-semibold">{employee?.last_name}, {employee?.first_name} {employee?.middle_name}</span>?
                             </div>
                             <div className="mb-4 w-full flex flex-col items-center">
                                 <label className="block text-xs font-semibold mb-1 text-center w-full">Select Month</label>
@@ -320,7 +318,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 {showPDF === 'payslip' && payrollData && (
                                     <PDFDownloadLink
                                         document={<PayslipTemplate
-                                            employeeName={`${employee?.last_name}, ${employee?.first_name}`}
+                                            employeeName={`${employee?.last_name}, ${employee?.first_name} ${employee?.middle_name}`}
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             earnings={payrollData.earnings}

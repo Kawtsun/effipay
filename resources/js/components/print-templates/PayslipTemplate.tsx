@@ -60,10 +60,13 @@ const styles = StyleSheet.create({
 
 interface PayslipTemplateProps {
   payPeriod?: string; // 'YYYY-MM' or 'YYYY-MM-DD'
+  employeeName?: string;
+  jobTitle?: string;
+  role?: string;
 }
 
 const getPayPeriodString = (period?: string) => {
-  let date = new Date();
+  const date = new Date();
   let year = date.getFullYear();
   let month = date.getMonth() + 1;
   if (period) {
@@ -75,14 +78,16 @@ const getPayPeriodString = (period?: string) => {
   }
   const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' });
   const lastDay = new Date(year, month, 0).getDate();
-  return `Pay Period:     ${monthName} 1-${lastDay}, ${year}`;
+  return `Pay Period: ${monthName} 1-${lastDay}, ${year}`;
 };
 
-const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod }) => (
+
+const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '' }) => (
   <Document>
     <Page size="A4" style={styles.page}>
+      {/* Header Row */}
       <View style={{ ...styles.headerRow, justifyContent: 'space-between', alignItems: 'flex-end' }}>
-  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Image
             style={styles.logo}
             src="/img/tcc_logo2.jpg"
@@ -109,6 +114,33 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod }) => (
             }
             return <Text>{payPeriodStr}</Text>;
           })()}
+        </View>
+      </View>
+
+      {/* Employee Info Row (one line, job title aligned with pay period) */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginTop: 8 }}>
+        {/* Employee Name (left) */}
+        <View style={{ flex: 1 }}>
+          <Text>
+            Employee Name: <Text style={{ fontWeight: 'bold' }}>{employeeName || '-'}</Text>
+          </Text>
+        </View>
+        {/* Job Title (right, aligned with pay period label) */}
+        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <Text>
+            Job Title: <Text style={{ fontWeight: 'bold' }}>{(() => {
+              const order = ['administrator', 'college instructor', 'basic education instructor'];
+              const rolesArr = (role || '').split(',').map(r => r.trim()).filter(Boolean);
+              // Sort by order, then by original order for others
+              const ordered = [
+                ...order.filter(o => rolesArr.includes(o)),
+                ...rolesArr.filter(r => !order.includes(r))
+              ];
+              return ordered
+                .map(r => r.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+                .join(', ');
+            })()}</Text>
+          </Text>
         </View>
       </View>
     </Page>
