@@ -85,6 +85,7 @@ interface DeductionsProps {
   pagibig?: string | number;
   pagibigMultiLoan?: string | number;
   pagibigCalamityLoan?: string | number;
+  philhealth?: string | number;
 }
 
 interface PayslipTemplateProps {
@@ -428,6 +429,18 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
               }
             </Text>
           </View>
+          {/* Philhealth row */}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+              <Text style={{ minWidth: 60 }}>Philhealth</Text>
+              <Text style={{ minWidth: 80, marginLeft: 32 }} />
+              <Text style={{ flex: 1, textAlign: 'right' }}>
+                {
+                  deductions?.philhealth === undefined || deductions?.philhealth === null || deductions?.philhealth === '' || Number(deductions?.philhealth) === 0
+                    ? '-'
+                    : formatWithCommas(deductions?.philhealth)
+                }
+              </Text>
+            </View>
         </View>
       </View>
     </Page>
