@@ -143,6 +143,17 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
           </Text>
         </View>
       </View>
+      {/* Earnings and Deductions Header Row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginTop: 8 }}>
+        {/* Earnings Column (focus here for now) */}
+        <View style={{ flex: 1, alignItems: 'flex-start' }}>
+          <Text style={{ fontWeight: 'bold' }}>EARNINGS</Text>
+        </View>
+        {/* Deductions Column (for future use) */}
+        <View style={{ flex: 1, alignItems: 'flex-start' }}>
+          <Text style={{ fontWeight: 'bold' }}>DEDUCTIONS</Text>
+        </View>
+      </View>
     </Page>
   </Document>
 );
