@@ -17,6 +17,31 @@ Route::get('/', fn() => Inertia::render('welcome'))
 
 Route::middleware('auth')->group(function () {
 
+    // API: Get payslip for an employee and month as JSON for batch printing
+    Route::get('/api/payroll/payslip', function (\Illuminate\Http\Request $request) {
+        $employeeId = $request->query('employee_id');
+        $month = $request->query('month');
+        $payslip = \App\Models\Payroll::where('employee_id', $employeeId)
+            ->where('payroll_date', 'like', $month . '%')
+            ->orderByDesc('payroll_date')
+            ->first();
+        if (!$payslip) {
+            return ['success' => false];
+        }
+        return [
+            'success' => true,
+            'payslip' => $payslip,
+        ];
+    });
+
+    // API: Get all employees as JSON for batch printing
+    Route::get('/api/employees/all', function () {
+        return [
+            'success' => true,
+            'employees' => \App\Models\Employees::all(),
+        ];
+    });
+
     // API: Get daily biometric records for employee and month
     Route::get('/api/timekeeping/records', [TimeKeepingController::class, 'getEmployeeRecordsForMonth']);
 

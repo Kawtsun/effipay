@@ -112,8 +112,8 @@ class SalaryController extends Controller
         $salary->update($data);
 
         return redirect()
-            ->route('salary.index', ['type' => $salary->employee_type])
-            ->with('success', 'Salary updated successfully!');
+            ->route('salary.index', ['type' => $salary->employee_type]);
+            // ->with('success', 'Salary updated successfully!');
     }
 
     /**

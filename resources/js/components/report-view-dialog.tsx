@@ -510,35 +510,35 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                                 <div className="px-8 min-h-[200px] flex flex-col justify-start">
                                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                                     <div className="space-y-3 text-sm">
-                                                                        <Info label="Base Salary" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.base_salary : 0)}`} />
-                                                                        <Info label="Honorarium" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.honorarium ?? 0 : 0)}`} />
+                                                                        <Info label="Base Salary" value={hasPayroll && selectedPayroll && selectedPayroll.base_salary !== null && selectedPayroll.base_salary !== undefined ? `₱${formatWithCommas(selectedPayroll.base_salary)}` : '-'} />
+                                                                        <Info label="Honorarium" value={hasPayroll && selectedPayroll && selectedPayroll.honorarium !== null && selectedPayroll.honorarium !== undefined ? `₱${formatWithCommas(selectedPayroll.honorarium)}` : '-'} />
                                                                     </div>
                                                                 </div>
                                                                 {/* Deductions (center column) */}
                                                                 <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-2 col-end-3">
                                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
                                                                     <div className="space-y-3 text-sm">
-                                                                        <Info label="SSS" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.sss : 0)}`} />
-                                                                        <Info label="PhilHealth" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.philhealth : 0)}`} />
-                                                                        <Info label="Pag-IBIG" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.pag_ibig : 0)}`} />
-                                                                        <Info label="Withholding Tax" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.withholding_tax : 0)}`} />
+                                                                        <Info label="SSS" value={hasPayroll && selectedPayroll && selectedPayroll.sss !== null && selectedPayroll.sss !== undefined ? `₱${formatWithCommas(selectedPayroll.sss)}` : '-'} />
+                                                                        <Info label="PhilHealth" value={hasPayroll && selectedPayroll && selectedPayroll.philhealth !== null && selectedPayroll.philhealth !== undefined ? `₱${formatWithCommas(selectedPayroll.philhealth)}` : '-'} />
+                                                                        <Info label="Pag-IBIG" value={hasPayroll && selectedPayroll && selectedPayroll.pag_ibig !== null && selectedPayroll.pag_ibig !== undefined ? `₱${formatWithCommas(selectedPayroll.pag_ibig)}` : '-'} />
+                                                                        <Info label="Withholding Tax" value={hasPayroll && selectedPayroll && selectedPayroll.withholding_tax !== null && selectedPayroll.withholding_tax !== undefined ? `₱${formatWithCommas(selectedPayroll.withholding_tax)}` : '-'} />
                                                                     </div>
                                                                 </div>
                                                                 {/* Loans and Other Deductions (right column) - match image labels and order */}
                                                                 <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-3 col-end-4">
                                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Loans</h5>
                                                                     <div className="space-y-3 text-sm mb-8">
-                                                                        <Info label="SSS Salary Loan" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.sss_salary_loan ?? 0 : 0)}`} />
-                                                                        <Info label="SSS Calamity Loan" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.sss_calamity_loan ?? 0 : 0)}`} />
-                                                                        <Info label="Pag-IBIG Multi Purpose Loan" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.pagibig_multi_loan ?? 0 : 0)}`} />
-                                                                        <Info label="Pag-IBIG Calamity Loan" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.pagibig_calamity_loan ?? 0 : 0)}`} />
-                                                                        <Info label="PERAA Con." value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.peraa_con ?? 0 : 0)}`} />
+                                                                        <Info label="SSS Salary Loan" value={hasPayroll && selectedPayroll && selectedPayroll.sss_salary_loan !== null && selectedPayroll.sss_salary_loan !== undefined ? `₱${formatWithCommas(selectedPayroll.sss_salary_loan)}` : '-'} />
+                                                                        <Info label="SSS Calamity Loan" value={hasPayroll && selectedPayroll && selectedPayroll.sss_calamity_loan !== null && selectedPayroll.sss_calamity_loan !== undefined ? `₱${formatWithCommas(selectedPayroll.sss_calamity_loan)}` : '-'} />
+                                                                        <Info label="Pag-IBIG Multi Purpose Loan" value={hasPayroll && selectedPayroll && selectedPayroll.pagibig_multi_loan !== null && selectedPayroll.pagibig_multi_loan !== undefined ? `₱${formatWithCommas(selectedPayroll.pagibig_multi_loan)}` : '-'} />
+                                                                        <Info label="Pag-IBIG Calamity Loan" value={hasPayroll && selectedPayroll && selectedPayroll.pagibig_calamity_loan !== null && selectedPayroll.pagibig_calamity_loan !== undefined ? `₱${formatWithCommas(selectedPayroll.pagibig_calamity_loan)}` : '-'} />
+                                                                        <Info label="PERAA Con." value={hasPayroll && selectedPayroll && selectedPayroll.peraa_con !== null && selectedPayroll.peraa_con !== undefined ? `₱${formatWithCommas(selectedPayroll.peraa_con)}` : '-'} />
                                                                     </div>
                                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Other Deductions</h5>
                                                                     <div className="space-y-3 text-sm">
-                                                                        <Info label="Tuition" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.tuition ?? 0 : 0)}`} />
-                                                                        <Info label="China Bank" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.china_bank ?? 0 : 0)}`} />
-                                                                        <Info label="TEA" value={`₱${formatWithCommas(hasPayroll && selectedPayroll ? selectedPayroll.tea ?? 0 : 0)}`} />
+                                                                        <Info label="Tuition" value={hasPayroll && selectedPayroll && selectedPayroll.tuition !== null && selectedPayroll.tuition !== undefined ? `₱${formatWithCommas(selectedPayroll.tuition)}` : '-'} />
+                                                                        <Info label="China Bank" value={hasPayroll && selectedPayroll && selectedPayroll.china_bank !== null && selectedPayroll.china_bank !== undefined ? `₱${formatWithCommas(selectedPayroll.china_bank)}` : '-'} />
+                                                                        <Info label="TEA" value={hasPayroll && selectedPayroll && selectedPayroll.tea !== null && selectedPayroll.tea !== undefined ? `₱${formatWithCommas(selectedPayroll.tea)}` : '-'} />
                                                                     </div>
                                                                 </div>
                                                             </div>
