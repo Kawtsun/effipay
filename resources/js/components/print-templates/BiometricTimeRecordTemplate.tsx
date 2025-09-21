@@ -105,6 +105,7 @@ const styles = StyleSheet.create({
 
 interface BiometricTimeRecordTemplateProps {
   employeeName?: string;
+  role?: string;
   payPeriod?: string; // 'YYYY-MM' or 'YYYY-MM-DD'
   records?: TimeRecord[];
   totalHours?: number | string;
@@ -230,6 +231,7 @@ const getNum = (v: string | number | undefined | null) => {
 
 const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = ({
   employeeName = '-',
+  role = '',
   payPeriod,
   records = [],
   totalHours = 0,
@@ -259,6 +261,19 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
         <View style={{ flex: 1 }}>
           <Text>
             Employee Name: <Text style={{ fontWeight: 'bold' }}>{employeeName || '-'}</Text>
+          </Text>
+          <Text style={{ marginTop: 4 }}>
+            Job Title: <Text style={{ fontWeight: 'bold' }}>{(() => {
+              const order = ['administrator', 'college instructor', 'basic education instructor'];
+              const rolesArr = (role || '').split(',').map(r => r.trim()).filter(Boolean);
+              const ordered = [
+                ...order.filter(o => rolesArr.includes(o)),
+                ...rolesArr.filter(r => !order.includes(r))
+              ];
+              return ordered.length > 0
+                ? ordered.map(r => r.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())).join(', ')
+                : '-';
+            })()}</Text>
           </Text>
         </View>
         {/* Period (right) */}
@@ -295,7 +310,7 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
 
 
       {/* Conforme/Verified Signature Lines and Labels (inline underline) */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 32, marginBottom: 0 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 20, marginBottom: 0 }}>
         {/* Conforme */}
         <View style={{ flex: 1, alignItems: 'flex-start' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>

@@ -369,6 +369,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                     <PDFDownloadLink
                                         document={<BiometricTimeRecordTemplate
                                             employeeName={`${employee?.last_name}, ${employee?.first_name} ${employee?.middle_name}`}
+                                            role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             records={btrRecords}
                                             totalHours={(() => {
