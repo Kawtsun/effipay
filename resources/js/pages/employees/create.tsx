@@ -58,7 +58,7 @@ export default function Create(props: Props) {
     const [showChinaBankInput, setShowChinaBankInput] = useState(false);
     const [showTEAInput, setShowTEAInput] = useState(false);
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
-    const { data, setData, post } = useForm({
+    const { data, setData } = useForm({
         first_name: '',
         middle_name: '',
         last_name: '',
@@ -67,6 +67,7 @@ export default function Create(props: Props) {
         employee_status: 'Active',
         roles: '',
         base_salary: salaryDefaults['Full Time']?.base_salary.toString() ?? '',
+        rate_per_hour: '',
         sss: calculateSSS(Number(salaryDefaults['Full Time']?.base_salary ?? 0)).toString(),
         philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
         pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
@@ -85,6 +86,8 @@ export default function Create(props: Props) {
         tea: '',
         honorarium: '',
     });
+    // Determine if College Instructor is selected
+    const isCollegeInstructor = data.roles.split(',').includes('college instructor');
     const [collegeProgram, setCollegeProgram] = useState('');
     const [collegeProgramError, setCollegeProgramError] = useState('');
     const collegeDeptRef = useRef<HTMLDivElement>(null);
@@ -103,7 +106,7 @@ export default function Create(props: Props) {
         if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
             setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
         }
-    }, [data.base_salary, data.pag_ibig, setData]);
+    }, [data.base_salary, data.pag_ibig, data.philhealth, data.sss, data.withholding_tax, setData]);
 
 
     // Helper function to format time to 12-hour format
@@ -208,30 +211,30 @@ export default function Create(props: Props) {
     const canSubmit = rolesArr.includes('administrator') || hasTeachingRole;
 
     // For EmployeeType, filter options based on roles
-    const teachingTypes = [
-        { value: 'Full Time', label: 'Full Time' },
-        { value: 'Part Time', label: 'Part Time' },
-        { value: 'Provisionary', label: 'Provisionary' },
-    ];
-    const adminTypes = [
-        { value: 'Regular', label: 'Regular' },
-        { value: 'Provisionary', label: 'Provisionary' },
-    ];
-    let availableTypes = teachingTypes;
-    if (rolesArr.includes('administrator') && (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor'))) {
-        // Merge and deduplicate by value
-        const merged = [...teachingTypes, ...adminTypes];
-        const seen = new Set();
-        availableTypes = merged.filter(t => {
-            if (seen.has(t.value)) return false;
-            seen.add(t.value);
-            return true;
-        });
-    } else if (rolesArr.includes('administrator')) {
-        availableTypes = adminTypes;
-    } else if (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor')) {
-        availableTypes = teachingTypes;
-    }
+    // const teachingTypes = [
+    //     { value: 'Full Time', label: 'Full Time' },
+    //     { value: 'Part Time', label: 'Part Time' },
+    //     { value: 'Provisionary', label: 'Provisionary' },
+    // ];
+    // const adminTypes = [
+    //     { value: 'Regular', label: 'Regular' },
+    //     { value: 'Provisionary', label: 'Provisionary' },
+    // ];
+    // let availableTypes = teachingTypes;
+    // if (rolesArr.includes('administrator') && (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor'))) {
+    //     // Merge and deduplicate by value
+    //     const merged = [...teachingTypes, ...adminTypes];
+    //     const seen = new Set();
+    //     availableTypes = merged.filter(t => {
+    //         if (seen.has(t.value)) return false;
+    //         seen.add(t.value);
+    //         return true;
+    //     });
+    // } else if (rolesArr.includes('administrator')) {
+    //     availableTypes = adminTypes;
+    // } else if (rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor')) {
+    //     availableTypes = teachingTypes;
+    // }
 
     const availableStatuses = ['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave'];
 
@@ -289,7 +292,7 @@ export default function Create(props: Props) {
                 setData('work_end_time', '17:00');
             }
         }
-    }, [data.employee_type, salaryDefaults]);
+    }, [data.employee_type, salaryDefaults, setData]);
 
     // Auto-calculate work hours when start/end times change
     useEffect(() => {
@@ -317,12 +320,12 @@ export default function Create(props: Props) {
                 setData('work_hours_per_day', actualWorkHours.toString());
             }
         }
-    }, [data.work_start_time, data.work_end_time]);
+    }, [data.work_start_time, data.work_end_time, setData]);
 
     // When collegeProgram changes, sync to form state
     useEffect(() => {
         setData('college_program', collegeProgram);
-    }, [collegeProgram]);
+    }, [collegeProgram, setData]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -390,7 +393,7 @@ export default function Create(props: Props) {
                                                     <Checkbox
                                                         checked={data.roles.split(',').some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
                                                         onCheckedChange={(checked) => {
-                                                            let rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
+                                                            const rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
                                                             if (checked) {
                                                                 // Add 'instructor' as a UI flag only if no teaching role is selected
                                                                 setData('roles', [...rolesArr, 'instructor'].filter(Boolean).join(','));
@@ -408,7 +411,7 @@ export default function Create(props: Props) {
                                                         value={data.roles.split(',').find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
                                                         onChange={val => {
                                                             // Remove any instructor and teaching role, add the new teaching role only
-                                                            let rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
+                                                            const rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
                                                             setData('roles', [val, ...rolesArr].filter(Boolean).join(','));
                                                             if (val === 'college instructor') {
                                                                 setTimeout(() => {
@@ -497,14 +500,14 @@ export default function Create(props: Props) {
                                                     {(() => {
                                                         const [startHour, startMinute] = data.work_start_time.split(':').map(Number);
                                                         const [endHour, endMinute] = data.work_end_time.split(':').map(Number);
-                                                        let startMinutes = startHour * 60 + startMinute;
-                                                        let endMinutes = endHour * 60 + endMinute;
+                                                        const startMinutes = startHour * 60 + startMinute;
+                                                        const endMinutes = endHour * 60 + endMinute;
                                                         let actualWorkMinutes = endMinutes - startMinutes;
                                                         if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        let totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
                                                         const hours = Math.floor(totalMinutes / 60);
                                                         const minutes = totalMinutes % 60;
-                                                        let durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
                                                         return (
                                                             <>
                                                                 📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({durationText})<br />
@@ -528,33 +531,59 @@ export default function Create(props: Props) {
                                         <h2 className='font-semibold text-lg mb-4'>Earnings</h2>
                                         <div className='space-y-6'>
                                             <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="base_salary">
-                                                    Base Salary
-                                                </Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input
-                                                        id="base_salary"
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9.,]*"
-                                                        required
-                                                        placeholder="Salary"
-                                                        className="pl-8"
-                                                        min={0}
-                                                        value={formatWithCommas(data.base_salary ?? '')}
-                                                        onChange={e => {
-                                                            const raw = e.target.value.replace(/,/g, '');
-                                                            // Only allow numbers and period
-                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                            setData('base_salary', raw);
-                                                            // Auto-calculate PhilHealth based on base salary
-                                                            const baseSalaryNum = Number(raw) || 0;
-                                                            const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
-                                                            setData('philhealth', calculatedPhilHealth.toString());
-                                                        }}
-                                                    />
-                                                </div>
+                                                {/* Show Rate Per Hour if College Instructor, else Base Salary */}
+                                                {isCollegeInstructor ? (
+                                                    <>
+                                                        <Label htmlFor="rate_per_hour">Rate Per Hour</Label>
+                                                        <div className='relative'>
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                            <Input
+                                                                id="rate_per_hour"
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                pattern="[0-9.,]*"
+                                                                required
+                                                                placeholder="Rate Per Hour"
+                                                                className="pl-8"
+                                                                min={0}
+                                                                value={formatWithCommas(data.rate_per_hour ?? '')}
+                                                                onChange={e => {
+                                                                    const raw = e.target.value.replace(/,/g, '');
+                                                                    if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                    setData('rate_per_hour', raw);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Label htmlFor="base_salary">Base Salary</Label>
+                                                        <div className='relative'>
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                            <Input
+                                                                id="base_salary"
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                pattern="[0-9.,]*"
+                                                                required
+                                                                placeholder="Salary"
+                                                                className="pl-8"
+                                                                min={0}
+                                                                value={formatWithCommas(data.base_salary ?? '')}
+                                                                onChange={e => {
+                                                                    const raw = e.target.value.replace(/,/g, '');
+                                                                    // Only allow numbers and period
+                                                                    if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                    setData('base_salary', raw);
+                                                                    // Auto-calculate PhilHealth based on base salary
+                                                                    const baseSalaryNum = Number(raw) || 0;
+                                                                    const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
+                                                                    setData('philhealth', calculatedPhilHealth.toString());
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </>
+                                                )}
 
                                                 {/* Honorarium (optional) */}
                                                 <div className='flex flex-col gap-3'>
