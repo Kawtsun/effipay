@@ -36,6 +36,7 @@ type Props = {
         roles: string;
         base_salary: number;
         rate_per_hour?: number;
+        college_rate?: number;
         sss: number;
         philhealth: number;
         pag_ibig: number;
@@ -95,25 +96,25 @@ export default function Edit({
         employee_type: employee.employee_type,
         employee_status: employee.employee_status,
         roles: employee.roles,
-        base_salary: employee.base_salary.toString(),
-        rate_per_hour: employee.rate_per_hour?.toString() || '',
-        sss: employee.sss.toString(),
-        philhealth: employee.philhealth.toString(),
-        pag_ibig: employee.pag_ibig.toString(),
-        withholding_tax: employee.withholding_tax.toString(),
-        work_hours_per_day: employee.work_hours_per_day.toString(),
+        base_salary: employee.base_salary !== null && employee.base_salary !== undefined ? employee.base_salary.toString() : '',
+        rate_per_hour: employee.college_rate !== null && employee.college_rate !== undefined ? employee.college_rate.toString() : '',
+        sss: employee.sss !== null && employee.sss !== undefined ? employee.sss.toString() : '',
+        philhealth: employee.philhealth !== null && employee.philhealth !== undefined ? employee.philhealth.toString() : '',
+        pag_ibig: employee.pag_ibig !== null && employee.pag_ibig !== undefined ? employee.pag_ibig.toString() : '',
+        withholding_tax: employee.withholding_tax !== null && employee.withholding_tax !== undefined ? employee.withholding_tax.toString() : '',
+        work_hours_per_day: employee.work_hours_per_day !== null && employee.work_hours_per_day !== undefined ? employee.work_hours_per_day.toString() : '',
         work_start_time: trimToHM(employee.work_start_time),
         work_end_time: trimToHM(employee.work_end_time),
         college_program: employee.college_program || '',
-        sss_salary_loan: employee.sss_salary_loan?.toString() || '',
-        sss_calamity_loan: employee.sss_calamity_loan?.toString() || '',
-        pagibig_multi_loan: employee.pagibig_multi_loan?.toString() || '',
-        pagibig_calamity_loan: employee.pagibig_calamity_loan?.toString() || '',
-        peraa_con: employee.peraa_con?.toString() || '',
-        tuition: employee.tuition?.toString() || '',
-        china_bank: employee.china_bank?.toString() || '',
-        tea: employee.tea?.toString() || '',
-        honorarium: employee.honorarium?.toString() || '',
+        sss_salary_loan: employee.sss_salary_loan !== null && employee.sss_salary_loan !== undefined ? employee.sss_salary_loan.toString() : '',
+        sss_calamity_loan: employee.sss_calamity_loan !== null && employee.sss_calamity_loan !== undefined ? employee.sss_calamity_loan.toString() : '',
+        pagibig_multi_loan: employee.pagibig_multi_loan !== null && employee.pagibig_multi_loan !== undefined ? employee.pagibig_multi_loan.toString() : '',
+        pagibig_calamity_loan: employee.pagibig_calamity_loan !== null && employee.pagibig_calamity_loan !== undefined ? employee.pagibig_calamity_loan.toString() : '',
+        peraa_con: employee.peraa_con !== null && employee.peraa_con !== undefined ? employee.peraa_con.toString() : '',
+        tuition: employee.tuition !== null && employee.tuition !== undefined ? employee.tuition.toString() : '',
+        china_bank: employee.china_bank !== null && employee.china_bank !== undefined ? employee.china_bank.toString() : '',
+        tea: employee.tea !== null && employee.tea !== undefined ? employee.tea.toString() : '',
+        honorarium: employee.honorarium !== null && employee.honorarium !== undefined ? employee.honorarium.toString() : '',
     });
     // Determine if College Instructor is selected
     const isCollegeInstructor = data.roles.split(',').includes('college instructor');

@@ -139,8 +139,16 @@ class EmployeesController extends Controller
     public function store(StoreEmployeesRequest $request)
     {
     $data = $request->validated();
+    // Always set college_rate from rate_per_hour if present in request
+    if (request()->has('rate_per_hour')) {
+        $data['college_rate'] = request()->input('rate_per_hour');
+    }
+    // If role is college instructor, nullify base_salary only
+    if (isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'))) {
+        $data['base_salary'] = null;
+    }
     // Recalculate PhilHealth using new formula (divide by 2)
-    if (isset($data['base_salary'])) {
+    if (isset($data['base_salary']) && $data['base_salary'] !== null) {
         $base_salary = (float) $data['base_salary'];
         $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
         $data['philhealth'] = round($philhealth, 2);
@@ -212,6 +220,7 @@ class EmployeesController extends Controller
                 'employee_status' => $employee->employee_status,
                 'roles' => $employee->roles,
                 'base_salary' => $employee->base_salary,
+                'college_rate' => $employee->college_rate,
                 'sss' => $employee->sss,
                 'philhealth' => $employee->philhealth,
                 'pag_ibig' => $employee->pag_ibig,
@@ -248,8 +257,16 @@ class EmployeesController extends Controller
     public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
     $data = $request->validated();
+    // Always set college_rate from rate_per_hour if present in request
+    if (request()->has('rate_per_hour')) {
+        $data['college_rate'] = request()->input('rate_per_hour');
+    }
+    // If role is college instructor, nullify base_salary only
+    if (isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'))) {
+        $data['base_salary'] = null;
+    }
     // Recalculate PhilHealth using new formula (divide by 2)
-    if (isset($data['base_salary'])) {
+    if (isset($data['base_salary']) && $data['base_salary'] !== null) {
         $base_salary = (float) $data['base_salary'];
         $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
         $data['philhealth'] = round($philhealth, 2);
