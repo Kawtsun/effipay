@@ -52,29 +52,35 @@ interface PayslipBatchTemplateProps {
 }
 
 const PayslipBatchTemplate: React.FC<PayslipBatchTemplateProps> = ({ payslips }) => {
-  // 2 payslips per page, stacked vertically (each takes half page height)
-  const payslipPairs = chunkArray(payslips, 2);
+  // Pad payslips array if odd, so every page has 2 payslips
+  const paddedPayslips = payslips.length % 2 === 1
+    ? [...payslips, { employeeName: '', role: '', payPeriod: '', earnings: {}, deductions: {}, totalDeductions: '' }]
+    : payslips;
+  const payslipPairs = chunkArray(paddedPayslips, 2);
   return (
-        <Document>
-          {payslipPairs.map((pair, pageIdx) => (
-            <Page key={pageIdx} size="A4" style={styles.page} wrap={false}>
-              <View style={{ flex: 1, flexDirection: 'column', justifyContent: 'space-between' }} wrap={false}>
-                {pair.map((data, idx) => (
-                  <View key={idx} style={styles.payslipHalf} wrap={false}>
-                    <PayslipBox
-                      employeeName={data.employeeName}
-                      role={data.role}
-                      payPeriod={data.payPeriod}
-                      earnings={data.earnings}
-                      deductions={data.deductions}
-                      totalDeductions={data.totalDeductions}
-                    />
-                  </View>
-                ))}
+    <Document>
+      {payslipPairs.map((pair, pageIdx) => (
+        <Page key={pageIdx} size="A4" style={styles.page} wrap={false}>
+          <View style={{ flex: 1, flexDirection: 'column', justifyContent: 'space-between' }} wrap={false}>
+            {pair.map((data, idx) => (
+              <View key={idx} style={styles.payslipHalf} wrap={false}>
+                {/* Only render PayslipBox if employeeName is not empty, otherwise render an empty box for layout */}
+                {data.employeeName ? (
+                  <PayslipBox
+                    employeeName={data.employeeName}
+                    role={data.role}
+                    payPeriod={data.payPeriod}
+                    earnings={data.earnings}
+                    deductions={data.deductions}
+                    totalDeductions={data.totalDeductions}
+                  />
+                ) : null}
               </View>
-            </Page>
-          ))}
-        </Document>
+            ))}
+          </View>
+        </Page>
+      ))}
+    </Document>
   );
 };
 
