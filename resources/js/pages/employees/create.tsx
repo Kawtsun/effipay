@@ -68,7 +68,7 @@ export default function Create(props: Props) {
         roles: '',
         base_salary: salaryDefaults['Full Time']?.base_salary.toString() ?? '',
         rate_per_hour: '',
-        sss: calculateSSS(Number(salaryDefaults['Full Time']?.base_salary ?? 0)).toString(),
+        sss: salaryDefaults['Full Time']?.sss.toString() ?? '',
         philhealth: salaryDefaults['Full Time']?.philhealth.toString() ?? '',
         pag_ibig: salaryDefaults['Full Time']?.pag_ibig.toString() ?? '',
         withholding_tax: salaryDefaults['Full Time']?.withholding_tax.toString() ?? '',
@@ -88,16 +88,25 @@ export default function Create(props: Props) {
     });
     // Determine if College Instructor is selected
     const isCollegeInstructor = data.roles.split(',').includes('college instructor');
+    // Track manual mode for contributions
+    const [manualContribMode, setManualContribMode] = useState(isCollegeInstructor);
+
+    // Watch for role changes to toggle manual/auto mode
+    useEffect(() => {
+        const isNowCollegeInstructor = data.roles.split(',').includes('college instructor');
+        setManualContribMode(isNowCollegeInstructor);
+    }, [data.roles]);
     const [collegeProgram, setCollegeProgram] = useState('');
     const [collegeProgramError, setCollegeProgramError] = useState('');
     const collegeDeptRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
+        if (manualContribMode) return; // Suspend auto-calc in manual mode
         const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
-        const sssNum = calculateSSS(baseSalaryNum);
+        const sssNum = Number(data.sss.replace(/,/g, '')) || 0;
         const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
         const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
-        if (data.sss.replace(/,/g, '') !== sssNum.toString()) {
-            setData('sss', sssNum.toString());
+        if (data.sss.replace(/,/g, '') !== sssNum.toFixed(2)) {
+            setData('sss', sssNum.toFixed(2));
         }
         if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
             setData('philhealth', calculatedPhilHealth.toFixed(2));
@@ -106,7 +115,7 @@ export default function Create(props: Props) {
         if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
             setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
         }
-    }, [data.base_salary, data.pag_ibig, data.philhealth, data.sss, data.withholding_tax, setData]);
+    }, [data.base_salary, data.pag_ibig, data.philhealth, data.sss, data.withholding_tax, setData, manualContribMode]);
 
 
     // Helper function to format time to 12-hour format
@@ -612,15 +621,20 @@ export default function Create(props: Props) {
                                                         pattern="[0-9.,]*"
                                                         required
                                                         placeholder="SSS"
-                                                        className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
+                                                        className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         min={0}
-                                                        value={formatWithCommas(Number(data.sss ?? 0).toFixed(2))}
-                                                        disabled
+                                                        disabled={!manualContribMode}
+                                                        value={formatWithCommas(data.sss ?? '')}
+                                                        onChange={e => {
+                                                            if (!manualContribMode) return;
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('sss', raw);
+                                                        }}
                                                     />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
-                                                    Automated
+                                                    {manualContribMode ? 'Manual entry enabled' : 'Automated'}
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
@@ -634,13 +648,14 @@ export default function Create(props: Props) {
                                                         pattern="[0-9.,]*"
                                                         required
                                                         placeholder="PhilHealth"
-                                                        className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
+                                                        className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         style={{ lineHeight: '1.5rem' }}
                                                         min={250}
                                                         max={2500}
-                                                        disabled
+                                                        disabled={!manualContribMode}
                                                         value={formatWithCommas(data.philhealth ?? '')}
                                                         onChange={e => {
+                                                            if (!manualContribMode) return;
                                                             const raw = e.target.value.replace(/,/g, '');
                                                             setData('philhealth', raw);
                                                         }}
@@ -648,7 +663,7 @@ export default function Create(props: Props) {
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
-                                                    Automated
+                                                    {manualContribMode ? 'Manual entry enabled' : 'Automated'}
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
@@ -666,11 +681,11 @@ export default function Create(props: Props) {
                                                 <Label htmlFor="withholding_tax">Withholding Tax</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="withholding_tax" type="text" required placeholder="Withholding Tax" className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle" inputMode="numeric" pattern="[0-9,]*" min={0} disabled value={formatWithCommas(data.withholding_tax ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('withholding_tax', raw); }} />
+                                                    <Input id="withholding_tax" type="text" required placeholder="Withholding Tax" className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"} inputMode="numeric" pattern="[0-9,]*" min={0} disabled={!manualContribMode} value={formatWithCommas(data.withholding_tax ?? '')} onChange={e => { if (!manualContribMode) return; const raw = e.target.value.replace(/,/g, ''); setData('withholding_tax', raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
-                                                    Automated
+                                                    {manualContribMode ? 'Manual entry enabled' : 'Automated'}
                                                 </p>
                                             </div>
                                         </div>
