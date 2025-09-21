@@ -61,6 +61,7 @@ class EmployeesController extends Controller
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
                 'base_salary' => $emp->base_salary,
+                'college_rate' => $emp->college_rate,
                 'sss' => $emp->sss,
                 'philhealth' => $emp->philhealth,
                 'pag_ibig' => $emp->pag_ibig,

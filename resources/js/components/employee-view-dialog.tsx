@@ -261,7 +261,11 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                                 <div className="px-8 min-h-[200px] flex flex-col justify-start">
                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                     <div className="space-y-3 text-sm">
-                                                        <Info label="Base Salary" value={`₱${formatWithCommas(employee.base_salary)}`} />
+                                                        {employee.roles.split(',').includes('college instructor') ? (
+                                                            <Info label="Rate Per Hour" value={`₱${formatWithCommas((employee as any).college_rate ?? 0)}`} />
+                                                        ) : (
+                                                            <Info label="Base Salary" value={`₱${formatWithCommas(employee.base_salary)}`} />
+                                                        )}
                                                         <Info label="Honorarium" value={`₱${formatWithCommas(employee.honorarium ?? 0)}`} />
                                                     </div>
                                                 </div>
