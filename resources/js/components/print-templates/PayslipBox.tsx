@@ -138,24 +138,26 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
   const tardinessHours = getNum(earnings?.tardiness);
   const undertimeHours = getNum(earnings?.undertime);
   const absencesHours = getNum(earnings?.absences);
-  const tardinessAmount = earnings?.tardinessAmount !== undefined && earnings?.tardinessAmount !== null && earnings?.tardinessAmount !== ''
+  const tardinessAmount = (earnings?.tardinessAmount !== undefined && earnings?.tardinessAmount !== null && earnings?.tardinessAmount !== '')
     ? getNum(earnings?.tardinessAmount)
-    : parseFloat((tardinessHours * ratePerHour).toFixed(2));
-  const undertimeAmount = earnings?.undertimeAmount !== undefined && earnings?.undertimeAmount !== null && earnings?.undertimeAmount !== ''
+    : (tardinessHours !== 0 && ratePerHour !== 0 ? parseFloat((tardinessHours * ratePerHour).toFixed(2)) : 0);
+  const undertimeAmount = (earnings?.undertimeAmount !== undefined && earnings?.undertimeAmount !== null && earnings?.undertimeAmount !== '')
     ? getNum(earnings?.undertimeAmount)
-    : parseFloat((undertimeHours * ratePerHour).toFixed(2));
-  const absencesAmount = earnings?.absencesAmount !== undefined && earnings?.absencesAmount !== null && earnings?.absencesAmount !== ''
+    : (undertimeHours !== 0 && ratePerHour !== 0 ? parseFloat((undertimeHours * ratePerHour).toFixed(2)) : 0);
+  const absencesAmount = (earnings?.absencesAmount !== undefined && earnings?.absencesAmount !== null && earnings?.absencesAmount !== '')
     ? getNum(earnings?.absencesAmount)
-    : parseFloat((absencesHours * ratePerHour).toFixed(2));
+    : (absencesHours !== 0 && ratePerHour !== 0 ? parseFloat((absencesHours * ratePerHour).toFixed(2)) : 0);
   let overtimeHours = undefined;
   if (earnings?.overtime !== undefined && earnings?.overtime !== null && earnings?.overtime !== '') {
     overtimeHours = getNum(earnings?.overtime);
   } else if (earnings?.overtime_hours !== undefined && earnings?.overtime_hours !== null && earnings?.overtime_hours !== '') {
     overtimeHours = getNum(earnings?.overtime_hours);
+  } else {
+    overtimeHours = 0;
   }
-  const overtimeAmount = earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== ''
+  const overtimeAmount = (earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== '')
     ? getNum(earnings?.overtime_pay_total)
-    : 0;
+    : (overtimeHours !== 0 && ratePerHour !== 0 ? parseFloat((overtimeHours * ratePerHour).toFixed(2)) : 0);
   return (
     <View style={styles.payslipBox}>
       {/* Header Row */}
@@ -262,10 +264,10 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
             <Text style={{ minWidth: 80 }}>Tardiness</Text>
             <View style={{ flex: 1, flexDirection: 'row' }}>
               <Text style={{ flex: 1, textAlign: 'right' }}>
-                {tardinessHours === 0 ? '-' : formatWithCommas(tardinessHours)}
+                {(tardinessHours !== 0) ? formatWithCommas(tardinessHours) : '-'}
               </Text>
               <Text style={{ flex: 1, textAlign: 'right' }}>
-                {tardinessAmount === 0 ? '-' : formatWithCommas(tardinessAmount)}
+                {(tardinessAmount !== 0) ? formatWithCommas(tardinessAmount) : '-'}
               </Text>
             </View>
           </View>
@@ -274,10 +276,10 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
             <Text style={{ minWidth: 80 }}>Undertime</Text>
             <View style={{ flex: 1, flexDirection: 'row' }}>
               <Text style={{ flex: 1, textAlign: 'right' }}>
-                {undertimeHours === 0 ? '-' : formatWithCommas(undertimeHours)}
+                {(undertimeHours !== 0) ? formatWithCommas(undertimeHours) : '-'}
               </Text>
               <Text style={{ flex: 1, textAlign: 'right' }}>
-                {undertimeAmount === 0 ? '-' : formatWithCommas(undertimeAmount)}
+                {(undertimeAmount !== 0) ? formatWithCommas(undertimeAmount) : '-'}
               </Text>
             </View>
           </View>
@@ -286,13 +288,14 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
             <Text style={{ minWidth: 80 }}>Absences</Text>
             <View style={{ flex: 1, flexDirection: 'row' }}>
               <Text style={{ flex: 1, textAlign: 'right' }}>
-                {absencesHours === 0 ? '-' : formatWithCommas(absencesHours)}
+                {(absencesHours !== 0) ? formatWithCommas(absencesHours) : '-'}
               </Text>
               <Text style={{ flex: 1, textAlign: 'right' }}>
-                {absencesAmount === 0 ? '-' : formatWithCommas(absencesAmount)}
+                {(absencesAmount !== 0) ? formatWithCommas(absencesAmount) : '-'}
               </Text>
             </View>
           </View>
+          {/* Other Earnings section */}
           {/* Other Earnings section */}
           <View style={{ flexDirection: 'row', marginBottom: 2 }}>
             <Text style={{ fontWeight: 'bold' }}>Other Earnings:</Text>
@@ -302,10 +305,10 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
             <Text style={{ minWidth: 80 }}>Overtime</Text>
             <View style={{ flex: 1, flexDirection: 'row' }}>
               <Text style={{ flex: 1, textAlign: 'right' }}>
-                {overtimeHours === undefined || overtimeHours === null || overtimeHours === 0 ? '-' : formatWithCommas(overtimeHours)}
+                {(overtimeHours !== 0 && overtimeHours !== undefined && overtimeHours !== null) ? formatWithCommas(overtimeHours) : '-'}
               </Text>
               <Text style={{ flex: 1, textAlign: 'right' }}>
-                {overtimeAmount === 0 ? '-' : formatWithCommas(overtimeAmount)}
+                {(overtimeAmount !== 0) ? formatWithCommas(overtimeAmount) : '-'}
               </Text>
             </View>
           </View>

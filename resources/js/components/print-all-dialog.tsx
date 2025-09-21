@@ -6,7 +6,7 @@ function sanitizeFile(str?: string) {
 }
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -48,17 +48,16 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
 
 
   // State for batch payslip printing
-  const [batchPayslipData, setBatchPayslipData] = useState<any[] | null>(null);
+  // Removed: batchPayslipData, setBatchPayslipData (unused)
   const [loadingBatchPayslips, setLoadingBatchPayslips] = useState(false);
   const [batchPayslipError, setBatchPayslipError] = useState<string | null>(null);
-  const [generatingPDF, setGeneratingPDF] = useState(false);
+  // Removed: generatingPDF, setGeneratingPDF (unused)
 
   // Fetch all employees and their payslip data for the selected month
   const handlePrintPayslipAll = async () => {
     setLoadingBatchPayslips(true);
     setBatchPayslipError(null);
-    setBatchPayslipData(null);
-    setGeneratingPDF(false);
+  // Removed: setBatchPayslipData, setGeneratingPDF (unused)
     try {
       // 1. Fetch all employees
       const empRes = await fetch('/api/employees/all');
@@ -78,10 +77,17 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
         return;
       }
       const employees = empResult.employees;
-      // 2. For each employee, fetch payslip data for the selected month
+      // 2. For each employee, fetch payslip data AND timekeeping summary for the selected month
       const payslipDataArr = await Promise.all(
-        employees.map(async (emp: any, idx: number) => {
+        employees.map(async (emp: {
+          id: number;
+          first_name: string;
+          middle_name: string;
+          last_name: string;
+          roles?: string;
+        }, idx: number) => {
           try {
+            // Fetch payslip
             const res = await fetch(`/api/payroll/payslip?employee_id=${emp.id}&month=${selectedMonth}`);
             let result;
             try {
@@ -94,30 +100,46 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               console.error(`No payslip for employee ${emp.id}:`, result);
               return null;
             }
+            // Fetch timekeeping summary (for hours/rate/OT, etc.)
+            let summary = null;
+            try {
+              const summaryRes = await fetch(`/timekeeping/employee/monthly-summary?employee_id=${emp.id}&month=${selectedMonth}`);
+              const summaryJson = await summaryRes.json();
+              if (summaryJson.success) summary = summaryJson;
+            } catch (summaryErr) {
+              console.error(`Failed to fetch timekeeping summary for employee ${emp.id}:`, summaryErr);
+            }
             if (idx === 0) {
               console.log('Payslip API response for first employee:', result.payslip);
+              if (summary) console.log('Timekeeping summary for first employee:', summary);
             }
-            // Map API fields to PayslipTemplate props
+            // Map API fields to PayslipTemplate props, merging summary values if present
             const payslip = result.payslip;
+            const mergedEarnings = {
+              monthlySalary: payslip.base_salary,
+              tardiness: summary?.tardiness ?? payslip.tardiness,
+              tardinessAmount: payslip.tardiness_amount ?? payslip.tardinessAmount,
+              undertime: summary?.undertime ?? payslip.undertime,
+              undertimeAmount: payslip.undertime_amount ?? payslip.undertimeAmount,
+              absences: summary?.absences ?? payslip.absences,
+              absencesAmount: payslip.absences_amount ?? payslip.absencesAmount,
+              overtime: summary?.overtime ?? payslip.overtime,
+              overtime_hours: payslip.overtime_hours,
+              overtime_pay_total: summary?.overtime_pay_total ?? payslip.overtime_pay,
+              ratePerHour: summary?.rate_per_hour ?? payslip.rate_per_hour ?? payslip.ratePerHour,
+              honorarium: payslip.honorarium,
+              gross_pay: summary?.gross_pay ?? payslip.gross_pay,
+              net_pay: payslip.net_pay,
+              adjustment: payslip.adjustment,
+              collegeGSP: payslip.college_gsp,
+              overload: payslip.overload,
+              // Add more mappings as needed
+            };
             return {
               employeeName: `${emp.last_name}, ${emp.first_name} ${emp.middle_name}`,
               role: emp.roles || '-',
               payPeriod: selectedMonth,
-              earnings: {
-                monthlySalary: payslip.base_salary,
-                tardiness: payslip.tardiness,
-                undertime: payslip.undertime,
-                absences: payslip.absences,
-                overtime_pay_total: payslip.overtime_pay,
-                ratePerHour: payslip.rate_per_hour,
-                honorarium: payslip.honorarium,
-                gross_pay: payslip.gross_pay,
-                net_pay: payslip.net_pay,
-                adjustment: payslip.adjustment,
-                collegeGSP: payslip.college_gsp,
-                overload: payslip.overload,
-                // Add more mappings as needed
-              },
+              earnings: mergedEarnings,
               deductions: {
                 sss: payslip.sss,
                 philhealth: payslip.philhealth,
@@ -149,7 +171,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
         return;
       }
       // Immediately generate and open PDF blob or download
-      setGeneratingPDF(true);
+  // Removed: setGeneratingPDF (unused)
       try {
         const doc = <PayslipBatchTemplate payslips={filtered} />;
         const asPdf = pdf(doc);
@@ -171,7 +193,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
       } catch {
         setBatchPayslipError('Failed to generate PDF.');
       } finally {
-        setGeneratingPDF(false);
+  // Removed: setGeneratingPDF (unused)
       }
     } catch (err) {
       setBatchPayslipError('An error occurred while fetching payslip data. ' + (err instanceof Error ? err.message : ''));
@@ -182,21 +204,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
   };
 
   // Generate PDF blob and open in new tab (blob view)
-  const handleViewPayslipPDF = async () => {
-    if (!batchPayslipData || batchPayslipData.length === 0) return;
-    setGeneratingPDF(true);
-    try {
-      const doc = <PayslipBatchTemplate payslips={batchPayslipData} />;
-      const asPdf = pdf(doc);
-      const blob = await asPdf.toBlob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } catch {
-      setBatchPayslipError('Failed to generate PDF.');
-    } finally {
-      setGeneratingPDF(false);
-    }
-  };
+  // Removed: handleViewPayslipPDF (unused)
 
   const handlePrintBTRAll = () => {
     alert('Batch BTR printing coming soon!');
