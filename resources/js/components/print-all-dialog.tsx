@@ -14,6 +14,7 @@ import { MonthPicker } from './ui/month-picker';
 
 import { pdf } from '@react-pdf/renderer';
 import PayslipBatchTemplate from './print-templates/PayslipBatchTemplate';
+import BTRBatchTemplate from './print-templates/BTRBatchTemplate';
 import { FileText, Printer } from 'lucide-react';
 
 interface PrintAllDialogProps {
@@ -47,17 +48,17 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
   }, []);
 
 
-  // State for batch payslip printing
-  // Removed: batchPayslipData, setBatchPayslipData (unused)
+  // State for batch payslip and BTR printing
   const [loadingBatchPayslips, setLoadingBatchPayslips] = useState(false);
+  const [loadingBatchBTRs, setLoadingBatchBTRs] = useState(false);
   const [batchPayslipError, setBatchPayslipError] = useState<string | null>(null);
+  const [batchBTRError, setBatchBTRError] = useState<string | null>(null);
   // Removed: generatingPDF, setGeneratingPDF (unused)
 
   // Fetch all employees and their payslip data for the selected month
   const handlePrintPayslipAll = async () => {
     setLoadingBatchPayslips(true);
     setBatchPayslipError(null);
-  // Removed: setBatchPayslipData, setGeneratingPDF (unused)
     try {
       // 1. Fetch all employees
       const empRes = await fetch('/api/employees/all');
@@ -67,13 +68,13 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
       } catch (jsonErr) {
         setBatchPayslipError('Failed to parse employees response.');
         console.error('Failed to parse employees response:', jsonErr);
-        setLoadingBatchPayslips(false);
+  setLoadingBatchPayslips(false);
         return;
       }
       if (!empResult.success || !Array.isArray(empResult.employees)) {
         setBatchPayslipError('Failed to fetch employees. Response: ' + JSON.stringify(empResult));
         console.error('Failed to fetch employees:', empResult);
-        setLoadingBatchPayslips(false);
+  setLoadingBatchPayslips(false);
         return;
       }
       const employees = empResult.employees;
@@ -199,15 +200,132 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
       setBatchPayslipError('An error occurred while fetching payslip data. ' + (err instanceof Error ? err.message : ''));
       console.error('Batch payslip fetch error:', err);
     } finally {
-      setLoadingBatchPayslips(false);
+    setLoadingBatchPayslips(false);
     }
   };
 
   // Generate PDF blob and open in new tab (blob view)
   // Removed: handleViewPayslipPDF (unused)
 
-  const handlePrintBTRAll = () => {
-    alert('Batch BTR printing coming soon!');
+  const handlePrintBTRAll = async () => {
+    setLoadingBatchBTRs(true);
+    setBatchBTRError(null);
+    try {
+      // 1. Fetch all employees
+      const empRes = await fetch('/api/employees/all');
+      let empResult;
+      try {
+        empResult = await empRes.json();
+      } catch (jsonErr) {
+        setBatchBTRError('Failed to parse employees response.');
+  setLoadingBatchBTRs(false);
+        return;
+      }
+      if (!empResult.success || !Array.isArray(empResult.employees)) {
+        setBatchBTRError('Failed to fetch employees. Response: ' + JSON.stringify(empResult));
+  setLoadingBatchBTRs(false);
+        return;
+      }
+      const employees = empResult.employees;
+      // 2. For each employee, fetch BTR data and timekeeping summary for the selected month
+      const btrDataArr = await Promise.all(
+        employees.map(async (emp: {
+          id: number;
+          first_name: string;
+          middle_name: string;
+          last_name: string;
+          roles?: string;
+          work_hours_per_day?: number;
+        }) => {
+          try {
+            // Fetch BTR records
+            const btrRes = await fetch(`/api/timekeeping/records?employee_id=${emp.id}&month=${selectedMonth}`);
+            const btrJson = await btrRes.json();
+            let btrRecords: any[] = [];
+            if (btrJson.success && Array.isArray(btrJson.records)) {
+              btrRecords = btrJson.records.map((rec: any) => ({
+                ...rec,
+                timeIn: rec.clock_in || rec.time_in || '-',
+                timeOut: rec.clock_out || rec.time_out || '-',
+              }));
+            }
+            // Only include employees with at least one real timeIn or timeOut (not just a record)
+            const hasRealTime = btrRecords.some(r => (r.timeIn && r.timeIn !== '-') || (r.timeOut && r.timeOut !== '-'));
+            if (!hasRealTime) return null;
+            // Fetch timekeeping summary
+            let summary = null;
+            try {
+              const summaryRes = await fetch(`/timekeeping/employee/monthly-summary?employee_id=${emp.id}&month=${selectedMonth}`);
+              const summaryJson = await summaryRes.json();
+              if (summaryJson.success) summary = summaryJson;
+            } catch (summaryErr) {
+              console.error(`Failed to fetch timekeeping summary for employee ${emp.id}:`, summaryErr);
+            }
+            // Calculate total hours (like in print-dialog)
+            let totalWorkedHours = 0;
+            if (Array.isArray(btrRecords) && emp.work_hours_per_day) {
+              const attendedShifts = btrRecords.filter(
+                (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
+              ).length;
+              totalWorkedHours = attendedShifts * emp.work_hours_per_day;
+            }
+            const totalHours = totalWorkedHours
+              - (Number(summary?.tardiness ?? 0))
+              - (Number(summary?.undertime ?? 0))
+              - (Number(summary?.absences ?? 0))
+              + (Number(summary?.overtime ?? 0));
+            return {
+              employeeName: `${emp.last_name}, ${emp.first_name} ${emp.middle_name}`,
+              role: emp.roles || '-',
+              payPeriod: selectedMonth,
+              records: btrRecords,
+              totalHours,
+              tardiness: summary?.tardiness ?? 0,
+              undertime: summary?.undertime ?? 0,
+              overtime: summary?.overtime ?? 0,
+              absences: summary?.absences ?? 0,
+            };
+          } catch (err) {
+            console.error(`Error fetching BTR for employee ${emp.id}:`, err);
+            return null;
+          }
+        })
+      );
+      // Filter out nulls (failed fetches or no BTR records)
+      const filtered = btrDataArr.filter(Boolean);
+      if (filtered.length === 0) {
+        setBatchBTRError('No BTR data found for any employee. Check console for details.');
+  setLoadingBatchBTRs(false);
+        return;
+      }
+      // Generate and open PDF
+      try {
+        const doc = <BTRBatchTemplate btrs={filtered} />;
+        const asPdf = pdf(doc);
+        const blob = await asPdf.toBlob();
+        const url = URL.createObjectURL(blob);
+        if (AUTO_DOWNLOAD) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `BTR_All_${sanitizeFile(selectedMonth)}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+        } else {
+          window.open(url, '_blank');
+        }
+      } catch {
+        setBatchBTRError('Failed to generate BTR PDF.');
+      }
+    } catch (err) {
+      setBatchBTRError('An error occurred while fetching BTR data. ' + (err instanceof Error ? err.message : ''));
+      console.error('Batch BTR fetch error:', err);
+    } finally {
+  setLoadingBatchBTRs(false);
+    }
   };
 
   return (
@@ -244,15 +362,18 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
                   disabled={!selectedMonth || loadingBatchPayslips}
                 >
                   <FileText className="w-4 h-4" />
-                  {loadingBatchPayslips ? 'Loading Payslips...' : 'Print All Payslips'}
+                  {loadingBatchPayslips ? 'Loading...' : 'Print All Payslips'}
                 </Button>
                 {batchPayslipError && (
                   <div className="text-xs text-red-500 text-center w-full">{batchPayslipError}</div>
                 )}
+                {batchBTRError && (
+                  <div className="text-xs text-red-500 text-center w-full">{batchBTRError}</div>
+                )}
                 {/* No second button for viewing PDF; PDF opens immediately after data fetch */}
-                <Button className="w-full flex items-center gap-2 justify-center" variant="default" onClick={handlePrintBTRAll} disabled={!selectedMonth}>
+                <Button className="w-full flex items-center gap-2 justify-center" variant="default" onClick={handlePrintBTRAll} disabled={!selectedMonth || loadingBatchBTRs}>
                   <Printer className="w-4 h-4" />
-                  Print All BTRs
+                  {loadingBatchBTRs ? 'Loading...' : 'Print All BTRs'}
                 </Button>
               </div>
               <DialogFooter>
