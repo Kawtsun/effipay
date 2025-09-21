@@ -34,7 +34,7 @@ class TimeKeepingController extends Controller {
         $employee = \App\Models\Employees::find($employeeId);
         $base_salary = $employee ? $employee->base_salary : 0;
         $work_hours_per_day = $employee && $employee->work_hours_per_day ? $employee->work_hours_per_day : 8;
-        $rate_per_day = ($base_salary * 12) / 262;
+        $rate_per_day = ($base_salary * 12) / 288;
         $rate_per_hour = $work_hours_per_day > 0 ? $rate_per_day / $work_hours_per_day : 0;
 
         // Format clock_in and clock_out as 12-hour time (h:i A)
@@ -393,7 +393,7 @@ class TimeKeepingController extends Controller {
 
         // Use payroll values if available, otherwise fallback to employee
         $base_salary = $payroll ? $payroll->base_salary : $employee->base_salary;
-        $rate_per_day = ($base_salary * 12) / 262;
+        $rate_per_day = ($base_salary * 12) / 288;
         $rate_per_hour = $rate_per_day / 8;
         $work_start_time = $employee->work_start_time;
         $work_end_time = $employee->work_end_time;
