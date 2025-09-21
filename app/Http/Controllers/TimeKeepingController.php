@@ -405,14 +405,14 @@ class TimeKeepingController extends Controller {
             if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
                 $late_minutes = (strtotime($tk->clock_in) - strtotime($late_threshold)) / 60;
                 if ($late_minutes > 0) {
-                    $late_count += round($late_minutes / 60, 2);
+                    $late_count += ($late_minutes / 60);
                 }
             }
             // Undertime (decimal hours)
             if ($tk->clock_out && $employee->work_end_time && strtotime($tk->clock_out) < strtotime($employee->work_end_time)) {
                 $early_minutes = (strtotime($employee->work_end_time) - strtotime($tk->clock_out)) / 60;
                 if ($early_minutes > 0) {
-                    $early_count += round($early_minutes / 60, 2);
+                    $early_count += ($early_minutes / 60);
                 }
             }
             // Overtime (decimal hours, start counting after exactly 1 hour past work end time)
@@ -423,11 +423,11 @@ class TimeKeepingController extends Controller {
                 if ($clockOut > $workEnd + 3600) {
                     $overtime_minutes = ($clockOut - ($workEnd + 3600)) / 60;
                     if ($overtime_minutes > 0) {
-                        $overtime_hours = round($overtime_minutes / 60, 2);
+                        $overtime_hours = ($overtime_minutes / 60);
                         $dayOfWeek = date('N', strtotime($tk->date));
                         $pay = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
-                            ? round($rate_per_hour * 0.25, 2)
-                            : round($rate_per_hour * 0.30, 2);
+                            ? ($rate_per_hour * 0.25)
+                            : ($rate_per_hour * 0.30);
                         $overtime_count += $overtime_hours;
                         $overtime_pay_total += $pay * $overtime_hours;
                         if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
@@ -475,7 +475,7 @@ class TimeKeepingController extends Controller {
                 $absent_hours += $workHoursPerDay;
             }
         }
-        $absences = round($absent_hours, 2);
+        $absences = ($absent_hours);
 
         // If there is at least one record in the month, always return success and computed values
         $hasData = $records->count() > 0;
