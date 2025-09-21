@@ -1,3 +1,9 @@
+import { formatFullName } from '../utils/formatFullName';
+
+// Utility to convert a string to Title Case (capitalize each word)
+function toTitleCase(str: string) {
+  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+}
 // Toggle for auto-download vs. view in new tab
 const AUTO_DOWNLOAD = false; // Set to true to enable auto-download, false for view in new tab
 // Utility to sanitize file names (remove spaces, special chars)
@@ -137,7 +143,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               // Add more mappings as needed
             };
             return {
-              employeeName: `${emp.last_name}, ${emp.first_name} ${emp.middle_name}`,
+              employeeName: toTitleCase(formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
               role: emp.roles || '-',
               payPeriod: selectedMonth,
               earnings: mergedEarnings,
@@ -275,7 +281,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               - (Number(summary?.absences ?? 0))
               + (Number(summary?.overtime ?? 0));
             return {
-              employeeName: `${emp.last_name}, ${emp.first_name} ${emp.middle_name}`,
+              employeeName: toTitleCase(formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
               role: emp.roles || '-',
               payPeriod: selectedMonth,
               records: btrRecords,

@@ -1,3 +1,4 @@
+import { formatFullName } from '../../utils/formatFullName';
 
 import { toast } from 'sonner'
 import ReportViewDialog from '@/components/report-view-dialog'
@@ -296,7 +297,7 @@ export default function ReportsIndex() {
                                                 className={`transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}
                                             >
                                                 <TableCell style={{ width: 120 }} className="px-4 py-2">{emp.id}</TableCell>
-                                                <TableCell style={{ width: 400 }} className="px-4 py-2">{`${emp.last_name}, ${emp.first_name} ${emp.middle_name}`.toLocaleUpperCase('en-US')}</TableCell>
+                                                <TableCell style={{ width: 400 }} className="px-4 py-2">{formatFullName(emp.last_name, emp.first_name, emp.middle_name)}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
                                                 <TableCell style={{ width: 350 }} className="px-4 py-2 min-w-[160px]">

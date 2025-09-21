@@ -1,3 +1,4 @@
+import { formatFullName } from '../../utils/formatFullName';
 type FilterState = { types: string[]; statuses: string[]; roles: string[] };
 const MIN_SPINNER_MS = 400;
 import EmployeeFilter from '@/components/employee-filter';
@@ -364,7 +365,7 @@ export default function TimeKeeping() {
                                                 className="transition-opacity duration-300"
                                             >
                                                 <TableCell style={{ width: 120 }} className="px-4 py-2">{emp.id}</TableCell>
-                                                <TableCell style={{ width: 400 }} className="px-4 py-2">{`${emp.last_name}, ${emp.first_name} ${emp.middle_name}`.toLocaleUpperCase('en-US')}</TableCell>
+                                                <TableCell style={{ width: 400 }} className="px-4 py-2">{formatFullName(emp.last_name, emp.first_name, emp.middle_name)}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
                                                 <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
                                                 <TableCell style={{ width: 350 }} className="px-4 py-2 min-w-[160px]">

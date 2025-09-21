@@ -1,7 +1,5 @@
-// Removed duplicate import
-// Removed duplicate import
-// Removed duplicate import
-// Removed import of Employees to use local interface
+import { formatFullName } from '../utils/formatFullName';
+
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
     const parts = time.split(':');
@@ -22,7 +20,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 
-import { Employees } from "@/types"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "./ui/button"
 import { RolesBadges, getCollegeProgramLabel } from "./roles-badges"
@@ -213,7 +210,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                 <div className="space-y-12 text-base"> {/* Increased gap */}
                                     {/* Employee Header */}
                                     <div className="border-b pb-6 mb-2"> {/* Increased bottom margin */}
-                                        <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {`${employee.last_name}, ${employee.first_name} ${employee.middle_name}`.toLocaleUpperCase('en-US')}</h3>
+                                        <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {formatFullName(employee.last_name, employee.first_name, employee.middle_name)}</h3>
 
                                     </div>
                                     {/* Header Row */}

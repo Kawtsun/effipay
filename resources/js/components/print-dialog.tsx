@@ -1,3 +1,9 @@
+import { formatFullName } from '../utils/formatFullName';
+
+// Utility to convert a string to Title Case (capitalize each word)
+function toTitleCase(str: string) {
+    return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+}
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -310,7 +316,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 <DialogTitle>Print Employee Report</DialogTitle>
                             </DialogHeader>
                             <div className="mb-4 text-sm text-muted-foreground text-center w-full">
-                                What would you like to print for <span className="font-semibold">{employee?.last_name}, {employee?.first_name} {employee?.middle_name}</span>?
+                                What would you like to print for <span className="font-semibold">{employee ? toTitleCase(formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}</span>?
                             </div>
                             <div className="mb-4 w-full flex flex-col items-center">
                                 <label className="block text-xs font-semibold mb-1 text-center w-full">Select Month</label>
@@ -336,7 +342,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 {showPDF === 'payslip' && payrollData && (
                                     <PDFDownloadLink
                                         document={<PayslipTemplate
-                                            employeeName={`${employee?.last_name}, ${employee?.first_name} ${employee?.middle_name}`}
+                                            employeeName={employee ? toTitleCase(formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             earnings={payrollData.earnings}
@@ -368,7 +374,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 {showPDF === 'btr' && btrRecords.length > 0 && (
                                     <PDFDownloadLink
                                         document={<BiometricTimeRecordTemplate
-                                            employeeName={`${employee?.last_name}, ${employee?.first_name} ${employee?.middle_name}`}
+                                            employeeName={employee ? toTitleCase(formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             records={btrRecords}

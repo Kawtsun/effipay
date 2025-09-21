@@ -1,15 +1,13 @@
-export function formatFullName(name: string) {
-    // Format as 'LAST NAME, FIRSTNAME MIDDLENAME' in allcaps for display, preserving special characters
-    if (!name) return '';
-    const parts = name.split(',').map(p => p.trim());
-    let formatted = '';
-    if (parts.length === 3) {
-        formatted = `${parts[0]}, ${parts[1]} ${parts[2]}`;
-    } else if (parts.length === 2) {
-        formatted = `${parts[0]}, ${parts[1]}`;
-    } else {
-        formatted = name;
+// Accepts last, first, and middle as arguments for clarity
+export function formatFullName(last: string, first: string, middle?: string) {
+    last = last || '';
+    first = first || '';
+    // Omit middle if null, undefined, empty, or string 'null' (case-insensitive)
+    if (!middle || String(middle).trim().toLowerCase() === 'null') {
+        middle = '';
     }
-    // Use toLocaleUpperCase to support ñ and other special characters
-    return formatted.toLocaleUpperCase('en-US');
+    const full = middle
+        ? `${last}, ${first} ${middle}`
+        : `${last}, ${first}`;
+    return full.toLocaleUpperCase('en-US');
 }
