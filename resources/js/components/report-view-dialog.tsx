@@ -1,3 +1,4 @@
+import DialogScrollArea from './dialog-scroll-area';
 import { formatFullName } from '../utils/formatFullName';
 // Use the same formatting as employee-view-dialog
 function formatWithCommas(value: string | number): string {
@@ -209,11 +210,11 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                         exit={{ opacity: 0, scale: 0.99 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
                     >
-                        <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col">
+                        <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col min-h-0">
                             <DialogHeader className="flex-shrink-0">
                                 <DialogTitle className="text-2xl font-bold mb-2">Employee Payroll Report</DialogTitle>
                             </DialogHeader>
-                            <div className="flex-1 overflow-y-auto pr-2">
+                            <DialogScrollArea>
                                 <div className="space-y-8 text-base">
                                     <div className="border-b pb-6 mb-2">
                                         <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {formatFullName(employee.last_name, employee.first_name, employee.middle_name)}</h3>
@@ -550,7 +551,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                         </AnimatePresence>
                                     </div>
                                 </div>
-                            </div>
+                            </DialogScrollArea>
                             <DialogFooter className="flex-shrink-0">
                                 <Button onClick={onClose}>Close</Button>
                             </DialogFooter>

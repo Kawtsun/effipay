@@ -19,6 +19,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import DialogScrollArea from './dialog-scroll-area';
 
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "./ui/button"
@@ -200,25 +201,22 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                             ease: "easeOut"
                         }}
                     >
-                        <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col">
+                        <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col min-h-0">
                             <DialogHeader className="flex-shrink-0">
                                 <DialogTitle className="text-2xl font-bold mb-2">Employee Details</DialogTitle>
                             </DialogHeader>
-                            {/* Scrollable content area */}
-                            <div className="flex-1 overflow-y-auto pr-2">
-                                {/* Show skeleton if loading, else show real data */}
-                                <div className="space-y-12 text-base"> {/* Increased gap */}
-                                    {/* Employee Header */}
-                                    <div className="border-b pb-6 mb-2"> {/* Increased bottom margin */}
+                            {/* Scrollable content area with shadcn ScrollArea */}
+                            <DialogScrollArea>
+                                {/* All scrollable content directly inside ScrollArea, no extra wrappers */}
+                                {/* Employee Header */}
+                                <div className="space-y-12 text-base">
+                                    <div className="border-b pb-6 mb-2">
                                         <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {formatFullName(employee.last_name, employee.first_name, employee.middle_name)}</h3>
-
                                     </div>
-                                    {/* Header Row */}
-                                    <div className="grid grid-cols-2 gap-10 items-start mb-6"> {/* Increased gap and margin */}
-                                        {/* General Info */}
+                                    <div className="grid grid-cols-2 gap-10 items-start mb-6">
                                         <div>
                                             <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
-                                            <div className="space-y-2 text-sm"> {/* Increased gap */}
+                                            <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
                                                 <Info label="Schedule" value={(() => {
@@ -239,67 +237,54 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                                 })()} />
                                             </div>
                                         </div>
-                                        {/* Roles Section */}
                                         <div>
                                             <h4 className="font-semibold text-base mb-4 border-b pb-2">Roles & Responsibilities</h4>
-                                            <div className="flex flex-wrap gap-3 max-w-full px-2 py-2 break-words whitespace-pre-line min-h-[2.5rem] text-sm"> {/* Increased gap */}
+                                            <div className="flex flex-wrap gap-3 max-w-full px-2 py-2 break-words whitespace-pre-line min-h-[2.5rem] text-sm">
                                                 <RolesBadges roles={employee.roles} activeRoles={activeRoles} employee={employee} />
                                             </div>
                                         </div>
                                     </div>
-                                    {/* Divider */}
-                                    <div className="border-t border-gray-200 dark:border-gray-700 my-4" /> {/* Increased margin */}
-                                    {/* Salary & Contributions Section */}
+                                    <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
                                     <div className="pt-2">
                                         <h4 className="font-semibold text-lg mb-6">Salary & Contributions</h4>
-                                        {/* <div className="grid grid-cols-2 gap-16 items-start mb-10"> Increased gap and margin */}
-                                            <div className="grid grid-cols-3 gap-3 items-start w-full"> {/* Three columns layout */}
-                                                {/* Income & Benefits */}
-                                                <div className="px-8 min-h-[200px] flex flex-col justify-start">
-                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
-                                                    <div className="space-y-3 text-sm">
-                                                        {employee.roles.split(',').includes('college instructor') ? (
-                                                            <Info label="Rate Per Hour" value={`₱${formatWithCommas((employee as any).college_rate ?? 0)}`} />
-                                                        ) : (
-                                                            <Info label="Base Salary" value={`₱${formatWithCommas(employee.base_salary)}`} />
-                                                        )}
-                                                        <Info label="Honorarium" value={`₱${formatWithCommas(employee.honorarium ?? 0)}`} />
-                                                    </div>
-                                                </div>
-
-                                                {/* Deductions (center column) */}
-                                                <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-2 col-end-3">
-                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
-                                                    <div className="space-y-3 text-sm">
-                                                        <Info label="SSS" value={`₱${formatWithCommas(employee.sss)}`} />
-                                                        <Info label="PhilHealth" value={`₱${formatWithCommas(employee.philhealth)}`} />
-                                                        <Info label="Pag-IBIG" value={`₱${formatWithCommas(employee.pag_ibig)}`} />
-                                                        <Info label="Withholding Tax" value={`₱${formatWithCommas(employee.withholding_tax)}`} />
-                                                    </div>
-                                                </div>
-
-                                                {/* Loans and Other Deductions (right column) - match image labels and order */}
-                                                <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-3 col-end-4">
-                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Loans</h5>
-                                                    <div className="space-y-3 text-sm mb-8">
-                                                        <Info label="SSS Salary Loan" value={`₱${formatWithCommas(employee.sss_salary_loan ?? 0)}`} />
-                                                        <Info label="SSS Calamity Loan" value={`₱${formatWithCommas(employee.sss_calamity_loan ?? 0)}`} />
-                                                        <Info label="Pag-IBIG Multi Purpose Loan" value={`₱${formatWithCommas(employee.pagibig_multi_loan ?? 0)}`} />
-                                                        <Info label="Pag-IBIG Calamity Loan" value={`₱${formatWithCommas(employee.pagibig_calamity_loan ?? 0)}`} />
-                                                        <Info label="PERAA Con." value={`₱${formatWithCommas(employee.peraa_con ?? 0)}`} />
-                                                    </div>
-                                                    <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Other Deductions</h5>
-                                                    <div className="space-y-3 text-sm">
-                                                        <Info label="Tuition" value={`₱${formatWithCommas(employee.tuition ?? 0)}`} />
-                                                        <Info label="China Bank" value={`₱${formatWithCommas(employee.china_bank ?? 0)}`} />
-                                                        <Info label="TEA" value={`₱${formatWithCommas(employee.tea ?? 0)}`} />
-                                                    </div>
+                                        <div className="grid grid-cols-3 gap-3 items-start w-full">
+                                            <div className="px-8 min-h-[200px] flex flex-col justify-start">
+                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
+                                                <div className="space-y-3 text-sm">
+                                                    {employee.roles.split(',').includes('college instructor') ? (
+                                                        <Info label="Rate Per Hour" value={`₱${formatWithCommas((employee as any).college_rate ?? 0)}`} />
+                                                    ) : (
+                                                        <Info label="Base Salary" value={`₱${formatWithCommas(employee.base_salary)}`} />
+                                                    )}
+                                                    <Info label="Honorarium" value={`₱${formatWithCommas(employee.honorarium ?? 0)}`} />
                                                 </div>
                                             </div>
-
-
-                                        {/* </div> */}
-                                        {/* Only show payroll data if showPayroll is true */}
+                                            <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-2 col-end-3">
+                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Deductions</h5>
+                                                <div className="space-y-3 text-sm">
+                                                    <Info label="SSS" value={`₱${formatWithCommas(employee.sss)}`} />
+                                                    <Info label="PhilHealth" value={`₱${formatWithCommas(employee.philhealth)}`} />
+                                                    <Info label="Pag-IBIG" value={`₱${formatWithCommas(employee.pag_ibig)}`} />
+                                                    <Info label="Withholding Tax" value={`₱${formatWithCommas(employee.withholding_tax)}`} />
+                                                </div>
+                                            </div>
+                                            <div className="px-8 min-h-[200px] flex flex-col justify-start col-start-3 col-end-4">
+                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Loans</h5>
+                                                <div className="space-y-3 text-sm mb-8">
+                                                    <Info label="SSS Salary Loan" value={`₱${formatWithCommas(employee.sss_salary_loan ?? 0)}`} />
+                                                    <Info label="SSS Calamity Loan" value={`₱${formatWithCommas(employee.sss_calamity_loan ?? 0)}`} />
+                                                    <Info label="Pag-IBIG Multi Purpose Loan" value={`₱${formatWithCommas(employee.pagibig_multi_loan ?? 0)}`} />
+                                                    <Info label="Pag-IBIG Calamity Loan" value={`₱${formatWithCommas(employee.pagibig_calamity_loan ?? 0)}`} />
+                                                    <Info label="PERAA Con." value={`₱${formatWithCommas(employee.peraa_con ?? 0)}`} />
+                                                </div>
+                                                <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Other Deductions</h5>
+                                                <div className="space-y-3 text-sm">
+                                                    <Info label="Tuition" value={`₱${formatWithCommas(employee.tuition ?? 0)}`} />
+                                                    <Info label="China Bank" value={`₱${formatWithCommas(employee.china_bank ?? 0)}`} />
+                                                    <Info label="TEA" value={`₱${formatWithCommas(employee.tea ?? 0)}`} />
+                                                </div>
+                                            </div>
+                                        </div>
                                         {showPayroll && (
                                             <>
                                                 <div className="flex items-center justify-between mb-4">
@@ -317,7 +302,7 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                         )}
                                     </div>
                                 </div>
-                            </div>
+                            </DialogScrollArea>
                             <DialogFooter className="flex-shrink-0">
                                 <Button onClick={onClose}>Close</Button>
                             </DialogFooter>

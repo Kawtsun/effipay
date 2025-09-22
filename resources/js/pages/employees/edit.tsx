@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { EmployeeType } from '@/components/employee-type';
 import { Checkbox } from '@/components/ui/checkbox';
 import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-department';
+import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
 import EmployeeInstructorRadioRole from '@/components/employee-instructor-radio-role';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -503,11 +504,12 @@ export default function Edit({
                                                             className="pl-4 mt-2"
                                                         >
                                                             <div className="text-xs font-semibold mb-1">College Department</div>
-                                                            <EmployeeCollegeRadioDepartment
-                                                                value={collegeProgram}
-                                                                onChange={setCollegeProgram}
-                                                                className="max-h-40 overflow-y-auto pr-2"
-                                                            />
+                                                            <CollegeProgramScrollArea>
+                                                                <EmployeeCollegeRadioDepartment
+                                                                    value={collegeProgram}
+                                                                    onChange={setCollegeProgram}
+                                                                />
+                                                            </CollegeProgramScrollArea>
                                                             {collegeProgramError && (
                                                                 <div className="text-xs text-red-500 mt-1">{collegeProgramError}</div>
                                                             )}
