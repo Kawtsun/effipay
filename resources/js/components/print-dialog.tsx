@@ -407,20 +407,24 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             records={btrRecords}
-                                            totalHours={(() => {
-                                                let totalWorkedHours = 0;
-                                                if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
-                                                    const attendedShifts = btrRecords.filter(
-                                                        (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
-                                                    ).length;
-                                                    totalWorkedHours = attendedShifts * employee.work_hours_per_day;
-                                                }
-                                                return totalWorkedHours
-                                                    - (Number(timekeepingSummary?.tardiness ?? 0))
-                                                    - (Number(timekeepingSummary?.undertime ?? 0))
-                                                    - (Number(timekeepingSummary?.absences ?? 0))
-                                                    + (Number(timekeepingSummary?.overtime ?? 0));
-                                            })()}
+                                            totalHours={
+                                                typeof timekeepingSummary?.total_hours === 'number'
+                                                    ? timekeepingSummary.total_hours
+                                                    : (() => {
+                                                        let totalWorkedHours = 0;
+                                                        if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
+                                                            const attendedShifts = btrRecords.filter(
+                                                                (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
+                                                            ).length;
+                                                            totalWorkedHours = attendedShifts * employee.work_hours_per_day;
+                                                        }
+                                                        return totalWorkedHours
+                                                            - (Number(timekeepingSummary?.tardiness ?? 0))
+                                                            - (Number(timekeepingSummary?.undertime ?? 0))
+                                                            - (Number(timekeepingSummary?.absences ?? 0))
+                                                            + (Number(timekeepingSummary?.overtime ?? 0));
+                                                    })()
+                                            }
                                             tardiness={timekeepingSummary?.tardiness ?? 0}
                                             undertime={timekeepingSummary?.undertime ?? 0}
                                             overtime={timekeepingSummary?.overtime ?? 0}

@@ -267,19 +267,24 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             } catch (summaryErr) {
               console.error(`Failed to fetch timekeeping summary for employee ${emp.id}:`, summaryErr);
             }
-            // Calculate total hours (like in print-dialog)
-            let totalWorkedHours = 0;
-            if (Array.isArray(btrRecords) && emp.work_hours_per_day) {
-              const attendedShifts = btrRecords.filter(
-                (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
-              ).length;
-              totalWorkedHours = attendedShifts * emp.work_hours_per_day;
-            }
-            const totalHours = totalWorkedHours
-              - (Number(summary?.tardiness ?? 0))
-              - (Number(summary?.undertime ?? 0))
-              - (Number(summary?.absences ?? 0))
-              + (Number(summary?.overtime ?? 0));
+            // Use summary.total_hours if available, else fallback to old formula
+            const totalHours =
+              typeof summary?.total_hours === 'number'
+                ? summary.total_hours
+                : (() => {
+                    let totalWorkedHours = 0;
+                    if (Array.isArray(btrRecords) && emp.work_hours_per_day) {
+                      const attendedShifts = btrRecords.filter(
+                        (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
+                      ).length;
+                      totalWorkedHours = attendedShifts * emp.work_hours_per_day;
+                    }
+                    return totalWorkedHours
+                      - (Number(summary?.tardiness ?? 0))
+                      - (Number(summary?.undertime ?? 0))
+                      - (Number(summary?.absences ?? 0))
+                      + (Number(summary?.overtime ?? 0));
+                  })();
             return {
               employeeName: toTitleCase(formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
               role: emp.roles || '-',

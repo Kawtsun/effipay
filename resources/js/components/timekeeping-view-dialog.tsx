@@ -64,7 +64,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     const [selectedMonth, setSelectedMonth] = useState("");
     const [pendingMonth, setPendingMonth] = useState("");
     // Payroll summary for pay details (keep for summary cards)
-    const { summary } = useEmployeePayroll(employee?.id ?? null, pendingMonth);
+    const { summary } = useEmployeePayroll(employee?.id ?? null, pendingMonth, employee);
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [loadingPayroll, setLoadingPayroll] = useState(false);
     const [minLoading, setMinLoading] = useState(false);
@@ -348,15 +348,27 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                     <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
-                                                            <div className="space-y-3 text-sm">
-                                                                <Info label="Monthly Salary" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
-                                                                <Info label="Total Overtime Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
-                                                                <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
-                                                            </div>
-                                                            <div className="space-y-3 text-sm mt-4">
-                                                                <Info label="Rate per Day" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_day ?? 0)}`} />
-                                                                <Info label="Rate per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_hour ?? 0)}`} />
-                                                            </div>
+                                                            {/* College Instructor: custom summary order and fields */}
+                                                            {employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor') ? (
+                                                                <div className="space-y-3 text-sm">
+                                                                    <Info label="Rate Per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.college_rate ?? 0)}`} />
+                                                                    <Info label="Total Hours" value={records.length === 0 ? '-' : `${Number(summary?.total_hours ?? 0).toFixed(2)} hr(s)`} />
+                                                                    <Info label="Total Overtime Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
+                                                                    <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="space-y-3 text-sm">
+                                                                        <Info label="Monthly Salary" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
+                                                                        <Info label="Total Overtime Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
+                                                                        <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
+                                                                    </div>
+                                                                    <div className="space-y-3 text-sm mt-4">
+                                                                        <Info label="Rate per Day" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_day ?? 0)}`} />
+                                                                        <Info label="Rate per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_hour ?? 0)}`} />
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </motion.div>

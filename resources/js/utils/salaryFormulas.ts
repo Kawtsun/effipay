@@ -1,4 +1,9 @@
 // Calculates gross pay based on base salary, overtime pay, rate per hour, tardiness, undertime, absences
+/**
+ * Calculates gross pay based on role.
+ * If role is 'College Instructor', use college_rate and totalHours for all calculations.
+ * Otherwise, use baseSalary and derived ratePerHour.
+ */
 export function calculateGrossPay(
     baseSalary: number,
     overtimePay: number,
@@ -6,8 +11,23 @@ export function calculateGrossPay(
     tardiness: number,
     undertime: number,
     absences: number,
+    options?: {
+        role?: string;
+        college_rate?: number;
+        totalHours?: number;
+    }
 ): number {
-    return parseFloat((baseSalary + overtimePay - (ratePerHour * tardiness + ratePerHour * undertime + ratePerHour * absences)).toFixed(2));
+    const isCollege = options?.role === 'College Instructor' && typeof options.college_rate === 'number' && typeof options.totalHours === 'number';
+    if (isCollege) {
+        const collegeRate = options.college_rate!;
+        const totalHours = options.totalHours!;
+        // All deductions and overtime use collegeRate
+        return parseFloat((
+            (collegeRate * totalHours) + overtimePay - (collegeRate * tardiness + collegeRate * undertime + collegeRate * absences)
+        ).toFixed(2));
+    } else {
+        return parseFloat((baseSalary + overtimePay - (ratePerHour * tardiness + ratePerHour * undertime + ratePerHour * absences)).toFixed(2));
+    }
 }
 // Calculates overtime pay for a given date and base amount
 export function calculateOvertimePay(date: string, baseAmount: number): number {
