@@ -258,45 +258,74 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
     const handlePrintBTR = async () => {
         setLoadingBTR(true);
         setShowPDF(false);
-        const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
-        const result = await response.json();
-        // Get all days in the selected month
-        const allDates: string[] = [];
-        if (selectedMonth) {
-            const [year, month] = selectedMonth.split('-').map(Number);
-            if (!isNaN(year) && !isNaN(month)) {
-                const daysInMonth = new Date(year, month, 0).getDate();
-                for (let d = 1; d <= daysInMonth; d++) {
-                    const date = new Date(year, month - 1, d);
-                    allDates.push(date.toISOString().slice(0, 10));
+        try {
+            // Fetch BTR records for this employee
+            const btrRes = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
+            const btrJson = await btrRes.json();
+            let btrRecords: BTRRecord[] = [];
+            if (btrJson.success && Array.isArray(btrJson.records)) {
+                btrRecords = btrJson.records.map((rec: Record<string, unknown>) => ({
+                    ...rec,
+                    timeIn: (rec.clock_in as string) || (rec.time_in as string) || '-',
+                    timeOut: (rec.clock_out as string) || (rec.time_out as string) || '-',
+                }));
+            }
+            // Only proceed if at least one real timeIn or timeOut exists
+            const hasRealTime = btrRecords.some(r => (r.timeIn && r.timeIn !== '-') || (r.timeOut && r.timeOut !== '-'));
+            if (!hasRealTime) {
+                toast.error('No biometric time records found for this month.');
+                setLoadingBTR(false);
+                return;
+            }
+            // Fetch timekeeping summary for this employee/month
+            // Fetch timekeeping summary and calculate total hours (logic retained for future use, but variables removed to fix lint errors)
+            // totalHours is calculated but not used; suppress unused warning by omitting assignment if not needed
+            // const totalHours = totalWorkedHours
+            //     - (Number(summary?.tardiness ?? 0))
+            //     - (Number(summary?.undertime ?? 0))
+            //     - (Number(summary?.absences ?? 0))
+            //     + (Number(summary?.overtime ?? 0));
+            // Set BTR records for rendering (pass all days in month, with mapped records)
+            // Generate all days in the month
+            const allDates: string[] = [];
+            if (selectedMonth && /^\d{4}-\d{2}$/.test(selectedMonth)) {
+                const [yearStr, monthStr] = selectedMonth.split('-');
+                const year = parseInt(yearStr, 10);
+                const month = parseInt(monthStr, 10); // 1-based
+                if (!isNaN(year) && !isNaN(month)) {
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        // Always use YYYY-MM-DD (no time) for consistency with batch logic
+                        const mm = String(month).padStart(2, '0');
+                        const dd = String(d).padStart(2, '0');
+                        allDates.push(`${year}-${mm}-${dd}`);
+                    }
                 }
             }
-        }
-        const recordMap: Record<string, Partial<BTRRecord> & { clock_in?: string; time_in?: string; clock_out?: string; time_out?: string }> = {};
-        if (result.success && Array.isArray(result.records)) {
-            for (const rec of result.records) {
+            // Map records by date for quick lookup
+            const recordMap: Record<string, BTRRecord> = {};
+            btrRecords.forEach((rec) => {
                 recordMap[rec.date] = rec;
-            }
-        }
-        const records: BTRRecord[] = allDates.map(dateStr => {
-            const rec = recordMap[dateStr];
-            const dateObj = new Date(dateStr);
-            const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
-            return {
-                date: dateStr,
-                dayName,
-                timeIn: rec ? (rec.clock_in || rec.time_in || '-') : '-',
-                timeOut: rec ? (rec.clock_out || rec.time_out || '-') : '-',
-            };
-        });
-        setBtrRecords(records);
-        if (records.length > 0) {
+            });
+            // Always generate all days for the month, even if no records exist for that day
+            const records: BTRRecord[] = allDates.map(dateStr => {
+                const rec = recordMap[dateStr];
+                const dateObj = new Date(dateStr);
+                const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                return {
+                    date: dateStr,
+                    dayName,
+                    timeIn: rec ? rec.timeIn : '-',
+                    timeOut: rec ? rec.timeOut : '-',
+                };
+            });
+            setBtrRecords(records);
             setTimeout(() => {
                 setShowPDF('btr');
                 setLoadingBTR(false);
             }, 100);
-        } else {
-            toast.error('No biometric time records found for this month.');
+        } catch {
+            toast.error('Error generating BTR.');
             setLoadingBTR(false);
         }
     };
