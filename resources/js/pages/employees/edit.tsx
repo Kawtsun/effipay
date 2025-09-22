@@ -116,6 +116,27 @@ export default function Edit({
         tea: employee.tea !== null && employee.tea !== undefined ? employee.tea.toString() : '',
         honorarium: employee.honorarium !== null && employee.honorarium !== undefined ? employee.honorarium.toString() : '',
     });
+
+    // Watch for College Instructor role to clear contribution fields and remove validation
+    useEffect(() => {
+        const rolesArr = data.roles.split(',').map(r => r.trim());
+        if (rolesArr.includes('college instructor')) {
+            if (data.sss !== '') setData('sss', '');
+            if (data.philhealth !== '') setData('philhealth', '');
+            if (data.pag_ibig !== '') setData('pag_ibig', '');
+            if (data.withholding_tax !== '') setData('withholding_tax', '');
+        } else {
+            // Restore defaults if not college instructor and fields are empty
+            if (data.sss === '' && salaryDefaults?.[data.employee_type]?.sss)
+                setData('sss', salaryDefaults[data.employee_type].sss.toString());
+            if (data.philhealth === '' && salaryDefaults?.[data.employee_type]?.philhealth)
+                setData('philhealth', salaryDefaults[data.employee_type].philhealth.toString());
+            if (data.pag_ibig === '' && salaryDefaults?.[data.employee_type]?.pag_ibig)
+                setData('pag_ibig', salaryDefaults[data.employee_type].pag_ibig.toString());
+            if (data.withholding_tax === '' && salaryDefaults?.[data.employee_type]?.withholding_tax)
+                setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
+        }
+    }, [data.roles, data.employee_type]);
     // Determine if College Instructor is selected
     const isCollegeInstructor = data.roles.split(',').includes('college instructor');
     // Track manual mode for contributions
@@ -159,9 +180,10 @@ export default function Edit({
             return;
         }
 
-        // Validate Pag-IBIG minimum
+        // Validate Pag-IBIG minimum only if not college instructor
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-        if (pagIbigValue < 200) {
+        const isCollege = data.roles.split(',').includes('college instructor');
+        if (!isCollege && pagIbigValue < 200) {
             toast.error('Pag-IBIG must be at least ₱200');
             return;
         }
@@ -634,10 +656,10 @@ export default function Edit({
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        required
+                                                        required={!data.roles.split(',').includes('college instructor')}
                                                         placeholder="SSS"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
-                                                        min={0}
+                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 0}
                                                         value={formatWithCommas(data.sss ?? '')}
                                                         disabled={!manualContribMode}
                                                         onChange={e => {
@@ -663,12 +685,12 @@ export default function Edit({
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        required
+                                                        required={!data.roles.split(',').includes('college instructor')}
                                                         placeholder="PhilHealth"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         style={{ lineHeight: '1.5rem' }}
-                                                        min={250}
-                                                        max={2500}
+                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 250}
+                                                        max={data.roles.split(',').includes('college instructor') ? undefined : 2500}
                                                         disabled={!manualContribMode}
                                                         value={formatWithCommas(data.philhealth ?? '')}
                                                         onChange={e => {
@@ -687,11 +709,11 @@ export default function Edit({
                                                 <Label htmlFor="pag-ibig">Pag-IBIG</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" required placeholder="Pag-IBIG" className="pl-8" min={200} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw); }} />
+                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" required={!data.roles.split(',').includes('college instructor')} placeholder="Pag-IBIG" className="pl-8" min={data.roles.split(',').includes('college instructor') ? undefined : 200} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
-                                                    Must be at least ₱200
+                                                    {data.roles.split(',').includes('college instructor') ? 'Manual entry enabled' : 'Must be at least ₱200'}
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
@@ -701,12 +723,12 @@ export default function Edit({
                                                     <Input
                                                         id="withholding_tax"
                                                         type="text"
-                                                        required
+                                                        required={!data.roles.split(',').includes('college instructor')}
                                                         placeholder="Withholding Tax"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         inputMode="decimal"
                                                         pattern="^[0-9,]+(\.[0-9]{1,2})?$"
-                                                        min={0}
+                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 0}
                                                         disabled={!manualContribMode}
                                                         value={formatWithCommas(data.withholding_tax ?? '')}
                                                         onChange={e => {

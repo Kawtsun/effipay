@@ -22,6 +22,13 @@ class StoreEmployeesRequest extends FormRequest
      */
     public function rules(): array
     {
+    $isCollege = false;
+    $roles = request('roles', '');
+    if (is_array($roles)) {
+        $isCollege = in_array('college instructor', $roles);
+    } else {
+        $isCollege = strpos($roles, 'college instructor') !== false;
+    }
     return [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
@@ -29,10 +36,10 @@ class StoreEmployeesRequest extends FormRequest
             'employee_type' => 'required|string|max:255',
             'employee_status' => 'required|string|max:255',
             'base_salary' => 'required|numeric|min:0',
-            'sss' => 'required|numeric|min:0',
-            'philhealth' => 'required|numeric|min:250|max:2500',
-            'pag_ibig' => 'required|numeric|min:200',
-            'withholding_tax' => 'required|numeric|min:0',
+            'sss' => $isCollege ? 'nullable|numeric' : 'required|numeric|min:0',
+            'philhealth' => $isCollege ? 'nullable|numeric|max:2500' : 'required|numeric|min:250|max:2500',
+            'pag_ibig' => $isCollege ? 'nullable|numeric' : 'required|numeric|min:200',
+            'withholding_tax' => $isCollege ? 'nullable|numeric' : 'required|numeric|min:0',
             'work_hours_per_day' => 'required|integer|min:1|max:24',
             'work_start_time' => 'required|date_format:H:i',
             'work_end_time' => 'required|date_format:H:i|after:work_start_time',

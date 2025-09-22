@@ -144,12 +144,13 @@ class EmployeesController extends Controller
     if (request()->has('rate_per_hour')) {
         $data['college_rate'] = request()->input('rate_per_hour');
     }
+    $isCollege = isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'));
     // If role is college instructor, nullify base_salary only
-    if (isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'))) {
+    if ($isCollege) {
         $data['base_salary'] = null;
     }
-    // Recalculate PhilHealth using new formula (divide by 2)
-    if (isset($data['base_salary']) && $data['base_salary'] !== null) {
+    // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor
+    if (!$isCollege && isset($data['base_salary']) && $data['base_salary'] !== null) {
         $base_salary = (float) $data['base_salary'];
         $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
         $data['philhealth'] = round($philhealth, 2);
@@ -262,12 +263,13 @@ class EmployeesController extends Controller
     if (request()->has('rate_per_hour')) {
         $data['college_rate'] = request()->input('rate_per_hour');
     }
+    $isCollege = isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'));
     // If role is college instructor, nullify base_salary only
-    if (isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'))) {
+    if ($isCollege) {
         $data['base_salary'] = null;
     }
-    // Recalculate PhilHealth using new formula (divide by 2)
-    if (isset($data['base_salary']) && $data['base_salary'] !== null) {
+    // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor
+    if (!$isCollege && isset($data['base_salary']) && $data['base_salary'] !== null) {
         $base_salary = (float) $data['base_salary'];
         $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
         $data['philhealth'] = round($philhealth, 2);
