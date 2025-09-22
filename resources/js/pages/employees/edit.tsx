@@ -169,14 +169,39 @@ export default function Edit({
 
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
-        if (data.roles.split(',').includes('college instructor') && !collegeProgram) {
-            setCollegeProgramError('Please select a college department/program.');
+        // Validate required fields and show toast instead of browser popup
+        if (!data.last_name.trim()) {
+            toast.error('Last Name is required.');
             return;
-        } else {
-            setCollegeProgramError('');
+        }
+        if (!data.first_name.trim()) {
+            toast.error('First Name is required.');
+            return;
+        }
+        // College Instructor: Rate Per Hour required
+        if (data.roles.split(',').includes('college instructor') && (!data.rate_per_hour || !data.rate_per_hour.trim())) {
+            toast.error('Rate Per Hour is required.');
+            return;
+        }
+        // Non-college: Base Salary required
+        if (!data.roles.split(',').includes('college instructor') && (!data.base_salary || !data.base_salary.trim())) {
+            toast.error('Base Salary is required.');
+            return;
         }
         if (!data.employee_type) {
-            setData('employee_type', 'Full Time');
+            toast.error('Employee Type is required.');
+            return;
+        }
+        if (!data.employee_status) {
+            toast.error('Employee Status is required.');
+            return;
+        }
+        if (!data.roles.trim()) {
+            toast.error('At least one role is required.');
+            return;
+        }
+        if (data.roles.split(',').includes('college instructor') && !collegeProgram) {
+            toast.error('Please select a college department/program.');
             return;
         }
 
@@ -184,7 +209,7 @@ export default function Edit({
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
         const isCollege = data.roles.split(',').includes('college instructor');
         if (!isCollege && pagIbigValue < 200) {
-            toast.error('Pag-IBIG must be at least ₱200');
+            toast.error('Pag-IBIG must be at least ₱200.');
             return;
         }
 
@@ -408,11 +433,11 @@ export default function Edit({
                                     <div className='space-y-6'>
                                         <div className="flex flex-col gap-3">
                                             <Label>Last Name</Label>
-                                            <Input id="last_name" type="text" required placeholder="Last Name" value={data.last_name} onChange={e => setData('last_name', e.target.value)} />
+                                            <Input id="last_name" type="text" placeholder="Last Name" value={data.last_name} onChange={e => setData('last_name', e.target.value)} />
                                         </div>
                                         <div className="flex flex-col gap-3">
                                             <Label>First Name</Label>
-                                            <Input id="first_name" type="text" required placeholder="First Name" value={data.first_name} onChange={e => setData('first_name', e.target.value)} />
+                                            <Input id="first_name" type="text" placeholder="First Name" value={data.first_name} onChange={e => setData('first_name', e.target.value)} />
                                         </div>
                                         <div className="flex flex-col gap-3">
                                             <Label>Middle Name</Label>
@@ -544,14 +569,14 @@ export default function Edit({
                                                     {(() => {
                                                         const [startHour, startMinute] = data.work_start_time.split(':').map(Number);
                                                         const [endHour, endMinute] = data.work_end_time.split(':').map(Number);
-                                                        let startMinutes = startHour * 60 + startMinute;
-                                                        let endMinutes = endHour * 60 + endMinute;
+                                                        const startMinutes = startHour * 60 + startMinute;
+                                                        const endMinutes = endHour * 60 + endMinute;
                                                         let actualWorkMinutes = endMinutes - startMinutes;
                                                         if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        let totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
                                                         const hours = Math.floor(totalMinutes / 60);
                                                         const minutes = totalMinutes % 60;
-                                                        let durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
                                                         return (
                                                             <>
                                                                 📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({durationText})<br />
@@ -586,7 +611,7 @@ export default function Edit({
                                                                 type="text"
                                                                 inputMode="numeric"
                                                                 pattern="[0-9.,]*"
-                                                                required
+
                                                                 placeholder="Rate Per Hour"
                                                                 className="pl-8"
                                                                 min={0}
@@ -609,7 +634,7 @@ export default function Edit({
                                                                 type="text"
                                                                 inputMode="numeric"
                                                                 pattern="[0-9.,]*"
-                                                                required
+
                                                                 placeholder="Salary"
                                                                 className="pl-8"
                                                                 min={0}
