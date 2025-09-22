@@ -12,9 +12,9 @@ export default function DialogScrollArea({ children, className = '', style }: Di
     <ScrollArea
       className={`h-[80vh] max-h-[80vh] rounded-md bg-white dark:bg-gray-950 ${className}`}
       style={style}
-      type="always"
+      type="auto"
     >
-      <div className="px-0 py-0 pr-2">{children}</div>
+      <div className="px-0 py-0 pr-4">{children}</div>
     </ScrollArea>
   );
 }
