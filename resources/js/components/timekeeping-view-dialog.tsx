@@ -255,24 +255,46 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                     <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
                                                         <div>
                                                             <Skeleton className="h-6 w-36 mb-4" />
-                                                            <div className="space-y-3 text-sm">
-                                                                <div>
-                                                                    <Skeleton className="h-3 w-28 mb-1" />
-                                                                    <Skeleton className="h-4 w-40" />
+                                                            {/* College Instructor: custom skeleton fields */}
+                                                            {employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor') ? (
+                                                                <div className="space-y-3 text-sm">
+                                                                    <div>
+                                                                        <Skeleton className="h-3 w-32 mb-1" /> {/* Rate Per Hour */}
+                                                                        <Skeleton className="h-4 w-40" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <Skeleton className="h-3 w-32 mb-1" /> {/* Total Hours */}
+                                                                        <Skeleton className="h-4 w-36" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <Skeleton className="h-3 w-32 mb-1" /> {/* Gross Pay */}
+                                                                        <Skeleton className="h-4 w-40" />
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <Skeleton className="h-3 w-26 mb-1" />
-                                                                    <Skeleton className="h-4 w-36" />
-                                                                </div>
-                                                                <div>
-                                                                    <Skeleton className="h-3 w-26 mb-1" />
-                                                                    <Skeleton className="h-4 w-36" />
-                                                                </div>
-                                                                <div>
-                                                                    <Skeleton className="h-3 w-40 mb-1" />
-                                                                    <Skeleton className="h-4 w-40" />
-                                                                </div>
-                                                            </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="space-y-3 text-sm">
+                                                                        <div>
+                                                                            <Skeleton className="h-3 w-32 mb-1" /> {/* Monthly Salary */}
+                                                                            <Skeleton className="h-4 w-40" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <Skeleton className="h-3 w-32 mb-1" /> {/* Gross Pay */}
+                                                                            <Skeleton className="h-4 w-40" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-3 text-sm mt-4">
+                                                                        <div>
+                                                                            <Skeleton className="h-3 w-32 mb-1" /> {/* Rate per Day */}
+                                                                            <Skeleton className="h-4 w-36" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <Skeleton className="h-3 w-32 mb-1" /> {/* Rate per Hour */}
+                                                                            <Skeleton className="h-4 w-36" />
+                                                                        </div>
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </motion.div>
@@ -353,14 +375,12 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                                 <div className="space-y-3 text-sm">
                                                                     <Info label="Rate Per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.college_rate ?? 0)}`} />
                                                                     <Info label="Total Hours" value={records.length === 0 ? '-' : `${Number(summary?.total_hours ?? 0).toFixed(2)} hr(s)`} />
-                                                                    <Info label="Total Overtime Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
                                                                     <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
                                                                 </div>
                                                             ) : (
                                                                 <>
                                                                     <div className="space-y-3 text-sm">
                                                                         <Info label="Monthly Salary" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
-                                                                        <Info label="Total Overtime Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
                                                                         <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
                                                                     </div>
                                                                     <div className="space-y-3 text-sm mt-4">
