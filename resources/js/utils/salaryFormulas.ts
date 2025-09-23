@@ -19,14 +19,13 @@ export function calculateGrossPay(
 ): number {
     const isCollege = options?.role === 'College Instructor' && typeof options.college_rate === 'number' && typeof options.totalHours === 'number';
     if (isCollege) {
-        const collegeRate = options.college_rate!;
+        const rate = options.college_rate!;
         const totalHours = options.totalHours!;
-        // All deductions and overtime use collegeRate
-        return parseFloat((
-            (collegeRate * totalHours) + overtimePay - (collegeRate * tardiness + collegeRate * undertime + collegeRate * absences)
-        ).toFixed(2));
+        // Match timekeeping-view-dialog: (rate * totalHours) + overtimePay - (rate * tardiness) - (rate * undertime) - (rate * absences)
+        return parseFloat(((rate * totalHours) + overtimePay - (rate * tardiness) - (rate * undertime) - (rate * absences)).toFixed(2));
     } else {
-        return parseFloat((baseSalary + overtimePay - (ratePerHour * tardiness + ratePerHour * undertime + ratePerHour * absences)).toFixed(2));
+        // For non-college: (baseSalary + overtimePay) - (rate * tardiness) - (rate * undertime) - (rate * absences)
+        return parseFloat(((baseSalary + overtimePay) - (ratePerHour * tardiness) - (ratePerHour * undertime) - (ratePerHour * absences)).toFixed(2));
     }
 }
 // Calculates overtime pay for a given date and base amount

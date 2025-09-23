@@ -44,6 +44,7 @@ class PayrollController extends Controller
                 'summaryData' => $summaryData,
                 'overtime_used' => isset($summaryData['overtime_count']) ? $summaryData['overtime_count'] : null,
             ]);
+
             $hasTK = \App\Models\TimeKeeping::where('employee_id', $employee->id)
                 ->where('date', 'like', $payrollMonth . '%')
                 ->exists();
@@ -98,7 +99,18 @@ class PayrollController extends Controller
                 $tardiness = isset($summaryData['tardiness']) ? floatval($summaryData['tardiness']) : 0;
                 $undertime = isset($summaryData['undertime']) ? floatval($summaryData['undertime']) : 0;
                 $absences = isset($summaryData['absences']) ? floatval($summaryData['absences']) : 0;
-                $overtime = (isset($summaryData['overtime']) && is_numeric($summaryData['overtime'])) ? floatval($summaryData['overtime']) : 0;
+                $overtime_pay = isset($summaryData['overtime_pay_total']) ? floatval($summaryData['overtime_pay_total']) : 0;
+                $overtime_hours = isset($summaryData['overtime']) ? floatval($summaryData['overtime']) : 0;
+                // If overtime_pay is zero but hours exist, compute manually (match frontend logic)
+                if ($overtime_pay == 0 && $overtime_hours > 0) {
+                    $weekday_ot = isset($summaryData['overtime_count_weekdays']) ? floatval($summaryData['overtime_count_weekdays']) : 0;
+                    $weekend_ot = isset($summaryData['overtime_count_weekends']) ? floatval($summaryData['overtime_count_weekends']) : 0;
+                    if ($weekday_ot > 0 || $weekend_ot > 0) {
+                        $overtime_pay = ($college_rate * 0.25 * $weekday_ot) + ($college_rate * 0.30 * $weekend_ot);
+                    } else {
+                        $overtime_pay = $college_rate * 0.25 * $overtime_hours;
+                    }
+                }
                 $honorarium = !is_null($employee->honorarium) ? floatval($employee->honorarium) : 0;
 
                 // Statutory contributions: always use the current value from the employee record (even if 0)
@@ -107,13 +119,15 @@ class PayrollController extends Controller
                 $pag_ibig = $employee->pag_ibig;
                 $withholding_tax = $employee->withholding_tax;
 
-                // Gross pay: (college_rate * total_hours_worked) + overtime + honorarium
-                $gross_pay = round($college_rate * $total_hours_worked, 2)
-                    - (round($college_rate * $tardiness, 2)
-                    + round($college_rate * $undertime, 2)
-                    + round($college_rate * $absences, 2))
-                    + round($college_rate * $overtime, 2)
-                    + round($honorarium, 2);
+                // Gross pay: (college_rate * total_hours_worked) - (college_rate * tardiness) - (college_rate * undertime) - (college_rate * absences) + overtime_pay + honorarium
+                $gross_pay = round(
+                    ($college_rate * $total_hours_worked)
+                    - ($college_rate * $tardiness)
+                    - ($college_rate * $undertime)
+                    - ($college_rate * $absences)
+                    + $overtime_pay
+                    + $honorarium
+                , 2);
 
                 // For record-keeping, set base_salary to employee's base_salary or 0 (not used in calculation)
                 $base_salary = !is_null($employee->base_salary) ? $employee->base_salary : 0;
@@ -123,7 +137,6 @@ class PayrollController extends Controller
                 $base_salary = isset($summaryData['base_salary']) ? $summaryData['base_salary'] : $employee->base_salary;
                 $rate_per_hour = isset($summaryData['rate_per_hour']) ? $summaryData['rate_per_hour'] : ($workHoursPerDay > 0 ? ($base_salary * 12 / 288) / $workHoursPerDay : 0);
                 $tardiness = isset($summaryData['tardiness']) ? $summaryData['tardiness'] : 0;
-                // Calculate work hours per day from start/end, minus 1 hour for break
                 if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
                     $start = strtotime($employee->work_start_time);
                     $end = strtotime($employee->work_end_time);
@@ -133,7 +146,8 @@ class PayrollController extends Controller
                 }
                 $undertime = isset($summaryData['undertime']) ? $summaryData['undertime'] : 0;
                 $absences = isset($summaryData['absences']) ? $summaryData['absences'] : 0;
-                $overtime = (isset($summaryData['overtime']) && is_numeric($summaryData['overtime'])) ? floatval($summaryData['overtime']) : 0;
+                $overtime_pay = isset($summaryData['overtime_pay_total']) ? floatval($summaryData['overtime_pay_total']) : 0;
+                $overtime_hours = isset($summaryData['overtime']) ? floatval($summaryData['overtime']) : 0;
 
                 $sss = $employee->sss;
                 $philhealth = $employee->philhealth;
@@ -149,12 +163,14 @@ class PayrollController extends Controller
                 })($base_salary, $sss, $pag_ibig, $philhealth) : 0;
 
                 $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
-                $gross_pay = round($base_salary, 2)
-                    - (round($rate_per_hour * $tardiness, 2)
-                    + round($rate_per_hour * $undertime, 2)
-                    + round($rate_per_hour * $absences, 2))
-                    + round($rate_per_hour * $overtime, 2)
-                    + round($honorarium, 2);
+                // Gross pay: (base_salary + overtime_pay) - (rate_per_hour * tardiness) - (rate_per_hour * undertime) - (rate_per_hour * absences) + honorarium
+                $gross_pay = round(
+                    ($base_salary + $overtime_pay)
+                    - ($rate_per_hour * $tardiness)
+                    - ($rate_per_hour * $undertime)
+                    - ($rate_per_hour * $absences)
+                    + $honorarium
+                , 2);
             }
 
                 // Create and save payroll record
@@ -200,7 +216,7 @@ class PayrollController extends Controller
                     'base_salary' => $base_salary,
                     'college_rate' => isset($college_rate) ? $college_rate : null,
                     'honorarium' => $honorarium,
-                    'overtime' => $overtime,
+                    'overtime' => $overtime_hours,
                     'tardiness' => $tardiness,
                     'undertime' => $undertime,
                     'absences' => $absences,
