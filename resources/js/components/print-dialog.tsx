@@ -70,6 +70,7 @@ interface PayslipData {
         adjustment?: number | string;
         gross_pay?: number | string;
         net_pay?: number | string;
+        totalHours?: number;
     };
     deductions: {
         sss?: string;
@@ -229,25 +230,28 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 + (Number(timekeepingSummary.overtime ?? 0));
             if (numHours < 0) numHours = 0;
         }
-        setPayrollData({
-            ...data,
-            earnings: {
-                ...data.earnings,
-                numHours,
-                ratePerHour: timekeepingSummary?.rate_per_hour ?? 0,
-                tardiness: timekeepingSummary?.tardiness ?? 0,
-                undertime: timekeepingSummary?.undertime ?? 0,
-                absences: timekeepingSummary?.absences ?? 0,
-                overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
-                overtime: timekeepingSummary?.overtime ?? undefined,
-                gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
-                net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
-                adjustment: data.earnings?.adjustment ?? undefined,
-                honorarium: data.earnings?.honorarium ?? undefined,
-                collegeGSP: data.earnings?.collegeGSP ?? undefined,
-                overload: data.earnings?.overload ?? undefined,
-            },
-        });
+            setPayrollData({
+                ...data,
+                earnings: {
+                    ...data.earnings,
+                    numHours,
+                    ratePerHour: timekeepingSummary?.rate_per_hour ?? 0,
+                    tardiness: timekeepingSummary?.tardiness ?? 0,
+                    undertime: timekeepingSummary?.undertime ?? 0,
+                    absences: timekeepingSummary?.absences ?? 0,
+                    overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
+                    overtime: timekeepingSummary?.overtime ?? undefined,
+                    gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
+                    net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
+                    adjustment: data.earnings?.adjustment ?? undefined,
+                    honorarium: data.earnings?.honorarium ?? undefined,
+                    collegeGSP: data.earnings?.collegeGSP ?? undefined,
+                    overload: data.earnings?.overload ?? undefined,
+                    totalHours: (employee?.roles && employee.roles.toLowerCase().includes('college'))
+                      ? (timekeepingSummary?.total_hours ? Number(timekeepingSummary.total_hours) : 0)
+                      : (typeof numHours === 'number' ? numHours : (numHours ? Number(numHours) : 0)),
+                },
+            });
         setTimeout(() => {
             setShowPDF('payslip');
             setLoadingPayslip(false);
@@ -377,6 +381,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             earnings={payrollData.earnings}
                                             deductions={payrollData.deductions}
                                             totalDeductions={payrollData.totalDeductions}
+                                            totalHours={payrollData.earnings.totalHours}
                                         />}
                                         fileName={`Payslip_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`}
                                         download

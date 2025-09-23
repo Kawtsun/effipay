@@ -109,6 +109,7 @@ interface PayslipTemplateProps {
   earnings?: EarningsProps;
   deductions?: DeductionsProps;
   totalDeductions?: string | number;
+  totalHours?: number;
 }
 
 const getPayPeriodString = (period?: string) => {
@@ -128,7 +129,7 @@ const getPayPeriodString = (period?: string) => {
 };
 
 
-const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '', earnings, deductions, totalDeductions }) => {
+const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '', earnings, deductions, totalDeductions, totalHours }) => {
   const monthlySalary = earnings?.monthlySalary;
 
   // Always show monthly salary value regardless of role
@@ -154,6 +155,10 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
   const absencesAmount = earnings?.absencesAmount !== undefined && earnings?.absencesAmount !== null && earnings?.absencesAmount !== ''
     ? getNum(earnings?.absencesAmount)
     : parseFloat((absencesHours * ratePerHour).toFixed(2));
+
+  // For college role, use totalHours for No. of hours
+  const isCollege = typeof role === 'string' && role.toLowerCase().includes('college');
+  const displayNumHours = isCollege && typeof totalHours === 'number' ? totalHours : earnings?.numHours ?? '-';
 
   // Overtime and Overload logic (match timekeeping dialog: summary.overtime)
   let overtimeHours = undefined;
@@ -258,7 +263,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
             {/* Indented sub-items: always show under Monthly Salary */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
               <Text>No. of hours</Text>
-              <Text>-</Text>
+              <Text>{displayNumHours}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
               <Text>Rate Per Hour</Text>
