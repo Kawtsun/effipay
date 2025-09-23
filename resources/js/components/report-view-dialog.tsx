@@ -129,15 +129,25 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                 rate = Number(selectedPayroll.college_rate ?? 0);
                 weekdayOvertime = Number(selectedPayroll.overtime_count_weekdays ?? 0);
                 weekendOvertime = Number(selectedPayroll.overtime_count_weekends ?? 0);
+                // If both overtime counts are zero, fallback to timekeepingSummary if available
+                if ((weekdayOvertime + weekendOvertime) === 0 && timekeepingSummary) {
+                    weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
+                    weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
+                }
+                const weekdayPay = rate * 0.25 * weekdayOvertime;
+                const weekendPay = rate * 0.30 * weekendOvertime;
+                const overtimePay = weekdayPay + weekendPay;
+                return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             } else if (timekeepingSummary) {
                 rate = Number(timekeepingSummary.rate_per_hour ?? 0);
                 weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
                 weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
+                const weekdayPay = rate * 0.25 * weekdayOvertime;
+                const weekendPay = rate * 0.30 * weekendOvertime;
+                const overtimePay = weekdayPay + weekendPay;
+                return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             }
-            const weekdayPay = rate * 0.25 * weekdayOvertime;
-            const weekendPay = rate * 0.30 * weekendOvertime;
-            const overtimePay = weekdayPay + weekendPay;
-            return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            return '-';
         }
         // Other types: keep old logic
         if (isCollegeInstructorPayroll && selectedPayroll) {
