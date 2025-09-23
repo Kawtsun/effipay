@@ -101,11 +101,11 @@ class PayrollController extends Controller
                 $overtime = (isset($summaryData['overtime']) && is_numeric($summaryData['overtime'])) ? floatval($summaryData['overtime']) : 0;
                 $honorarium = !is_null($employee->honorarium) ? floatval($employee->honorarium) : 0;
 
-                // Statutory contributions: pull directly from employee record
-                $sss = floatval($employee->sss);
-                $philhealth = floatval($employee->philhealth);
-                $pag_ibig = floatval($employee->pag_ibig);
-                $withholding_tax = floatval($employee->withholding_tax);
+                // Statutory contributions: always use the current value from the employee record (even if 0)
+                $sss = $employee->sss;
+                $philhealth = $employee->philhealth;
+                $pag_ibig = $employee->pag_ibig;
+                $withholding_tax = $employee->withholding_tax;
 
                 // Gross pay: (college_rate * total_hours_worked) + overtime + honorarium
                 $gross_pay = round($college_rate * $total_hours_worked, 2)
