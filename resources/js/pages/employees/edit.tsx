@@ -119,14 +119,10 @@ export default function Edit({
     });
 
     // Watch for College Instructor role to clear contribution fields and remove validation
+    // For college instructor, always show the current value from the employee record (do not clear)
     useEffect(() => {
         const rolesArr = data.roles.split(',').map(r => r.trim());
-        if (rolesArr.includes('college instructor')) {
-            if (data.sss !== '') setData('sss', '');
-            if (data.philhealth !== '') setData('philhealth', '');
-            if (data.pag_ibig !== '') setData('pag_ibig', '');
-            if (data.withholding_tax !== '') setData('withholding_tax', '');
-        } else {
+        if (!rolesArr.includes('college instructor')) {
             // Restore defaults if not college instructor and fields are empty
             if (data.sss === '' && salaryDefaults?.[data.employee_type]?.sss)
                 setData('sss', salaryDefaults[data.employee_type].sss.toString());
@@ -137,6 +133,7 @@ export default function Edit({
             if (data.withholding_tax === '' && salaryDefaults?.[data.employee_type]?.withholding_tax)
                 setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
         }
+        // For college instructor, do nothing: keep the current value from the employee record
     }, [data.roles, data.employee_type]);
     // Determine if College Instructor is selected
     const isCollegeInstructor = data.roles.split(',').includes('college instructor');
