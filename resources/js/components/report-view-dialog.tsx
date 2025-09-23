@@ -46,8 +46,9 @@ interface PayrollData {
     month: string;
     payroll_date: string;
     base_salary: number;
+    college_rate?: number;
     honorarium?: number;
-    overtime_pay: number;
+    overtime?: number;
     sss: number;
     philhealth: number;
     pag_ibig: number;
@@ -103,13 +104,15 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     // Use payroll data for all payroll fields if available, else fallback to employee/timekeeping
     // Use the payroll with the latest payroll_date for the selected month
     let selectedPayroll: PayrollData | null = null;
-    if (monthlyPayrollData && monthlyPayrollData.payrolls.length > 0) {
-        selectedPayroll = monthlyPayrollData.payrolls.reduce((latest, curr) => {
-            return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
-        }, monthlyPayrollData.payrolls[0]);
-    }
     // Only show/calculate salary/contributions if payroll data exists for the month
     const hasPayroll = !!(monthlyPayrollData && monthlyPayrollData.payrolls && monthlyPayrollData.payrolls.length > 0);
+    if (hasPayroll) {
+        selectedPayroll = monthlyPayrollData!.payrolls.reduce((latest, curr) => {
+            return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
+        }, monthlyPayrollData!.payrolls[0]);
+    }
+    // Determine if this payroll is for a college instructor by checking employee.roles (case-insensitive)
+    const isCollegeInstructorPayroll = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
     const sss = hasPayroll ? Number(selectedPayroll?.sss) : null;
     const philhealth = hasPayroll ? Number(selectedPayroll?.philhealth) : null;
     const pag_ibig = hasPayroll ? Number(selectedPayroll?.pag_ibig) : null;
@@ -377,8 +380,6 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                     {/* Summary Cards: 4 timekeeping (amounts) + 4 report cards */}
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                                         {/* Tardiness Amount */}
-                                                        {/* Attendance Cards: Always show, but show '-' if no payroll data */}
-                                                        {/* Tardiness Amount */}
                                                         <motion.div
                                                             className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
@@ -388,9 +389,11 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
                                                             <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">
-                                                                {hasPayroll && typeof timekeepingSummary?.tardiness === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
-                                                                    ? `₱${(timekeepingSummary.tardiness * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                                    : '-'}
+                                                                {hasPayroll && selectedPayroll ? (() => {
+                                                                    const tardiness = Number(selectedPayroll.tardiness) || 0;
+                                                                    const rate = isCollegeInstructorPayroll ? (selectedPayroll.college_rate ?? 0) : (selectedPayroll.rate_per_hour ?? 0);
+                                                                    return `₱${(tardiness * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                })() : '-'}
                                                             </div>
                                                         </motion.div>
                                                         {/* Undertime Amount */}
@@ -403,9 +406,11 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
                                                             <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">
-                                                                {hasPayroll && typeof timekeepingSummary?.undertime === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
-                                                                    ? `₱${(timekeepingSummary.undertime * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                                    : '-'}
+                                                                {hasPayroll && selectedPayroll ? (() => {
+                                                                    const undertime = Number(selectedPayroll.undertime) || 0;
+                                                                    const rate = isCollegeInstructorPayroll ? (selectedPayroll.college_rate ?? 0) : (selectedPayroll.rate_per_hour ?? 0);
+                                                                    return `₱${(undertime * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                })() : '-'}
                                                             </div>
                                                         </motion.div>
                                                         {/* Overtime Amount */}
@@ -418,9 +423,11 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
                                                             <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">
-                                                                {hasPayroll && typeof timekeepingSummary?.overtime_pay_total === 'number'
-                                                                    ? `₱${timekeepingSummary.overtime_pay_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                                    : '-'}
+                                                                {hasPayroll && selectedPayroll ? (() => {
+                                                                    const overtime = Number(selectedPayroll.overtime) || 0;
+                                                                    const rate = isCollegeInstructorPayroll ? (selectedPayroll.college_rate ?? 0) : (selectedPayroll.rate_per_hour ?? 0);
+                                                                    return `₱${(overtime * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                })() : '-'}
                                                             </div>
                                                         </motion.div>
                                                         {/* Absences Amount */}
@@ -433,9 +440,11 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
                                                             <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">
-                                                                {hasPayroll && typeof timekeepingSummary?.absences === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
-                                                                    ? `₱${(timekeepingSummary.absences * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                                    : '-'}
+                                                                {hasPayroll && selectedPayroll ? (() => {
+                                                                    const absences = Number(selectedPayroll.absences) || 0;
+                                                                    const rate = isCollegeInstructorPayroll ? (selectedPayroll.college_rate ?? 0) : (selectedPayroll.rate_per_hour ?? 0);
+                                                                    return `₱${(absences * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                })() : '-'}
                                                             </div>
                                                         </motion.div>
                                                         {/* Gross Pay */}
@@ -512,7 +521,11 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                                 <div className="px-8 min-h-[200px] flex flex-col justify-start">
                                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                                     <div className="space-y-3 text-sm">
-                                                                        <Info label="Base Salary" value={hasPayroll && selectedPayroll && selectedPayroll.base_salary !== null && selectedPayroll.base_salary !== undefined ? `₱${formatWithCommas(selectedPayroll.base_salary)}` : '-'} />
+                                                                        {isCollegeInstructorPayroll ? (
+                                                                            <Info label="Rate Per Hour" value={hasPayroll && selectedPayroll && selectedPayroll.college_rate !== undefined && selectedPayroll.college_rate !== null ? `₱${formatWithCommas(selectedPayroll.college_rate)}` : '-'} />
+                                                                        ) : (
+                                                                            <Info label="Monthly Salary" value={hasPayroll && selectedPayroll && selectedPayroll.base_salary !== null && selectedPayroll.base_salary !== undefined ? `₱${formatWithCommas(selectedPayroll.base_salary)}` : '-'} />
+                                                                        )}
                                                                         <Info label="Honorarium" value={hasPayroll && selectedPayroll && selectedPayroll.honorarium !== null && selectedPayroll.honorarium !== undefined ? `₱${formatWithCommas(selectedPayroll.honorarium)}` : '-'} />
                                                                     </div>
                                                                 </div>

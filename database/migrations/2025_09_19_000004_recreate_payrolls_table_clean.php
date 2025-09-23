@@ -19,13 +19,13 @@ return new class extends Migration
             $table->date('payroll_date'); // Specific payroll date (15th or 30th)
             $table->decimal('base_salary', 12, 2)->nullable();
             $table->decimal('honorarium', 12, 2)->nullable();
-            $table->decimal('overtime_pay', 12, 2)->nullable();
             $table->decimal('sss', 12, 2)->nullable();
             $table->decimal('philhealth', 12, 2)->nullable();
             $table->decimal('pag_ibig', 12, 2)->nullable();
             $table->decimal('withholding_tax', 12, 2)->nullable();
             $table->decimal('tardiness', 12, 2)->nullable();
             $table->decimal('undertime', 12, 2)->nullable();
+            $table->decimal('overtime', 12, 2)->nullable();
             $table->decimal('absences', 12, 2)->nullable();
             $table->decimal('gross_pay', 12, 2)->nullable();
             $table->decimal('sss_salary_loan', 12, 2)->nullable();

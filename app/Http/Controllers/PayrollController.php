@@ -32,6 +32,18 @@ class PayrollController extends Controller
         $employees = \App\Models\Employees::all();
         $missingTK = [];
         foreach ($employees as $employee) {
+            // Fetch timekeeping summary for this employee and month
+            $summary = app(\App\Http\Controllers\TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
+                'employee_id' => $employee->id,
+                'month' => $payrollMonth
+            ]));
+            $summaryData = $summary->getData(true);
+
+            // Debug: Log summary data and overtime value for this employee
+            \Illuminate\Support\Facades\Log::info('[Payroll Debug] Employee: ' . $employee->id . ' ' . $employee->first_name . ' ' . $employee->last_name, [
+                'summaryData' => $summaryData,
+                'overtime_used' => isset($summaryData['overtime_count']) ? $summaryData['overtime_count'] : null,
+            ]);
             $hasTK = \App\Models\TimeKeeping::where('employee_id', $employee->id)
                 ->where('date', 'like', $payrollMonth . '%')
                 ->exists();
@@ -52,6 +64,7 @@ class PayrollController extends Controller
         $employees = \App\Models\Employees::all();
         $createdCount = 0;
         foreach ($employees as $employee) {
+
             $existingPayrolls = \App\Models\Payroll::where('employee_id', $employee->id)
                 ->where('month', $payrollMonth)
                 ->get();
@@ -65,7 +78,6 @@ class PayrollController extends Controller
                 continue;
             }
 
-
             // Fetch timekeeping summary for this employee and month
             $summary = app(\App\Http\Controllers\TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
                 'employee_id' => $employee->id,
@@ -73,43 +85,77 @@ class PayrollController extends Controller
             ]));
             $summaryData = $summary->getData(true);
 
-            // Use all calculated values from timekeeping summary
-            $workHoursPerDay = $employee->work_hours_per_day ?? 8;
-            $base_salary = isset($summaryData['base_salary']) ? $summaryData['base_salary'] : $employee->base_salary;
-            $rate_per_hour = isset($summaryData['rate_per_hour']) ? $summaryData['rate_per_hour'] : ($workHoursPerDay > 0 ? ($base_salary * 12 / 288) / $workHoursPerDay : 0);
-            $tardiness = isset($summaryData['tardiness']) ? $summaryData['tardiness'] : 0;
-            // Calculate work hours per day from start/end, minus 1 hour for break
-            if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
-                $start = strtotime($employee->work_start_time);
-                $end = strtotime($employee->work_end_time);
-                $workMinutes = $end - $start;
-                if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
-                $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
+            // Check if employee is a College Instructor (case-insensitive, substring match)
+            $isCollegeInstructor = false;
+            if (isset($employee->roles) && is_string($employee->roles) && stripos($employee->roles, 'college instructor') !== false) {
+                $isCollegeInstructor = true;
             }
-            $undertime = isset($summaryData['undertime']) ? $summaryData['undertime'] : 0;
-            $absences = isset($summaryData['absences']) ? $summaryData['absences'] : 0;
-            $overtime_pay = isset($summaryData['overtime_pay_total']) ? $summaryData['overtime_pay_total'] : 0;
 
-            $sss = $employee->sss;
-            $philhealth = $employee->philhealth;
-            $pag_ibig = $employee->pag_ibig;
-            $withholding_tax = $base_salary > 0 ? (function($base_salary, $sss, $pag_ibig, $philhealth) {
-                $totalComp = $base_salary - ($sss + $pag_ibig + $philhealth);
-                if ($totalComp <= 20832) return 0;
-                if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
-                if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
-                if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
-                if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
-                return 183541.80 + 0.35 * ($totalComp - 666667);
-            })($base_salary, $sss, $pag_ibig, $philhealth) : 0;
+            if ($isCollegeInstructor) {
+                // Use college_rate for all calculations
+                $college_rate = isset($employee->college_rate) ? floatval($employee->college_rate) : 0;
+                $total_hours_worked = isset($summaryData['total_hours']) ? floatval($summaryData['total_hours']) : 0;
+                $tardiness = isset($summaryData['tardiness']) ? floatval($summaryData['tardiness']) : 0;
+                $undertime = isset($summaryData['undertime']) ? floatval($summaryData['undertime']) : 0;
+                $absences = isset($summaryData['absences']) ? floatval($summaryData['absences']) : 0;
+                $overtime = (isset($summaryData['overtime']) && is_numeric($summaryData['overtime'])) ? floatval($summaryData['overtime']) : 0;
+                $honorarium = !is_null($employee->honorarium) ? floatval($employee->honorarium) : 0;
 
-            $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
-            $gross_pay = round($base_salary, 2)
-                - (round($rate_per_hour * $tardiness, 2)
-                + round($rate_per_hour * $undertime, 2)
-                + round($rate_per_hour * $absences, 2));
-            $gross_pay += round($overtime_pay, 2);
-            $gross_pay += round($honorarium, 2);
+                // Statutory contributions: pull directly from employee record
+                $sss = floatval($employee->sss);
+                $philhealth = floatval($employee->philhealth);
+                $pag_ibig = floatval($employee->pag_ibig);
+                $withholding_tax = floatval($employee->withholding_tax);
+
+                // Gross pay: (college_rate * total_hours_worked) + overtime + honorarium
+                $gross_pay = round($college_rate * $total_hours_worked, 2)
+                    - (round($college_rate * $tardiness, 2)
+                    + round($college_rate * $undertime, 2)
+                    + round($college_rate * $absences, 2))
+                    + round($college_rate * $overtime, 2)
+                    + round($honorarium, 2);
+
+                // For record-keeping, set base_salary to employee's base_salary or 0 (not used in calculation)
+                $base_salary = !is_null($employee->base_salary) ? $employee->base_salary : 0;
+            } else {
+                // Use all calculated values from timekeeping summary (default logic)
+                $workHoursPerDay = $employee->work_hours_per_day ?? 8;
+                $base_salary = isset($summaryData['base_salary']) ? $summaryData['base_salary'] : $employee->base_salary;
+                $rate_per_hour = isset($summaryData['rate_per_hour']) ? $summaryData['rate_per_hour'] : ($workHoursPerDay > 0 ? ($base_salary * 12 / 288) / $workHoursPerDay : 0);
+                $tardiness = isset($summaryData['tardiness']) ? $summaryData['tardiness'] : 0;
+                // Calculate work hours per day from start/end, minus 1 hour for break
+                if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
+                    $start = strtotime($employee->work_start_time);
+                    $end = strtotime($employee->work_end_time);
+                    $workMinutes = $end - $start;
+                    if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
+                    $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
+                }
+                $undertime = isset($summaryData['undertime']) ? $summaryData['undertime'] : 0;
+                $absences = isset($summaryData['absences']) ? $summaryData['absences'] : 0;
+                $overtime = (isset($summaryData['overtime']) && is_numeric($summaryData['overtime'])) ? floatval($summaryData['overtime']) : 0;
+
+                $sss = $employee->sss;
+                $philhealth = $employee->philhealth;
+                $pag_ibig = $employee->pag_ibig;
+                $withholding_tax = $base_salary > 0 ? (function($base_salary, $sss, $pag_ibig, $philhealth) {
+                    $totalComp = $base_salary - ($sss + $pag_ibig + $philhealth);
+                    if ($totalComp <= 20832) return 0;
+                    if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
+                    if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
+                    if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
+                    if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
+                    return 183541.80 + 0.35 * ($totalComp - 666667);
+                })($base_salary, $sss, $pag_ibig, $philhealth) : 0;
+
+                $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
+                $gross_pay = round($base_salary, 2)
+                    - (round($rate_per_hour * $tardiness, 2)
+                    + round($rate_per_hour * $undertime, 2)
+                    + round($rate_per_hour * $absences, 2))
+                    + round($rate_per_hour * $overtime, 2)
+                    + round($honorarium, 2);
+            }
 
                 // Create and save payroll record
                 // Get all loan and deduction fields from employee
@@ -147,13 +193,14 @@ class PayrollController extends Controller
                     'calamity_loan' => $calamity_loan,
                     'multipurpose_loan' => $multipurpose_loan,
                 ]);
-                \App\Models\Payroll::create([
+                $payrollData = [
                     'employee_id' => $employee->id,
                     'month' => $payrollMonth,
                     'payroll_date' => $request->payroll_date,
                     'base_salary' => $base_salary,
+                    'college_rate' => isset($college_rate) ? $college_rate : null,
                     'honorarium' => $honorarium,
-                    'overtime_pay' => $overtime_pay,
+                    'overtime' => $overtime,
                     'tardiness' => $tardiness,
                     'undertime' => $undertime,
                     'absences' => $absences,
@@ -175,7 +222,9 @@ class PayrollController extends Controller
                     'multipurpose_loan' => $multipurpose_loan,
                     'total_deductions' => $total_deductions,
                     'net_pay' => $net_pay,
-                ]);
+                ];
+                \Illuminate\Support\Facades\Log::info('[Payroll Debug] Payroll::create array', $payrollData);
+                \App\Models\Payroll::create($payrollData);
                 $createdCount++;
         }
 

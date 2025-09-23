@@ -7,17 +7,15 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { calculateGrossPay } from "@/utils/salaryFormulas";
 import { toast } from "sonner";
 import { Employees } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
-import { RolesBadges, getCollegeProgramLabel } from "./roles-badges";
 import React, { useState, useEffect, useRef } from "react";
 import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { MonthRangePicker } from "./ui/month-range-picker";
 import { Skeleton } from "./ui/skeleton";
-import { Fingerprint } from "lucide-react";
+import { RolesBadges } from "./roles-badges"; // Ensure RolesBadges is imported
 
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
@@ -31,12 +29,6 @@ function formatTime12Hour(time?: string): string {
     return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
-function formatNumberWithCommas(num: number | string): string {
-    if (num === null || num === undefined) return '-';
-    const n = typeof num === 'string' ? Number(num) : num;
-    if (isNaN(n)) return '-';
-    return n.toLocaleString('en-US');
-}
 
 function formatNumberWithCommasAndFixed(num: number | string, decimals = 2): string {
     if (num === null || num === undefined) return '-';
@@ -66,12 +58,46 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     const [pendingMonth, setPendingMonth] = useState("");
     // Payroll summary for pay details (keep for summary cards)
     const { summary } = useEmployeePayroll(employee?.id ?? null, pendingMonth, employee);
+
+    // Calculate gross pay including overtime (for display)
+    function getGrossPay() {
+        if (!summary) return 0;
+        const isCollegeInstructor = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
+        const ratePerHour = isCollegeInstructor ? Number(summary.college_rate ?? 0) : Number(summary.rate_per_hour ?? 0);
+        const baseSalary = Number(summary.base_salary ?? 0);
+        const totalHours = Number(summary.total_hours ?? 0);
+        const tardiness = Number(summary.tardiness ?? 0);
+        const undertime = Number(summary.undertime ?? 0);
+        const absences = Number(summary.absences ?? 0);
+        const overtime = Number(summary.overtime ?? 0);
+        if (isCollegeInstructor) {
+            // (college_rate * total_hours) + (college_rate * overtime) - deductions
+            return (
+                (ratePerHour * totalHours)
+                + (ratePerHour * overtime)
+                - (ratePerHour * tardiness)
+                - (ratePerHour * undertime)
+                - (ratePerHour * absences)
+            );
+        } else {
+            // base_salary + (rate_per_hour * overtime) - deductions
+            return (
+                baseSalary
+                + (ratePerHour * overtime)
+                - (ratePerHour * tardiness)
+                - (ratePerHour * undertime)
+                - (ratePerHour * absences)
+            );
+        }
+    }
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [loadingPayroll, setLoadingPayroll] = useState(false);
     const [minLoading, setMinLoading] = useState(false);
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
     // Remove summary/hasMonthData logic for toast, use BTRDialog approach
-    const [records, setRecords] = useState<any[]>([]);
+    // Use a more specific type for records
+    // Use a more specific type for records if possible. Assuming records are objects with string keys and values.
+    const [records, setRecords] = useState<Array<Record<string, unknown>>>([]);
     const recordsMinLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
     useEffect(() => {
         if (!employee || !selectedMonth) return;
@@ -376,13 +402,13 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                                 <div className="space-y-3 text-sm">
                                                                     <Info label="Rate Per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.college_rate ?? 0)}`} />
                                                                     <Info label="Total Hours" value={records.length === 0 ? '-' : `${Number(summary?.total_hours ?? 0).toFixed(2)} hr(s)`} />
-                                                                    <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
+                                                                    <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(getGrossPay())}`} />
                                                                 </div>
                                                             ) : (
                                                                 <>
                                                                     <div className="space-y-3 text-sm">
                                                                         <Info label="Monthly Salary" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
-                                                                        <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
+                                                                        <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(getGrossPay())}`} />
                                                                     </div>
                                                                     <div className="space-y-3 text-sm mt-4">
                                                                         <Info label="Rate per Day" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_day ?? 0)}`} />
