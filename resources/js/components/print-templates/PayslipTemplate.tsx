@@ -162,6 +162,11 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
   const displayRatePerHour = isCollegeInstructor && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
     ? collegeRate
     : '-';
+  // College/GSP value: for college instructor, numHours * ratePerHour
+  let displayCollegeGSP: string | number = '-';
+  if (isCollegeInstructor && typeof totalHours === 'number' && getNum(collegeRate) > 0) {
+    displayCollegeGSP = parseFloat((totalHours * getNum(collegeRate)).toFixed(2));
+  }
 
   // Overtime and Overload logic (match timekeeping dialog: summary.overtime)
   let overtimeHours = undefined;
@@ -289,7 +294,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
             {/* College/GSP row */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
               <Text>College/GSP</Text>
-              <Text>-</Text>
+              <Text>{displayCollegeGSP === '-' ? '-' : formatWithCommas(displayCollegeGSP)}</Text>
             </View>
             {/* Honorarium row */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
