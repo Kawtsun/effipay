@@ -110,6 +110,7 @@ interface PayslipTemplateProps {
   deductions?: DeductionsProps;
   totalDeductions?: string | number;
   totalHours?: number;
+  collegeRate?: number | string;
 }
 
 const getPayPeriodString = (period?: string) => {
@@ -128,11 +129,10 @@ const getPayPeriodString = (period?: string) => {
   return `Pay Period: ${monthName} 1-${lastDay}, ${year}`;
 };
 
-
-const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '', earnings, deductions, totalDeductions, totalHours }) => {
-  const monthlySalary = earnings?.monthlySalary;
-
+const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
+  const { payPeriod, employeeName = '-', role = '', earnings, deductions, totalDeductions, totalHours, collegeRate } = props;
   // Always show monthly salary value regardless of role
+  const monthlySalary = earnings?.monthlySalary;
   const monthlySalaryValue: number | string | undefined = monthlySalary;
   // Helper to get numeric value
   const getNum = (v: string | number | undefined) => {
@@ -140,7 +140,6 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
     if (typeof v === 'string') return Number(v.replace(/,/g, ''));
     return v;
   };
-
   // Calculate amounts if not provided
   const ratePerHour = getNum(earnings?.ratePerHour);
   const tardinessHours = getNum(earnings?.tardiness);
@@ -155,10 +154,12 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
   const absencesAmount = earnings?.absencesAmount !== undefined && earnings?.absencesAmount !== null && earnings?.absencesAmount !== ''
     ? getNum(earnings?.absencesAmount)
     : parseFloat((absencesHours * ratePerHour).toFixed(2));
-
-  // For college role, use totalHours for No. of hours
-  const isCollege = typeof role === 'string' && role.toLowerCase().includes('college');
-  const displayNumHours = isCollege && typeof totalHours === 'number' ? totalHours : earnings?.numHours ?? '-';
+  // For college instructor role, show totalHours and collegeRate, else '-'
+  const isCollegeInstructor = typeof role === 'string' && role.toLowerCase().includes('college instructor');
+  const displayNumHours = isCollegeInstructor && typeof totalHours === 'number' ? totalHours : '-';
+  const displayRatePerHour = isCollegeInstructor && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
+    ? collegeRate
+    : '-';
 
   // Overtime and Overload logic (match timekeeping dialog: summary.overtime)
   let overtimeHours = undefined;
@@ -267,7 +268,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
               <Text>Rate Per Hour</Text>
-              <Text>-</Text>
+              <Text>{displayRatePerHour}</Text>
             </View>
             {/* College/GSP row */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>

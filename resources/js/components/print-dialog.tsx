@@ -27,6 +27,7 @@ interface Employee {
 interface Payroll {
     payroll_date: string;
     base_salary?: number;
+    college_rate?: number;
     tardiness?: number;
     undertime?: number;
     absences?: number;
@@ -55,6 +56,7 @@ interface PayslipData {
         monthlySalary?: string | number;
         numHours?: string | number;
         ratePerHour?: string | number;
+        collegeRate?: string | number;
         collegeGSP?: string | number;
         honorarium?: string | number;
         tardiness?: number | string;
@@ -123,7 +125,7 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
         return null;
     }
     // Use the latest payroll for the month
-    const payroll: Payroll = result.payrolls.reduce((latest: Payroll, curr: Payroll) => {
+    const payroll: Payroll & { college_rate?: number } = result.payrolls.reduce((latest: Payroll, curr: Payroll) => {
         return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
     }, result.payrolls[0]);
     // Map backend fields to payslip template props
@@ -135,6 +137,7 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             absences: payroll.absences ?? 0,
             overtime_pay_total: payroll.overtime_pay ?? 0,
             ratePerHour: undefined, // will be injected from timekeeping
+            collegeRate: payroll.college_rate ?? 0,
         },
         deductions: {
             sss: payroll.sss ?? '',
@@ -198,6 +201,22 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             setLoadingPayslip(false);
             return;
         }
+        // Fetch the raw payroll object for college_rate
+        let payrollCollegeRate = 0;
+        try {
+            const response = await fetch(route('payroll.employee.monthly', {
+                employee_id: employee?.id,
+                month: selectedMonth,
+            }));
+            const result = await response.json();
+            if (result.success && result.payrolls && result.payrolls.length > 0) {
+                type PayrollType = typeof result.payrolls[0];
+                const payroll = result.payrolls.reduce((latest: PayrollType, curr: PayrollType) => {
+                    return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
+                }, result.payrolls[0]);
+                payrollCollegeRate = payroll.college_rate ?? 0;
+            }
+        } catch { /* ignore error */ }
         // Fetch timekeeping records before calculating numHours
         const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
         const result = await response.json();
@@ -235,7 +254,10 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 earnings: {
                     ...data.earnings,
                     numHours,
-                    ratePerHour: timekeepingSummary?.rate_per_hour ?? 0,
+                    ratePerHour: (employee?.roles && employee.roles.toLowerCase().includes('college'))
+                        ? (data.earnings.collegeRate ?? payrollCollegeRate ?? 0)
+                        : (timekeepingSummary?.rate_per_hour ?? 0),
+                    collegeRate: data.earnings.collegeRate ?? payrollCollegeRate ?? 0,
                     tardiness: timekeepingSummary?.tardiness ?? 0,
                     undertime: timekeepingSummary?.undertime ?? 0,
                     absences: timekeepingSummary?.absences ?? 0,
@@ -382,6 +404,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             deductions={payrollData.deductions}
                                             totalDeductions={payrollData.totalDeductions}
                                             totalHours={payrollData.earnings.totalHours}
+                                            collegeRate={payrollData.earnings.collegeRate}
                                         />}
                                         fileName={`Payslip_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`}
                                         download
