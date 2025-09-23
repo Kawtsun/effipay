@@ -263,6 +263,8 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                     absences: timekeepingSummary?.absences ?? 0,
                     overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
                     overtime: timekeepingSummary?.overtime ?? undefined,
+                    overtime_count_weekdays: timekeepingSummary?.overtime_count_weekdays ?? data.earnings.overtime_count_weekdays ?? 0,
+                    overtime_count_weekends: timekeepingSummary?.overtime_count_weekends ?? data.earnings.overtime_count_weekends ?? 0,
                     gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
                     net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
                     adjustment: data.earnings?.adjustment ?? undefined,

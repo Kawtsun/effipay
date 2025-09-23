@@ -84,6 +84,8 @@ interface EarningsProps {
   adjustment?: number | string;
   gross_pay?: number | string;
   net_pay?: number | string;
+  overtime_count_weekdays?: number | string;
+  overtime_count_weekends?: number | string;
 }
 
   interface DeductionsProps {
@@ -168,9 +170,23 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
   } else if (earnings?.overtime_hours !== undefined && earnings?.overtime_hours !== null && earnings?.overtime_hours !== '') {
     overtimeHours = getNum(earnings?.overtime_hours);
   }
-  const overtimeAmount = earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== ''
-    ? getNum(earnings?.overtime_pay_total)
-    : 0;
+  // If college instructor, use weekday/weekend overtime formula
+  let overtimeAmount = 0;
+  if (isCollegeInstructor && getNum(collegeRate) > 0) {
+    // Try to get weekday/weekend overtime counts from earnings, fallback to 0
+    const weekdayOvertime = getNum(earnings?.overtime_count_weekdays);
+    const weekendOvertime = getNum(earnings?.overtime_count_weekends);
+    const rate = getNum(collegeRate);
+    const weekdayPay = rate * 0.25 * weekdayOvertime;
+    const weekendPay = rate * 0.30 * weekendOvertime;
+    overtimeAmount = parseFloat((weekdayPay + weekendPay).toFixed(2));
+  } else if (earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== '') {
+    overtimeAmount = getNum(earnings?.overtime_pay_total);
+  } else if (overtimeHours && ratePerHour > 0) {
+    overtimeAmount = parseFloat((overtimeHours * ratePerHour).toFixed(2));
+  } else {
+    overtimeAmount = 0;
+  }
 
   return (
   <Document>
