@@ -1,3 +1,4 @@
+    // ...existing code...
 import DialogScrollArea from './dialog-scroll-area';
 import { formatFullName } from '../utils/formatFullName';
 // Use the same formatting as employee-view-dialog
@@ -113,6 +114,21 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     }
     // Determine if this payroll is for a college instructor by checking employee.roles (case-insensitive)
     const isCollegeInstructorPayroll = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
+
+    // Helper for summary card values (must be after hasPayroll, selectedPayroll, etc)
+    const getSummaryCardAmount = (type: 'tardiness' | 'undertime' | 'overtime' | 'absences') => {
+        if (!hasPayroll) return '-';
+        if (isCollegeInstructorPayroll && selectedPayroll) {
+            // College: use selectedPayroll values and college_rate
+            const value = Number(selectedPayroll[type]) || 0;
+            const rate = selectedPayroll.college_rate ?? 0;
+            return `₱${(value * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        } else if (timekeepingSummary && typeof timekeepingSummary[type] === 'number' && typeof timekeepingSummary.rate_per_hour === 'number') {
+            // Other roles: use timekeepingSummary and rate_per_hour
+            return `₱${(timekeepingSummary[type] * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+        return '-';
+    };
     const sss = hasPayroll ? Number(selectedPayroll?.sss) : null;
     const philhealth = hasPayroll ? Number(selectedPayroll?.philhealth) : null;
     const pag_ibig = hasPayroll ? Number(selectedPayroll?.pag_ibig) : null;
@@ -389,11 +405,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
                                                             <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">
-                                                                {hasPayroll && selectedPayroll ? (() => {
-                                                                    const tardiness = Number(selectedPayroll.tardiness) || 0;
-                                                                    const rate = isCollegeInstructorPayroll ? (selectedPayroll.college_rate ?? 0) : (selectedPayroll.rate_per_hour ?? 0);
-                                                                    return `₱${(tardiness * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                                                })() : '-'}
+                                                                {getSummaryCardAmount('tardiness')}
                                                             </div>
                                                         </motion.div>
                                                         {/* Undertime Amount */}
@@ -406,11 +418,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
                                                             <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">
-                                                                {hasPayroll && selectedPayroll ? (() => {
-                                                                    const undertime = Number(selectedPayroll.undertime) || 0;
-                                                                    const rate = isCollegeInstructorPayroll ? (selectedPayroll.college_rate ?? 0) : (selectedPayroll.rate_per_hour ?? 0);
-                                                                    return `₱${(undertime * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                                                })() : '-'}
+                                                                {getSummaryCardAmount('undertime')}
                                                             </div>
                                                         </motion.div>
                                                         {/* Overtime Amount */}
@@ -423,11 +431,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
                                                             <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">
-                                                                {hasPayroll && selectedPayroll ? (() => {
-                                                                    const overtime = Number(selectedPayroll.overtime) || 0;
-                                                                    const rate = isCollegeInstructorPayroll ? (selectedPayroll.college_rate ?? 0) : (selectedPayroll.rate_per_hour ?? 0);
-                                                                    return `₱${(overtime * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                                                })() : '-'}
+                                                                {getSummaryCardAmount('overtime')}
                                                             </div>
                                                         </motion.div>
                                                         {/* Absences Amount */}
@@ -440,11 +444,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
                                                             <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">
-                                                                {hasPayroll && selectedPayroll ? (() => {
-                                                                    const absences = Number(selectedPayroll.absences) || 0;
-                                                                    const rate = isCollegeInstructorPayroll ? (selectedPayroll.college_rate ?? 0) : (selectedPayroll.rate_per_hour ?? 0);
-                                                                    return `₱${(absences * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                                                })() : '-'}
+                                                                {getSummaryCardAmount('absences')}
                                                             </div>
                                                         </motion.div>
                                                         {/* Gross Pay */}
