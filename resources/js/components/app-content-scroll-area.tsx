@@ -19,7 +19,7 @@ export default function AppContentScrollArea({ children, className = '', style }
       style={style}
       type="auto"
     >
-      <div className="px-0 py-0 pr-4 h-full">{children}</div>
+      <div className="px-0 py-0 pr-4 h-full w-full min-w-fit overflow-x-auto">{children}</div>
     </ScrollArea>
   );
 }
