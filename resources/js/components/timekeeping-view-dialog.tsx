@@ -60,6 +60,17 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     const { summary } = useEmployeePayroll(employee?.id ?? null, pendingMonth, employee);
 
     // Calculate gross pay including overtime (for display)
+    function getOvertimePay() {
+        if (!summary) return 0;
+        const isCollegeInstructor = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
+        const ratePerHour = isCollegeInstructor ? Number(summary.college_rate ?? 0) : Number(summary.rate_per_hour ?? 0);
+        const weekdayOvertime = Number(summary.overtime_count_weekdays ?? 0);
+        const weekendOvertime = Number(summary.overtime_count_weekends ?? 0);
+        const weekdayPay = ratePerHour * 0.25 * weekdayOvertime;
+        const weekendPay = ratePerHour * 0.30 * weekendOvertime;
+        return weekdayPay + weekendPay;
+    }
+
     function getGrossPay() {
         if (!summary) return 0;
         const isCollegeInstructor = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
@@ -69,21 +80,20 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         const tardiness = Number(summary.tardiness ?? 0);
         const undertime = Number(summary.undertime ?? 0);
         const absences = Number(summary.absences ?? 0);
-        const overtime = Number(summary.overtime ?? 0);
+        // Use new overtime formula
+        const overtimePay = getOvertimePay();
         if (isCollegeInstructor) {
-            // (college_rate * total_hours) + (college_rate * overtime) - deductions
             return (
                 (ratePerHour * totalHours)
-                + (ratePerHour * overtime)
+                + overtimePay
                 - (ratePerHour * tardiness)
                 - (ratePerHour * undertime)
                 - (ratePerHour * absences)
             );
         } else {
-            // base_salary + (rate_per_hour * overtime) - deductions
             return (
                 baseSalary
-                + (ratePerHour * overtime)
+                + overtimePay
                 - (ratePerHour * tardiness)
                 - (ratePerHour * undertime)
                 - (ratePerHour * absences)

@@ -72,6 +72,8 @@ interface PayrollData {
     total_deductions: number;
     net_pay: number;
     rate_per_hour?: number;
+    overtime_count_weekdays?: number;
+    overtime_count_weekends?: number;
 }
 
 interface MonthlyPayrollData {
@@ -118,13 +120,31 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     // Helper for summary card values (must be after hasPayroll, selectedPayroll, etc)
     const getSummaryCardAmount = (type: 'tardiness' | 'undertime' | 'overtime' | 'absences') => {
         if (!hasPayroll) return '-';
+        // Overtime: use new formula
+        if (type === 'overtime') {
+            let rate = 0;
+            let weekdayOvertime = 0;
+            let weekendOvertime = 0;
+            if (isCollegeInstructorPayroll && selectedPayroll) {
+                rate = Number(selectedPayroll.college_rate ?? 0);
+                weekdayOvertime = Number(selectedPayroll.overtime_count_weekdays ?? 0);
+                weekendOvertime = Number(selectedPayroll.overtime_count_weekends ?? 0);
+            } else if (timekeepingSummary) {
+                rate = Number(timekeepingSummary.rate_per_hour ?? 0);
+                weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
+                weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
+            }
+            const weekdayPay = rate * 0.25 * weekdayOvertime;
+            const weekendPay = rate * 0.30 * weekendOvertime;
+            const overtimePay = weekdayPay + weekendPay;
+            return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+        // Other types: keep old logic
         if (isCollegeInstructorPayroll && selectedPayroll) {
-            // College: use selectedPayroll values and college_rate
             const value = Number(selectedPayroll[type]) || 0;
             const rate = selectedPayroll.college_rate ?? 0;
             return `₱${(value * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         } else if (timekeepingSummary && typeof timekeepingSummary[type] === 'number' && typeof timekeepingSummary.rate_per_hour === 'number') {
-            // Other roles: use timekeepingSummary and rate_per_hour
             return `₱${(timekeepingSummary[type] * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
         return '-';
