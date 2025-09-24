@@ -10,8 +10,8 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('employees', function (Blueprint $table) {
-            $table->dropColumn('overtime_pay');
+        Schema::table('payrolls', function (Blueprint $table) {
+            $table->decimal('college_rate', 12, 2)->nullable()->after('base_salary');
         });
     }
 
@@ -20,8 +20,8 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::table('employees', function (Blueprint $table) {
-            $table->decimal('overtime_pay', 10, 2)->nullable();
+        Schema::table('payrolls', function (Blueprint $table) {
+            $table->dropColumn('college_rate');
         });
     }
 };

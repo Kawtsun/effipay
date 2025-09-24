@@ -1,3 +1,9 @@
+import { formatFullName } from '../utils/formatFullName';
+
+// Utility to convert a string to Title Case (capitalize each word)
+function toTitleCase(str: string) {
+  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+}
 // Toggle for auto-download vs. view in new tab
 const AUTO_DOWNLOAD = false; // Set to true to enable auto-download, false for view in new tab
 // Utility to sanitize file names (remove spaces, special chars)
@@ -10,6 +16,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { MonthPicker } from './ui/month-picker';
 
 import { pdf } from '@react-pdf/renderer';
@@ -35,6 +42,8 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
         setAvailableMonths(result.months);
         if (result.months.length > 0 && !selectedMonth) {
           setSelectedMonth(result.months[0]);
+        } else if (result.months.length === 0) {
+          toast.error('No available months to display.');
         }
       }
     } catch (error) {
@@ -43,9 +52,11 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
   };
 
   React.useEffect(() => {
-    fetchAvailableMonths();
+    if (open) {
+      fetchAvailableMonths();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [open]);
 
 
   // State for batch payslip and BTR printing
@@ -86,6 +97,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
           middle_name: string;
           last_name: string;
           roles?: string;
+          work_hours_per_day?: number;
         }, idx: number) => {
           try {
             // Fetch payslip
@@ -110,53 +122,93 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             } catch (summaryErr) {
               console.error(`Failed to fetch timekeeping summary for employee ${emp.id}:`, summaryErr);
             }
-            if (idx === 0) {
-              console.log('Payslip API response for first employee:', result.payslip);
-              if (summary) console.log('Timekeeping summary for first employee:', summary);
+            // Fetch timekeeping records for numHours calculation
+            let btrRecords = [];
+            try {
+              const btrRes = await fetch(`/api/timekeeping/records?employee_id=${emp.id}&month=${selectedMonth}`);
+              const btrJson = await btrRes.json();
+              if (btrJson.success && Array.isArray(btrJson.records)) {
+                btrRecords = btrJson.records;
+              }
+            } catch (btrErr) {
+              // ignore
             }
-            // Map API fields to PayslipTemplate props, merging summary values if present
-            const payslip = result.payslip;
+            // Calculate numHours (match single print logic)
+            let numHours = 0;
+            const isCollege = (emp.roles || '').toLowerCase().includes('college');
+            if (summary) {
+              if (isCollege && typeof summary.total_hours === 'number') {
+                numHours = summary.total_hours;
+              } else {
+                let totalWorkedHours = 0;
+                if (Array.isArray(btrRecords) && emp.work_hours_per_day) {
+                  const attendedShifts = btrRecords.filter(
+                    (rec: any) => (rec.clock_in && rec.clock_in !== '-') || (rec.clock_out && rec.clock_out !== '-')
+                  ).length;
+                  totalWorkedHours = attendedShifts * emp.work_hours_per_day;
+                }
+                numHours = totalWorkedHours
+                  - (Number(summary.tardiness ?? 0))
+                  - (Number(summary.undertime ?? 0))
+                  - (Number(summary.absences ?? 0))
+                  + (Number(summary.overtime ?? 0));
+                if (numHours < 0) numHours = 0;
+              }
+            }
+            // Get college_rate from payslip
+            const collegeRate = result.payslip.college_rate ?? 0;
+            // Compose merged earnings (match single print logic)
             const mergedEarnings = {
-              monthlySalary: payslip.base_salary,
-              tardiness: summary?.tardiness ?? payslip.tardiness,
-              tardinessAmount: payslip.tardiness_amount ?? payslip.tardinessAmount,
-              undertime: summary?.undertime ?? payslip.undertime,
-              undertimeAmount: payslip.undertime_amount ?? payslip.undertimeAmount,
-              absences: summary?.absences ?? payslip.absences,
-              absencesAmount: payslip.absences_amount ?? payslip.absencesAmount,
-              overtime: summary?.overtime ?? payslip.overtime,
-              overtime_hours: payslip.overtime_hours,
-              overtime_pay_total: summary?.overtime_pay_total ?? payslip.overtime_pay,
-              ratePerHour: summary?.rate_per_hour ?? payslip.rate_per_hour ?? payslip.ratePerHour,
-              honorarium: payslip.honorarium,
-              gross_pay: summary?.gross_pay ?? payslip.gross_pay,
-              net_pay: payslip.net_pay,
-              adjustment: payslip.adjustment,
-              collegeGSP: payslip.college_gsp,
-              overload: payslip.overload,
-              // Add more mappings as needed
+              monthlySalary: result.payslip.base_salary,
+              numHours: isCollege ? numHours : undefined,
+              ratePerHour: isCollege ? (result.payslip.college_rate ?? 0) : (summary?.rate_per_hour ?? result.payslip.rate_per_hour ?? result.payslip.ratePerHour),
+              collegeRate: result.payslip.college_rate ?? 0,
+              collegeGSP: isCollege && typeof numHours === 'number' && Number(result.payslip.college_rate ?? 0) > 0
+                ? parseFloat((numHours * Number(result.payslip.college_rate)).toFixed(2))
+                : undefined,
+              honorarium: result.payslip.honorarium,
+              tardiness: summary?.tardiness ?? result.payslip.tardiness,
+              tardinessAmount: summary?.tardiness !== undefined && isCollege
+                ? parseFloat(((Number(summary.tardiness) || 0) * Number(result.payslip.college_rate ?? 0)).toFixed(2))
+                : (result.payslip.tardiness_amount ?? result.payslip.tardinessAmount),
+              undertime: summary?.undertime ?? result.payslip.undertime,
+              undertimeAmount: summary?.undertime !== undefined && isCollege
+                ? parseFloat(((Number(summary.undertime) || 0) * Number(result.payslip.college_rate ?? 0)).toFixed(2))
+                : (result.payslip.undertime_amount ?? result.payslip.undertimeAmount),
+              absences: summary?.absences ?? result.payslip.absences,
+              absencesAmount: summary?.absences !== undefined && isCollege
+                ? parseFloat(((Number(summary.absences) || 0) * Number(result.payslip.college_rate ?? 0)).toFixed(2))
+                : (result.payslip.absences_amount ?? result.payslip.absencesAmount),
+              overtime: summary?.overtime ?? result.payslip.overtime,
+              overtime_hours: result.payslip.overtime_hours,
+              overtime_pay_total: summary?.overtime_pay_total ?? result.payslip.overtime_pay,
+              overtime_count_weekdays: summary?.overtime_count_weekdays ?? 0,
+              overtime_count_weekends: summary?.overtime_count_weekends ?? 0,
+              gross_pay: summary?.gross_pay ?? result.payslip.gross_pay,
+              net_pay: result.payslip.net_pay,
+              adjustment: result.payslip.adjustment,
+              overload: result.payslip.overload,
             };
             return {
-              employeeName: `${emp.last_name}, ${emp.first_name} ${emp.middle_name}`,
+              employeeName: toTitleCase(formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
               role: emp.roles || '-',
               payPeriod: selectedMonth,
               earnings: mergedEarnings,
               deductions: {
-                sss: payslip.sss,
-                philhealth: payslip.philhealth,
-                pagibig: payslip.pag_ibig,
-                withholdingTax: payslip.withholding_tax,
-                sssSalaryLoan: payslip.sss_salary_loan,
-                sssCalamityLoan: payslip.sss_calamity_loan,
-                pagibigMultiLoan: payslip.pagibig_multi_loan,
-                pagibigCalamityLoan: payslip.pagibig_calamity_loan,
-                peraaCon: payslip.peraa_con,
-                tuition: payslip.tuition,
-                chinaBank: payslip.china_bank,
-                tea: payslip.tea,
-                // Add more mappings as needed
+                sss: result.payslip.sss,
+                philhealth: result.payslip.philhealth,
+                pagibig: result.payslip.pag_ibig,
+                withholdingTax: result.payslip.withholding_tax,
+                sssSalaryLoan: result.payslip.sss_salary_loan,
+                sssCalamityLoan: result.payslip.sss_calamity_loan,
+                pagibigMultiLoan: result.payslip.pagibig_multi_loan,
+                pagibigCalamityLoan: result.payslip.pagibig_calamity_loan,
+                peraaCon: result.payslip.peraa_con,
+                tuition: result.payslip.tuition,
+                chinaBank: result.payslip.china_bank,
+                tea: result.payslip.tea,
               },
-              totalDeductions: payslip.total_deductions,
+              totalDeductions: result.payslip.total_deductions,
             };
           } catch (err) {
             console.error(`Error fetching payslip for employee ${emp.id}:`, err);
@@ -261,21 +313,26 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             } catch (summaryErr) {
               console.error(`Failed to fetch timekeeping summary for employee ${emp.id}:`, summaryErr);
             }
-            // Calculate total hours (like in print-dialog)
-            let totalWorkedHours = 0;
-            if (Array.isArray(btrRecords) && emp.work_hours_per_day) {
-              const attendedShifts = btrRecords.filter(
-                (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
-              ).length;
-              totalWorkedHours = attendedShifts * emp.work_hours_per_day;
-            }
-            const totalHours = totalWorkedHours
-              - (Number(summary?.tardiness ?? 0))
-              - (Number(summary?.undertime ?? 0))
-              - (Number(summary?.absences ?? 0))
-              + (Number(summary?.overtime ?? 0));
+            // Use summary.total_hours if available, else fallback to old formula
+            const totalHours =
+              typeof summary?.total_hours === 'number'
+                ? summary.total_hours
+                : (() => {
+                    let totalWorkedHours = 0;
+                    if (Array.isArray(btrRecords) && emp.work_hours_per_day) {
+                      const attendedShifts = btrRecords.filter(
+                        (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
+                      ).length;
+                      totalWorkedHours = attendedShifts * emp.work_hours_per_day;
+                    }
+                    return totalWorkedHours
+                      - (Number(summary?.tardiness ?? 0))
+                      - (Number(summary?.undertime ?? 0))
+                      - (Number(summary?.absences ?? 0))
+                      + (Number(summary?.overtime ?? 0));
+                  })();
             return {
-              employeeName: `${emp.last_name}, ${emp.first_name} ${emp.middle_name}`,
+              employeeName: toTitleCase(formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
               role: emp.roles || '-',
               payPeriod: selectedMonth,
               records: btrRecords,

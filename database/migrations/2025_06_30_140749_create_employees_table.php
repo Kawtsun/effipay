@@ -17,12 +17,11 @@ return new class extends Migration
             $table->string('employee_status');
             $table->string('roles')->nullable();
             $table->string('college_program')->nullable();
-            $table->integer('base_salary');
-            $table->integer('overtime_pay');
-            $table->integer('sss');
-            $table->integer('philhealth');
-            $table->integer('pag_ibig');
-            $table->integer('withholding_tax');
+            $table->integer('base_salary')->nullable();
+            $table->integer('sss')->nullable();
+            $table->integer('philhealth')->nullable();
+            $table->integer('pag_ibig')->nullable();
+            $table->integer('withholding_tax')->nullable();
             $table->timestamps();
         });
     }

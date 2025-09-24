@@ -25,6 +25,7 @@ class SalaryController extends Controller
             ['employee_type' => $selected],
             [
                 'base_salary' => 0,
+                'college_rate' => 0,
                 'overtime_pay' => 0,
                 'sss' => 0,
                 'philhealth' => 250, // Default minimum when base_salary is 0
@@ -109,6 +110,10 @@ class SalaryController extends Controller
             $data['withholding_tax'] = ($total_compensation - 666667) * 0.35 + 183541.80;
         }
         
+        // If college_rate is not set, keep the old value
+        if (!array_key_exists('college_rate', $data)) {
+            $data['college_rate'] = $salary->college_rate;
+        }
         $salary->update($data);
 
         return redirect()

@@ -61,6 +61,7 @@ class EmployeesController extends Controller
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
                 'base_salary' => $emp->base_salary,
+                'college_rate' => $emp->college_rate,
                 'sss' => $emp->sss,
                 'philhealth' => $emp->philhealth,
                 'pag_ibig' => $emp->pag_ibig,
@@ -112,6 +113,7 @@ class EmployeesController extends Controller
             ->mapWithKeys(fn($row) => [
                 $row->employee_type => [
                     'base_salary'     => $row->base_salary,
+                    'college_rate'    => $row->college_rate,
                     'sss'             => $row->sss,
                     'philhealth'      => $row->philhealth,
                     'pag_ibig'        => $row->pag_ibig,
@@ -139,8 +141,17 @@ class EmployeesController extends Controller
     public function store(StoreEmployeesRequest $request)
     {
     $data = $request->validated();
-    // Recalculate PhilHealth using new formula (divide by 2)
-    if (isset($data['base_salary'])) {
+    // Always set college_rate from rate_per_hour if present in request
+    if (request()->has('rate_per_hour')) {
+        $data['college_rate'] = request()->input('rate_per_hour');
+    }
+    $isCollege = isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'));
+    // If role is college instructor, nullify base_salary only
+    if ($isCollege) {
+        $data['base_salary'] = null;
+    }
+    // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor
+    if (!$isCollege && isset($data['base_salary']) && $data['base_salary'] !== null) {
         $base_salary = (float) $data['base_salary'];
         $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
         $data['philhealth'] = round($philhealth, 2);
@@ -212,6 +223,7 @@ class EmployeesController extends Controller
                 'employee_status' => $employee->employee_status,
                 'roles' => $employee->roles,
                 'base_salary' => $employee->base_salary,
+                'college_rate' => $employee->college_rate,
                 'sss' => $employee->sss,
                 'philhealth' => $employee->philhealth,
                 'pag_ibig' => $employee->pag_ibig,
@@ -248,8 +260,17 @@ class EmployeesController extends Controller
     public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
     $data = $request->validated();
-    // Recalculate PhilHealth using new formula (divide by 2)
-    if (isset($data['base_salary'])) {
+    // Always set college_rate from rate_per_hour if present in request
+    if (request()->has('rate_per_hour')) {
+        $data['college_rate'] = request()->input('rate_per_hour');
+    }
+    $isCollege = isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'));
+    // If role is college instructor, nullify base_salary only
+    if ($isCollege) {
+        $data['base_salary'] = null;
+    }
+    // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor
+    if (!$isCollege && isset($data['base_salary']) && $data['base_salary'] !== null) {
         $base_salary = (float) $data['base_salary'];
         $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
         $data['philhealth'] = round($philhealth, 2);

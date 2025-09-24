@@ -26,12 +26,12 @@ class SalarySeeder extends Seeder
         // --- Payroll formulas: see resources/js/utils/salaryFormulas.ts ---
         $defaults = [];
         $types = [
-            'Full Time' => [50000, 200, 800, 200],
-            'Part Time' => [20000, 150, 400, 200],
-            'Provisionary' => [30000, 175, 600, 200],
-            'Regular' => [40000, 180, 700, 200],
+            'Full Time' => [50000, 200, 800, 200, 350], // last value is college_rate
+            'Part Time' => [20000, 150, 400, 200, 250],
+            'Provisionary' => [30000, 175, 600, 200, 275],
+            'Regular' => [40000, 180, 700, 200, 300],
         ];
-        foreach ($types as $type => [$base_salary, $overtime_pay, $sss, $pag_ibig]) {
+        foreach ($types as $type => [$base_salary, $overtime_pay, $sss, $pag_ibig, $college_rate]) {
             // PhilHealth formula
             $calculatedPhilHealth = ($base_salary * 0.05) / 2;
             $philhealth = number_format(max(250, min(2500, $calculatedPhilHealth)), 2, '.', '');
@@ -185,6 +185,7 @@ class SalarySeeder extends Seeder
                 'philhealth'      => $philhealth,
                 'pag_ibig'        => number_format($pag_ibig, 2, '.', ''),
                 'withholding_tax' => $withholding_tax,
+                'college_rate'    => number_format($college_rate, 2, '.', ''),
             ];
         }
 

@@ -13,6 +13,7 @@ import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { RolesBadges } from "./roles-badges";
+import DialogScrollArea from "./dialog-scroll-area";
 
 interface Props {
   employee: Employees | null;
@@ -43,6 +44,8 @@ export default function BTRDialog({ employee, onClose }: Props) {
           setAvailableMonths(data.months);
           if (!selectedMonth && data.months.length > 0) {
             setSelectedMonth(data.months[0]);
+          } else if (data.months.length === 0) {
+            toast.error('No available months to display.');
           }
         }
       });
@@ -121,7 +124,7 @@ export default function BTRDialog({ employee, onClose }: Props) {
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-2xl font-bold mb-2">Biometric Time Record</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto pr-2 min-h-[700px]">
+        <DialogScrollArea>
           {employee && (
             <div className="space-y-12 text-base mb-6">
               <div className="border-b pb-6 mb-2">
@@ -271,7 +274,7 @@ export default function BTRDialog({ employee, onClose }: Props) {
               )}
             </AnimatePresence>
           </div>
-        </div>
+        </DialogScrollArea>
         <DialogFooter className="flex-shrink-0">
           <Button type="button" onClick={onClose}>
             Close

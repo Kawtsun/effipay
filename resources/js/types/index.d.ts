@@ -52,6 +52,7 @@ export interface Employees {
     roles: string;
     base_salary: number;
     honorarium: number;
+    college_rate?: number;
     overtime_pay: number;
     sss: number;
     philhealth: number;

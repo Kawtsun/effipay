@@ -1,3 +1,9 @@
+import { formatFullName } from '../utils/formatFullName';
+
+// Utility to convert a string to Title Case (capitalize each word)
+function toTitleCase(str: string) {
+    return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+}
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -21,6 +27,7 @@ interface Employee {
 interface Payroll {
     payroll_date: string;
     base_salary?: number;
+    college_rate?: number;
     tardiness?: number;
     undertime?: number;
     absences?: number;
@@ -49,6 +56,7 @@ interface PayslipData {
         monthlySalary?: string | number;
         numHours?: string | number;
         ratePerHour?: string | number;
+        collegeRate?: string | number;
         collegeGSP?: string | number;
         honorarium?: string | number;
         tardiness?: number | string;
@@ -64,6 +72,9 @@ interface PayslipData {
         adjustment?: number | string;
         gross_pay?: number | string;
         net_pay?: number | string;
+        totalHours?: number;
+        overtime_count_weekdays?: number | string;
+        overtime_count_weekends?: number | string;
     };
     deductions: {
         sss?: string;
@@ -116,7 +127,7 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
         return null;
     }
     // Use the latest payroll for the month
-    const payroll: Payroll = result.payrolls.reduce((latest: Payroll, curr: Payroll) => {
+    const payroll: Payroll & { college_rate?: number } = result.payrolls.reduce((latest: Payroll, curr: Payroll) => {
         return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
     }, result.payrolls[0]);
     // Map backend fields to payslip template props
@@ -128,6 +139,7 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             absences: payroll.absences ?? 0,
             overtime_pay_total: payroll.overtime_pay ?? 0,
             ratePerHour: undefined, // will be injected from timekeeping
+            collegeRate: payroll.college_rate ?? 0,
         },
         deductions: {
             sss: payroll.sss ?? '',
@@ -170,6 +182,8 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 setAvailableMonths(result.months);
                 if (result.months.length > 0 && !selectedMonth) {
                     setSelectedMonth(result.months[0]);
+                } else if (result.months.length === 0) {
+                    toast.error('No available months to display.');
                 }
             }
         } catch (error) {
@@ -177,9 +191,11 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         }
     };
     React.useEffect(() => {
-        fetchAvailableMonths();
+        if (open) {
+            fetchAvailableMonths();
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [open]);
 
     // Print Payslip handler
     const handlePrintPayslip = async () => {
@@ -191,6 +207,22 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             setLoadingPayslip(false);
             return;
         }
+        // Fetch the raw payroll object for college_rate
+        let payrollCollegeRate = 0;
+        try {
+            const response = await fetch(route('payroll.employee.monthly', {
+                employee_id: employee?.id,
+                month: selectedMonth,
+            }));
+            const result = await response.json();
+            if (result.success && result.payrolls && result.payrolls.length > 0) {
+                type PayrollType = typeof result.payrolls[0];
+                const payroll = result.payrolls.reduce((latest: PayrollType, curr: PayrollType) => {
+                    return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
+                }, result.payrolls[0]);
+                payrollCollegeRate = payroll.college_rate ?? 0;
+            }
+        } catch { /* ignore error */ }
         // Fetch timekeeping records before calculating numHours
         const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
         const result = await response.json();
@@ -223,25 +255,33 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 + (Number(timekeepingSummary.overtime ?? 0));
             if (numHours < 0) numHours = 0;
         }
-        setPayrollData({
-            ...data,
-            earnings: {
-                ...data.earnings,
-                numHours,
-                ratePerHour: timekeepingSummary?.rate_per_hour ?? 0,
-                tardiness: timekeepingSummary?.tardiness ?? 0,
-                undertime: timekeepingSummary?.undertime ?? 0,
-                absences: timekeepingSummary?.absences ?? 0,
-                overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
-                overtime: timekeepingSummary?.overtime ?? undefined,
-                gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
-                net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
-                adjustment: data.earnings?.adjustment ?? undefined,
-                honorarium: data.earnings?.honorarium ?? undefined,
-                collegeGSP: data.earnings?.collegeGSP ?? undefined,
-                overload: data.earnings?.overload ?? undefined,
-            },
-        });
+            setPayrollData({
+                ...data,
+                earnings: {
+                    ...data.earnings,
+                    numHours,
+                    ratePerHour: (employee?.roles && employee.roles.toLowerCase().includes('college'))
+                        ? (data.earnings.collegeRate ?? payrollCollegeRate ?? 0)
+                        : (timekeepingSummary?.rate_per_hour ?? 0),
+                    collegeRate: data.earnings.collegeRate ?? payrollCollegeRate ?? 0,
+                    tardiness: timekeepingSummary?.tardiness ?? 0,
+                    undertime: timekeepingSummary?.undertime ?? 0,
+                    absences: timekeepingSummary?.absences ?? 0,
+                    overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
+                    overtime: timekeepingSummary?.overtime ?? undefined,
+                    overtime_count_weekdays: timekeepingSummary?.overtime_count_weekdays ?? data.earnings.overtime_count_weekdays ?? 0,
+                    overtime_count_weekends: timekeepingSummary?.overtime_count_weekends ?? data.earnings.overtime_count_weekends ?? 0,
+                    gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
+                    net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
+                    adjustment: data.earnings?.adjustment ?? undefined,
+                    honorarium: data.earnings?.honorarium ?? undefined,
+                    collegeGSP: data.earnings?.collegeGSP ?? undefined,
+                    overload: data.earnings?.overload ?? undefined,
+                    totalHours: (employee?.roles && employee.roles.toLowerCase().includes('college'))
+                      ? (timekeepingSummary?.total_hours ? Number(timekeepingSummary.total_hours) : 0)
+                      : (typeof numHours === 'number' ? numHours : (numHours ? Number(numHours) : 0)),
+                },
+            });
         setTimeout(() => {
             setShowPDF('payslip');
             setLoadingPayslip(false);
@@ -252,45 +292,74 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
     const handlePrintBTR = async () => {
         setLoadingBTR(true);
         setShowPDF(false);
-        const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
-        const result = await response.json();
-        // Get all days in the selected month
-        const allDates: string[] = [];
-        if (selectedMonth) {
-            const [year, month] = selectedMonth.split('-').map(Number);
-            if (!isNaN(year) && !isNaN(month)) {
-                const daysInMonth = new Date(year, month, 0).getDate();
-                for (let d = 1; d <= daysInMonth; d++) {
-                    const date = new Date(year, month - 1, d);
-                    allDates.push(date.toISOString().slice(0, 10));
+        try {
+            // Fetch BTR records for this employee
+            const btrRes = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
+            const btrJson = await btrRes.json();
+            let btrRecords: BTRRecord[] = [];
+            if (btrJson.success && Array.isArray(btrJson.records)) {
+                btrRecords = btrJson.records.map((rec: Record<string, unknown>) => ({
+                    ...rec,
+                    timeIn: (rec.clock_in as string) || (rec.time_in as string) || '-',
+                    timeOut: (rec.clock_out as string) || (rec.time_out as string) || '-',
+                }));
+            }
+            // Only proceed if at least one real timeIn or timeOut exists
+            const hasRealTime = btrRecords.some(r => (r.timeIn && r.timeIn !== '-') || (r.timeOut && r.timeOut !== '-'));
+            if (!hasRealTime) {
+                toast.error('No biometric time records found for this month.');
+                setLoadingBTR(false);
+                return;
+            }
+            // Fetch timekeeping summary for this employee/month
+            // Fetch timekeeping summary and calculate total hours (logic retained for future use, but variables removed to fix lint errors)
+            // totalHours is calculated but not used; suppress unused warning by omitting assignment if not needed
+            // const totalHours = totalWorkedHours
+            //     - (Number(summary?.tardiness ?? 0))
+            //     - (Number(summary?.undertime ?? 0))
+            //     - (Number(summary?.absences ?? 0))
+            //     + (Number(summary?.overtime ?? 0));
+            // Set BTR records for rendering (pass all days in month, with mapped records)
+            // Generate all days in the month
+            const allDates: string[] = [];
+            if (selectedMonth && /^\d{4}-\d{2}$/.test(selectedMonth)) {
+                const [yearStr, monthStr] = selectedMonth.split('-');
+                const year = parseInt(yearStr, 10);
+                const month = parseInt(monthStr, 10); // 1-based
+                if (!isNaN(year) && !isNaN(month)) {
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        // Always use YYYY-MM-DD (no time) for consistency with batch logic
+                        const mm = String(month).padStart(2, '0');
+                        const dd = String(d).padStart(2, '0');
+                        allDates.push(`${year}-${mm}-${dd}`);
+                    }
                 }
             }
-        }
-        const recordMap: Record<string, Partial<BTRRecord> & { clock_in?: string; time_in?: string; clock_out?: string; time_out?: string }> = {};
-        if (result.success && Array.isArray(result.records)) {
-            for (const rec of result.records) {
+            // Map records by date for quick lookup
+            const recordMap: Record<string, BTRRecord> = {};
+            btrRecords.forEach((rec) => {
                 recordMap[rec.date] = rec;
-            }
-        }
-        const records: BTRRecord[] = allDates.map(dateStr => {
-            const rec = recordMap[dateStr];
-            const dateObj = new Date(dateStr);
-            const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
-            return {
-                date: dateStr,
-                dayName,
-                timeIn: rec ? (rec.clock_in || rec.time_in || '-') : '-',
-                timeOut: rec ? (rec.clock_out || rec.time_out || '-') : '-',
-            };
-        });
-        setBtrRecords(records);
-        if (records.length > 0) {
+            });
+            // Always generate all days for the month, even if no records exist for that day
+            const records: BTRRecord[] = allDates.map(dateStr => {
+                const rec = recordMap[dateStr];
+                const dateObj = new Date(dateStr);
+                const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                return {
+                    date: dateStr,
+                    dayName,
+                    timeIn: rec ? rec.timeIn : '-',
+                    timeOut: rec ? rec.timeOut : '-',
+                };
+            });
+            setBtrRecords(records);
             setTimeout(() => {
                 setShowPDF('btr');
                 setLoadingBTR(false);
             }, 100);
-        } else {
-            toast.error('No biometric time records found for this month.');
+        } catch {
+            toast.error('Error generating BTR.');
             setLoadingBTR(false);
         }
     };
@@ -310,7 +379,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 <DialogTitle>Print Employee Report</DialogTitle>
                             </DialogHeader>
                             <div className="mb-4 text-sm text-muted-foreground text-center w-full">
-                                What would you like to print for <span className="font-semibold">{employee?.last_name}, {employee?.first_name} {employee?.middle_name}</span>?
+                                What would you like to print for <span className="font-semibold">{employee ? toTitleCase(formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}</span>?
                             </div>
                             <div className="mb-4 w-full flex flex-col items-center">
                                 <label className="block text-xs font-semibold mb-1 text-center w-full">Select Month</label>
@@ -336,12 +405,14 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 {showPDF === 'payslip' && payrollData && (
                                     <PDFDownloadLink
                                         document={<PayslipTemplate
-                                            employeeName={`${employee?.last_name}, ${employee?.first_name} ${employee?.middle_name}`}
+                                            employeeName={employee ? toTitleCase(formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             earnings={payrollData.earnings}
                                             deductions={payrollData.deductions}
                                             totalDeductions={payrollData.totalDeductions}
+                                            totalHours={payrollData.earnings.totalHours}
+                                            collegeRate={payrollData.earnings.collegeRate}
                                         />}
                                         fileName={`Payslip_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`}
                                         download
@@ -368,24 +439,28 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 {showPDF === 'btr' && btrRecords.length > 0 && (
                                     <PDFDownloadLink
                                         document={<BiometricTimeRecordTemplate
-                                            employeeName={`${employee?.last_name}, ${employee?.first_name} ${employee?.middle_name}`}
+                                            employeeName={employee ? toTitleCase(formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             records={btrRecords}
-                                            totalHours={(() => {
-                                                let totalWorkedHours = 0;
-                                                if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
-                                                    const attendedShifts = btrRecords.filter(
-                                                        (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
-                                                    ).length;
-                                                    totalWorkedHours = attendedShifts * employee.work_hours_per_day;
-                                                }
-                                                return totalWorkedHours
-                                                    - (Number(timekeepingSummary?.tardiness ?? 0))
-                                                    - (Number(timekeepingSummary?.undertime ?? 0))
-                                                    - (Number(timekeepingSummary?.absences ?? 0))
-                                                    + (Number(timekeepingSummary?.overtime ?? 0));
-                                            })()}
+                                            totalHours={
+                                                typeof timekeepingSummary?.total_hours === 'number'
+                                                    ? timekeepingSummary.total_hours
+                                                    : (() => {
+                                                        let totalWorkedHours = 0;
+                                                        if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
+                                                            const attendedShifts = btrRecords.filter(
+                                                                (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
+                                                            ).length;
+                                                            totalWorkedHours = attendedShifts * employee.work_hours_per_day;
+                                                        }
+                                                        return totalWorkedHours
+                                                            - (Number(timekeepingSummary?.tardiness ?? 0))
+                                                            - (Number(timekeepingSummary?.undertime ?? 0))
+                                                            - (Number(timekeepingSummary?.absences ?? 0))
+                                                            + (Number(timekeepingSummary?.overtime ?? 0));
+                                                    })()
+                                            }
                                             tardiness={timekeepingSummary?.tardiness ?? 0}
                                             undertime={timekeepingSummary?.undertime ?? 0}
                                             overtime={timekeepingSummary?.overtime ?? 0}

@@ -23,6 +23,7 @@ class UpdateSalaryRequest extends FormRequest
     {
         return [
             'base_salary'     => 'sometimes|required|numeric|min:0',
+            'college_rate'    => 'sometimes|required|numeric|min:0',
             'overtime_pay'    => 'sometimes|required|numeric|min:0',
             'sss'             => 'sometimes|required|numeric|min:0',
             'philhealth'      => 'sometimes|required|numeric|min:250|max:2500',

@@ -1,3 +1,6 @@
+    // ...existing code...
+import DialogScrollArea from './dialog-scroll-area';
+import { formatFullName } from '../utils/formatFullName';
 // Use the same formatting as employee-view-dialog
 function formatWithCommas(value: string | number): string {
     let num = 0;
@@ -44,8 +47,9 @@ interface PayrollData {
     month: string;
     payroll_date: string;
     base_salary: number;
+    college_rate?: number;
     honorarium?: number;
-    overtime_pay: number;
+    overtime?: number;
     sss: number;
     philhealth: number;
     pag_ibig: number;
@@ -68,6 +72,8 @@ interface PayrollData {
     total_deductions: number;
     net_pay: number;
     rate_per_hour?: number;
+    overtime_count_weekdays?: number;
+    overtime_count_weekends?: number;
 }
 
 interface MonthlyPayrollData {
@@ -79,6 +85,7 @@ interface Props {
     employee: Employees | null;
     onClose: () => void;
     activeRoles?: string[];
+    open?: boolean;
 }
 
 function Info({ label, value }: { label: string; value: string | number }) {
@@ -101,13 +108,58 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     // Use payroll data for all payroll fields if available, else fallback to employee/timekeeping
     // Use the payroll with the latest payroll_date for the selected month
     let selectedPayroll: PayrollData | null = null;
-    if (monthlyPayrollData && monthlyPayrollData.payrolls.length > 0) {
-        selectedPayroll = monthlyPayrollData.payrolls.reduce((latest, curr) => {
-            return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
-        }, monthlyPayrollData.payrolls[0]);
-    }
     // Only show/calculate salary/contributions if payroll data exists for the month
     const hasPayroll = !!(monthlyPayrollData && monthlyPayrollData.payrolls && monthlyPayrollData.payrolls.length > 0);
+    if (hasPayroll) {
+        selectedPayroll = monthlyPayrollData!.payrolls.reduce((latest, curr) => {
+            return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
+        }, monthlyPayrollData!.payrolls[0]);
+    }
+    // Determine if this payroll is for a college instructor by checking employee.roles (case-insensitive)
+    const isCollegeInstructorPayroll = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
+
+    // Helper for summary card values (must be after hasPayroll, selectedPayroll, etc)
+    const getSummaryCardAmount = (type: 'tardiness' | 'undertime' | 'overtime' | 'absences') => {
+        if (!hasPayroll) return '-';
+        // Overtime: use new formula
+        if (type === 'overtime') {
+            let rate = 0;
+            let weekdayOvertime = 0;
+            let weekendOvertime = 0;
+            if (isCollegeInstructorPayroll && selectedPayroll) {
+                rate = Number(selectedPayroll.college_rate ?? 0);
+                weekdayOvertime = Number(selectedPayroll.overtime_count_weekdays ?? 0);
+                weekendOvertime = Number(selectedPayroll.overtime_count_weekends ?? 0);
+                // If both overtime counts are zero, fallback to timekeepingSummary if available
+                if ((weekdayOvertime + weekendOvertime) === 0 && timekeepingSummary) {
+                    weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
+                    weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
+                }
+                const weekdayPay = rate * 0.25 * weekdayOvertime;
+                const weekendPay = rate * 0.30 * weekendOvertime;
+                const overtimePay = weekdayPay + weekendPay;
+                return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            } else if (timekeepingSummary) {
+                rate = Number(timekeepingSummary.rate_per_hour ?? 0);
+                weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
+                weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
+                const weekdayPay = rate * 0.25 * weekdayOvertime;
+                const weekendPay = rate * 0.30 * weekendOvertime;
+                const overtimePay = weekdayPay + weekendPay;
+                return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            return '-';
+        }
+        // Other types: keep old logic
+        if (isCollegeInstructorPayroll && selectedPayroll) {
+            const value = Number(selectedPayroll[type]) || 0;
+            const rate = selectedPayroll.college_rate ?? 0;
+            return `₱${(value * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        } else if (timekeepingSummary && typeof timekeepingSummary[type] === 'number' && typeof timekeepingSummary.rate_per_hour === 'number') {
+            return `₱${(timekeepingSummary[type] * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+        return '-';
+    };
     const sss = hasPayroll ? Number(selectedPayroll?.sss) : null;
     const philhealth = hasPayroll ? Number(selectedPayroll?.philhealth) : null;
     const pag_ibig = hasPayroll ? Number(selectedPayroll?.pag_ibig) : null;
@@ -133,7 +185,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        if (employee) {
+        if (employee && (typeof (ReportViewDialog as any).open === 'boolean' ? (ReportViewDialog as any).open : true)) {
             fetchAvailableMonths();
         }
         // eslint-disable-next-line
@@ -158,6 +210,8 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                 if (result.months.length > 0 && !selectedMonth) {
                     setSelectedMonth(result.months[0]);
                     setPendingMonth(result.months[0]);
+                } else if (result.months.length === 0) {
+                    toast.error('No available months to display.');
                 }
             }
         } catch (error) {
@@ -208,14 +262,14 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                         exit={{ opacity: 0, scale: 0.99 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
                     >
-                        <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col">
+                        <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col min-h-0">
                             <DialogHeader className="flex-shrink-0">
                                 <DialogTitle className="text-2xl font-bold mb-2">Employee Payroll Report</DialogTitle>
                             </DialogHeader>
-                            <div className="flex-1 overflow-y-auto pr-2">
+                            <DialogScrollArea>
                                 <div className="space-y-8 text-base">
                                     <div className="border-b pb-6 mb-2">
-                                        <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {`${employee.last_name}, ${employee.first_name} ${employee.middle_name}`.toLocaleUpperCase('en-US')}</h3>
+                                        <h3 className="text-2xl font-extrabold mb-1">#{employee.id} - {formatFullName(employee.last_name, employee.first_name, employee.middle_name)}</h3>
                                     </div>
                                     <div className="grid grid-cols-2 gap-10 items-start mb-6">
                                         <div>
@@ -375,8 +429,6 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                     {/* Summary Cards: 4 timekeeping (amounts) + 4 report cards */}
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                                         {/* Tardiness Amount */}
-                                                        {/* Attendance Cards: Always show, but show '-' if no payroll data */}
-                                                        {/* Tardiness Amount */}
                                                         <motion.div
                                                             className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-800 flex flex-col justify-between min-w-[150px] w-[180px] shadow-sm min-h-[120px] h-full"
                                                             initial={{ opacity: 0, y: 10 }}
@@ -386,9 +438,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-orange-600 font-medium mb-2">Tardiness</div>
                                                             <div className="text-xl font-bold text-orange-700 dark:text-orange-300 break-words whitespace-nowrap">
-                                                                {hasPayroll && typeof timekeepingSummary?.tardiness === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
-                                                                    ? `₱${(timekeepingSummary.tardiness * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                                    : '-'}
+                                                                {getSummaryCardAmount('tardiness')}
                                                             </div>
                                                         </motion.div>
                                                         {/* Undertime Amount */}
@@ -401,9 +451,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-red-600 font-medium mb-2">Undertime</div>
                                                             <div className="text-xl font-bold text-red-700 dark:text-red-300 break-words whitespace-nowrap">
-                                                                {hasPayroll && typeof timekeepingSummary?.undertime === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
-                                                                    ? `₱${(timekeepingSummary.undertime * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                                    : '-'}
+                                                                {getSummaryCardAmount('undertime')}
                                                             </div>
                                                         </motion.div>
                                                         {/* Overtime Amount */}
@@ -416,9 +464,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-blue-600 font-medium mb-2">Overtime</div>
                                                             <div className="text-xl font-bold text-blue-700 dark:text-blue-300 break-words whitespace-nowrap">
-                                                                {hasPayroll && typeof timekeepingSummary?.overtime_pay_total === 'number'
-                                                                    ? `₱${timekeepingSummary.overtime_pay_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                                    : '-'}
+                                                                {getSummaryCardAmount('overtime')}
                                                             </div>
                                                         </motion.div>
                                                         {/* Absences Amount */}
@@ -431,9 +477,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                         >
                                                             <div className="text-xs text-gray-600 font-medium mb-2">Absences</div>
                                                             <div className="text-xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-nowrap">
-                                                                {hasPayroll && typeof timekeepingSummary?.absences === 'number' && typeof timekeepingSummary?.rate_per_hour === 'number'
-                                                                    ? `₱${(timekeepingSummary.absences * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                                    : '-'}
+                                                                {getSummaryCardAmount('absences')}
                                                             </div>
                                                         </motion.div>
                                                         {/* Gross Pay */}
@@ -510,7 +554,11 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                                 <div className="px-8 min-h-[200px] flex flex-col justify-start">
                                                                     <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Income & Benefits</h5>
                                                                     <div className="space-y-3 text-sm">
-                                                                        <Info label="Base Salary" value={hasPayroll && selectedPayroll && selectedPayroll.base_salary !== null && selectedPayroll.base_salary !== undefined ? `₱${formatWithCommas(selectedPayroll.base_salary)}` : '-'} />
+                                                                        {isCollegeInstructorPayroll ? (
+                                                                            <Info label="Rate Per Hour" value={hasPayroll && selectedPayroll && selectedPayroll.college_rate !== undefined && selectedPayroll.college_rate !== null ? `₱${formatWithCommas(selectedPayroll.college_rate)}` : '-'} />
+                                                                        ) : (
+                                                                            <Info label="Monthly Salary" value={hasPayroll && selectedPayroll && selectedPayroll.base_salary !== null && selectedPayroll.base_salary !== undefined ? `₱${formatWithCommas(selectedPayroll.base_salary)}` : '-'} />
+                                                                        )}
                                                                         <Info label="Honorarium" value={hasPayroll && selectedPayroll && selectedPayroll.honorarium !== null && selectedPayroll.honorarium !== undefined ? `₱${formatWithCommas(selectedPayroll.honorarium)}` : '-'} />
                                                                     </div>
                                                                 </div>
@@ -549,7 +597,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                         </AnimatePresence>
                                     </div>
                                 </div>
-                            </div>
+                            </DialogScrollArea>
                             <DialogFooter className="flex-shrink-0">
                                 <Button onClick={onClose}>Close</Button>
                             </DialogFooter>

@@ -8,8 +8,10 @@ import { Filter } from "lucide-react"
 import { employee_status, leave_statuses } from "./employee-status"
 import { Badge } from "./ui/badge"
 import EmployeeCollegeRadioDepartment from './employee-college-radio-department';
+import CollegeProgramScrollArea from './college-program-scroll-area';
 import EmployeeInstructorRadioRole from './employee-instructor-radio-role';
 import { AnimatePresence, motion } from 'framer-motion';
+import FilterScrollArea from './filter-scroll-area';
 
 interface FilterState {
   types: string[]
@@ -33,8 +35,6 @@ const employee_type = [
   { value: "Regular", label: "Regular" },
 ];
 
-// Add a capitalizeWords utility
-const capitalizeWords = (str: string) => str.replace(/\b\w/g, c => c.toUpperCase());
 
 export default function EmployeeFilter({
   selectedTypes,
@@ -111,7 +111,7 @@ export default function EmployeeFilter({
 
 
       <PopoverContent className="w-64 p-0 flex flex-col h-[480px]">
-        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        <FilterScrollArea className="flex-1 p-4 space-y-5">
           <div>
             <h4 className="text-sm font-semibold mb-1 select-none">Employee Type</h4>
             <p className="text-xs text-muted-foreground mb-2 select-none">
@@ -124,7 +124,6 @@ export default function EmployeeFilter({
                   onCheckedChange={() => setTypes(toggle(types, value))}
                   className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
                 />
-
                 {label}
               </label>
             ))}
@@ -222,17 +221,18 @@ export default function EmployeeFilter({
                     className="pl-4 mt-2"
                   >
                     <div className="text-xs font-semibold mb-1">College Department</div>
-                    <EmployeeCollegeRadioDepartment
-                      value={collegeProgram}
-                      onChange={setCollegeProgram}
-                      className="max-h-40 overflow-y-auto pr-2"
-                    />
+                    <CollegeProgramScrollArea>
+                      <EmployeeCollegeRadioDepartment
+                        value={collegeProgram}
+                        onChange={setCollegeProgram}
+                      />
+                    </CollegeProgramScrollArea>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           </div>
-        </div>
+        </FilterScrollArea>
         <div className="flex justify-end gap-2 pt-3 border-t mt-2 bg-background sticky bottom-0 z-10 p-4">
           <Button variant="ghost" size="sm" onClick={handleReset}>
             Reset

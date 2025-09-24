@@ -1,3 +1,5 @@
+import DialogScrollArea from './dialog-scroll-area';
+import { formatFullName } from '../utils/formatFullName';
 import {
     Dialog,
     DialogContent,
@@ -5,17 +7,15 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { calculateGrossPay } from "@/utils/salaryFormulas";
 import { toast } from "sonner";
 import { Employees } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
-import { RolesBadges, getCollegeProgramLabel } from "./roles-badges";
 import React, { useState, useEffect, useRef } from "react";
 import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { MonthRangePicker } from "./ui/month-range-picker";
 import { Skeleton } from "./ui/skeleton";
-import { Fingerprint } from "lucide-react";
+import { RolesBadges } from "./roles-badges"; // Ensure RolesBadges is imported
 
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
@@ -29,12 +29,6 @@ function formatTime12Hour(time?: string): string {
     return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
-function formatNumberWithCommas(num: number | string): string {
-    if (num === null || num === undefined) return '-';
-    const n = typeof num === 'string' ? Number(num) : num;
-    if (isNaN(n)) return '-';
-    return n.toLocaleString('en-US');
-}
 
 function formatNumberWithCommasAndFixed(num: number | string, decimals = 2): string {
     if (num === null || num === undefined) return '-';
@@ -63,13 +57,57 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     const [selectedMonth, setSelectedMonth] = useState("");
     const [pendingMonth, setPendingMonth] = useState("");
     // Payroll summary for pay details (keep for summary cards)
-    const { summary } = useEmployeePayroll(employee?.id ?? null, pendingMonth);
+    const { summary } = useEmployeePayroll(employee?.id ?? null, pendingMonth, employee);
+
+    // Calculate gross pay including overtime (for display)
+    function getOvertimePay() {
+        if (!summary) return 0;
+        const isCollegeInstructor = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
+        const ratePerHour = isCollegeInstructor ? Number(summary.college_rate ?? 0) : Number(summary.rate_per_hour ?? 0);
+        const weekdayOvertime = Number(summary.overtime_count_weekdays ?? 0);
+        const weekendOvertime = Number(summary.overtime_count_weekends ?? 0);
+        const weekdayPay = ratePerHour * 0.25 * weekdayOvertime;
+        const weekendPay = ratePerHour * 0.30 * weekendOvertime;
+        return weekdayPay + weekendPay;
+    }
+
+    function getGrossPay() {
+        if (!summary) return 0;
+        const isCollegeInstructor = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
+        const ratePerHour = isCollegeInstructor ? Number(summary.college_rate ?? 0) : Number(summary.rate_per_hour ?? 0);
+        const baseSalary = Number(summary.base_salary ?? 0);
+        const totalHours = Number(summary.total_hours ?? 0);
+        const tardiness = Number(summary.tardiness ?? 0);
+        const undertime = Number(summary.undertime ?? 0);
+        const absences = Number(summary.absences ?? 0);
+        // Use new overtime formula
+        const overtimePay = getOvertimePay();
+        if (isCollegeInstructor) {
+            return (
+                (ratePerHour * totalHours)
+                + overtimePay
+                - (ratePerHour * tardiness)
+                - (ratePerHour * undertime)
+                - (ratePerHour * absences)
+            );
+        } else {
+            return (
+                baseSalary
+                + overtimePay
+                - (ratePerHour * tardiness)
+                - (ratePerHour * undertime)
+                - (ratePerHour * absences)
+            );
+        }
+    }
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [loadingPayroll, setLoadingPayroll] = useState(false);
     const [minLoading, setMinLoading] = useState(false);
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
     // Remove summary/hasMonthData logic for toast, use BTRDialog approach
-    const [records, setRecords] = useState<any[]>([]);
+    // Use a more specific type for records
+    // Use a more specific type for records if possible. Assuming records are objects with string keys and values.
+    const [records, setRecords] = useState<Array<Record<string, unknown>>>([]);
     const recordsMinLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
     useEffect(() => {
         if (!employee || !selectedMonth) return;
@@ -105,6 +143,8 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                 if (result.months.length > 0 && !selectedMonth) {
                     setSelectedMonth(result.months[0]);
                     setPendingMonth(result.months[0]);
+                } else if (result.months.length === 0) {
+                    toast.error('No available months to display.');
                 }
             }
         } catch (error) {
@@ -162,15 +202,15 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                         exit={{ opacity: 0, scale: 0.99 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
                     >
-                        <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col">
+                        <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col min-h-0">
                             <DialogHeader className="flex-shrink-0">
                                 <DialogTitle className="text-2xl font-bold mb-2">Employee Attendance Details</DialogTitle>
                             </DialogHeader>
-                            <div className="flex-1 overflow-y-auto pr-2 min-h-[700px]">
+                            <DialogScrollArea>
                                 <div className="space-y-12 text-base">
                                     <div className="border-b pb-6 mb-2">
                                         <h3 className="text-2xl font-extrabold mb-1">
-                                            #{employee.id} - {`${employee.last_name}, ${employee.first_name} ${employee.middle_name}`.toLocaleUpperCase('en-US')}
+                                            #{employee.id} - {formatFullName(employee.last_name, employee.first_name, employee.middle_name)}
                                         </h3>
                                     </div>
                                     <div className="grid grid-cols-2 gap-10 items-start mb-6">
@@ -254,24 +294,46 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                     <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
                                                         <div>
                                                             <Skeleton className="h-6 w-36 mb-4" />
-                                                            <div className="space-y-3 text-sm">
-                                                                <div>
-                                                                    <Skeleton className="h-3 w-28 mb-1" />
-                                                                    <Skeleton className="h-4 w-40" />
+                                                            {/* College Instructor: custom skeleton fields */}
+                                                            {employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor') ? (
+                                                                <div className="space-y-3 text-sm">
+                                                                    <div>
+                                                                        <Skeleton className="h-3 w-32 mb-1" /> {/* Rate Per Hour */}
+                                                                        <Skeleton className="h-4 w-40" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <Skeleton className="h-3 w-32 mb-1" /> {/* Total Hours */}
+                                                                        <Skeleton className="h-4 w-36" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <Skeleton className="h-3 w-32 mb-1" /> {/* Gross Pay */}
+                                                                        <Skeleton className="h-4 w-40" />
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <Skeleton className="h-3 w-26 mb-1" />
-                                                                    <Skeleton className="h-4 w-36" />
-                                                                </div>
-                                                                <div>
-                                                                    <Skeleton className="h-3 w-26 mb-1" />
-                                                                    <Skeleton className="h-4 w-36" />
-                                                                </div>
-                                                                <div>
-                                                                    <Skeleton className="h-3 w-40 mb-1" />
-                                                                    <Skeleton className="h-4 w-40" />
-                                                                </div>
-                                                            </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="space-y-3 text-sm">
+                                                                        <div>
+                                                                            <Skeleton className="h-3 w-32 mb-1" /> {/* Monthly Salary */}
+                                                                            <Skeleton className="h-4 w-40" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <Skeleton className="h-3 w-32 mb-1" /> {/* Gross Pay */}
+                                                                            <Skeleton className="h-4 w-40" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-3 text-sm mt-4">
+                                                                        <div>
+                                                                            <Skeleton className="h-3 w-32 mb-1" /> {/* Rate per Day */}
+                                                                            <Skeleton className="h-4 w-36" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <Skeleton className="h-3 w-32 mb-1" /> {/* Rate per Hour */}
+                                                                            <Skeleton className="h-4 w-36" />
+                                                                        </div>
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </motion.div>
@@ -347,15 +409,25 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                     <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>
-                                                            <div className="space-y-3 text-sm">
-                                                                <Info label="Monthly Salary" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
-                                                                <Info label="Total Overtime Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.overtime_pay_total ?? 0)}`} />
-                                                                <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.gross_pay ?? 0)}`} />
-                                                            </div>
-                                                            <div className="space-y-3 text-sm mt-4">
-                                                                <Info label="Rate per Day" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_day ?? 0)}`} />
-                                                                <Info label="Rate per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_hour ?? 0)}`} />
-                                                            </div>
+                                                            {/* College Instructor: custom summary order and fields */}
+                                                            {employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor') ? (
+                                                                <div className="space-y-3 text-sm">
+                                                                    <Info label="Rate Per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.college_rate ?? 0)}`} />
+                                                                    <Info label="Total Hours" value={records.length === 0 ? '-' : `${Number(summary?.total_hours ?? 0).toFixed(2)} hr(s)`} />
+                                                                    <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(getGrossPay())}`} />
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="space-y-3 text-sm">
+                                                                        <Info label="Monthly Salary" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.base_salary ?? 0)}`} />
+                                                                        <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(getGrossPay())}`} />
+                                                                    </div>
+                                                                    <div className="space-y-3 text-sm mt-4">
+                                                                        <Info label="Rate per Day" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_day ?? 0)}`} />
+                                                                        <Info label="Rate per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.rate_per_hour ?? 0)}`} />
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </motion.div>
@@ -363,7 +435,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                         </AnimatePresence>
                                     </div>
                                 </div>
-                            </div>
+                            </DialogScrollArea>
                             <DialogFooter className="flex-shrink-0">
                                 <Button onClick={onClose}>Close</Button>
                             </DialogFooter>

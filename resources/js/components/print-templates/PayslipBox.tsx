@@ -83,6 +83,8 @@ interface EarningsProps {
   adjustment?: number | string;
   gross_pay?: number | string;
   net_pay?: number | string;
+  overtime_count_weekdays?: number | string;
+  overtime_count_weekends?: number | string;
 }
 
 interface DeductionsProps {
@@ -108,6 +110,8 @@ interface PayslipBoxProps {
   earnings?: EarningsProps;
   deductions?: DeductionsProps;
   totalDeductions?: string | number;
+  totalHours?: number | string;
+  collegeRate?: number | string;
 }
 
 const getPayPeriodString = (period?: string) => {
@@ -126,7 +130,7 @@ const getPayPeriodString = (period?: string) => {
   return `Pay Period: ${monthName} 1-${lastDay}, ${year}`;
 };
 
-const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', role = '', earnings, deductions, totalDeductions }) => {
+const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', role = '', earnings, deductions, totalDeductions, totalHours, collegeRate }) => {
   const monthlySalary = earnings?.monthlySalary;
   const monthlySalaryValue: number | string | undefined = monthlySalary;
   const getNum = (v: string | number | undefined) => {
@@ -134,30 +138,51 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
     if (typeof v === 'string') return Number(v.replace(/,/g, ''));
     return v;
   };
+  // College Instructor logic (match PayslipTemplate)
+  const isCollegeInstructor = typeof role === 'string' && role.toLowerCase().includes('college instructor');
+  const displayNumHours = isCollegeInstructor && typeof totalHours === 'number' ? totalHours.toFixed(2) : '-';
+  const displayRatePerHour = isCollegeInstructor && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
+    ? collegeRate
+    : '-';
+  let displayCollegeGSP: string | number = '-';
+  if (isCollegeInstructor && typeof totalHours === 'number' && getNum(collegeRate) > 0) {
+    displayCollegeGSP = parseFloat((totalHours * getNum(collegeRate)).toFixed(2));
+  }
   const ratePerHour = getNum(earnings?.ratePerHour);
   const tardinessHours = getNum(earnings?.tardiness);
   const undertimeHours = getNum(earnings?.undertime);
   const absencesHours = getNum(earnings?.absences);
-  const tardinessAmount = (earnings?.tardinessAmount !== undefined && earnings?.tardinessAmount !== null && earnings?.tardinessAmount !== '')
+  const tardinessAmount = earnings?.tardinessAmount !== undefined && earnings?.tardinessAmount !== null && earnings?.tardinessAmount !== ''
     ? getNum(earnings?.tardinessAmount)
-    : (tardinessHours !== 0 && ratePerHour !== 0 ? parseFloat((tardinessHours * ratePerHour).toFixed(2)) : 0);
-  const undertimeAmount = (earnings?.undertimeAmount !== undefined && earnings?.undertimeAmount !== null && earnings?.undertimeAmount !== '')
+    : parseFloat((tardinessHours * ratePerHour).toFixed(2));
+  const undertimeAmount = earnings?.undertimeAmount !== undefined && earnings?.undertimeAmount !== null && earnings?.undertimeAmount !== ''
     ? getNum(earnings?.undertimeAmount)
-    : (undertimeHours !== 0 && ratePerHour !== 0 ? parseFloat((undertimeHours * ratePerHour).toFixed(2)) : 0);
-  const absencesAmount = (earnings?.absencesAmount !== undefined && earnings?.absencesAmount !== null && earnings?.absencesAmount !== '')
+    : parseFloat((undertimeHours * ratePerHour).toFixed(2));
+  const absencesAmount = earnings?.absencesAmount !== undefined && earnings?.absencesAmount !== null && earnings?.absencesAmount !== ''
     ? getNum(earnings?.absencesAmount)
-    : (absencesHours !== 0 && ratePerHour !== 0 ? parseFloat((absencesHours * ratePerHour).toFixed(2)) : 0);
+    : parseFloat((absencesHours * ratePerHour).toFixed(2));
+  // Overtime logic for college instructor
   let overtimeHours = undefined;
   if (earnings?.overtime !== undefined && earnings?.overtime !== null && earnings?.overtime !== '') {
     overtimeHours = getNum(earnings?.overtime);
   } else if (earnings?.overtime_hours !== undefined && earnings?.overtime_hours !== null && earnings?.overtime_hours !== '') {
     overtimeHours = getNum(earnings?.overtime_hours);
-  } else {
-    overtimeHours = 0;
   }
-  const overtimeAmount = (earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== '')
-    ? getNum(earnings?.overtime_pay_total)
-    : (overtimeHours !== 0 && ratePerHour !== 0 ? parseFloat((overtimeHours * ratePerHour).toFixed(2)) : 0);
+  let overtimeAmount = 0;
+  if (isCollegeInstructor && getNum(collegeRate) > 0) {
+    const weekdayOvertime = getNum(earnings?.overtime_count_weekdays);
+    const weekendOvertime = getNum(earnings?.overtime_count_weekends);
+    const rate = getNum(collegeRate);
+    const weekdayPay = rate * 0.25 * weekdayOvertime;
+    const weekendPay = rate * 0.30 * weekendOvertime;
+    overtimeAmount = parseFloat((weekdayPay + weekendPay).toFixed(2));
+  } else if (earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== '') {
+    overtimeAmount = getNum(earnings?.overtime_pay_total);
+  } else if (overtimeHours && ratePerHour > 0) {
+    overtimeAmount = parseFloat((overtimeHours * ratePerHour).toFixed(2));
+  } else {
+    overtimeAmount = 0;
+  }
   return (
     <View style={styles.payslipBox}>
       {/* Header Row */}
@@ -235,16 +260,16 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
           {/* Indented sub-items: always show under Monthly Salary */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
             <Text>No. of hours</Text>
-            <Text>-</Text>
+            <Text>{displayNumHours}</Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
             <Text>Rate Per Hour</Text>
-            <Text>-</Text>
+            <Text>{displayRatePerHour === '-' ? '-' : formatWithCommas(displayRatePerHour)}</Text>
           </View>
           {/* College/GSP row */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
             <Text>College/GSP</Text>
-            <Text>-</Text>
+            <Text>{displayCollegeGSP === '-' ? '-' : formatWithCommas(displayCollegeGSP)}</Text>
           </View>
           {/* Honorarium row */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>

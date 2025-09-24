@@ -24,9 +24,13 @@ class TimeKeepingController extends Controller {
             return response()->json(['success' => false, 'error' => 'Missing employee_id or month'], 400);
         }
 
-        // Get all records for the employee in the given month
+        // Calculate first and last day of the month
+        $firstDay = $month . '-01';
+        $lastDay = date('Y-m-t', strtotime($firstDay));
+        // Get all records for the employee in the given month (inclusive)
         $records = \App\Models\TimeKeeping::where('employee_id', $employeeId)
-            ->where('date', 'like', $month . '%')
+            ->where('date', '>=', $firstDay)
+            ->where('date', '<=', $lastDay)
             ->orderBy('date')
             ->get(['date', 'clock_in', 'clock_out']);
 
@@ -479,7 +483,24 @@ class TimeKeepingController extends Controller {
 
         // If there is at least one record in the month, always return success and computed values
         $hasData = $records->count() > 0;
-        return response()->json([
+        // Calculate total_hours for all roles: sum of actual hours worked from time in/out (excluding weekends, minus 1 hour break per day if worked at least 4 hours)
+        $actualHoursWorked = 0;
+        foreach ($records as $tk) {
+            $date = $tk->date;
+            $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
+            if ($dayOfWeek >= 6) continue; // skip weekends
+            if (!empty($tk->clock_in) && !empty($tk->clock_out)) {
+                $in = strtotime($tk->clock_in);
+                $out = strtotime($tk->clock_out);
+                $worked = $out - $in;
+                if ($worked < 0) $worked += 24 * 60 * 60;
+                $hours = $worked / 3600;
+                // Subtract 1 hour break if worked at least 4 hours
+                if ($hours >= 4) $hours -= 1;
+                $actualHoursWorked += max(0, $hours);
+            }
+        }
+        $response = [
             'success' => $hasData,
             'tardiness' => $late_count,
             'undertime' => $early_count,
@@ -491,10 +512,15 @@ class TimeKeepingController extends Controller {
             'rate_per_day' => $rate_per_day,
             'rate_per_hour' => $rate_per_hour,
             'overtime_pay_total' => $overtime_pay_total,
-            // Optionally include more payroll fields if needed
             'payroll_gross_pay' => $payroll ? $payroll->gross_pay : null,
             'payroll_total_deductions' => $payroll ? $payroll->total_deductions : null,
             'payroll_net_pay' => $payroll ? $payroll->net_pay : null,
-        ]);
+            'total_hours' => round($actualHoursWorked, 2),
+        ];
+        // If College Instructor, add college_rate
+        if ($employee && is_string($employee->roles) && stripos($employee->roles, 'college instructor') !== false) {
+            $response['college_rate'] = $employee->college_rate ?? null;
+        }
+        return response()->json($response);
     }
 }

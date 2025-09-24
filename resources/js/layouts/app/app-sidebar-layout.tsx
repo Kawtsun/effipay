@@ -1,4 +1,5 @@
 import { AppContent } from '@/components/app-content';
+import AppContentScrollArea from '@/components/app-content-scroll-area';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
@@ -20,9 +21,13 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
             <AppShell variant="sidebar">
                 <div className="flex flex-1 pt-[94px]">
                     <AppSidebar />
-                    <AppContent variant="sidebar" className="overflow-x-hidden">
-                        <AppSidebarHeader breadcrumbs={breadcrumbs} />
-                        {children}
+                    <AppContent variant="sidebar">
+                        <AppContentScrollArea>
+                            <div className="sticky top-0 z-10 bg-white dark:bg-gray-950">
+                                <AppSidebarHeader breadcrumbs={breadcrumbs} />
+                            </div>
+                            {children}
+                        </AppContentScrollArea>
                     </AppContent>
                         <Toaster richColors position={'top-right'} visibleToasts={5} />
                 </div>

@@ -84,6 +84,8 @@ interface EarningsProps {
   adjustment?: number | string;
   gross_pay?: number | string;
   net_pay?: number | string;
+  overtime_count_weekdays?: number | string;
+  overtime_count_weekends?: number | string;
 }
 
   interface DeductionsProps {
@@ -109,6 +111,8 @@ interface PayslipTemplateProps {
   earnings?: EarningsProps;
   deductions?: DeductionsProps;
   totalDeductions?: string | number;
+  totalHours?: number;
+  collegeRate?: number | string;
 }
 
 const getPayPeriodString = (period?: string) => {
@@ -127,11 +131,10 @@ const getPayPeriodString = (period?: string) => {
   return `Pay Period: ${monthName} 1-${lastDay}, ${year}`;
 };
 
-
-const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeName = '-', role = '', earnings, deductions, totalDeductions }) => {
-  const monthlySalary = earnings?.monthlySalary;
-
+const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
+  const { payPeriod, employeeName = '-', role = '', earnings, deductions, totalDeductions, totalHours, collegeRate } = props;
   // Always show monthly salary value regardless of role
+  const monthlySalary = earnings?.monthlySalary;
   const monthlySalaryValue: number | string | undefined = monthlySalary;
   // Helper to get numeric value
   const getNum = (v: string | number | undefined) => {
@@ -139,7 +142,6 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
     if (typeof v === 'string') return Number(v.replace(/,/g, ''));
     return v;
   };
-
   // Calculate amounts if not provided
   const ratePerHour = getNum(earnings?.ratePerHour);
   const tardinessHours = getNum(earnings?.tardiness);
@@ -154,6 +156,19 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
   const absencesAmount = earnings?.absencesAmount !== undefined && earnings?.absencesAmount !== null && earnings?.absencesAmount !== ''
     ? getNum(earnings?.absencesAmount)
     : parseFloat((absencesHours * ratePerHour).toFixed(2));
+  // For college instructor role, show totalHours and collegeRate, else '-'
+  const isCollegeInstructor = typeof role === 'string' && role.toLowerCase().includes('college instructor');
+  const displayNumHours = isCollegeInstructor && typeof totalHours === 'number'
+    ? totalHours.toFixed(2)
+    : '-';
+  const displayRatePerHour = isCollegeInstructor && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
+    ? collegeRate
+    : '-';
+  // College/GSP value: for college instructor, numHours * ratePerHour
+  let displayCollegeGSP: string | number = '-';
+  if (isCollegeInstructor && typeof totalHours === 'number' && getNum(collegeRate) > 0) {
+    displayCollegeGSP = parseFloat((totalHours * getNum(collegeRate)).toFixed(2));
+  }
 
   // Overtime and Overload logic (match timekeeping dialog: summary.overtime)
   let overtimeHours = undefined;
@@ -162,9 +177,23 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
   } else if (earnings?.overtime_hours !== undefined && earnings?.overtime_hours !== null && earnings?.overtime_hours !== '') {
     overtimeHours = getNum(earnings?.overtime_hours);
   }
-  const overtimeAmount = earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== ''
-    ? getNum(earnings?.overtime_pay_total)
-    : 0;
+  // If college instructor, use weekday/weekend overtime formula
+  let overtimeAmount = 0;
+  if (isCollegeInstructor && getNum(collegeRate) > 0) {
+    // Try to get weekday/weekend overtime counts from earnings, fallback to 0
+    const weekdayOvertime = getNum(earnings?.overtime_count_weekdays);
+    const weekendOvertime = getNum(earnings?.overtime_count_weekends);
+    const rate = getNum(collegeRate);
+    const weekdayPay = rate * 0.25 * weekdayOvertime;
+    const weekendPay = rate * 0.30 * weekendOvertime;
+    overtimeAmount = parseFloat((weekdayPay + weekendPay).toFixed(2));
+  } else if (earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== '') {
+    overtimeAmount = getNum(earnings?.overtime_pay_total);
+  } else if (overtimeHours && ratePerHour > 0) {
+    overtimeAmount = parseFloat((overtimeHours * ratePerHour).toFixed(2));
+  } else {
+    overtimeAmount = 0;
+  }
 
   return (
   <Document>
@@ -258,16 +287,16 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ payPeriod, employeeNa
             {/* Indented sub-items: always show under Monthly Salary */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
               <Text>No. of hours</Text>
-              <Text>-</Text>
+              <Text>{displayNumHours}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
               <Text>Rate Per Hour</Text>
-              <Text>-</Text>
+              <Text>{displayRatePerHour}</Text>
             </View>
             {/* College/GSP row */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
               <Text>College/GSP</Text>
-              <Text>-</Text>
+              <Text>{displayCollegeGSP === '-' ? '-' : formatWithCommas(displayCollegeGSP)}</Text>
             </View>
             {/* Honorarium row */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>

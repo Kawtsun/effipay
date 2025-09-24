@@ -19,6 +19,8 @@ class Employees extends Model
         'roles',
         'college_program',
         'base_salary',
+        'college_rate',
+        'rate_per_hour', // Accept rate_per_hour for mass assignment (optional, for flexibility)
         'sss',
         'philhealth',
         'pag_ibig',

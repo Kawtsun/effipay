@@ -22,8 +22,10 @@ import { toast } from 'sonner';
 import { EmployeeType } from '@/components/employee-type';
 import { Checkbox } from '@/components/ui/checkbox';
 import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-department';
+import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
 import EmployeeInstructorRadioRole from '@/components/employee-instructor-radio-role';
 import { AnimatePresence, motion } from 'framer-motion';
+import { formatFullName } from '@/utils/formatFullName';
 
 type Props = {
     employee: {
@@ -35,6 +37,8 @@ type Props = {
         employee_status: string;
         roles: string;
         base_salary: number;
+        rate_per_hour?: number;
+        college_rate?: number;
         sss: number;
         philhealth: number;
         pag_ibig: number;
@@ -94,25 +98,54 @@ export default function Edit({
         employee_type: employee.employee_type,
         employee_status: employee.employee_status,
         roles: employee.roles,
-        base_salary: employee.base_salary.toString(),
-        sss: calculateSSS(employee.base_salary).toString(),
-        philhealth: employee.philhealth.toString(),
-        pag_ibig: employee.pag_ibig.toString(),
-        withholding_tax: employee.withholding_tax.toString(),
-        work_hours_per_day: employee.work_hours_per_day.toString(),
+        base_salary: employee.base_salary !== null && employee.base_salary !== undefined ? employee.base_salary.toString() : '',
+        rate_per_hour: employee.college_rate !== null && employee.college_rate !== undefined ? employee.college_rate.toString() : '',
+        sss: employee.sss !== null && employee.sss !== undefined ? employee.sss.toString() : '',
+        philhealth: employee.philhealth !== null && employee.philhealth !== undefined ? employee.philhealth.toString() : '',
+        pag_ibig: employee.pag_ibig !== null && employee.pag_ibig !== undefined ? employee.pag_ibig.toString() : '',
+        withholding_tax: employee.withholding_tax !== null && employee.withholding_tax !== undefined ? employee.withholding_tax.toString() : '',
+        work_hours_per_day: employee.work_hours_per_day !== null && employee.work_hours_per_day !== undefined ? employee.work_hours_per_day.toString() : '',
         work_start_time: trimToHM(employee.work_start_time),
         work_end_time: trimToHM(employee.work_end_time),
         college_program: employee.college_program || '',
-        sss_salary_loan: employee.sss_salary_loan?.toString() || '',
-        sss_calamity_loan: employee.sss_calamity_loan?.toString() || '',
-        pagibig_multi_loan: employee.pagibig_multi_loan?.toString() || '',
-        pagibig_calamity_loan: employee.pagibig_calamity_loan?.toString() || '',
-        peraa_con: employee.peraa_con?.toString() || '',
-        tuition: employee.tuition?.toString() || '',
-        china_bank: employee.china_bank?.toString() || '',
-        tea: employee.tea?.toString() || '',
-        honorarium: employee.honorarium?.toString() || '',
+        sss_salary_loan: employee.sss_salary_loan !== null && employee.sss_salary_loan !== undefined ? employee.sss_salary_loan.toString() : '',
+        sss_calamity_loan: employee.sss_calamity_loan !== null && employee.sss_calamity_loan !== undefined ? employee.sss_calamity_loan.toString() : '',
+        pagibig_multi_loan: employee.pagibig_multi_loan !== null && employee.pagibig_multi_loan !== undefined ? employee.pagibig_multi_loan.toString() : '',
+        pagibig_calamity_loan: employee.pagibig_calamity_loan !== null && employee.pagibig_calamity_loan !== undefined ? employee.pagibig_calamity_loan.toString() : '',
+        peraa_con: employee.peraa_con !== null && employee.peraa_con !== undefined ? employee.peraa_con.toString() : '',
+        tuition: employee.tuition !== null && employee.tuition !== undefined ? employee.tuition.toString() : '',
+        china_bank: employee.china_bank !== null && employee.china_bank !== undefined ? employee.china_bank.toString() : '',
+        tea: employee.tea !== null && employee.tea !== undefined ? employee.tea.toString() : '',
+        honorarium: employee.honorarium !== null && employee.honorarium !== undefined ? employee.honorarium.toString() : '',
     });
+
+    // Watch for College Instructor role to clear contribution fields and remove validation
+    // For college instructor, always show the current value from the employee record (do not clear)
+    useEffect(() => {
+        const rolesArr = data.roles.split(',').map(r => r.trim());
+        if (!rolesArr.includes('college instructor')) {
+            // Restore defaults if not college instructor and fields are empty
+            if (data.sss === '' && salaryDefaults?.[data.employee_type]?.sss)
+                setData('sss', salaryDefaults[data.employee_type].sss.toString());
+            if (data.philhealth === '' && salaryDefaults?.[data.employee_type]?.philhealth)
+                setData('philhealth', salaryDefaults[data.employee_type].philhealth.toString());
+            if (data.pag_ibig === '' && salaryDefaults?.[data.employee_type]?.pag_ibig)
+                setData('pag_ibig', salaryDefaults[data.employee_type].pag_ibig.toString());
+            if (data.withholding_tax === '' && salaryDefaults?.[data.employee_type]?.withholding_tax)
+                setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
+        }
+        // For college instructor, do nothing: keep the current value from the employee record
+    }, [data.roles, data.employee_type]);
+    // Determine if College Instructor is selected
+    const isCollegeInstructor = data.roles.split(',').includes('college instructor');
+    // Track manual mode for contributions
+    const [manualContribMode, setManualContribMode] = useState(isCollegeInstructor);
+
+    // Watch for role changes to toggle manual/auto mode
+    useEffect(() => {
+        const isNowCollegeInstructor = data.roles.split(',').includes('college instructor');
+        setManualContribMode(isNowCollegeInstructor);
+    }, [data.roles]);
 
     const [collegeProgram, setCollegeProgram] = useState(employee.college_program || '');
     const [collegeProgramError, setCollegeProgramError] = useState('');
@@ -127,28 +160,55 @@ export default function Edit({
         return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
     };
 
-    // Auto-calculate SSS when base_salary changes
+    // Auto-calculate SSS when base_salary changes (unless manual mode)
     useEffect(() => {
+        if (manualContribMode) return;
         setData('sss', calculateSSS(Number(data.base_salary.replace(/,/g, '')) || 0).toString());
-    }, [data.base_salary, setData]);
+    }, [data.base_salary, setData, manualContribMode]);
 
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
-        if (data.roles.split(',').includes('college instructor') && !collegeProgram) {
-            setCollegeProgramError('Please select a college department/program.');
+        // Validate required fields and show toast instead of browser popup
+        if (!data.last_name.trim()) {
+            toast.error('Last Name is required.');
             return;
-        } else {
-            setCollegeProgramError('');
+        }
+        if (!data.first_name.trim()) {
+            toast.error('First Name is required.');
+            return;
+        }
+        // College Instructor: Rate Per Hour required
+        if (data.roles.split(',').includes('college instructor') && (!data.rate_per_hour || !data.rate_per_hour.trim())) {
+            toast.error('Rate Per Hour is required.');
+            return;
+        }
+        // Non-college: Base Salary required
+        if (!data.roles.split(',').includes('college instructor') && (!data.base_salary || !data.base_salary.trim())) {
+            toast.error('Base Salary is required.');
+            return;
         }
         if (!data.employee_type) {
-            setData('employee_type', 'Full Time');
+            toast.error('Employee Type is required.');
+            return;
+        }
+        if (!data.employee_status) {
+            toast.error('Employee Status is required.');
+            return;
+        }
+        if (!data.roles.trim()) {
+            toast.error('At least one role is required.');
+            return;
+        }
+        if (data.roles.split(',').includes('college instructor') && !collegeProgram) {
+            toast.error('Please select a college department/program.');
             return;
         }
 
-        // Validate Pag-IBIG minimum
+        // Validate Pag-IBIG minimum only if not college instructor
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-        if (pagIbigValue < 200) {
-            toast.error('Pag-IBIG must be at least ₱200');
+        const isCollege = data.roles.split(',').includes('college instructor');
+        if (!isCollege && pagIbigValue < 200) {
+            toast.error('Pag-IBIG must be at least ₱200.');
             return;
         }
 
@@ -212,9 +272,10 @@ export default function Edit({
                 page,
             }),
         },
+        
         {
-            title: 'Edit Employee',
-            href: route('employees.edit', employee.id),
+            title: `#${employee.id} - ${formatFullName(employee.last_name, employee.first_name, employee.middle_name)}`,
+            href: route('employees.show', employee.id),
         },
     ];
 
@@ -313,12 +374,18 @@ export default function Edit({
 
     // When collegeProgram changes, sync to form state
 
-    // useEffect: When base_salary, sss, or pag_ibig change, recalculate PhilHealth and Withholding Tax
+    // useEffect: When base_salary, sss, or pag_ibig change, recalculate PhilHealth and Withholding Tax (unless manual mode)
     useEffect(() => {
+        if (manualContribMode) return;
         const baseSalary = Number(data.base_salary.replace(/,/g, '')) || 0;
         const sss = Number(data.sss.replace(/,/g, '')) || 0;
         const pagIbig = Number(data.pag_ibig.replace(/,/g, '')) || 0;
         const calculatedPhilHealth = calculatePhilHealth(baseSalary);
+
+        if (data.sss.replace(/,/g, '') !== sss.toFixed(2)) {
+            setData('sss', sss.toFixed(2));
+        }
+
         if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
             setData('philhealth', calculatedPhilHealth.toFixed(2));
         }
@@ -326,7 +393,7 @@ export default function Edit({
         if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
             setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
         }
-    }, [data.base_salary, data.sss, data.pag_ibig, data.philhealth, data.withholding_tax, setData]);
+    }, [data.base_salary, data.sss, data.pag_ibig, data.philhealth, data.withholding_tax, setData, manualContribMode]);
 
     useEffect(() => {
         setData('college_program', collegeProgram);
@@ -366,11 +433,11 @@ export default function Edit({
                                     <div className='space-y-6'>
                                         <div className="flex flex-col gap-3">
                                             <Label>Last Name</Label>
-                                            <Input id="last_name" type="text" required placeholder="Last Name" value={data.last_name} onChange={e => setData('last_name', e.target.value)} />
+                                            <Input id="last_name" type="text" placeholder="Last Name" value={data.last_name} onChange={e => setData('last_name', e.target.value)} />
                                         </div>
                                         <div className="flex flex-col gap-3">
                                             <Label>First Name</Label>
-                                            <Input id="first_name" type="text" required placeholder="First Name" value={data.first_name} onChange={e => setData('first_name', e.target.value)} />
+                                            <Input id="first_name" type="text" placeholder="First Name" value={data.first_name} onChange={e => setData('first_name', e.target.value)} />
                                         </div>
                                         <div className="flex flex-col gap-3">
                                             <Label>Middle Name</Label>
@@ -436,11 +503,12 @@ export default function Edit({
                                                             className="pl-4 mt-2"
                                                         >
                                                             <div className="text-xs font-semibold mb-1">College Department</div>
-                                                            <EmployeeCollegeRadioDepartment
-                                                                value={collegeProgram}
-                                                                onChange={setCollegeProgram}
-                                                                className="max-h-40 overflow-y-auto pr-2"
-                                                            />
+                                                            <CollegeProgramScrollArea>
+                                                                <EmployeeCollegeRadioDepartment
+                                                                    value={collegeProgram}
+                                                                    onChange={setCollegeProgram}
+                                                                />
+                                                            </CollegeProgramScrollArea>
                                                             {collegeProgramError && (
                                                                 <div className="text-xs text-red-500 mt-1">{collegeProgramError}</div>
                                                             )}
@@ -502,14 +570,14 @@ export default function Edit({
                                                     {(() => {
                                                         const [startHour, startMinute] = data.work_start_time.split(':').map(Number);
                                                         const [endHour, endMinute] = data.work_end_time.split(':').map(Number);
-                                                        let startMinutes = startHour * 60 + startMinute;
-                                                        let endMinutes = endHour * 60 + endMinute;
+                                                        const startMinutes = startHour * 60 + startMinute;
+                                                        const endMinutes = endHour * 60 + endMinute;
                                                         let actualWorkMinutes = endMinutes - startMinutes;
                                                         if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        let totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
                                                         const hours = Math.floor(totalMinutes / 60);
                                                         const minutes = totalMinutes % 60;
-                                                        let durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
                                                         return (
                                                             <>
                                                                 📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({durationText})<br />
@@ -533,33 +601,59 @@ export default function Edit({
                                         <h2 className='font-semibold text-lg mb-4'>Earnings</h2>
                                         <div className='space-y-6'>
                                             <div className='flex flex-col gap-3'>
-                                                <Label htmlFor="base_salary">
-                                                    Base Salary
-                                                </Label>
-                                                <div className='relative'>
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input
-                                                        id="base_salary"
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9.,]*"
-                                                        required
-                                                        placeholder="Salary"
-                                                        className="pl-8"
-                                                        min={0}
-                                                        value={formatWithCommas(data.base_salary ?? '')}
-                                                        onChange={e => {
-                                                            const raw = e.target.value.replace(/,/g, '');
-                                                            // Only allow numbers and period
-                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                            setData('base_salary', raw);
-                                                            // Auto-calculate PhilHealth based on base salary
-                                                            const baseSalaryNum = Number(raw) || 0;
-                                                            const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
-                                                            setData('philhealth', calculatedPhilHealth.toString());
-                                                        }}
-                                                    />
-                                                </div>
+                                                {/* Show Rate Per Hour if College Instructor, else Base Salary */}
+                                                {isCollegeInstructor ? (
+                                                    <>
+                                                        <Label htmlFor="rate_per_hour">Rate Per Hour</Label>
+                                                        <div className='relative'>
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                            <Input
+                                                                id="rate_per_hour"
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                pattern="[0-9.,]*"
+
+                                                                placeholder="Rate Per Hour"
+                                                                className="pl-8"
+                                                                min={0}
+                                                                value={formatWithCommas(data.rate_per_hour ?? '')}
+                                                                onChange={e => {
+                                                                    const raw = e.target.value.replace(/,/g, '');
+                                                                    if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                    setData('rate_per_hour', raw);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Label htmlFor="base_salary">Base Salary</Label>
+                                                        <div className='relative'>
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                            <Input
+                                                                id="base_salary"
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                pattern="[0-9.,]*"
+
+                                                                placeholder="Salary"
+                                                                className="pl-8"
+                                                                min={0}
+                                                                value={formatWithCommas(data.base_salary ?? '')}
+                                                                onChange={e => {
+                                                                    const raw = e.target.value.replace(/,/g, '');
+                                                                    // Only allow numbers and period
+                                                                    if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                    setData('base_salary', raw);
+                                                                    // Auto-calculate PhilHealth based on base salary
+                                                                    const baseSalaryNum = Number(raw) || 0;
+                                                                    const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
+                                                                    setData('philhealth', calculatedPhilHealth.toString());
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </>
+                                                )}
 
                                                 {/* Honorarium (optional) */}
                                                 <div className='flex flex-col gap-3'>
@@ -588,17 +682,22 @@ export default function Edit({
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        required
+                                                        required={!data.roles.split(',').includes('college instructor')}
                                                         placeholder="SSS"
-                                                        className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
-                                                        min={0}
-                                                        value={formatWithCommas(Number(data.sss ?? 0).toFixed(2))}
-                                                        disabled
+                                                        className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
+                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 0}
+                                                        value={formatWithCommas(data.sss ?? '')}
+                                                        disabled={!manualContribMode}
+                                                        onChange={e => {
+                                                            if (!manualContribMode) return;
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            setData('sss', raw);
+                                                        }}
                                                     />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
-                                                    Automated
+                                                    {manualContribMode ? 'Manual entry enabled' : 'Automated'}
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
@@ -612,15 +711,16 @@ export default function Edit({
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        required
+                                                        required={!data.roles.split(',').includes('college instructor')}
                                                         placeholder="PhilHealth"
-                                                        className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
+                                                        className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         style={{ lineHeight: '1.5rem' }}
-                                                        min={250}
-                                                        max={2500}
-                                                        disabled
+                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 250}
+                                                        max={data.roles.split(',').includes('college instructor') ? undefined : 2500}
+                                                        disabled={!manualContribMode}
                                                         value={formatWithCommas(data.philhealth ?? '')}
                                                         onChange={e => {
+                                                            if (!manualContribMode) return;
                                                             const raw = e.target.value.replace(/,/g, '');
                                                             setData('philhealth', raw);
                                                         }}
@@ -628,18 +728,18 @@ export default function Edit({
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
-                                                    Automated
+                                                    {manualContribMode ? 'Manual entry enabled' : 'Automated'}
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
                                                 <Label htmlFor="pag-ibig">Pag-IBIG</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^\d+(\.\d{1,2})?$" required placeholder="Pag-IBIG" className="pl-8" min={200} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.]/g, ''); setData('pag_ibig', raw); }} />
+                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" required={!data.roles.split(',').includes('college instructor')} placeholder="Pag-IBIG" className="pl-8" min={data.roles.split(',').includes('college instructor') ? undefined : 200} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
-                                                    Must be at least ₱200
+                                                    {data.roles.split(',').includes('college instructor') ? 'Manual entry enabled' : 'Must be at least ₱200'}
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
@@ -649,23 +749,24 @@ export default function Edit({
                                                     <Input
                                                         id="withholding_tax"
                                                         type="text"
-                                                        required
+                                                        required={!data.roles.split(',').includes('college instructor')}
                                                         placeholder="Withholding Tax"
-                                                        className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9.,]*"
-                                                        min={0}
-                                                        disabled
+                                                        className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
+                                                        inputMode="decimal"
+                                                        pattern="^[0-9,]+(\.[0-9]{1,2})?$"
+                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 0}
+                                                        disabled={!manualContribMode}
                                                         value={formatWithCommas(data.withholding_tax ?? '')}
                                                         onChange={e => {
-                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            if (!manualContribMode) return;
+                                                            const raw = e.target.value.replace(/[^\d.,]/g, '');
                                                             setData('withholding_tax', raw);
                                                         }}
                                                     />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
-                                                    Automated
+                                                    {manualContribMode ? 'Manual entry enabled' : 'Automated'}
                                                 </p>
                                             </div>
 
