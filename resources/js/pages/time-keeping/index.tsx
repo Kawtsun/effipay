@@ -21,7 +21,8 @@ import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Users, Shield, GraduationCap, Book, Eye, Import, Fingerprint, Loader2 } from 'lucide-react';
+import { Users, Shield, GraduationCap, Book, Eye, Import, Fingerprint, Loader2, Calendar } from 'lucide-react';
+import CalendarViewDialog from '@/components/calendar-view-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useCallback, useRef } from 'react';
@@ -33,6 +34,7 @@ import * as XLSX from 'xlsx';
 export default function TimeKeeping() {
     const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
     const [selectedBtrEmployee, setSelectedBtrEmployee] = useState<Employees | null>(null);
+    const [calendarOpen, setCalendarOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const MAX_ROWS = 10;
     const ROW_HEIGHT = 53; // px
@@ -308,6 +310,10 @@ export default function TimeKeeping() {
                                 collegeProgram={filters.collegeProgram}
                                 onChange={newFilters => handleFilterChange({ ...filters, ...newFilters })}
                             />
+                            <Button variant="secondary" type="button" onClick={() => setCalendarOpen(true)}>
+                                <Calendar />
+                                Calendar
+                            </Button>
                             <Button variant="default" onClick={handleImportClick}>
                                 <Import />
                                 Import
@@ -509,6 +515,7 @@ export default function TimeKeeping() {
                     onClose={() => setSelectedBtrEmployee(null)}
                 />
             )}
-        </AppLayout>
+    <CalendarViewDialog open={calendarOpen} onClose={() => setCalendarOpen(false)} />
+    </AppLayout>
     );
 }
