@@ -36,6 +36,7 @@ type Props = {
         string,
         {
             base_salary: number;
+            college_rate: number;
             sss: number;
             philhealth: number;
             pag_ibig: number;
@@ -92,10 +93,18 @@ export default function Create(props: Props) {
     useEffect(() => {
         const rolesArr = data.roles.split(',').map(r => r.trim());
         if (rolesArr.includes('college instructor')) {
+            // Clear SSS, PhilHealth, Pag-IBIG, Withholding Tax
             if (data.sss !== '') setData('sss', '');
             if (data.philhealth !== '') setData('philhealth', '');
             if (data.pag_ibig !== '') setData('pag_ibig', '');
             if (data.withholding_tax !== '') setData('withholding_tax', '');
+            // Set rate_per_hour from salaryDefaults.college_rate if available
+            if (
+                salaryDefaults[data.employee_type]?.college_rate !== undefined &&
+                data.rate_per_hour !== salaryDefaults[data.employee_type].college_rate.toString()
+            ) {
+                setData('rate_per_hour', salaryDefaults[data.employee_type].college_rate.toString());
+            }
         } else {
             // Restore defaults if not college instructor and fields are empty
             if (data.sss === '' && salaryDefaults[data.employee_type]?.sss)
@@ -106,8 +115,10 @@ export default function Create(props: Props) {
                 setData('pag_ibig', salaryDefaults[data.employee_type].pag_ibig.toString());
             if (data.withholding_tax === '' && salaryDefaults[data.employee_type]?.withholding_tax)
                 setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
+            // Clear rate_per_hour if not college instructor
+            if (data.rate_per_hour !== '') setData('rate_per_hour', '');
         }
-    }, [data.roles, data.employee_type]);
+    }, [data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax]);
     // Determine if College Instructor is selected
     const isCollegeInstructor = data.roles.split(',').includes('college instructor');
     // Track manual mode for contributions
@@ -330,10 +341,19 @@ export default function Create(props: Props) {
         if (salaryDefaults && salaryDefaults[data.employee_type]) {
             const def = salaryDefaults[data.employee_type];
             setData('base_salary', def.base_salary.toString());
-            setData('sss', def.sss.toString());
-            setData('philhealth', def.philhealth.toString());
-            setData('pag_ibig', def.pag_ibig.toString());
-            setData('withholding_tax', def.withholding_tax.toString());
+            // Only set rate_per_hour if college instructor, using college_rate
+            if (data.roles.split(',').map(r => r.trim()).includes('college instructor') && def.college_rate !== undefined) {
+                setData('rate_per_hour', def.college_rate.toString());
+            } else {
+                setData('rate_per_hour', '');
+            }
+            // Only set SSS, PhilHealth, Pag-IBIG, Withholding Tax if not college instructor
+            if (!data.roles.split(',').map(r => r.trim()).includes('college instructor')) {
+                setData('sss', def.sss.toString());
+                setData('philhealth', def.philhealth.toString());
+                setData('pag_ibig', def.pag_ibig.toString());
+                setData('withholding_tax', def.withholding_tax.toString());
+            }
             setData('work_hours_per_day', def.work_hours_per_day.toString());
             // Update work times based on default work hours (first-time add)
             const workHours = def.work_hours_per_day;
@@ -348,7 +368,7 @@ export default function Create(props: Props) {
                 setData('work_end_time', '17:00');
             }
         }
-    }, [data.employee_type, salaryDefaults, setData]);
+    }, [data.employee_type, salaryDefaults, setData, data.roles]);
 
     // Auto-calculate work hours when start/end times change
     useEffect(() => {

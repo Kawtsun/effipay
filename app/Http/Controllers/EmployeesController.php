@@ -113,6 +113,7 @@ class EmployeesController extends Controller
             ->mapWithKeys(fn($row) => [
                 $row->employee_type => [
                     'base_salary'     => $row->base_salary,
+                    'college_rate'    => $row->college_rate,
                     'sss'             => $row->sss,
                     'philhealth'      => $row->philhealth,
                     'pag_ibig'        => $row->pag_ibig,
