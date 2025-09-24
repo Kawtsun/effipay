@@ -157,7 +157,7 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
           Edit
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent style={{ maxWidth: 350 }}>
         <DialogHeader>
           <DialogTitle>Edit {label}</DialogTitle>
         </DialogHeader>
