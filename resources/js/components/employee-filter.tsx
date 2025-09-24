@@ -35,8 +35,6 @@ const employee_type = [
   { value: "Regular", label: "Regular" },
 ];
 
-// Add a capitalizeWords utility
-const capitalizeWords = (str: string) => str.replace(/\b\w/g, c => c.toUpperCase());
 
 export default function EmployeeFilter({
   selectedTypes,
