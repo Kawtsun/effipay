@@ -1,5 +1,5 @@
 import { formatFullName } from '../../utils/formatFullName';
-type FilterState = { types: string[]; statuses: string[]; roles: string[] };
+type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string };
 const MIN_SPINNER_MS = 400;
 import EmployeeFilter from '@/components/employee-filter';
 // @ts-ignore
@@ -188,16 +188,18 @@ export default function TimeKeeping() {
     const [filters, setFilters] = useState<FilterState>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
+        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
     });
     const [appliedFilters, setAppliedFilters] = useState<FilterState>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
+        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
     });
     const [loading, setLoading] = useState(false);
     const spinnerStart = useRef<number>(0);
 
     // Visit helper
-    const visit = useCallback((params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[] }>, options: { preserve?: boolean } = {}) => {
+    const visit = useCallback((params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string }>, options: { preserve?: boolean } = {}) => {
         spinnerStart.current = Date.now();
         setLoading(true);
         router.visit(route('time-keeping.index'), {
@@ -223,6 +225,7 @@ export default function TimeKeeping() {
             types: appliedFilters.types.length ? appliedFilters.types : undefined,
             statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
             roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
+            collegeProgram: appliedFilters.collegeProgram || undefined,
         }, { preserve: true });
     }, [visit, appliedFilters]);
 
@@ -236,12 +239,13 @@ export default function TimeKeeping() {
             types: newFilters.types.length ? newFilters.types : undefined,
             statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
             roles: newFilters.roles.length ? newFilters.roles : undefined,
+            collegeProgram: newFilters.collegeProgram || undefined,
         }, { preserve: true });
     }, [visit, searchTerm]);
 
     // Reset filters
     const resetFilters = useCallback(() => {
-        const empty = { types: [], statuses: [], roles: [] };
+        const empty = { types: [], statuses: [], roles: [], collegeProgram: '' };
         setFilters(empty);
         setAppliedFilters(empty);
         visit({ search: searchTerm || undefined, page: 1 }, { preserve: true });
@@ -255,6 +259,7 @@ export default function TimeKeeping() {
             types: appliedFilters.types.length ? appliedFilters.types : undefined,
             statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
             roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
+            collegeProgram: appliedFilters.collegeProgram || undefined,
         }, { preserve: true });
     }, [visit, searchTerm, appliedFilters]);
 
@@ -300,6 +305,7 @@ export default function TimeKeeping() {
                                 selectedTypes={filters.types}
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
+                                collegeProgram={filters.collegeProgram}
                                 onChange={newFilters => handleFilterChange({ ...filters, ...newFilters })}
                             />
                             <Button variant="default" onClick={handleImportClick}>
@@ -326,6 +332,8 @@ export default function TimeKeeping() {
                             Showing: {appliedFilters.types.length ? appliedFilters.types.map(capitalizeWords).join(', ') : 'All Types'} /
                             {appliedFilters.statuses.length ? ' ' + appliedFilters.statuses.map(capitalizeWords).join(', ') : ' All Statuses'} /
                             {appliedFilters.roles.length ? ' ' + appliedFilters.roles.map(capitalizeWords).join(', ') : ' All Roles'}
+                            {appliedFilters.roles.includes('college instructor') && appliedFilters.collegeProgram ?
+                                ` / ${' '}${appliedFilters.collegeProgram} - ${getCollegeProgramLabel(appliedFilters.collegeProgram)}` : ''}
                         </div>
                     </div>
                 </div>
