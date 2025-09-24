@@ -73,6 +73,8 @@ interface PayslipData {
         gross_pay?: number | string;
         net_pay?: number | string;
         totalHours?: number;
+        overtime_count_weekdays?: number | string;
+        overtime_count_weekends?: number | string;
     };
     deductions: {
         sss?: string;
@@ -180,6 +182,8 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 setAvailableMonths(result.months);
                 if (result.months.length > 0 && !selectedMonth) {
                     setSelectedMonth(result.months[0]);
+                } else if (result.months.length === 0) {
+                    toast.error('No available months to display.');
                 }
             }
         } catch (error) {
@@ -187,9 +191,11 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         }
     };
     React.useEffect(() => {
-        fetchAvailableMonths();
+        if (open) {
+            fetchAvailableMonths();
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [open]);
 
     // Print Payslip handler
     const handlePrintPayslip = async () => {

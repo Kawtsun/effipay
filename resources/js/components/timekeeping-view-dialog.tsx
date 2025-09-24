@@ -143,6 +143,8 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                 if (result.months.length > 0 && !selectedMonth) {
                     setSelectedMonth(result.months[0]);
                     setPendingMonth(result.months[0]);
+                } else if (result.months.length === 0) {
+                    toast.error('No available months to display.');
                 }
             }
         } catch (error) {

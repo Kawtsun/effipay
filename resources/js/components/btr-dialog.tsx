@@ -43,6 +43,8 @@ export default function BTRDialog({ employee, onClose }: Props) {
           setAvailableMonths(data.months);
           if (!selectedMonth && data.months.length > 0) {
             setSelectedMonth(data.months[0]);
+          } else if (data.months.length === 0) {
+            toast.error('No available months to display.');
           }
         }
       });

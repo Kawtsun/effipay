@@ -1,12 +1,13 @@
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
+// import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+// import { Button } from '@/components/ui/button';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { Users, Receipt, Wallet, LayoutDashboard } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { MonthPicker } from '@/components/ui/month-picker';
+import { toast } from 'sonner';
 import NetpayMonthlyChart from '@/components/netpay-monthly-chart';
 import { EmployeeClassificationPie } from '@/components/employee-classification-pie';
 
@@ -57,6 +58,9 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
                             if (!data.months.includes(month)) {
                                 setMonth(data.months[0] || '');
                             }
+                        }
+                        if (data.months.length === 0) {
+                            toast.error('No available months to display.');
                         }
                     }
                 });

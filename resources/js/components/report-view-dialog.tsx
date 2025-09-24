@@ -85,6 +85,7 @@ interface Props {
     employee: Employees | null;
     onClose: () => void;
     activeRoles?: string[];
+    open?: boolean;
 }
 
 function Info({ label, value }: { label: string; value: string | number }) {
@@ -184,7 +185,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        if (employee) {
+        if (employee && (typeof (ReportViewDialog as any).open === 'boolean' ? (ReportViewDialog as any).open : true)) {
             fetchAvailableMonths();
         }
         // eslint-disable-next-line
@@ -209,6 +210,8 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                 if (result.months.length > 0 && !selectedMonth) {
                     setSelectedMonth(result.months[0]);
                     setPendingMonth(result.months[0]);
+                } else if (result.months.length === 0) {
+                    toast.error('No available months to display.');
                 }
             }
         } catch (error) {

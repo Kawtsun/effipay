@@ -16,6 +16,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { MonthPicker } from './ui/month-picker';
 
 import { pdf } from '@react-pdf/renderer';
@@ -41,6 +42,8 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
         setAvailableMonths(result.months);
         if (result.months.length > 0 && !selectedMonth) {
           setSelectedMonth(result.months[0]);
+        } else if (result.months.length === 0) {
+          toast.error('No available months to display.');
         }
       }
     } catch (error) {
@@ -49,9 +52,11 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
   };
 
   React.useEffect(() => {
-    fetchAvailableMonths();
+    if (open) {
+      fetchAvailableMonths();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [open]);
 
 
   // State for batch payslip and BTR printing
