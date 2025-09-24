@@ -23,6 +23,7 @@ import { PayrollDatePicker } from '@/components/ui/payroll-date-picker'
 type Defaults = {
   employee_type: string
   base_salary: number
+  college_rate: number
   overtime_pay: number
   sss: number
   philhealth: number
@@ -104,11 +105,12 @@ export default function Index() {
   ]
 
   const cards = [
-  { key: 'base_salary' as keyof Defaults, label: 'Base Salary', value: defaults.base_salary, isEarning: true },
-  { key: 'sss' as keyof Defaults, label: 'SSS', value: calculateSSS(defaults.base_salary), isEarning: false },
-  { key: 'philhealth' as keyof Defaults, label: 'PhilHealth', value: defaults.philhealth, isEarning: false },
-  { key: 'pag_ibig' as keyof Defaults, label: 'Pag-IBIG', value: defaults.pag_ibig, isEarning: false },
-  { key: 'withholding_tax' as keyof Defaults, label: 'Withholding Tax', value: defaults.withholding_tax, isEarning: false },
+    { key: 'base_salary' as keyof Defaults, label: 'Base Salary', value: defaults.base_salary, isEarning: true },
+    { key: 'college_rate' as keyof Defaults, label: 'Rate Per Hour', value: defaults.college_rate, isEarning: true },
+    { key: 'sss' as keyof Defaults, label: 'SSS', value: calculateSSS(defaults.base_salary), isEarning: false },
+    { key: 'philhealth' as keyof Defaults, label: 'PhilHealth', value: defaults.philhealth, isEarning: false },
+    { key: 'pag_ibig' as keyof Defaults, label: 'Pag-IBIG', value: defaults.pag_ibig, isEarning: false },
+    { key: 'withholding_tax' as keyof Defaults, label: 'Withholding Tax', value: defaults.withholding_tax, isEarning: false },
   ] as const
 
   const earningsCards = cards.filter(c => c.isEarning)
@@ -191,26 +193,17 @@ export default function Index() {
                     </CardHeader>
                     <CardContent className="flex items-center justify-between">
                       <p className="text-3xl font-bold text-green-600">
-                        ₱{Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {(() => {
+                          const num = Number(value);
+                          return `₱${isNaN(num) ? '0.00' : num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                        })()}
                       </p>
-                      {key === 'withholding_tax' ? (
-                        <div className="flex flex-col items-end">
-                          <Button variant="outline" disabled className="opacity-50 cursor-not-allowed">
-                            <Pencil className="w-4 h-4" />
-                            Edit
-                          </Button>
-                          <p className="text-xs text-muted-foreground mt-1 text-right">
-                            Automated
-                          </p>
-                        </div>
-                      ) : (
-                        <EmployeeSalaryEdit
-                          employeeType={type}
-                          field={key}
-                          label={label}
-                          value={value}
-                        />
-                      )}
+                      <EmployeeSalaryEdit
+                        employeeType={type}
+                        field={key}
+                        label={label}
+                        value={value}
+                      />
                     </CardContent>
                   </Card>
                 );

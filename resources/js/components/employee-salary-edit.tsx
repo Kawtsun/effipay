@@ -35,6 +35,7 @@ interface Props {
 type Defaults = {
   employee_type: string
   base_salary: number
+  college_rate: number
   overtime_pay: number
   sss: number
   philhealth: number
@@ -46,8 +47,10 @@ type Defaults = {
 export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props) {
   const [open, setOpen] = React.useState(false)
 
+  // Default to 0 if value is undefined/null to avoid .toString() crash
+  const safeValue = (value === undefined || value === null) ? 0 : value;
   const { data, setData, put, processing, reset, errors } = useForm({
-    [field]: value.toString(),
+    [field]: safeValue.toString(),
   })
 
   // Calculate PhilHealth based on base salary
@@ -60,7 +63,8 @@ export function EmployeeSalaryEdit({ employeeType, field, label, value }: Props)
   React.useEffect(() => {
     if (!open) {
       reset(field as keyof typeof data)
-      setData(field as keyof typeof data, value.toString())
+      const safeValue = (value === undefined || value === null) ? 0 : value;
+      setData(field as keyof typeof data, safeValue.toString())
     }
   }, [open, value])
 

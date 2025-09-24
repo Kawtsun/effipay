@@ -13,6 +13,7 @@ class Salary extends Model
     protected $fillable = [
         'employee_type',
         'base_salary',
+        'college_rate',
         'overtime_pay',
         'sss',
         'philhealth',
