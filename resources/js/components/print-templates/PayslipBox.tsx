@@ -140,7 +140,7 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
   };
   // College Instructor logic (match PayslipTemplate)
   const isCollegeInstructor = typeof role === 'string' && role.toLowerCase().includes('college instructor');
-  const displayNumHours = isCollegeInstructor && typeof totalHours === 'number' ? totalHours : '-';
+  const displayNumHours = isCollegeInstructor && typeof totalHours === 'number' ? totalHours.toFixed(2) : '-';
   const displayRatePerHour = isCollegeInstructor && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
     ? collegeRate
     : '-';

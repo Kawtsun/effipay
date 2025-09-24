@@ -158,7 +158,9 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
     : parseFloat((absencesHours * ratePerHour).toFixed(2));
   // For college instructor role, show totalHours and collegeRate, else '-'
   const isCollegeInstructor = typeof role === 'string' && role.toLowerCase().includes('college instructor');
-  const displayNumHours = isCollegeInstructor && typeof totalHours === 'number' ? totalHours : '-';
+  const displayNumHours = isCollegeInstructor && typeof totalHours === 'number'
+    ? totalHours.toFixed(2)
+    : '-';
   const displayRatePerHour = isCollegeInstructor && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
     ? collegeRate
     : '-';
