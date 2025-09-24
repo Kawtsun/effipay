@@ -25,6 +25,7 @@ import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-
 import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
 import EmployeeInstructorRadioRole from '@/components/employee-instructor-radio-role';
 import { AnimatePresence, motion } from 'framer-motion';
+import { formatFullName } from '@/utils/formatFullName';
 
 type Props = {
     employee: {
@@ -271,9 +272,10 @@ export default function Edit({
                 page,
             }),
         },
+        
         {
-            title: 'Edit Employee',
-            href: route('employees.edit', employee.id),
+            title: `#${employee.id} - ${formatFullName(employee.last_name, employee.first_name, employee.middle_name)}`,
+            href: route('employees.show', employee.id),
         },
     ];
 
