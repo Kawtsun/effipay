@@ -44,7 +44,7 @@ export default function ReportsIndex() {
         { value: 'RLE', label: 'Related Learning Experience' },
         { value: 'CG', label: 'Career Guidance or Computer Graphics' },
         { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-        { value: 'GSP', label: 'GSIS Scholarship' },
+    { value: 'GSP', label: 'Graduate Studies Programs' },
         { value: 'MBA', label: 'Master of Business Administration' },
     ];
     function getCollegeProgramLabel(acronym: string) {
