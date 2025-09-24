@@ -100,7 +100,7 @@ export default function Index() {
   }, [selectedDate])
 
   const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Salary', href: route('salary.index') },
+    { title: 'Salary Setup', href: route('salary.index') },
   ]
 
   const cards = [
@@ -127,7 +127,7 @@ export default function Index() {
 
   return (
     <>
-      <Head title="Salary Defaults" />
+      <Head title="Salary Setup" />
       <AppLayout breadcrumbs={breadcrumbs}>
         <div className="py-6 px-8 space-y-6">
           {/* HEADER */}
@@ -135,10 +135,10 @@ export default function Index() {
             <div>
               <h1 className="flex items-center gap-2 text-2xl font-semibold">
                 <Wallet className="w-6 h-6 text-primary" />
-                Salary
+                Salary Setup
               </h1>
               <p className="text-sm text-muted-foreground">
-                Set default salary values by employee type.
+                Set default salary values by employee type and run payroll.
               </p>
             </div>
             <div className="flex items-center gap-4">

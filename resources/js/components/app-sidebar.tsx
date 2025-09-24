@@ -15,7 +15,7 @@ const mainNavItems: NavItem[] = [
     },
 
     {
-        title: 'Salary',
+        title: 'Salary Setup',
         href: '/salary',
         icon: Wallet,
     },
