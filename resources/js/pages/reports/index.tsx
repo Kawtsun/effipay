@@ -42,7 +42,7 @@ export default function ReportsIndex() {
         { value: 'JD', label: 'Juris Doctor' },
         { value: 'BSN', label: 'Bachelor of Science in Nursing' },
         { value: 'RLE', label: 'Related Learning Experience' },
-        { value: 'CG', label: 'Career Guidance or Computer Graphics' },
+    { value: 'CG', label: 'Career Guidance' },
         { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
     { value: 'GSP', label: 'Graduate Studies Programs' },
         { value: 'MBA', label: 'Master of Business Administration' },
