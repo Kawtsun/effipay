@@ -162,6 +162,7 @@
 
     body {
         @apply bg-background text-foreground;
-        overflow: hidden;
+        /* overflow: hidden; */
+        overflow-y: hidden;
     }
 }
