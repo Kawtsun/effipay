@@ -15,6 +15,8 @@ use Inertia\Inertia;
 Route::get('/', fn() => Inertia::render('welcome'))
     ->name('home');
 
+use App\Http\Controllers\ObservanceController;
+
 Route::middleware('auth')->group(function () {
 
     // API: Get payslip for an employee and month as JSON for batch printing
@@ -51,6 +53,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/time-keeping/import', [TimeKeepingController::class, 'import'])->name('time-keeping.import');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
+
+
+    // Observances API
+    Route::get('/observances', [ObservanceController::class, 'index']);
+    Route::post('/observances', [ObservanceController::class, 'store']);
+    Route::delete('/observances/{date}', [ObservanceController::class, 'destroy']);
 
     // Resourceful controllers
     Route::resources([
