@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Users, Shield, GraduationCap, Book, Eye, Import, Fingerprint, Loader2, Calendar } from 'lucide-react';
-import CalendarViewDialog from '@/components/calendar-view-dialog';
+import { CalendarViewDialog } from '@/components/calendar-view-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useCallback, useRef } from 'react';

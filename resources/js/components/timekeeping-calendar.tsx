@@ -6,52 +6,51 @@ import { Button } from "./ui/button";
 import { toast } from "sonner";
 
 
+
+
 interface TimeKeepingCalendarProps {
-  value?: Date;
-  onChange?: (date: Date | undefined) => void;
+  value?: string;
+  onChange?: (date: string | undefined) => void;
+  markedDates?: string[];
+  setMarkedDates?: (dates: string[]) => void;
 }
 
-export default function TimeKeepingCalendar({ value, onChange }: TimeKeepingCalendarProps) {
-  const [markedDates, setMarkedDates] = useState<Date[]>([]);
-  const [lastSelected, setLastSelected] = useState<Date | undefined>(undefined);
 
-  function isSameDay(a: Date, b: Date) {
-    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+export function TimeKeepingCalendar({ onChange, markedDates, setMarkedDates }: TimeKeepingCalendarProps) {
+  const [internalMarkedDates, internalSetMarkedDates] = useState<string[]>([]);
+  const actualMarkedDates = markedDates !== undefined ? markedDates : internalMarkedDates;
+  const actualSetMarkedDates = setMarkedDates !== undefined ? setMarkedDates : internalSetMarkedDates;
+
+  function toDateString(d: Date) {
+    return d.toISOString().slice(0, 10);
   }
 
   function handleDayClick(day: Date) {
-    const alreadyMarked = markedDates.some(d => isSameDay(d, day));
+    const dayStr = toDateString(day);
+    const alreadyMarked = actualMarkedDates.includes(dayStr);
     if (alreadyMarked) {
-      setMarkedDates(markedDates.filter(d => !isSameDay(d, day)));
+      actualSetMarkedDates(actualMarkedDates.filter((d) => d !== dayStr));
     } else {
-      setMarkedDates([...markedDates, day]);
+      actualSetMarkedDates([...actualMarkedDates, dayStr]);
     }
-    setLastSelected(day);
-    if (onChange) onChange(day);
+    if (onChange) onChange(dayStr);
   }
 
   async function handleSave() {
-    if (markedDates.length === 0) {
+    if (actualMarkedDates.length === 0) {
       toast.error("No dates selected.");
       return;
-    }
-    function formatLocalDate(d: Date) {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
     }
     const res = await fetch("/observances", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        "X-CSRF-TOKEN": document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || '',
       },
-      body: JSON.stringify({ dates: markedDates.map(formatLocalDate) }),
+      body: JSON.stringify({ dates: actualMarkedDates }),
     });
     if (res.ok) {
-      const days = markedDates.map(d => d.getDate()).sort((a, b) => a - b).join(", ");
-      toast.success(`Saved days: ${days}`);
+      toast.success(`Saved days: ${actualMarkedDates.join(", ")}`);
     } else {
       toast.error("Failed to save dates.");
     }
@@ -62,7 +61,7 @@ export default function TimeKeepingCalendar({ value, onChange }: TimeKeepingCale
       {/* Default calendar styling, no custom marked day size */}
       <ShadcnCalendar
         mode="multiple"
-        selected={markedDates}
+        selected={actualMarkedDates.map(d => new Date(d))}
         onDayClick={handleDayClick}
         className="rounded-md border shadow"
       />
@@ -70,3 +69,4 @@ export default function TimeKeepingCalendar({ value, onChange }: TimeKeepingCale
     </div>
   );
 }
+
