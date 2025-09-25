@@ -28,8 +28,8 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
           const data = await res.json();
           if (Array.isArray(data)) {
             const loaded = data.map((obs: { date: string }) => obs.date);
-            setMarkedDates(loaded);
-            setOriginalDates(loaded);
+            setMarkedDates([...loaded]);
+            setOriginalDates([...loaded]);
           }
         }
       } catch (e) {

@@ -18,12 +18,12 @@ interface TimeKeepingCalendarProps {
 }
 
 
-export function TimeKeepingCalendar({ onChange, markedDates, setMarkedDates, originalDates, setOriginalDates }: TimeKeepingCalendarProps) {
-  const [internalMarkedDates, internalSetMarkedDates] = useState<string[]>([]);
-  const actualMarkedDates = markedDates !== undefined ? markedDates : internalMarkedDates;
-  const actualSetMarkedDates = setMarkedDates !== undefined ? setMarkedDates : internalSetMarkedDates;
-  const actualOriginalDates = originalDates !== undefined ? originalDates : [];
-  const actualSetOriginalDates = (typeof setOriginalDates === 'function') ? setOriginalDates : undefined;
+export function TimeKeepingCalendar({ onChange, markedDates = [], setMarkedDates, originalDates = [], setOriginalDates }: TimeKeepingCalendarProps) {
+  // Use only props for marked/original dates (fully controlled)
+  const actualMarkedDates = markedDates;
+  const actualSetMarkedDates = setMarkedDates;
+  const actualOriginalDates = originalDates;
+  const actualSetOriginalDates = setOriginalDates;
 
   // Format date as YYYY-MM-DD in local (Philippines) time
   function toDateString(d: Date) {
@@ -34,12 +34,17 @@ export function TimeKeepingCalendar({ onChange, markedDates, setMarkedDates, ori
 
   function handleDayClick(day: Date) {
     const dayStr = toDateString(day);
-    const alreadyMarked = actualMarkedDates.includes(dayStr);
+    // Always convert all dates to YYYY-MM-DD before storing
+    const normalizedMarked = markedDates.map(d => toDateString(new Date(d)));
+    const alreadyMarked = normalizedMarked.includes(dayStr);
+    let newDates;
     if (alreadyMarked) {
-      actualSetMarkedDates(actualMarkedDates.filter((d) => d !== dayStr));
+      newDates = normalizedMarked.filter((d) => d !== dayStr);
     } else {
-      actualSetMarkedDates([...actualMarkedDates, dayStr]);
+      newDates = [...normalizedMarked, dayStr];
     }
+    console.log('DEBUG handleDayClick newDates:', newDates);
+    setMarkedDates(newDates);
     if (onChange) onChange(dayStr);
   }
 
@@ -52,24 +57,27 @@ export function TimeKeepingCalendar({ onChange, markedDates, setMarkedDates, ori
   }
 
   async function handleSave() {
-    if (actualMarkedDates.length === 0) {
-      toast.error("No dates selected.");
-      return;
-    }
+    // Allow saving even if all dates are unmarked, so removed dates are processed
     // Convert all dates to local (Philippines) YYYY-MM-DD before saving
-    const localDates = actualMarkedDates.map((d: string) => {
-      const date = new Date(d);
-      // Manila is UTC+8
-      const manila = new Date(date.getTime() + (8 * 60 - date.getTimezoneOffset()) * 60000);
-      return manila.toISOString().slice(0, 10);
-    });
-    // Compare with originalDates (also converted to local)
-    const localOriginal = (actualOriginalDates || []).map((d: string) => {
-      const date = new Date(d);
-      const manila = new Date(date.getTime() + (8 * 60 - date.getTimezoneOffset()) * 60000);
-      return manila.toISOString().slice(0, 10);
-    });
-    if (arraysEqual(localDates, localOriginal)) {
+      // Normalize both arrays to YYYY-MM-DD Manila time before comparison
+      function normalizeToManila(dateStr: string) {
+        const date = new Date(dateStr);
+        // Manila is UTC+8
+        const manila = new Date(date.getTime() + (8 * 60 - date.getTimezoneOffset()) * 60000);
+        return manila.toISOString().slice(0, 10);
+      }
+      function uniqueSorted(arr: string[]) {
+        return Array.from(new Set(arr)).sort();
+      }
+      const localDates = uniqueSorted(actualMarkedDates.map(normalizeToManila));
+      const localOriginal = uniqueSorted((actualOriginalDates || []).map(normalizeToManila));
+      // Debug log
+      console.log('DEBUG localDates:', localDates);
+      console.log('DEBUG localOriginal:', localOriginal);
+    // Find added and removed dates
+    const addedDates = localDates.filter((d: string) => !localOriginal.includes(d));
+    const removedDates = localOriginal.filter((d: string) => !localDates.includes(d));
+    if (addedDates.length === 0 && removedDates.length === 0) {
       toast.info("No changes to save.");
       return;
     }
@@ -77,22 +85,18 @@ export function TimeKeepingCalendar({ onChange, markedDates, setMarkedDates, ori
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        "X-CSRF-TOKEN": document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || '',
       },
-      body: JSON.stringify({ dates: localDates }),
+      body: JSON.stringify({ add: addedDates, remove: removedDates }),
     });
     if (res.ok) {
-      // Only show newly added dates in the toast
-      const newDates = localDates.filter((d: string) => !localOriginal.includes(d));
-      if (newDates.length > 0) {
-        toast.success(`Saved days: ${newDates.join(", ")}`);
-      } else {
-        toast.info("No new days were added.");
-      }
-      // Update parent's originalDates state after successful save
-      if (typeof actualSetOriginalDates === 'function') {
-        actualSetOriginalDates([...localDates]);
-      }
+      const msg = [];
+      if (addedDates.length > 0) msg.push(`Added: ${addedDates.join(", ")}`);
+      if (removedDates.length > 0) msg.push(`Removed: ${removedDates.join(", ")}`);
+      toast.success(msg.join(" | "));
+      setOriginalDates([...localDates]);
+      setMarkedDates([...localDates]);
+      if (onSaveSync) onSaveSync([...localDates]);
     } else {
       toast.error("Failed to save dates.");
     }

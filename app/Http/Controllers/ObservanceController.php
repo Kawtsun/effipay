@@ -17,18 +17,41 @@ class ObservanceController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'dates' => 'required|array',
-            'dates.*' => 'date',
+            'add' => 'array',
+            'add.*' => 'date',
+            'remove' => 'array',
+            'remove.*' => 'date',
             'label' => 'nullable|string',
         ]);
+
         $created = [];
-        foreach ($data['dates'] as $date) {
-            $created[] = Observance::updateOrCreate(
-                ['date' => $date],
-                ['label' => $data['label'] ?? null]
-            );
+        $removed = [];
+
+        // Add new observances
+        if (!empty($data['add'])) {
+            foreach ($data['add'] as $date) {
+                $created[] = Observance::updateOrCreate(
+                    ['date' => $date],
+                    ['label' => $data['label'] ?? null]
+                );
+            }
         }
-        return response()->json(['success' => true, 'observances' => $created]);
+
+        // Remove observances
+        if (!empty($data['remove'])) {
+            foreach ($data['remove'] as $date) {
+                $deleted = Observance::where('date', $date)->delete();
+                if ($deleted) {
+                    $removed[] = $date;
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'added' => $created,
+            'removed' => $removed,
+        ]);
     }
 
     // Delete an observance by date
