@@ -12,9 +12,11 @@ class Observance extends Model
     protected $fillable = [
         'date',
         'label',
+        'is_automated',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'is_automated' => 'boolean',
     ];
 }
