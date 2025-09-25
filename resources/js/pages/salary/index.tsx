@@ -101,7 +101,7 @@ export default function Index() {
   }, [selectedDate])
 
   const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Salary Setup', href: route('salary.index') },
+    { title: 'Salary Management', href: route('salary.index') },
   ]
 
   const cards = [
