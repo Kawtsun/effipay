@@ -21,8 +21,11 @@ export function TimeKeepingCalendar({ onChange, markedDates, setMarkedDates }: T
   const actualMarkedDates = markedDates !== undefined ? markedDates : internalMarkedDates;
   const actualSetMarkedDates = setMarkedDates !== undefined ? setMarkedDates : internalSetMarkedDates;
 
+  // Format date as YYYY-MM-DD in local (Philippines) time
   function toDateString(d: Date) {
-    return d.toISOString().slice(0, 10);
+    // Convert to Asia/Manila timezone
+    const offsetDate = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
+    return offsetDate.toISOString().slice(0, 10);
   }
 
   function handleDayClick(day: Date) {
@@ -41,18 +44,24 @@ export function TimeKeepingCalendar({ onChange, markedDates, setMarkedDates }: T
       toast.error("No dates selected.");
       return;
     }
+    // Convert all dates to local (Philippines) YYYY-MM-DD before saving
+    const localDates = actualMarkedDates.map(d => {
+      const date = new Date(d);
+      // Manila is UTC+8
+      const manila = new Date(date.getTime() + (8 * 60 - date.getTimezoneOffset()) * 60000);
+      return manila.toISOString().slice(0, 10);
+    });
     const res = await fetch("/observances", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-TOKEN": document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || '',
       },
-      body: JSON.stringify({ dates: actualMarkedDates }),
+      body: JSON.stringify({ dates: localDates }),
     });
     if (res.ok) {
       // Show only YYYY-MM-DD for each date
-      const formatted = actualMarkedDates.map(d => d.slice(0, 10)).join(", ");
-      toast.success(`Saved days: ${formatted}`);
+  toast.success(`Saved days: ${localDates.join(", ")}`);
     } else {
       toast.error("Failed to save dates.");
     }
