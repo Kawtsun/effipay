@@ -1,6 +1,10 @@
+
+import { toast } from 'sonner';
 import * as React from "react";
 import { useState } from "react";
 import { Calendar as ShadcnCalendar } from "@/components/ui/calendar";
+
+
 
 
 
@@ -13,13 +17,11 @@ interface TimeKeepingCalendarProps {
   onChange?: (date: string | undefined) => void;
   markedDates?: string[];
   setMarkedDates?: (dates: string[]) => void;
-  originalDates?: string[];
-  setOriginalDates?: (dates: string[]) => void;
-  onSave?: (args: { addedDates: string[]; removedDates: string[]; localDates: string[]; localOriginal: string[] }) => Promise<boolean>;
+  automatedDates?: string[];
 }
 
 
-export function TimeKeepingCalendar({ onChange, markedDates = [], setMarkedDates }: TimeKeepingCalendarProps) {
+export function TimeKeepingCalendar({ onChange, markedDates = [], setMarkedDates, automatedDates = [] }: TimeKeepingCalendarProps) {
   // Use only props for marked/original dates (fully controlled)
 
 
@@ -30,9 +32,15 @@ export function TimeKeepingCalendar({ onChange, markedDates = [], setMarkedDates
     return offsetDate.toISOString().slice(0, 10);
   }
 
+  // Compute automated days for quick lookup
+  const automatedSet = new Set((automatedDates || []).map(d => toDateString(new Date(d))));
+
   function handleDayClick(day: Date) {
     const dayStr = toDateString(day);
-    // Always convert all dates to YYYY-MM-DD before storing
+    if (automatedSet.has(dayStr)) {
+      toast.info('This date is a public holiday and cannot be changed.');
+      return;
+    }
     const normalizedMarked = markedDates.map(d => toDateString(new Date(d)));
     const alreadyMarked = normalizedMarked.includes(dayStr);
     let newDates;
@@ -41,7 +49,6 @@ export function TimeKeepingCalendar({ onChange, markedDates = [], setMarkedDates
     } else {
       newDates = [...normalizedMarked, dayStr];
     }
-    console.log('DEBUG handleDayClick newDates:', newDates);
     if (setMarkedDates) setMarkedDates(newDates);
     if (onChange) onChange(dayStr);
   }
@@ -50,12 +57,12 @@ export function TimeKeepingCalendar({ onChange, markedDates = [], setMarkedDates
 
 
 
+  // Only block toggling automated dates, no custom styling
   return (
     <div className="flex flex-col items-center py-4 gap-4">
-      {/* Default calendar styling, no custom marked day size */}
       <ShadcnCalendar
         mode="multiple"
-  selected={markedDates.map((d: string) => new Date(d))}
+        selected={markedDates.map((d: string) => new Date(d))}
         onDayClick={handleDayClick}
         className="rounded-md border shadow"
       />

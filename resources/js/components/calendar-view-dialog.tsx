@@ -14,8 +14,10 @@ interface CalendarViewDialogProps {
 
 export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
+  // Store both date and is_automated for each observance
   const [markedDates, setMarkedDates] = useState<string[]>([]);
   const [originalDates, setOriginalDates] = useState<string[]>([]);
+  const [automatedDates, setAutomatedDates] = useState<string[]>([]); // Dates that are automated
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -43,7 +45,7 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRF-TOKEN": document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || '',
+          "X-CSRF-TOKEN": document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '',
         },
         body: JSON.stringify({ add: addedDates, remove: removedDates }),
       });
@@ -56,12 +58,12 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
           } else if (removedDates.length > 0) {
             msg = `Saved: ${removedDates.length} holiday/suspension date${removedDates.length > 1 ? 's' : ''} removed.`;
           }
-          toast.success(msg);
-  setOriginalDates([...localDates]);
-  setMarkedDates([...localDates]);
-      } else {
-        toast.error("Failed to save dates.");
-      }
+          if (msg) toast.success(msg);
+          setOriginalDates([...localDates]);
+          setMarkedDates([...localDates]);
+        } else {
+          toast.error("Failed to save dates.");
+        }
     } catch (e) {
       toast.error("Failed to save dates.");
     } finally {
@@ -82,6 +84,9 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
             const loaded = data.map((obs: { date: string }) => obs.date);
             setMarkedDates([...loaded]);
             setOriginalDates([...loaded]);
+            // Track which dates are automated
+            const autoDates = data.filter((obs: { is_automated?: boolean }) => obs.is_automated).map((obs: { date: string }) => obs.date);
+            setAutomatedDates(autoDates);
           }
         }
       } catch (e) {
@@ -143,6 +148,7 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
                         onChange={setSelectedDate}
                         markedDates={markedDates}
                         setMarkedDates={setMarkedDates}
+                        automatedDates={automatedDates}
                       />
                     </div>
                   </div>
