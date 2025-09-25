@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
 import { TimeKeepingCalendar } from './timekeeping-calendar';
 import { Button } from './ui/button';
@@ -16,6 +17,52 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
   const [markedDates, setMarkedDates] = useState<string[]>([]);
   const [originalDates, setOriginalDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Save handler for markedDates
+  const handleSave = async () => {
+    function normalizeToManila(dateStr: string) {
+      const date = new Date(dateStr);
+      const manila = new Date(date.getTime() + (8 * 60 - date.getTimezoneOffset()) * 60000);
+      return manila.toISOString().slice(0, 10);
+    }
+    function uniqueSorted(arr: string[]) {
+      return Array.from(new Set(arr)).sort();
+    }
+    const localDates = uniqueSorted(markedDates.map(normalizeToManila));
+    const localOriginal = uniqueSorted((originalDates || []).map(normalizeToManila));
+    const addedDates = localDates.filter((d: string) => !localOriginal.includes(d));
+    const removedDates = localOriginal.filter((d: string) => !localDates.includes(d));
+    if (addedDates.length === 0 && removedDates.length === 0) {
+      toast.info("No changes to save.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/observances", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({ add: addedDates, remove: removedDates }),
+      });
+      if (res.ok) {
+        const msg = [];
+        if (addedDates.length > 0) msg.push(`Added Holiday/Suspension Dates: ${addedDates.join(", ")}`);
+        if (removedDates.length > 0) msg.push(`Removed Holiday/Suspension Dates: ${removedDates.join(", ")}`);
+        toast.success(msg.join(" | "));
+  setOriginalDates([...localDates]);
+  setMarkedDates([...localDates]);
+      } else {
+        toast.error("Failed to save dates.");
+      }
+    } catch (e) {
+      toast.error("Failed to save dates.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Fetch saved dates when dialog opens
   useEffect(() => {
@@ -86,8 +133,6 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
                         onChange={setSelectedDate}
                         markedDates={markedDates}
                         setMarkedDates={setMarkedDates}
-                        originalDates={originalDates}
-                        setOriginalDates={setOriginalDates}
                       />
                     </div>
                   </div>
@@ -97,7 +142,8 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
           </div>
         </div>
         <DialogFooter className="flex-shrink-0">
-          <Button onClick={onClose}>Close</Button>
+          <Button variant="secondary" onClick={onClose}>Close</Button>
+          <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
