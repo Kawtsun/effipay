@@ -402,12 +402,14 @@ class TimeKeepingController extends Controller {
         $work_start_time = $employee->work_start_time;
         $work_end_time = $employee->work_end_time;
 
-        $late_threshold = $work_start_time ? date('H:i:s', strtotime($work_start_time) + 15 * 60) : null;
+        $grace_period_minutes = 15;
+        $late_threshold = $work_start_time ? date('H:i:s', strtotime($work_start_time) + $grace_period_minutes * 60) : null;
 
         foreach ($records as $tk) {
             // Tardiness (decimal hours)
-            if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
-                $late_minutes = (strtotime($tk->clock_in) - strtotime($late_threshold)) / 60;
+            if ($tk->clock_in && $work_start_time && strtotime($tk->clock_in) > strtotime($late_threshold)) {
+                // Count all minutes late from scheduled start time, not from grace period
+                $late_minutes = (strtotime($tk->clock_in) - strtotime($work_start_time)) / 60;
                 if ($late_minutes > 0) {
                     $late_count += ($late_minutes / 60);
                 }
