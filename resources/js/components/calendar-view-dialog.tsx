@@ -4,6 +4,8 @@ import { TimeKeepingCalendar } from './timekeeping-calendar';
 import { Button } from './ui/button';
 
 
+
+
 interface CalendarViewDialogProps {
   open: boolean;
   onClose: () => void;
@@ -12,6 +14,7 @@ interface CalendarViewDialogProps {
 export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
   const [markedDates, setMarkedDates] = useState<string[]>([]);
+  const [originalDates, setOriginalDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Fetch saved dates when dialog opens
@@ -24,7 +27,9 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
-            setMarkedDates(data.map((obs: { date: string }) => obs.date));
+            const loaded = data.map((obs: { date: string }) => obs.date);
+            setMarkedDates(loaded);
+            setOriginalDates(loaded);
           }
         }
       } catch (e) {
@@ -35,6 +40,7 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
     }
     fetchMarkedDates();
   }, [open]);
+
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
@@ -52,6 +58,8 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
                 onChange={setSelectedDate}
                 markedDates={markedDates}
                 setMarkedDates={setMarkedDates}
+                originalDates={originalDates}
+                setOriginalDates={setOriginalDates}
               />
             )}
           </div>
