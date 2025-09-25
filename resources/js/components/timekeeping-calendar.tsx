@@ -50,7 +50,9 @@ export function TimeKeepingCalendar({ onChange, markedDates, setMarkedDates }: T
       body: JSON.stringify({ dates: actualMarkedDates }),
     });
     if (res.ok) {
-      toast.success(`Saved days: ${actualMarkedDates.join(", ")}`);
+      // Show only YYYY-MM-DD for each date
+      const formatted = actualMarkedDates.map(d => d.slice(0, 10)).join(", ");
+      toast.success(`Saved days: ${formatted}`);
     } else {
       toast.error("Failed to save dates.");
     }
