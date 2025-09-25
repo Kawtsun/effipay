@@ -47,11 +47,16 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
         },
         body: JSON.stringify({ add: addedDates, remove: removedDates }),
       });
-      if (res.ok) {
-        const msg = [];
-        if (addedDates.length > 0) msg.push(`Added Holiday/Suspension Dates: ${addedDates.join(", ")}`);
-        if (removedDates.length > 0) msg.push(`Removed Holiday/Suspension Dates: ${removedDates.join(", ")}`);
-        toast.success(msg.join(" | "));
+        if (res.ok) {
+          let msg = '';
+          if (addedDates.length > 0 && removedDates.length > 0) {
+            msg = `Saved: ${addedDates.length} date${addedDates.length > 1 ? 's' : ''} added, ${removedDates.length} date${removedDates.length > 1 ? 's' : ''} removed.`;
+          } else if (addedDates.length > 0) {
+            msg = `Saved: ${addedDates.length} holiday/suspension date${addedDates.length > 1 ? 's' : ''} added.`;
+          } else if (removedDates.length > 0) {
+            msg = `Saved: ${removedDates.length} holiday/suspension date${removedDates.length > 1 ? 's' : ''} removed.`;
+          }
+          toast.success(msg);
   setOriginalDates([...localDates]);
   setMarkedDates([...localDates]);
       } else {
@@ -99,6 +104,11 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
           <div className="space-y-8 text-base">
             <div className="border-b pb-6 mb-2">
               <h3 className="text-2xl font-extrabold mb-1">Observance Calendar</h3>
+            </div>
+            <div className="mb-2">
+              <p className="text-sm text-muted-foreground font-normal leading-relaxed">
+                Select or unselect dates to mark <span className="font-semibold">official holidays</span> or <span className="font-semibold">class/work suspensions</span>. <span className="font-medium">Click <span className="underline">Save</span> to apply your changes.</span>
+              </p>
             </div>
             <div
               className="flex items-center justify-center"
