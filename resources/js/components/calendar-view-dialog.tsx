@@ -27,6 +27,23 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Refetch observances when markedDates changes and dialog is open
+  useEffect(() => {
+    if (!open) return;
+    async function refetchObservances() {
+      try {
+        const res = await fetch("/observances");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setObservances(data.map((obs: { date: string, label?: string }) => ({ date: obs.date, label: obs.label })));
+          }
+        }
+      } catch {}
+    }
+    refetchObservances();
+  }, [markedDates, open]);
+
   // Save handler for markedDates
   const handleSave = async () => {
     function normalizeToManila(dateStr: string) {
