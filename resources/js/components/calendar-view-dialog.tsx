@@ -125,7 +125,7 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
             <div className="border-b pb-6 mb-2">
               <h3 className="text-2xl font-extrabold mb-1">Observance Calendar</h3>
             </div>
-            <div className="mb-2">
+            <div className="mb-4">
               <p className="text-sm text-muted-foreground font-normal leading-relaxed">
                 Select or unselect dates to mark <span className="font-semibold">official holidays</span> or <span className="font-semibold">class/work suspensions</span>. <span className="font-medium">Click <span className="underline">Save</span> to apply your changes.</span>
               </p>
@@ -149,28 +149,55 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
                   <Loader2 className="h-16 w-16 animate-spin text-primary" />
                 </div>
               ) : (
-                <motion.div
-                  key="calendar-content"
-                  initial={{ opacity: 0, scale: 0.99 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.99 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                  style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
-                >
-                  {/* Calendar header and navigation should be at the top, grid below with fixed height */}
-                  <div style={{ flex: '0 0 auto' }}>
-                    {/* Optionally, you can move calendar header/navigation here if you control TimeKeepingCalendar */}
-                  </div>
-                  <div style={{ flex: '1 1 0', minHeight: 320, maxHeight: 340, height: 330, width: '100%' }}>
-                    <TimeKeepingCalendar
-                      value={selectedDate}
-                      onChange={setSelectedDate}
-                      markedDates={markedDates}
-                      setMarkedDates={setMarkedDates}
-                      automatedDates={automatedDates}
-                    />
-                  </div>
-                </motion.div>
+                <>
+                  {/* Total marked dates in the current year (show only after loading) */}
+                  <motion.div
+                    className="mb-4"
+                    key="marked-dates-label"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                  >
+                    <span className="text-sm font-medium text-primary">
+                      {(() => {
+                        const year = new Date().getFullYear();
+                        const count = markedDates.filter(date => {
+                          const d = new Date(date);
+                          return d.getFullYear() === year;
+                        }).length;
+                        return (
+                          <>
+                            {`Total marked dates in ${year}: `}
+                            <b className="font-bold">{count}</b>
+                          </>
+                        );
+                      })()}
+                    </span>
+                  </motion.div>
+                  <motion.div
+                    key="calendar-content"
+                    initial={{ opacity: 0, scale: 0.99 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.99 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
+                  >
+                    {/* Calendar header and navigation should be at the top, grid below with fixed height */}
+                    <div style={{ flex: '0 0 auto' }}>
+                      {/* Optionally, you can move calendar header/navigation here if you control TimeKeepingCalendar */}
+                    </div>
+                    <div style={{ flex: '1 1 0', minHeight: 320, maxHeight: 340, height: 330, width: '100%' }}>
+                      <TimeKeepingCalendar
+                        value={selectedDate}
+                        onChange={setSelectedDate}
+                        markedDates={markedDates}
+                        setMarkedDates={setMarkedDates}
+                        automatedDates={automatedDates}
+                      />
+                    </div>
+                  </motion.div>
+                </>
               )}
             </div>
           </div>
