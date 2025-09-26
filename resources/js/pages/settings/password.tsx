@@ -4,6 +4,7 @@ import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
 import { Transition } from '@headlessui/react';
 import { Head, useForm } from '@inertiajs/react';
+import { toast } from 'sonner';
 import { FormEventHandler, useRef } from 'react';
 
 import HeadingSmall from '@/components/heading-small';
@@ -33,16 +34,23 @@ export default function Password() {
 
         put(route('password.update'), {
             preserveScroll: true,
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                reset();
+                toast.success('Password updated successfully');
+            },
             onError: (errors) => {
                 if (errors.password) {
                     reset('password', 'password_confirmation');
                     passwordInput.current?.focus();
+                    toast.error(errors.password);
                 }
-
                 if (errors.current_password) {
                     reset('current_password');
                     currentPasswordInput.current?.focus();
+                    toast.error(errors.current_password);
+                }
+                if (errors.password_confirmation) {
+                    toast.error(errors.password_confirmation);
                 }
             },
         });
@@ -71,7 +79,7 @@ export default function Password() {
                                 placeholder="Current password"
                             />
 
-                            <InputError message={errors.current_password} />
+                            {/* Error handled by toast */}
                         </div>
 
                         <div className="grid gap-2">
@@ -88,7 +96,7 @@ export default function Password() {
                                 placeholder="New password"
                             />
 
-                            <InputError message={errors.password} />
+                            {/* Error handled by toast */}
                         </div>
 
                         <div className="grid gap-2">
@@ -104,21 +112,11 @@ export default function Password() {
                                 placeholder="Confirm password"
                             />
 
-                            <InputError message={errors.password_confirmation} />
+                            {/* Error handled by toast */}
                         </div>
 
                         <div className="flex items-center gap-4">
                             <Button disabled={processing}>Save password</Button>
-
-                            <Transition
-                                show={recentlySuccessful}
-                                enter="transition ease-in-out"
-                                enterFrom="opacity-0"
-                                leave="transition ease-in-out"
-                                leaveTo="opacity-0"
-                            >
-                                <p className="text-sm text-neutral-600">Saved</p>
-                            </Transition>
                         </div>
                     </form>
                 </div>
