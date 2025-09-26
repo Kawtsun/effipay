@@ -104,7 +104,7 @@ export function CalendarCarousel({ observances = [] }: { observances: { date: st
               </CarouselItem>
             ) : (
               sortedObservances.map((obs) => (
-                <CarouselItem key={obs.date + (obs.label || '')} className="basis-1/3 px-2">
+                <CarouselItem key={obs.date + (obs.label || '')} className="basis-1/3">
                   <div className="flex justify-center w-full">
                     <Card className="w-[320px]">
                       <CardContent className="flex flex-col items-center justify-center h-[160px] px-2 py-4 w-full">
@@ -112,7 +112,7 @@ export function CalendarCarousel({ observances = [] }: { observances: { date: st
                           {formatManilaDate(obs.date)}
                         </span>
                         <span className="text-sm text-center text-muted-foreground font-medium break-words max-w-[260px] whitespace-pre-line" style={{ wordBreak: 'break-word' }}>
-                          {obs.label || 'Holiday'}
+                          {obs.label || 'Suspension/Holiday'}
                         </span>
                       </CardContent>
                     </Card>
