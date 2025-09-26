@@ -85,7 +85,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/payroll/employee/monthly', [PayrollController::class, 'getEmployeeMonthlyPayroll'])->name('payroll.employee.monthly');
     Route::get('/payroll/employee/months', [PayrollController::class, 'getEmployeePayrollMonths'])->name('payroll.employee.months');
     Route::get('/timekeeping/employee/monthly-summary', [TimeKeepingController::class, 'monthlySummary'])->name('timekeeping.employee.monthly-summary');
+
+    // Trigger artisan fetch-holidays 
+    Route::post('/fetch-holidays', [ObservanceController::class, 'fetchHolidays']);
 });
+
+
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';

@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
 import { TimeKeepingCalendar } from './timekeeping-calendar';
 import { Button } from './ui/button';
+import { Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 
 
@@ -71,16 +73,29 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
     }
   };
 
-  // Fetch saved dates when dialog opens
+  // When dialog opens, first fetch holidays, then fetch observances
+
   useEffect(() => {
-    async function fetchMarkedDates() {
+    let isMounted = true;
+    async function fetchHolidaysAndDates() {
       if (!open) return;
       setLoading(true);
+      const minDelay = 500;
+      const delayPromise = new Promise(res => setTimeout(res, minDelay));
+      // First, trigger the backend to fetch holidays
+      await fetch('/fetch-holidays', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '',
+          'Content-Type': 'application/json',
+        },
+      });
+      // Then, fetch the observances
       try {
         const res = await fetch("/observances");
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data)) {
+          if (Array.isArray(data) && isMounted) {
             const loaded = data.map((obs: { date: string }) => obs.date);
             setMarkedDates([...loaded]);
             setOriginalDates([...loaded]);
@@ -89,13 +104,13 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
             setAutomatedDates(autoDates);
           }
         }
-      } catch (e) {
-        // ignore fetch errors
       } finally {
-        setLoading(false);
+        await delayPromise;
+        if (isMounted) setLoading(false);
       }
     }
-    fetchMarkedDates();
+    fetchHolidaysAndDates();
+    return () => { isMounted = false; };
   }, [open]);
 
 
@@ -116,44 +131,47 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
               </p>
             </div>
             <div
-              className="flex items-center justify-center"
-              style={{ minHeight: 400, maxHeight: 500, height: 450, width: 420, margin: '0 auto', position: 'relative' }}
+              style={{
+                width: 400,
+                height: 430,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                margin: '0 auto',
+                padding: 0,
+              }}
             >
-              <div
-                style={{
-                  width: 400,
-                  height: 430,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  justifyContent: 'flex-start',
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  margin: 'auto',
-                  padding: 0,
-                }}
-              >
-                {loading ? (
-                  <div className="text-center text-muted-foreground">Loading...</div>
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    {/* Calendar header and navigation should be at the top, grid below with fixed height */}
-                    <div style={{ flex: '0 0 auto' }}>
-                      {/* Optionally, you can move calendar header/navigation here if you control TimeKeepingCalendar */}
-                    </div>
-                    <div style={{ flex: '1 1 0', minHeight: 320, maxHeight: 340, height: 330, width: '100%' }}>
-                      <TimeKeepingCalendar
-                        value={selectedDate}
-                        onChange={setSelectedDate}
-                        markedDates={markedDates}
-                        setMarkedDates={setMarkedDates}
-                        automatedDates={automatedDates}
-                      />
-                    </div>
+              {loading || automatedDates.length === 0 ? (
+                // Centered loading spinner matching the employee table
+                <div className="w-full h-full flex items-center justify-center" style={{ minHeight: 320 }}>
+                  <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                </div>
+              ) : (
+                <motion.div
+                  key="calendar-content"
+                  initial={{ opacity: 0, scale: 0.99 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.99 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
+                >
+                  {/* Calendar header and navigation should be at the top, grid below with fixed height */}
+                  <div style={{ flex: '0 0 auto' }}>
+                    {/* Optionally, you can move calendar header/navigation here if you control TimeKeepingCalendar */}
                   </div>
-                )}
-              </div>
+                  <div style={{ flex: '1 1 0', minHeight: 320, maxHeight: 340, height: 330, width: '100%' }}>
+                    <TimeKeepingCalendar
+                      value={selectedDate}
+                      onChange={setSelectedDate}
+                      markedDates={markedDates}
+                      setMarkedDates={setMarkedDates}
+                      automatedDates={automatedDates}
+                    />
+                  </div>
+                </motion.div>
+              )}
             </div>
           </div>
         </div>

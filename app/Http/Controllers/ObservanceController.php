@@ -1,12 +1,18 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Observance;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 
 class ObservanceController extends Controller
 {
+    // Trigger artisan command to fetch holidays
+    public function fetchHolidays()
+    {
+        Artisan::call('observances:fetch-holidays');
+        return response()->json(['status' => 'ok']);
+    }
     // List all observances
     public function index()
     {
