@@ -405,7 +405,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 {showPDF === 'payslip' && payrollData && (
                                     <PDFDownloadLink
                                         document={<PayslipTemplate
-                                            employeeName={employee ? toTitleCase(formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}
+                                            employeeName={employee ? (formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             earnings={payrollData.earnings}
@@ -439,7 +439,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 {showPDF === 'btr' && btrRecords.length > 0 && (
                                     <PDFDownloadLink
                                         document={<BiometricTimeRecordTemplate
-                                            employeeName={employee ? toTitleCase(formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}
+                                            employeeName={employee ? (formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             records={btrRecords}

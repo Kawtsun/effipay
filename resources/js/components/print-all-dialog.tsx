@@ -190,7 +190,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               overload: result.payslip.overload,
             };
             return {
-              employeeName: toTitleCase(formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
+              employeeName: (formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
               role: emp.roles || '-',
               payPeriod: selectedMonth,
               earnings: mergedEarnings,
@@ -332,7 +332,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
                       + (Number(summary?.overtime ?? 0));
                   })();
             return {
-              employeeName: toTitleCase(formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
+              employeeName: (formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
               role: emp.roles || '-',
               payPeriod: selectedMonth,
               records: btrRecords,
