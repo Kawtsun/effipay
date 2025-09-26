@@ -139,7 +139,7 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] h-[90vh] max-h-[90vh] flex flex-col min-h-0">
+      <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] h-[90vh] max-h-[90vh] flex flex-col min-h-0 select-none">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-2xl font-bold mb-2">Calendar View</DialogTitle>
         </DialogHeader>
