@@ -36,24 +36,28 @@ export default function Welcome() {
                 {/* Overlay for extra contrast */}
                 <div className="fixed inset-0 bg-black/60 dark:bg-black/70 z-0" />
                 {/* Effipay Card using shadcn Card */}
-                <Card className="relative z-10 w-full max-w-lg rounded-2xl border border-primary/30 shadow-2xl bg-white/80 dark:bg-neutral-900/90 backdrop-blur-lg p-0 select-none">
-                    <CardHeader className="flex flex-col items-center pt-10 pb-0">
-                        <AppLogoIcon className="h-30 w-30 rounded-full object-cover mx-auto" />
-                        <h1 className="text-4xl font-extrabold text-primary mb-3 text-center drop-shadow-md tracking-tight">Effipay</h1>
-                        <h2 className="text-xl font-semibold text-foreground mb-4 text-center drop-shadow-lg">A Web-Based Payroll Management System</h2>
-                        <p className="text-lg text-muted-foreground mb-8 text-center max-w-md">
-                            Effipay is the official payroll system for Tomas Claudio Colleges, designed to streamline and secure payroll management for the institution.
-                        </p>
-                    </CardHeader>
-                    <CardContent className="w-full pb-10">
-                        <div className="w-full">
-                            <Button className="w-full h-10" onClick={handleProceed} disabled={loading}>
-                                {loading && <LoaderCircle className="h-4 w-4 animate-spin mr-2" />}
-                                Proceed
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className='relative z-10 flex min-h-svh flex-col items-center justify-center p-6 md:p-10 w-full'>
+                    <div className='w-full max-w-xl p-10 select-none'>
+                        <Card className="rounded-2xl w-full">
+                            <CardHeader className="pt-8 pb-0 text-center flex flex-col items-center w-full">
+                                <AppLogoIcon className="h-30 w-30 rounded-full object-cover mx-auto" />
+                                <h1 className="text-4xl font-extrabold text-primary mb-3 text-center drop-shadow-md tracking-tight">Effipay</h1>
+                                <h2 className="text-xl font-semibold text-foreground mb-4 text-center drop-shadow-lg">A Web-Based Payroll Management System</h2>
+                                <p className="text-lg text-muted-foreground mb-8 text-center max-w-md">
+                                    Effipay is the official payroll system for Tomas Claudio Colleges, designed to streamline and secure payroll management for the institution.
+                                </p>
+                            </CardHeader>
+                            <CardContent className="py-8 w-full">
+                                <div className="w-full">
+                                    <Button className="w-full h-10" onClick={handleProceed} disabled={loading}>
+                                        {loading && <LoaderCircle className="h-4 w-4 animate-spin mr-2" />}
+                                        Proceed
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
             </div>
         </>
     );
