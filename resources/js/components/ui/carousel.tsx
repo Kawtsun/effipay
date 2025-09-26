@@ -40,9 +40,13 @@ function useCarousel() {
   return context
 }
 
+interface CarouselWithWidthProps extends React.HTMLAttributes<HTMLDivElement>, CarouselProps {
+  containerWidth?: string | number;
+}
+
 const Carousel = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & CarouselProps
+  CarouselWithWidthProps
 >(
   (
     {
@@ -52,6 +56,7 @@ const Carousel = React.forwardRef<
       plugins,
       className,
       children,
+      containerWidth,
       ...props
     },
     ref
@@ -135,9 +140,10 @@ const Carousel = React.forwardRef<
         <div
           ref={ref}
           onKeyDownCapture={handleKeyDown}
-          className={cn("relative", className)}
+          className={cn("relative flex justify-center items-center", className)}
           role="region"
           aria-roledescription="carousel"
+          style={containerWidth ? { width: containerWidth, maxWidth: containerWidth, minWidth: containerWidth } : { width: '1080px', maxWidth: '1080px', minWidth: '1080px' }}
           {...props}
         >
           {children}
@@ -150,12 +156,14 @@ Carousel.displayName = "Carousel"
 
 const CarouselContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement> & { viewportWidth?: string | number }
+>(({ className, viewportWidth, ...props }, ref) => {
   const { carouselRef, orientation } = useCarousel()
 
+  // Force fixed width for the viewport
+  const forcedWidth = viewportWidth || '1080px';
   return (
-    <div ref={carouselRef} className="overflow-hidden">
+    <div ref={carouselRef} className="overflow-hidden" style={{ width: forcedWidth, maxWidth: forcedWidth, minWidth: forcedWidth }}>
       <div
         ref={ref}
         className={cn(
@@ -250,11 +258,11 @@ const CarouselNext = React.forwardRef<
 })
 CarouselNext.displayName = "CarouselNext"
 
+export type { CarouselApi };
 export {
-  type CarouselApi,
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselPrevious,
   CarouselNext,
-}
+};
