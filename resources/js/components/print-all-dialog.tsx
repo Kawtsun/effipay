@@ -219,7 +219,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
       // Filter out nulls (failed fetches)
       const filtered = payslipDataArr.filter(Boolean);
       if (filtered.length === 0) {
-        setBatchPayslipError('No payslip data found for any employee. Check console for details.');
+        toast.error('No payroll data found for the selected month.');
         setLoadingBatchPayslips(false);
         return;
       }
