@@ -23,6 +23,7 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
   const [markedDates, setMarkedDates] = useState<string[]>([]);
   const [originalDates, setOriginalDates] = useState<string[]>([]);
   const [automatedDates, setAutomatedDates] = useState<string[]>([]); // Dates that are automated
+  const [observances, setObservances] = useState<{ date: string, label?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -105,6 +106,8 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
             // Track which dates are automated
             const autoDates = data.filter((obs: { is_automated?: boolean }) => obs.is_automated).map((obs: { date: string }) => obs.date);
             setAutomatedDates(autoDates);
+            // Store all observance objects for carousel
+            setObservances(data.map((obs: { date: string, label?: string }) => ({ date: obs.date, label: obs.label })));
           }
         }
       } finally {
@@ -209,7 +212,7 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
                     transition={{ duration: 0.35, ease: 'easeOut' }}
                     style={{ display: 'flex', justifyContent: 'center', width: '100%' }}
                   >
-                    <CalendarCarousel />
+                    <CalendarCarousel observances={observances} />
                   </motion.div>
                 </>
               )}
