@@ -2,7 +2,8 @@ import { Head, useForm } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
-import InputError from '@/components/input-error';
+import { toast } from 'sonner';
+import { useEffect } from 'react';
 // import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 // import { Checkbox } from '@/components/ui/checkbox';
@@ -31,23 +32,42 @@ export default function Login({ status}: LoginProps) {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+        // Custom required validation
+        if (!data.username) {
+            toast.error('Username is required');
+            return;
+        }
+        if (!data.password) {
+            toast.error('Password is required');
+            return;
+        }
         post(route('login'), {
-            onFinish: () => reset('password'),
+            onFinish: () => {
+                reset('password');
+            },
         });
     };
+
+    useEffect(() => {
+        if (errors.username) {
+            toast.error(errors.username);
+        }
+        if (errors.password) {
+            toast.error(errors.password);
+        }
+    }, [errors.username, errors.password]);
 
     return (
         <AuthLayout title="Log in to payroll system" description="Enter admin username and password below to log in">
             <Head title="Log in" />
             <TccHeader />
-            <form className="flex flex-col gap-6 w-full" onSubmit={submit}>
+            <form className="flex flex-col gap-6 w-full" onSubmit={submit} noValidate>
                 <div className="grid gap-6">
                     <div className="grid gap-2">
                         <Label htmlFor="username">Username</Label>
                         <Input
                             id="username"
                             type="username"
-                            required
                             autoFocus
                             tabIndex={1}
                             autoComplete="username"
@@ -55,7 +75,7 @@ export default function Login({ status}: LoginProps) {
                             onChange={(e) => setData('username', e.target.value)}
                             placeholder="Username"
                         />
-                        <InputError message={errors.username} />
+                        {/* Error shown as toast */}
                     </div>
                     <div className="grid gap-2">
                         <div className="flex items-center">
@@ -69,14 +89,13 @@ export default function Login({ status}: LoginProps) {
                         <Input
                             id="password"
                             type="password"
-                            required
                             tabIndex={2}
                             autoComplete="current-password"
                             value={data.password}
                             onChange={(e) => setData('password', e.target.value)}
                             placeholder="Password"
                         />
-                        <InputError message={errors.password} />
+                        {/* Error shown as toast */}
                     </div>
 
                     {/* <div className="flex items-center space-x-3">

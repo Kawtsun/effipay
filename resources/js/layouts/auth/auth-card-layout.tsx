@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Link } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
+import { Toaster } from '@/components/ui/sonner';
 
 export default function AuthCardLayout({
     children,
@@ -43,6 +44,7 @@ export default function AuthCardLayout({
                     </Card>
                 </div>
             </div>
+            <Toaster richColors position={'top-right'} visibleToasts={5} />
         </div>
     );
 }

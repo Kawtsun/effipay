@@ -190,7 +190,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               overload: result.payslip.overload,
             };
             return {
-              employeeName: toTitleCase(formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
+              employeeName: (formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
               role: emp.roles || '-',
               payPeriod: selectedMonth,
               earnings: mergedEarnings,
@@ -219,7 +219,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
       // Filter out nulls (failed fetches)
       const filtered = payslipDataArr.filter(Boolean);
       if (filtered.length === 0) {
-        setBatchPayslipError('No payslip data found for any employee. Check console for details.');
+        toast.error('No payroll data found for the selected month.');
         setLoadingBatchPayslips(false);
         return;
       }
@@ -332,7 +332,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
                       + (Number(summary?.overtime ?? 0));
                   })();
             return {
-              employeeName: toTitleCase(formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
+              employeeName: (formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
               role: emp.roles || '-',
               payPeriod: selectedMonth,
               records: btrRecords,

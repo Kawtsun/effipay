@@ -6,6 +6,7 @@ use App\Models\TimeKeeping;
 use App\Http\Requests\StoreTimeKeepingRequest;
 use App\Http\Requests\UpdateTimeKeepingRequest;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 
@@ -402,12 +403,14 @@ class TimeKeepingController extends Controller {
         $work_start_time = $employee->work_start_time;
         $work_end_time = $employee->work_end_time;
 
-        $late_threshold = $work_start_time ? date('H:i:s', strtotime($work_start_time) + 15 * 60) : null;
+        $grace_period_minutes = 15;
+        $late_threshold = $work_start_time ? date('H:i:s', strtotime($work_start_time) + $grace_period_minutes * 60) : null;
 
         foreach ($records as $tk) {
             // Tardiness (decimal hours)
-            if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
-                $late_minutes = (strtotime($tk->clock_in) - strtotime($late_threshold)) / 60;
+            if ($tk->clock_in && $work_start_time && strtotime($tk->clock_in) > strtotime($late_threshold)) {
+                // Count all minutes late from scheduled start time, not from grace period
+                $late_minutes = (strtotime($tk->clock_in) - strtotime($work_start_time)) / 60;
                 if ($late_minutes > 0) {
                     $late_count += ($late_minutes / 60);
                 }
@@ -457,10 +460,18 @@ class TimeKeepingController extends Controller {
             if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
             $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
         }
+        // Fetch all observance dates for this month
+    $observanceDates = DB::table('observances')
+            ->where('date', 'like', "$month%")
+            ->pluck('date')
+            ->toArray();
+        $observanceSet = array_flip($observanceDates); // for fast lookup
         for ($i = 1; $i <= $daysInMonth; $i++) {
             $date = date('Y-m-d', strtotime($month . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
             $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
             if ($dayOfWeek >= 6) continue; // skip weekends
+            // Skip if date is in observances table
+            if (isset($observanceSet[$date])) continue;
             $tk = $records->where('date', $date);
             // If no record, or all records for the day have missing/null/whitespace clock_in and clock_out
             $allAbsent = true;
@@ -490,8 +501,13 @@ class TimeKeepingController extends Controller {
             $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
             if ($dayOfWeek >= 6) continue; // skip weekends
             if (!empty($tk->clock_in) && !empty($tk->clock_out)) {
+                $scheduledStart = !empty($employee->work_start_time) ? strtotime($employee->work_start_time) : null;
                 $in = strtotime($tk->clock_in);
                 $out = strtotime($tk->clock_out);
+                // If clock_in is earlier than scheduled start, use scheduled start
+                if ($scheduledStart && $in < $scheduledStart) {
+                    $in = $scheduledStart;
+                }
                 $worked = $out - $in;
                 if ($worked < 0) $worked += 24 * 60 * 60;
                 $hours = $worked / 3600;
