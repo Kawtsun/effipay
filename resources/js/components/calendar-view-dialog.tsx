@@ -1,3 +1,6 @@
+import { CalendarCarousel } from "./calendar-carousel";
+import DialogScrollArea from "./dialog-scroll-area";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
@@ -116,16 +119,16 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] max-h-[90vh] flex flex-col min-h-0">
+      <DialogContent className="max-w-6xl w-full px-8 py-4 sm:px-12 sm:py-6 z-[100] h-[90vh] max-h-[90vh] flex flex-col min-h-0">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-2xl font-bold mb-2">Calendar View</DialogTitle>
         </DialogHeader>
-        <div className="overflow-auto flex-1">
+        <DialogScrollArea>
           <div className="space-y-8 text-base">
             <div className="border-b pb-6 mb-2">
               <h3 className="text-2xl font-extrabold mb-1">Observance Calendar</h3>
             </div>
-            <div className="mb-4">
+            <div className="mb-20">
               <p className="text-sm text-muted-foreground font-normal leading-relaxed">
                 Select or unselect dates to mark <span className="font-semibold">official holidays</span> or <span className="font-semibold">class/work suspensions</span>. <span className="font-medium">Click <span className="underline">Save</span> to apply your changes.</span>
               </p>
@@ -152,14 +155,14 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
                 <>
                   {/* Total marked dates in the current year (show only after loading) */}
                   <motion.div
-                    className="mb-4"
+                    className="mb-4 mt-2 w-full flex justify-center"
                     key="marked-dates-label"
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    exit={{ opacity: 0, y: 16 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
                   >
-                    <span className="text-sm font-medium text-primary">
+                    <span className="text-sm font-medium text-primary text-center">
                       {(() => {
                         const year = new Date().getFullYear();
                         const count = markedDates.filter(date => {
@@ -177,10 +180,10 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
                   </motion.div>
                   <motion.div
                     key="calendar-content"
-                    initial={{ opacity: 0, scale: 0.99 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.99 }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 16 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
                     style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
                   >
                     {/* Calendar header and navigation should be at the top, grid below with fixed height */}
@@ -197,11 +200,22 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
                       />
                     </div>
                   </motion.div>
+                  {/* Carousel below the calendar, with animation and spacing */}
+                  <motion.div
+                    key="calendar-carousel"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 16 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    style={{ display: 'flex', justifyContent: 'center', width: '100%' }}
+                  >
+                    <CalendarCarousel />
+                  </motion.div>
                 </>
               )}
             </div>
           </div>
-        </div>
+        </DialogScrollArea>
         <DialogFooter className="flex-shrink-0">
           <Button variant="secondary" onClick={onClose}>Close</Button>
           <Button onClick={handleSave}>Save</Button>
