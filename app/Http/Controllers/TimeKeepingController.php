@@ -501,8 +501,13 @@ class TimeKeepingController extends Controller {
             $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
             if ($dayOfWeek >= 6) continue; // skip weekends
             if (!empty($tk->clock_in) && !empty($tk->clock_out)) {
+                $scheduledStart = !empty($employee->work_start_time) ? strtotime($employee->work_start_time) : null;
                 $in = strtotime($tk->clock_in);
                 $out = strtotime($tk->clock_out);
+                // If clock_in is earlier than scheduled start, use scheduled start
+                if ($scheduledStart && $in < $scheduledStart) {
+                    $in = $scheduledStart;
+                }
                 $worked = $out - $in;
                 if ($worked < 0) $worked += 24 * 60 * 60;
                 $hours = $worked / 3600;
