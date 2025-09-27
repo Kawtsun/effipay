@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, type ReactNode } from "react";
 import { formatFullName } from "@/utils/formatFullName";
 import { toast } from "sonner";
 import {
@@ -33,7 +33,7 @@ export default function BTRDialog({ employee, onClose }: Props) {
   const [selectedMonth, setSelectedMonth] = useState("");
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [records, setRecords] = useState<TimeRecord[]>([]);
-  // const [loading, setLoading] = useState(false); // No longer used
+  const [roleSchedules, setRoleSchedules] = useState<Array<{ role: string, start_work: string, end_work: string, work_hours?: number }>>([]);
 
   // Fetch months
   useEffect(() => {
@@ -74,6 +74,11 @@ export default function BTRDialog({ employee, onClose }: Props) {
           setRecords([]);
           toast.error("No timekeeping data found for this month.");
         }
+        if (Array.isArray(data.roles_with_schedules)) {
+          setRoleSchedules(data.roles_with_schedules);
+        } else {
+          setRoleSchedules([]);
+        }
       })
       .finally(() => setLoading(false));
   }, [employee, selectedMonth]);
@@ -110,7 +115,7 @@ export default function BTRDialog({ employee, onClose }: Props) {
 
   // Import RolesBadges and Info from timekeeping-view-dialog
   // (Assume Info is a local helper, so redefine here)
-  function Info({ label, value }: { label: string; value: string | number }) {
+  function Info({ label, value }: { label: string; value: string | number | ReactNode }) {
     return (
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
@@ -139,11 +144,25 @@ export default function BTRDialog({ employee, onClose }: Props) {
                   <div className="space-y-2 text-sm">
                     <Info label="Status" value={employee.employee_status} />
                     <Info label="Type" value={employee.employee_type} />
-                    <Info label="Schedule" value={
-                      employee.work_start_time && employee.work_end_time && employee.work_hours_per_day
-                        ? `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${employee.work_hours_per_day} hours)`
-                        : '-'
-                    } />
+                    <Info
+                      label="Schedule"
+                      value={
+                        <div>
+                          {Array.isArray(roleSchedules) && roleSchedules.length === 0 && (
+                            <span>-</span>
+                          )}
+                          {Array.isArray(roleSchedules) && roleSchedules.map((rs: { role: string, start_work: string, end_work: string, work_hours?: number }, idx: number) => (
+                            <div key={idx} style={{ marginBottom: 4 }}>
+                              <strong>{rs.role}:</strong>{' '}
+                              {formatTime12Hour(rs.start_work)} - {formatTime12Hour(rs.end_work)}
+                              {typeof rs.work_hours === 'number' && (
+                                <span className="ml-2 text-xs text-muted-foreground">({rs.work_hours} hr{rs.work_hours === 1 ? '' : 's'})</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      }
+                    />
                   </div>
                 </div>
                 <div>
