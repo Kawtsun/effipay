@@ -117,6 +117,8 @@ export default function Edit({
         china_bank: employee.china_bank !== null && employee.china_bank !== undefined ? employee.china_bank.toString() : '',
         tea: employee.tea !== null && employee.tea !== undefined ? employee.tea.toString() : '',
         honorarium: employee.honorarium !== null && employee.honorarium !== undefined ? employee.honorarium.toString() : '',
+        work_start_time_2: '08:00',
+        work_end_time_2: '16:00',
     });
 
     // Watch for College Instructor role to clear contribution fields and remove validation
@@ -544,11 +546,13 @@ export default function Edit({
                                 {/* Work Schedule */}
                                 <div>
                                     <h1 className='font-bold text-xl mb-6'>Work Schedule</h1>
-                                    <div className="w-full mb-2 mt-4">
-                                                    <Label className="font-semibold text-blue-700">{data.roles.split(',').includes('college instructor') ? 'College Instructor' : 'Basic Education Instructor'} Work Schedule</Label>
-                                                </div>
                                     <div className='space-y-6'>
                                         {/* Work hours per day is auto-derived; input removed */}
+                                        {(data.roles.split(',').includes('administrator') && (data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))) ? (
+                                            <div className="w-full mb-2">
+                                                <Label className="font-semibold text-blue-700">Administrator Work Schedule</Label>
+                                            </div>
+                                        ) : null}
                                         <div className='flex flex-row gap-6'>
                                             <div className='flex flex-col gap-3'>
                                                 <TimePicker
@@ -591,50 +595,56 @@ export default function Edit({
                                                 </p>
                                             </div>
                                         )}
-                                        <div className="w-full mb-2 mt-4">
+
+                                        {/* Show second work schedule if two roles are selected */}
+                                        {(data.roles.split(',').includes('administrator') && (data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))) && (
+                                            <>
+                                                <div className="w-full mb-2 mt-4">
                                                     <Label className="font-semibold text-blue-700">{data.roles.split(',').includes('college instructor') ? 'College Instructor' : 'Basic Education Instructor'} Work Schedule</Label>
                                                 </div>
-                                        <div className='flex flex-row gap-6'>
-                                            <div className='flex flex-col gap-3'>
-                                                <TimePicker
-                                                    value={data.work_start_time}
-                                                    onChange={(value) => setData('work_start_time', value)}
-                                                    label="Work Start Time"
-                                                    placeholder="Select start time"
-                                                />
-                                            </div>
-                                            <div className='flex flex-col gap-3'>
-                                                <TimePicker
-                                                    value={data.work_end_time}
-                                                    onChange={(value) => setData('work_end_time', value)}
-                                                    label="Work End Time"
-                                                    placeholder="Select end time"
-                                                />
-                                            </div>
-                                        </div>
-                                        {data.work_start_time && data.work_end_time && (
-                                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                                                <p className="text-sm text-blue-700 dark:text-blue-300">
-                                                    {(() => {
-                                                        const [startHour, startMinute] = data.work_start_time.split(':').map(Number);
-                                                        const [endHour, endMinute] = data.work_end_time.split(':').map(Number);
-                                                        const startMinutes = startHour * 60 + startMinute;
-                                                        const endMinutes = endHour * 60 + endMinute;
-                                                        let actualWorkMinutes = endMinutes - startMinutes;
-                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
-                                                        const hours = Math.floor(totalMinutes / 60);
-                                                        const minutes = totalMinutes % 60;
-                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
-                                                        return (
-                                                            <>
-                                                                📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({durationText})<br />
-                                                                <span className="text-xs text-blue-600 dark:text-blue-400">*Break time is included. 1 hour is subtracted from total work hours.</span>
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </p>
-                                            </div>
+                                                <div className='flex flex-row gap-6'>
+                                                    <div className='flex flex-col gap-3'>
+                                                        <TimePicker
+                                                            value={data.work_start_time_2}
+                                                            onChange={(value) => setData('work_start_time_2', value)}
+                                                            label="Work Start Time"
+                                                            placeholder="Select start time"
+                                                        />
+                                                    </div>
+                                                    <div className='flex flex-col gap-3'>
+                                                        <TimePicker
+                                                            value={data.work_end_time_2}
+                                                            onChange={(value) => setData('work_end_time_2', value)}
+                                                            label="Work End Time"
+                                                            placeholder="Select end time"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {data.work_start_time_2 && data.work_end_time_2 && (
+                                                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mt-2">
+                                                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                                                            {(() => {
+                                                                const [startHour, startMinute] = data.work_start_time_2.split(':').map(Number);
+                                                                const [endHour, endMinute] = data.work_end_time_2.split(':').map(Number);
+                                                                const startMinutes = startHour * 60 + startMinute;
+                                                                const endMinutes = endHour * 60 + endMinute;
+                                                                let actualWorkMinutes = endMinutes - startMinutes;
+                                                                if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                                                const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                                const hours = Math.floor(totalMinutes / 60);
+                                                                const minutes = totalMinutes % 60;
+                                                                const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                                return (
+                                                                    <>
+                                                                        📅 Schedule: {formatTime12Hour(data.work_start_time_2)} - {formatTime12Hour(data.work_end_time_2)} ({durationText})<br />
+                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">*Break time is included. 1 hour is subtracted from total work hours.</span>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>
