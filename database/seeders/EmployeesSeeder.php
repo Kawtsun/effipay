@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Employees;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -332,7 +333,7 @@ class EmployeesSeeder extends Seeder
             $last_name = $parts[0] ?? '';
             $middle_name = count($parts) > 2 ? $parts[count($parts) - 1] : '';
             $first_name = count($parts) > 2 ? implode(' ', array_slice($parts, 1, -1)) : ($parts[1] ?? '');
-            Employees::create([
+            $employee = Employees::create([
                 'last_name' => $last_name,
                 'first_name' => $first_name,
                 'middle_name' => $middle_name,
@@ -350,6 +351,22 @@ class EmployeesSeeder extends Seeder
                 'work_start_time' => $workStartTime,
                 'work_end_time' => $workEndTime,
             ]);
+            // Insert into employee_roles table
+            if (!empty($roles)) {
+                $roleArr = is_array($roles) ? $roles : [$roles];
+                foreach ($roleArr as $role) {
+                    DB::table('employee_roles')->insert([
+                        'employee_id' => $employee->id,
+                        'last_name'   => $employee->last_name,
+                        'first_name'  => $employee->first_name,
+                        'role'        => $role,
+                        'start_work'  => $employee->work_start_time ?? null,
+                        'end_work'    => $employee->work_end_time ?? null,
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
+                    ]);
+                }
+            }
         }
     }
 }
