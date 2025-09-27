@@ -129,7 +129,10 @@ class SalaryController extends Controller
                 $changedManualFields[] = ucfirst(str_replace('_', ' ', $field));
             }
         }
-        $editedLabel = count($changedManualFields) === 1 ? $changedManualFields[0] : implode(', ', $changedManualFields);
+        // Capitalize each word of the edited label
+        $editedLabel = count($changedManualFields) === 1
+            ? ucwords($changedManualFields[0])
+            : implode(', ', array_map('ucwords', $changedManualFields));
         \App\Models\AuditLogs::create([
             'username'    => $username,
             'action'      => 'updated',

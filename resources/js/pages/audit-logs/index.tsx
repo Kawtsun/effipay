@@ -68,7 +68,7 @@ export default function AuditLogs() {
                                         <>
                                             <span className="text-primary font-semibold">{log.username}</span>
                                             <span className="">{log.action}</span>
-                                            <span className="">Employee</span>
+                                            <span className="">employee</span>
                                             <span className="">ID:</span>
                                             <span className="">{log.entity_id}</span>
                                             <span className="text-foreground font-bold">{log.name}</span>
