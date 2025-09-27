@@ -567,6 +567,30 @@ export default function Create(props: Props) {
                                                 />
                                             </div>
                                         </div>
+                                        {data.work_start_time && data.work_end_time && (
+                                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                                <p className="text-sm text-blue-700 dark:text-blue-300">
+                                                    {(() => {
+                                                        const [startHour, startMinute] = data.work_start_time.split(':').map(Number);
+                                                        const [endHour, endMinute] = data.work_end_time.split(':').map(Number);
+                                                        const startMinutes = startHour * 60 + startMinute;
+                                                        const endMinutes = endHour * 60 + endMinute;
+                                                        let actualWorkMinutes = endMinutes - startMinutes;
+                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                        const hours = Math.floor(totalMinutes / 60);
+                                                        const minutes = totalMinutes % 60;
+                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                        return (
+                                                            <>
+                                                                📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({durationText})<br />
+                                                                <span className="text-xs text-blue-600 dark:text-blue-400">*Break time is included. 1 hour is subtracted from total work hours.</span>
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </p>
+                                            </div>
+                                        )}
                                         {/* Show second work schedule if two roles are selected */}
                                         {(data.roles.split(',').includes('administrator') && (data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))) && (
                                             <>
@@ -591,6 +615,30 @@ export default function Create(props: Props) {
                                                         />
                                                     </div>
                                                 </div>
+                                                {data.work_start_time_2 && data.work_end_time_2 && (
+                                                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mt-2">
+                                                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                                                            {(() => {
+                                                                const [startHour, startMinute] = data.work_start_time_2.split(':').map(Number);
+                                                                const [endHour, endMinute] = data.work_end_time_2.split(':').map(Number);
+                                                                const startMinutes = startHour * 60 + startMinute;
+                                                                const endMinutes = endHour * 60 + endMinute;
+                                                                let actualWorkMinutes = endMinutes - startMinutes;
+                                                                if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                                                const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                                const hours = Math.floor(totalMinutes / 60);
+                                                                const minutes = totalMinutes % 60;
+                                                                const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                                return (
+                                                                    <>
+                                                                        📅 Schedule: {formatTime12Hour(data.work_start_time_2)} - {formatTime12Hour(data.work_end_time_2)} ({durationText})<br />
+                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">*Break time is included. 1 hour is subtracted from total work hours.</span>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </>
                                         )}
                                     </div>
