@@ -18,6 +18,34 @@ Route::get('/', fn() => Inertia::render('welcome'))
 use App\Http\Controllers\ObservanceController;
 
 Route::middleware('auth')->group(function () {
+    // API: Get role schedules for an employee
+    Route::get('/api/employee/{id}/roleschedules', function ($id) {
+        $roles = \App\Models\EmployeeRole::where('employee_id', $id)
+            ->get(['role', 'start_work', 'end_work']);
+        $rolesWithHours = $roles->map(function ($role) {
+            $start = $role->start_work;
+            $end = $role->end_work;
+            if ($start && $end) {
+                [$startHour, $startMinute] = explode(':', $start) + [0,0];
+                [$endHour, $endMinute] = explode(':', $end) + [0,0];
+                $startTotal = ((int)$startHour) * 60 + ((int)$startMinute);
+                $endTotal = ((int)$endHour) * 60 + ((int)$endMinute);
+                $minutes = $endTotal - $startTotal;
+                if ($minutes <= 0) $minutes += 24 * 60;
+                $workHours = $minutes / 60 >= 5 ? ($minutes - 60) / 60 : $minutes / 60;
+                $workHours = round($workHours, 2);
+            } else {
+                $workHours = null;
+            }
+            return [
+                'role' => $role->role,
+                'start_work' => $role->start_work,
+                'end_work' => $role->end_work,
+                'work_hours' => $workHours,
+            ];
+        });
+        return $rolesWithHours;
+    });
 
     // API: Get payslip for an employee and month as JSON for batch printing
     Route::get('/api/payroll/payslip', function (\Illuminate\Http\Request $request) {

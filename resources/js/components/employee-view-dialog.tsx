@@ -97,7 +97,8 @@ function formatWithCommas(value: string | number): string {
     return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function Info({ label, value }: { label: string; value: string | number }) {
+import { ReactNode } from 'react';
+function Info({ label, value }: { label: string; value: ReactNode }) {
     return (
         <div>
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -117,6 +118,31 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
     const [loadingPayroll, setLoadingPayroll] = useState(false);
     const [minLoading, setMinLoading] = useState(false);
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    // Schedules per role from employee_roles table
+    const [roleSchedules, setRoleSchedules] = useState<Array<{ role: string; start_work: string; end_work: string; work_hours?: number }>>([]);
+
+    useEffect(() => {
+        async function fetchRoleSchedules() {
+            if (!employee) {
+                setRoleSchedules([]);
+                return;
+            }
+            try {
+                const response = await fetch(`/api/employee/${employee.id}/roleschedules`);
+                const data = await response.json();
+                console.debug('Fetched roleSchedules:', data); // Debug output
+                if (Array.isArray(data)) {
+                    setRoleSchedules(data);
+                } else {
+                    setRoleSchedules([]);
+                }
+            } catch (err) {
+                setRoleSchedules([]);
+            }
+        }
+        fetchRoleSchedules();
+    }, [employee]);
 
     // Fetch available months when employee changes
     useEffect(() => {
@@ -219,22 +245,20 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                             <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
-                                                <Info label="Schedule" value={(() => {
-                                                    if (employee.work_start_time && employee.work_end_time) {
-                                                        const [startHour, startMinute] = employee.work_start_time.split(':').map(Number);
-                                                        const [endHour, endMinute] = employee.work_end_time.split(':').map(Number);
-                                                        const startMinutes = startHour * 60 + startMinute;
-                                                        const endMinutes = endHour * 60 + endMinute;
-                                                        let actualWorkMinutes = endMinutes - startMinutes;
-                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
-                                                        const hours = Math.floor(totalMinutes / 60);
-                                                        const minutes = totalMinutes % 60;
-                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
-                                                        return `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${durationText})`;
-                                                    }
-                                                    return '-';
-                                                })()} />
+                                                <Info label="Schedule" value={(
+                                                    <div>
+                                                        {roleSchedules.length === 0 && <span>-</span>}
+                                                        {roleSchedules.map((rs, idx) => (
+                                                            <div key={idx} style={{ marginBottom: 4 }}>
+                                                                <strong>{rs.role}:</strong>{' '}
+                                                                {formatTime12Hour(rs.start_work)} - {formatTime12Hour(rs.end_work)}
+                                                                {typeof rs.work_hours === 'number' && (
+                                                                    <span className="ml-2 text-xs text-muted-foreground">({rs.work_hours} hr{rs.work_hours === 1 ? '' : 's'})</span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )} />
                                             </div>
                                         </div>
                                         <div>
