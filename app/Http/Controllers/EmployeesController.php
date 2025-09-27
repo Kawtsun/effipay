@@ -10,6 +10,7 @@ use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class EmployeesController extends Controller
 {
@@ -157,7 +158,31 @@ class EmployeesController extends Controller
         $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
         $data['philhealth'] = round($philhealth, 2);
     }
+
     $employee = Employees::create($data);
+
+    // Insert into employee_roles table
+    if (isset($data['roles'])) {
+        $roleArr = [];
+        if (is_array($data['roles'])) {
+            $roleArr = $data['roles'];
+        } elseif (is_string($data['roles'])) {
+            // Split comma-separated string and trim spaces
+            $roleArr = array_map('trim', explode(',', $data['roles']));
+        }
+        foreach ($roleArr as $role) {
+            DB::table('employee_roles')->insert([
+                'employee_id' => $employee->id,
+                'last_name'   => $employee->last_name,
+                'first_name'  => $employee->first_name,
+                'role'        => $role,
+                'start_work'  => $employee->work_start_time ?? null,
+                'end_work'    => $employee->work_end_time ?? null,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+        }
+    }
 
     // Audit log: employee created
     $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
