@@ -107,7 +107,41 @@ export default function TimeKeeping() {
                 const workbook = XLSX.read(data, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                rows = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
+                    rows = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
+                    // Convert Excel serial date numbers to YYYY-MM-DD strings
+                    function excelSerialToDate(serial: number) {
+                        // Excel's epoch starts at 1899-12-30
+                        const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                        const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+                        return date.toISOString().slice(0, 10);
+                    }
+                    function excelSerialToTime(serial: number) {
+                        // Excel time serial is a fraction of a day
+                        const totalSeconds = Math.round(serial * 24 * 60 * 60);
+                        const hours = Math.floor(totalSeconds / 3600);
+                        const minutes = Math.floor((totalSeconds % 3600) / 60);
+                        const seconds = totalSeconds % 60;
+                        return [hours, minutes, seconds].map(v => v.toString().padStart(2, '0')).join(':');
+                    }
+                    rows = rows.map(row => {
+                        if (row.Date && typeof row.Date === 'number') {
+                            row.Date = excelSerialToDate(row.Date);
+                        }
+                        if (row.ClockIn && typeof row.ClockIn === 'number') {
+                            row.ClockIn = excelSerialToTime(row.ClockIn);
+                        }
+                        if (row.ClockOut && typeof row.ClockOut === 'number') {
+                            row.ClockOut = excelSerialToTime(row.ClockOut);
+                        }
+                        // Also handle alternate column names (if your sheet uses 'Clock In'/'Clock Out')
+                        if (row['Clock In'] && typeof row['Clock In'] === 'number') {
+                            row['Clock In'] = excelSerialToTime(row['Clock In']);
+                        }
+                        if (row['Clock Out'] && typeof row['Clock Out'] === 'number') {
+                            row['Clock Out'] = excelSerialToTime(row['Clock Out']);
+                        }
+                        return row;
+                    });
                 setTimeout(() => {
                     sendImport(rows, file.name, importToast);
                 }, 1000);
