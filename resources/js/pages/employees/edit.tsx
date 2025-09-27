@@ -544,6 +544,9 @@ export default function Edit({
                                 {/* Work Schedule */}
                                 <div>
                                     <h1 className='font-bold text-xl mb-6'>Work Schedule</h1>
+                                    <div className="w-full mb-2 mt-4">
+                                                    <Label className="font-semibold text-blue-700">{data.roles.split(',').includes('college instructor') ? 'College Instructor' : 'Basic Education Instructor'} Work Schedule</Label>
+                                                </div>
                                     <div className='space-y-6'>
                                         {/* Work hours per day is auto-derived; input removed */}
                                         <div className='flex flex-row gap-6'>
@@ -588,7 +591,9 @@ export default function Edit({
                                                 </p>
                                             </div>
                                         )}
-
+                                        <div className="w-full mb-2 mt-4">
+                                                    <Label className="font-semibold text-blue-700">{data.roles.split(',').includes('college instructor') ? 'College Instructor' : 'Basic Education Instructor'} Work Schedule</Label>
+                                                </div>
                                         <div className='flex flex-row gap-6'>
                                             <div className='flex flex-col gap-3'>
                                                 <TimePicker
