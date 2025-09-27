@@ -35,7 +35,7 @@ import { Employees } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
 import { MonthPicker } from "./ui/month-picker";
-import { useState, useEffect, useRef } from "react";
+// import { useState, useEffect, useRef } from "react";
 import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { toast } from "sonner";
 import { Skeleton } from "./ui/skeleton";
@@ -88,7 +88,9 @@ interface Props {
     open?: boolean;
 }
 
-function Info({ label, value }: { label: string; value: string | number }) {
+import React, { useState, useEffect, useRef } from "react";
+import type { ReactNode } from "react";
+function Info({ label, value }: { label: string; value: ReactNode }) {
     return (
         <div>
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -103,6 +105,19 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     const [monthlyPayrollData, setMonthlyPayrollData] = useState<MonthlyPayrollData | null>(null);
     const [selectedMonth, setSelectedMonth] = useState('');
     const [pendingMonth, setPendingMonth] = useState('');
+    const [roleSchedules, setRoleSchedules] = useState<Array<{ role: string, start_work: string, end_work: string, work_hours?: number }>>([]);
+    useEffect(() => {
+        if (!employee || !selectedMonth) return;
+        fetch(`/api/timekeeping/records?employee_id=${employee.id}&month=${selectedMonth}`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (Array.isArray(data.roles_with_schedules)) {
+                    setRoleSchedules(data.roles_with_schedules);
+                } else {
+                    setRoleSchedules([]);
+                }
+            });
+    }, [employee, selectedMonth]);
     // Use payroll summary from timekeeping
     const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, pendingMonth);
     // Use payroll data for all payroll fields if available, else fallback to employee/timekeeping
@@ -277,22 +292,25 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                             <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
-                                                <Info label="Schedule" value={(() => {
-                                                    if (employee.work_start_time && employee.work_end_time) {
-                                                        const [startHour, startMinute] = employee.work_start_time.split(':').map(Number);
-                                                        const [endHour, endMinute] = employee.work_end_time.split(':').map(Number);
-                                                        const startMinutes = startHour * 60 + startMinute;
-                                                        const endMinutes = endHour * 60 + endMinute;
-                                                        let actualWorkMinutes = endMinutes - startMinutes;
-                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
-                                                        const hours = Math.floor(totalMinutes / 60);
-                                                        const minutes = totalMinutes % 60;
-                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
-                                                        return `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${durationText})`;
+                                                <Info
+                                                    label="Schedule"
+                                                    value={
+                                                        <div>
+                                                            {Array.isArray(roleSchedules) && roleSchedules.length === 0 && (
+                                                                <span>-</span>
+                                                            )}
+                                                            {Array.isArray(roleSchedules) && roleSchedules.map((rs: { role: string, start_work: string, end_work: string, work_hours?: number }, idx: number) => (
+                                                                <div key={idx} style={{ marginBottom: 4 }}>
+                                                                    <strong>{rs.role}:</strong>{' '}
+                                                                    {formatTime12Hour(rs.start_work)} - {formatTime12Hour(rs.end_work)}
+                                                                    {typeof rs.work_hours === 'number' && (
+                                                                        <span className="ml-2 text-xs text-muted-foreground">({rs.work_hours} hr{rs.work_hours === 1 ? '' : 's'})</span>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     }
-                                                    return '-';
-                                                })()} />
+                                                />
                                             </div>
                                         </div>
                                         <div>
