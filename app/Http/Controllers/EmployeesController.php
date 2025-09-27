@@ -9,6 +9,7 @@ use App\Models\Salary;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Auth;
 
 class EmployeesController extends Controller
 {
@@ -156,7 +157,19 @@ class EmployeesController extends Controller
         $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
         $data['philhealth'] = round($philhealth, 2);
     }
-    Employees::create($data);
+    $employee = Employees::create($data);
+
+    // Audit log: employee created
+    $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
+    \App\Models\AuditLogs::create([
+        'username'    => $username,
+        'action'      => 'create',
+        'name'        => $employee->last_name . ', ' . $employee->first_name,
+        'entity_type' => 'Employee',
+        'entity_id'   => $employee->id,
+        'details'     => json_encode($data),
+        'date'        => now(),
+    ]);
 
         // Restore previous filters from referer
         $redirectParams = [];
@@ -275,7 +288,20 @@ class EmployeesController extends Controller
         $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
         $data['philhealth'] = round($philhealth, 2);
     }
+    $oldData = $employee->toArray();
     $employee->update($data);
+
+    // Audit log: employee updated
+    $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
+    \App\Models\AuditLogs::create([
+        'username'    => $username,
+        'action'      => 'update',
+        'name'        => $employee->last_name . ', ' . $employee->first_name,
+        'entity_type' => 'Employee',
+        'entity_id'   => $employee->id,
+        'details'     => json_encode(['old' => $oldData, 'new' => $data]),
+        'date'        => now(),
+    ]);
 
         // Restore previous filters from referer
         $redirectParams = [];
@@ -306,7 +332,20 @@ class EmployeesController extends Controller
      */
     public function destroy(Request $request, Employees $employee)
     {
+        $oldData = $employee->toArray();
         $employee->delete();
+
+        // Audit log: employee deleted
+    $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
+        \App\Models\AuditLogs::create([
+            'username'    => $username,
+            'action'      => 'delete',
+            'name'        => $oldData['last_name'] . ', ' . $oldData['first_name'],
+            'entity_type' => 'Employee',
+            'entity_id'   => $oldData['id'],
+            'details'     => json_encode($oldData),
+            'date'        => now(),
+        ]);
         return redirect()
             ->route('employees.index', [
                 'search' => $request['search'] ?? '',
