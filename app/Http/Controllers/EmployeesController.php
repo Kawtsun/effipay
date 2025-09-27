@@ -297,6 +297,49 @@ class EmployeesController extends Controller
      */
     public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
+        $data = $request->validated();
+        // Always set college_rate from rate_per_hour if present in request
+        if (request()->has('rate_per_hour')) {
+            $data['college_rate'] = request()->input('rate_per_hour');
+        }
+        $isCollege = isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'));
+        // If role is college instructor, nullify base_salary only
+        if ($isCollege) {
+            $data['base_salary'] = null;
+        }
+        // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor
+        if (!$isCollege && isset($data['base_salary']) && $data['base_salary'] !== null) {
+            $base_salary = (float) $data['base_salary'];
+            $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
+            $data['philhealth'] = round($philhealth, 2);
+        }
+        $oldData = $employee->toArray();
+        $employee->update($data);
+
+        // Update employee_roles table
+        if (isset($data['roles'])) {
+            // Remove old roles for this employee
+            DB::table('employee_roles')->where('employee_id', $employee->id)->delete();
+            $roleArr = [];
+            if (is_array($data['roles'])) {
+                $roleArr = $data['roles'];
+            } elseif (is_string($data['roles'])) {
+                $roleArr = array_map('trim', explode(',', $data['roles']));
+            }
+            foreach ($roleArr as $role) {
+                DB::table('employee_roles')->insert([
+                    'employee_id' => $employee->id,
+                    'last_name'   => $employee->last_name,
+                    'first_name'  => $employee->first_name,
+                    'role'        => $role,
+                    'start_work'  => $employee->work_start_time ?? null,
+                    'end_work'    => $employee->work_end_time ?? null,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+            }
+        }
+    {
     $data = $request->validated();
     // Always set college_rate from rate_per_hour if present in request
     if (request()->has('rate_per_hour')) {
@@ -350,6 +393,7 @@ class EmployeesController extends Controller
         return redirect()
             ->route('employees.index', $redirectParams)
             ->with('success', 'Employee updated successfully!');
+    }
     }
 
     /**
