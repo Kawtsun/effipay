@@ -14,7 +14,28 @@ class AuditLogsController extends Controller
      */
     public function index()
     {
-        return Inertia::render('audit-logs/index');
+    $perPage = 6;
+        $logs = AuditLogs::orderByDesc('date')->paginate($perPage);
+
+        // Format logs for frontend
+        $auditLogs = array_map(function ($log) {
+            return [
+                'id' => $log->id,
+                'action' => $log->action,
+                'name' => $log->name,
+                'username' => $log->username,
+                'entity_type' => $log->entity_type,
+                'entity_id' => $log->entity_id,
+                'date' => $log->date,
+                'details' => $log->details,
+            ];
+        }, $logs->items());
+
+        return Inertia::render('audit-logs/index', [
+            'auditLogs' => $auditLogs,
+            'currentPage' => $logs->currentPage(),
+            'totalPages' => $logs->lastPage(),
+        ]);
     }
 
     /**

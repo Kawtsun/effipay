@@ -163,12 +163,12 @@ class EmployeesController extends Controller
     $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
     \App\Models\AuditLogs::create([
         'username'    => $username,
-        'action'      => 'create',
+        'action'      => 'created',
         'name'        => $employee->last_name . ', ' . $employee->first_name,
-        'entity_type' => 'Employee',
+        'entity_type' => 'employee',
         'entity_id'   => $employee->id,
         'details'     => json_encode($data),
-        'date'        => now(),
+        'date'        => now('Asia/Manila'),
     ]);
 
         // Restore previous filters from referer
@@ -295,12 +295,12 @@ class EmployeesController extends Controller
     $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
     \App\Models\AuditLogs::create([
         'username'    => $username,
-        'action'      => 'update',
+        'action'      => 'updated',
         'name'        => $employee->last_name . ', ' . $employee->first_name,
-        'entity_type' => 'Employee',
+        'entity_type' => 'employee',
         'entity_id'   => $employee->id,
         'details'     => json_encode(['old' => $oldData, 'new' => $data]),
-        'date'        => now(),
+        'date'        => now('Asia/Manila'),
     ]);
 
         // Restore previous filters from referer
@@ -339,12 +339,12 @@ class EmployeesController extends Controller
     $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
         \App\Models\AuditLogs::create([
             'username'    => $username,
-            'action'      => 'delete',
+            'action'      => 'deleted',
             'name'        => $oldData['last_name'] . ', ' . $oldData['first_name'],
-            'entity_type' => 'Employee',
+            'entity_type' => 'employee',
             'entity_id'   => $oldData['id'],
             'details'     => json_encode($oldData),
-            'date'        => now(),
+            'date'        => now('Asia/Manila'),
         ]);
         return redirect()
             ->route('employees.index', [

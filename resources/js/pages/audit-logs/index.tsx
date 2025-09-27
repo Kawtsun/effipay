@@ -2,8 +2,11 @@ import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
+import { useState, useRef } from 'react';
+import { Loader2 } from 'lucide-react';
+import { router } from '@inertiajs/react';
 import { ScrollText } from 'lucide-react';
-import { useState } from 'react';
 import EmployeePagination from '@/components/employee-pagination';
 
 import { Card } from "@/components/ui/card";
@@ -16,115 +19,25 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function AuditLogs() {
-    // Mock audit log data (simplified)
-    // Pagination state (mocked for now)
-    const LOGS_PER_PAGE = 5;
-    const [currentPage, setCurrentPage] = useState(1);
-    const totalLogs = 12; // Example: total logs in DB
-    const totalPages = Math.ceil(totalLogs / LOGS_PER_PAGE);
-
-    // Mock audit log data (show only logs for current page)
-    const allAuditLogs = [
-        {
-            id: 1,
-            action: 'edited',
-            employeeId: '0001',
-            employeeName: 'Sakiko Togawa',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:11:12',
-        },
-        {
-            id: 2,
-            action: 'edited',
-            employeeId: '0003',
-            employeeName: 'Mutsumi Wakaba',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:11:12',
-        },
-        {
-            id: 3,
-            action: 'deleted',
-            employeeId: '0002',
-            employeeName: 'Uika Misumi',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:11:12',
-        },
-        {
-            id: 4,
-            action: 'created',
-            employeeId: '0004',
-            employeeName: 'Yuka Terasaki',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:12:01',
-        },
-        {
-            id: 5,
-            action: 'edited',
-            employeeId: '0005',
-            employeeName: 'Moe Kamikokuryo',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:13:45',
-        },
-        // Add more mock logs for pagination demo
-        {
-            id: 6,
-            action: 'created',
-            employeeId: '0006',
-            employeeName: 'Rina Ikoma',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:14:01',
-        },
-        {
-            id: 7,
-            action: 'edited',
-            employeeId: '0007',
-            employeeName: 'Ayaka Wada',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:15:12',
-        },
-        {
-            id: 8,
-            action: 'deleted',
-            employeeId: '0008',
-            employeeName: 'Nanami Hashimoto',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:16:12',
-        },
-        {
-            id: 9,
-            action: 'created',
-            employeeId: '0009',
-            employeeName: 'Sayuri Matsumura',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:17:01',
-        },
-        {
-            id: 10,
-            action: 'edited',
-            employeeId: '0010',
-            employeeName: 'Mai Shiraishi',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:18:45',
-        },
-        {
-            id: 11,
-            action: 'created',
-            employeeId: '0011',
-            employeeName: 'Erika Ikuta',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:19:01',
-        },
-        {
-            id: 12,
-            action: 'edited',
-            employeeId: '0012',
-            employeeName: 'Minami Hoshino',
-            admin: 'Admin',
-            timestamp: '2025/22/03 10:20:12',
-        },
-    ];
-
-    const auditLogs = allAuditLogs.slice((currentPage - 1) * LOGS_PER_PAGE, currentPage * LOGS_PER_PAGE);
+    const [loading, setLoading] = useState(false);
+    const spinnerStart = useRef<number>(0);
+    // Get audit logs from Inertia props
+    // You must pass auditLogs, currentPage, totalPages from the backend controller
+    // Example: return Inertia::render('audit-logs/index', [...])
+    const { auditLogs, currentPage, totalPages } = usePage().props as unknown as {
+        auditLogs: Array<{
+            id: number;
+            action: string;
+            name: string;
+            username: string;
+            entity_type: string;
+            entity_id: number;
+            date: string;
+            details?: string;
+        }>;
+        currentPage: number;
+        totalPages: number;
+    };
 
     // Import shadcn Card components
     // If not already imported, add these at the top:
@@ -149,16 +62,49 @@ export default function AuditLogs() {
                 <div className="flex flex-col gap-4">
                     {auditLogs.map(log => (
                         <Card key={log.id} className="px-6 py-4">
-                            <div className="text-base">
-                                {log.admin} {log.action} Employee <span className="font-semibold">{log.employeeId} ({log.employeeName})</span>
+                            <div className="flex flex-col gap-1">
+                                <div className="text-base font-medium text-muted-foreground space-x-1">
+                                    <span className="text-primary font-semibold">{log.username}</span>
+                                    <span className="">{log.action}</span>
+                                    <span className="">{log.entity_type}</span>
+                                    <span className="">ID:</span>
+                                    <span className="">{log.entity_id}</span>
+                                    <span className="text-foreground font-bold">{log.name}</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    {new Date(log.date).toLocaleString()}
+                                </div>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">Last {log.timestamp}</div>
                         </Card>
                     ))}
                 </div>
                 <div className="mt-4 flex min-h-[56px] justify-center">
-                    <EmployeePagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                    <EmployeePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={page => {
+                            spinnerStart.current = Date.now();
+                            setLoading(true);
+                            router.visit(route('audit-logs.index'), {
+                                method: 'get',
+                                data: { page },
+                                preserveState: true,
+                                preserveScroll: true,
+                                only: ['auditLogs', 'currentPage', 'totalPages'],
+                                onFinish: () => {
+                                    const elapsed = Date.now() - spinnerStart.current;
+                                    const wait = Math.max(0, 400 - elapsed);
+                                    setTimeout(() => setLoading(false), wait);
+                                },
+                            });
+                        }}
+                    />
                 </div>
+                {loading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 transition-opacity duration-300 dark:bg-black/70">
+                        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                    </div>
+                )}
             </div>
         </AppLayout>
     );
