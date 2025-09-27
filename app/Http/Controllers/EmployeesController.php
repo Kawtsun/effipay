@@ -72,6 +72,8 @@ class EmployeesController extends Controller
                 'work_hours_per_day' => $emp->work_hours_per_day,
                 'work_start_time' => $emp->work_start_time,
                 'work_end_time' => $emp->work_end_time,
+                'work_start_time_2' => $emp->work_start_time_2,
+                'work_end_time_2' => $emp->work_end_time_2,
                 'sss_salary_loan' => $emp->sss_salary_loan,
                 'sss_calamity_loan' => $emp->sss_calamity_loan,
                 'pagibig_multi_loan' => $emp->pagibig_multi_loan,
@@ -170,14 +172,26 @@ class EmployeesController extends Controller
             // Split comma-separated string and trim spaces
             $roleArr = array_map('trim', explode(',', $data['roles']));
         }
-        foreach ($roleArr as $role) {
+        foreach ($roleArr as $i => $role) {
+            $isAdmin = $role === 'administrator';
+            $isCollege = $role === 'college instructor';
+            $isBasicEd = $role === 'basic education instructor';
+            $start_work = null;
+            $end_work = null;
+            if ($isAdmin) {
+                $start_work = $employee->work_start_time ?? null;
+                $end_work = $employee->work_end_time ?? null;
+            } elseif ($isCollege || $isBasicEd) {
+                $start_work = $employee->work_start_time_2 ?? null;
+                $end_work = $employee->work_end_time_2 ?? null;
+            }
             DB::table('employee_roles')->insert([
                 'employee_id' => $employee->id,
                 'last_name'   => $employee->last_name,
                 'first_name'  => $employee->first_name,
                 'role'        => $role,
-                'start_work'  => $employee->work_start_time ?? null,
-                'end_work'    => $employee->work_end_time ?? null,
+                'start_work'  => $start_work,
+                'end_work'    => $end_work,
                 'created_at'  => now(),
                 'updated_at'  => now(),
             ]);
@@ -270,6 +284,8 @@ class EmployeesController extends Controller
                 'work_hours_per_day' => $employee->work_hours_per_day,
                 'work_start_time' => $employee->work_start_time,
                 'work_end_time' => $employee->work_end_time,
+                'work_start_time_2' => $employee->work_start_time_2,
+                'work_end_time_2' => $employee->work_end_time_2,
                 'sss_salary_loan' => $employee->sss_salary_loan,
                 'sss_calamity_loan' => $employee->sss_calamity_loan,
                 'pagibig_multi_loan' => $employee->pagibig_multi_loan,
@@ -326,14 +342,26 @@ class EmployeesController extends Controller
             } elseif (is_string($data['roles'])) {
                 $roleArr = array_map('trim', explode(',', $data['roles']));
             }
-            foreach ($roleArr as $role) {
+            foreach ($roleArr as $i => $role) {
+                $isAdmin = $role === 'administrator';
+                $isCollege = $role === 'college instructor';
+                $isBasicEd = $role === 'basic education instructor';
+                $start_work = null;
+                $end_work = null;
+                if ($isAdmin) {
+                    $start_work = $employee->work_start_time ?? null;
+                    $end_work = $employee->work_end_time ?? null;
+                } elseif ($isCollege || $isBasicEd) {
+                    $start_work = $employee->work_start_time_2 ?? null;
+                    $end_work = $employee->work_end_time_2 ?? null;
+                }
                 DB::table('employee_roles')->insert([
                     'employee_id' => $employee->id,
                     'last_name'   => $employee->last_name,
                     'first_name'  => $employee->first_name,
                     'role'        => $role,
-                    'start_work'  => $employee->work_start_time ?? null,
-                    'end_work'    => $employee->work_end_time ?? null,
+                    'start_work'  => $start_work,
+                    'end_work'    => $end_work,
                     'created_at'  => now(),
                     'updated_at'  => now(),
                 ]);

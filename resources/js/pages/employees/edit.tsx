@@ -46,6 +46,8 @@ type Props = {
         work_hours_per_day: number;
         work_start_time: string;
         work_end_time: string;
+        work_start_time_2?: string;
+        work_end_time_2?: string;
         sss_salary_loan?: number;
         sss_calamity_loan?: number;
         pagibig_multi_loan?: number;
@@ -117,8 +119,8 @@ export default function Edit({
         china_bank: employee.china_bank !== null && employee.china_bank !== undefined ? employee.china_bank.toString() : '',
         tea: employee.tea !== null && employee.tea !== undefined ? employee.tea.toString() : '',
         honorarium: employee.honorarium !== null && employee.honorarium !== undefined ? employee.honorarium.toString() : '',
-        work_start_time_2: '08:00',
-        work_end_time_2: '16:00',
+        work_start_time_2: employee.work_start_time_2 ? trimToHM(employee.work_start_time_2) : '08:00',
+        work_end_time_2: employee.work_end_time_2 ? trimToHM(employee.work_end_time_2) : '16:00',
     });
 
     // Watch for College Instructor role to clear contribution fields and remove validation

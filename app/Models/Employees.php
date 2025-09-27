@@ -28,6 +28,8 @@ class Employees extends Model
         'work_hours_per_day',
         'work_start_time',
         'work_end_time',
+        'work_start_time_2', // Added for second schedule
+        'work_end_time_2',   // Added for second schedule
         'sss_salary_loan',
         'sss_calamity_loan',
         'pagibig_multi_loan',

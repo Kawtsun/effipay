@@ -43,6 +43,8 @@ class UpdateEmployeesRequest extends FormRequest
             'work_hours_per_day' => 'required|integer|min:1|max:24',
             'work_start_time' => 'required|date_format:H:i',
             'work_end_time' => 'required|date_format:H:i|after:work_start_time',
+        'work_start_time_2' => 'nullable|date_format:H:i',
+        'work_end_time_2' => 'nullable|date_format:H:i|after:work_start_time_2',
             'roles' => [
                 'required',
                 'string',
@@ -65,7 +67,7 @@ class UpdateEmployeesRequest extends FormRequest
             ],
             'college_program' => [
                 Rule::requiredIf(function() {
-                    $roles = $this->get('roles', '');
+                    $roles = request('roles', '');
                     return strpos($roles, 'college instructor') !== false;
                 }),
                 'nullable',
