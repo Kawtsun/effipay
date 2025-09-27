@@ -110,7 +110,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     // Use a more specific type for records if possible. Assuming records are objects with string keys and values.
     const [records, setRecords] = useState<Array<Record<string, unknown>>>([]);
     const recordsMinLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
-    const [roleSchedules, setRoleSchedules] = useState<Array<{role: string, start_work: string, end_work: string}>>([]);
+    const [roleSchedules, setRoleSchedules] = useState<Array<{role: string, start_work: string, end_work: string, work_hours?: number}>>([]);
     useEffect(() => {
         if (!employee || !selectedMonth) return;
         if (recordsMinLoadingTimeout.current) clearTimeout(recordsMinLoadingTimeout.current);
@@ -237,6 +237,9 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                                                                                                                                 <div key={idx} style={{ marginBottom: 4 }}>
                                                                                                                                                                     <strong>{rs.role}:</strong>{' '}
                                                                                                                                                                     {formatTime12Hour(rs.start_work)} - {formatTime12Hour(rs.end_work)}
+                                                                                                                                                                    {typeof rs.work_hours === 'number' && (
+                                                                                                                                                                        <span className="ml-2 text-xs text-muted-foreground">({rs.work_hours} hr{rs.work_hours === 1 ? '' : 's'})</span>
+                                                                                                                                                                    )}
                                                                                                                                                                 </div>
                                                                                                                                                             ))}
                                                                                                                                                         </div>

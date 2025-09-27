@@ -42,10 +42,19 @@ class TimeKeepingController extends Controller {
         // Fetch all roles and schedules for this employee
         $employeeRoles = \App\Models\EmployeeRole::where('employee_id', $employeeId)->get(['role', 'start_work', 'end_work']);
         $rolesWithSchedules = $employeeRoles->map(function($role) {
+            $workHours = null;
+            if (!empty($role->start_work) && !empty($role->end_work)) {
+                $start = strtotime($role->start_work);
+                $end = strtotime($role->end_work);
+                $workMinutes = $end - $start;
+                if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
+                $workHours = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
+            }
             return [
                 'role' => $role->role,
                 'start_work' => $role->start_work,
                 'end_work' => $role->end_work,
+                'work_hours' => $workHours,
             ];
         });
         $work_hours_per_day = $employee && $employee->work_hours_per_day ? $employee->work_hours_per_day : 8;
@@ -201,6 +210,16 @@ class TimeKeepingController extends Controller {
                 $overtime = strtotime($clock_out) > strtotime('20:00:00');
             }
 
+            // Get second schedule from EmployeeRole if available
+            $roles = \App\Models\EmployeeRole::where('employee_id', $emp->id)->get();
+            $work_start_time_2 = null;
+            $work_end_time_2 = null;
+            if ($roles && $roles->count() > 1) {
+                $role2 = $roles[1];
+                $work_start_time_2 = $role2->start_work;
+                $work_end_time_2 = $role2->end_work;
+            }
+
             // Late/Early Departure & Overtime Counters
             $late_count = 0;
             $early_count = 0;
@@ -293,6 +312,8 @@ class TimeKeepingController extends Controller {
                 'college_program' => $emp->college_program,
                 'work_start_time' => $emp->work_start_time,
                 'work_end_time' => $emp->work_end_time,
+                'work_start_time_2' => $work_start_time_2,
+                'work_end_time_2' => $work_end_time_2,
                 'work_hours_per_day' => $emp->work_hours_per_day,
                 'clock_in' => $clock_in,
                 'clock_out' => $clock_out,
@@ -411,33 +432,66 @@ class TimeKeepingController extends Controller {
         $base_salary = $payroll ? $payroll->base_salary : $employee->base_salary;
         $rate_per_day = ($base_salary * 12) / 288;
         $rate_per_hour = $rate_per_day / 8;
-        $work_start_time = $employee->work_start_time;
-        $work_end_time = $employee->work_end_time;
+        // Gather all schedules from EmployeeRole
+        $roleSchedules = \App\Models\EmployeeRole::where('employee_id', $employeeId)->get(['start_work', 'end_work']);
+        $schedulePairs = [];
+        foreach ($roleSchedules as $role) {
+            if (!empty($role->start_work) && !empty($role->end_work)) {
+                $schedulePairs[] = [
+                    'start' => $role->start_work,
+                    'end' => $role->end_work,
+                ];
+            }
+        }
+        // Always include main schedule if present and not already in pairs
+        if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
+            $mainPair = [
+                'start' => $employee->work_start_time,
+                'end' => $employee->work_end_time,
+            ];
+            $found = false;
+            foreach ($schedulePairs as $pair) {
+                if ($pair['start'] == $mainPair['start'] && $pair['end'] == $mainPair['end']) {
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                $schedulePairs[] = $mainPair;
+            }
+        }
 
+        // For each record, use the earliest start and latest end from all schedules for calculations
+        $allStartTimes = [];
+        $allEndTimes = [];
+        foreach ($schedulePairs as $pair) {
+            $allStartTimes[] = strtotime($pair['start']);
+            $allEndTimes[] = strtotime($pair['end']);
+        }
+        $earliestStart = count($allStartTimes) ? min($allStartTimes) : null;
+        $latestEnd = count($allEndTimes) ? max($allEndTimes) : null;
         $grace_period_minutes = 15;
-        $late_threshold = $work_start_time ? date('H:i:s', strtotime($work_start_time) + $grace_period_minutes * 60) : null;
+        $late_threshold = $earliestStart ? date('H:i:s', $earliestStart + $grace_period_minutes * 60) : null;
 
         foreach ($records as $tk) {
             // Tardiness (decimal hours)
-            if ($tk->clock_in && $work_start_time && strtotime($tk->clock_in) > strtotime($late_threshold)) {
-                // Count all minutes late from scheduled start time, not from grace period
-                $late_minutes = (strtotime($tk->clock_in) - strtotime($work_start_time)) / 60;
+            if ($tk->clock_in && $earliestStart && strtotime($tk->clock_in) > strtotime($late_threshold)) {
+                $late_minutes = (strtotime($tk->clock_in) - $earliestStart) / 60;
                 if ($late_minutes > 0) {
                     $late_count += ($late_minutes / 60);
                 }
             }
             // Undertime (decimal hours)
-            if ($tk->clock_out && $employee->work_end_time && strtotime($tk->clock_out) < strtotime($employee->work_end_time)) {
-                $early_minutes = (strtotime($employee->work_end_time) - strtotime($tk->clock_out)) / 60;
+            if ($tk->clock_out && $latestEnd && strtotime($tk->clock_out) < $latestEnd) {
+                $early_minutes = ($latestEnd - strtotime($tk->clock_out)) / 60;
                 if ($early_minutes > 0) {
                     $early_count += ($early_minutes / 60);
                 }
             }
-            // Overtime (decimal hours, start counting after exactly 1 hour past work end time)
-            if ($tk->clock_out && $employee->work_end_time) {
-                $workEnd = strtotime($employee->work_end_time);
+            // Overtime (decimal hours, start counting after exactly 1 hour past latest end)
+            if ($tk->clock_out && $latestEnd) {
+                $workEnd = $latestEnd;
                 $clockOut = strtotime($tk->clock_out);
-                // Only count overtime after exactly 1 hour past work end time
                 if ($clockOut > $workEnd + 3600) {
                     $overtime_minutes = ($clockOut - ($workEnd + 3600)) / 60;
                     if ($overtime_minutes > 0) {
@@ -462,25 +516,9 @@ class TimeKeepingController extends Controller {
         $absent_hours = 0;
         $monthStart = strtotime($month . '-01');
         $daysInMonth = (int)date('t', $monthStart);
-        $workHoursPerDay = !empty($employee->work_hours_per_day) ? floatval($employee->work_hours_per_day) : 8;
         // Calculate work hours per day from earliest start and latest end, minus 1 hour for break
-        $startTimes = [];
-        $endTimes = [];
-        if (!empty($employee->work_start_time)) {
-            $startTimes[] = strtotime($employee->work_start_time);
-        }
-        if (!empty($employee->work_start_time_2)) {
-            $startTimes[] = strtotime($employee->work_start_time_2);
-        }
-        if (!empty($employee->work_end_time)) {
-            $endTimes[] = strtotime($employee->work_end_time);
-        }
-        if (!empty($employee->work_end_time_2)) {
-            $endTimes[] = strtotime($employee->work_end_time_2);
-        }
-        if (count($startTimes) > 0 && count($endTimes) > 0) {
-            $earliestStart = min($startTimes);
-            $latestEnd = max($endTimes);
+        $workHoursPerDay = 8;
+        if ($earliestStart && $latestEnd) {
             $workMinutes = $latestEnd - $earliestStart;
             if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
             $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
@@ -526,12 +564,11 @@ class TimeKeepingController extends Controller {
             $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
             if ($dayOfWeek >= 6) continue; // skip weekends
             if (!empty($tk->clock_in) && !empty($tk->clock_out)) {
-                $scheduledStart = !empty($employee->work_start_time) ? strtotime($employee->work_start_time) : null;
                 $in = strtotime($tk->clock_in);
                 $out = strtotime($tk->clock_out);
-                // If clock_in is earlier than scheduled start, use scheduled start
-                if ($scheduledStart && $in < $scheduledStart) {
-                    $in = $scheduledStart;
+                // If clock_in is earlier than earliest start, use earliest start
+                if ($earliestStart && $in < $earliestStart) {
+                    $in = $earliestStart;
                 }
                 $worked = $out - $in;
                 if ($worked < 0) $worked += 24 * 60 * 60;
