@@ -494,8 +494,9 @@ class TimeKeepingController extends Controller {
                 $clockOut = strtotime($tk->clock_out);
                 if ($clockOut > $workEnd + 3600) {
                     $overtime_minutes = ($clockOut - ($workEnd + 3600)) / 60;
-                    if ($overtime_minutes > 0) {
-                        $overtime_hours = ($overtime_minutes / 60);
+                    if ($overtime_minutes >= 0) {
+                        // Overtime counter starts at 1 hour, then increments
+                        $overtime_hours = 1 + ($overtime_minutes / 60);
                         $dayOfWeek = date('N', strtotime($tk->date));
                         $pay = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
                             ? ($rate_per_hour * 0.25)
