@@ -77,6 +77,8 @@ export default function Create(props: Props) {
         work_hours_per_day: salaryDefaults['Full Time']?.work_hours_per_day.toString() ?? '8',
         work_start_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '08:00' : (salaryDefaults['Full Time']?.work_hours_per_day === 6 ? '09:00' : '08:00')),
         work_end_time: trimToHM((salaryDefaults['Full Time']?.work_hours_per_day ?? 8) === 8 ? '16:00' : (salaryDefaults['Full Time']?.work_hours_per_day === 6 ? '15:00' : '17:00')),
+    work_start_time_2: '08:00',
+    work_end_time_2: '16:00',
         college_program: '',
         sss_salary_loan: '',
         sss_calamity_loan: '',
@@ -98,13 +100,7 @@ export default function Create(props: Props) {
             if (data.philhealth !== '') setData('philhealth', '');
             if (data.pag_ibig !== '') setData('pag_ibig', '');
             if (data.withholding_tax !== '') setData('withholding_tax', '');
-            // Set rate_per_hour from salaryDefaults.college_rate if available
-            if (
-                salaryDefaults[data.employee_type]?.college_rate !== undefined &&
-                data.rate_per_hour !== salaryDefaults[data.employee_type].college_rate.toString()
-            ) {
-                setData('rate_per_hour', salaryDefaults[data.employee_type].college_rate.toString());
-            }
+            // Do NOT auto-set rate_per_hour, allow manual editing
         } else {
             // Restore defaults if not college instructor and fields are empty
             if (data.sss === '' && salaryDefaults[data.employee_type]?.sss)
@@ -118,7 +114,7 @@ export default function Create(props: Props) {
             // Clear rate_per_hour if not college instructor
             if (data.rate_per_hour !== '') setData('rate_per_hour', '');
         }
-    }, [data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax]);
+    }, [data.roles, data.employee_type, salaryDefaults, setData, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax]);
     // Determine if College Instructor is selected
     const isCollegeInstructor = data.roles.split(',').includes('college instructor');
     // Track manual mode for contributions
@@ -550,6 +546,11 @@ export default function Create(props: Props) {
                                     <h1 className='font-bold text-xl mb-6'>Work Schedule</h1>
                                     <div className='space-y-6'>
                                         {/* Work hours per day is auto-derived; input removed */}
+                                        {(data.roles.split(',').includes('administrator') && (data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))) ? (
+                                            <div className="w-full mb-2">
+                                                <Label className="font-semibold text-blue-700">Administrator Work Schedule</Label>
+                                            </div>
+                                        ) : null}
                                         <div className='flex flex-row gap-6'>
                                             <div className='flex flex-col gap-3'>
                                                 <TimePicker
@@ -592,6 +593,57 @@ export default function Create(props: Props) {
                                                 </p>
                                             </div>
                                         )}
+
+                                        {/* Show second work schedule if two roles are selected */}
+                                        {(data.roles.split(',').includes('administrator') && (data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor'))) && (
+                                            <>
+                                                <div className="w-full mb-2 mt-4">
+                                                    <Label className="font-semibold text-blue-700">{data.roles.split(',').includes('college instructor') ? 'College Instructor' : 'Basic Education Instructor'} Work Schedule</Label>
+                                                </div>
+                                                <div className='flex flex-row gap-6'>
+                                                    <div className='flex flex-col gap-3'>
+                                                        <TimePicker
+                                                            value={data.work_start_time_2}
+                                                            onChange={(value) => setData('work_start_time_2', value)}
+                                                            label="Work Start Time"
+                                                            placeholder="Select start time"
+                                                        />
+                                                    </div>
+                                                    <div className='flex flex-col gap-3'>
+                                                        <TimePicker
+                                                            value={data.work_end_time_2}
+                                                            onChange={(value) => setData('work_end_time_2', value)}
+                                                            label="Work End Time"
+                                                            placeholder="Select end time"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {data.work_start_time_2 && data.work_end_time_2 && (
+                                                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mt-2">
+                                                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                                                            {(() => {
+                                                                const [startHour, startMinute] = data.work_start_time_2.split(':').map(Number);
+                                                                const [endHour, endMinute] = data.work_end_time_2.split(':').map(Number);
+                                                                const startMinutes = startHour * 60 + startMinute;
+                                                                const endMinutes = endHour * 60 + endMinute;
+                                                                let actualWorkMinutes = endMinutes - startMinutes;
+                                                                if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                                                const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                                const hours = Math.floor(totalMinutes / 60);
+                                                                const minutes = totalMinutes % 60;
+                                                                const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                                                return (
+                                                                    <>
+                                                                        📅 Schedule: {formatTime12Hour(data.work_start_time_2)} - {formatTime12Hour(data.work_end_time_2)} ({durationText})<br />
+                                                                        <span className="text-xs text-blue-600 dark:text-blue-400">*Break time is included. 1 hour is subtracted from total work hours.</span>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -604,60 +656,106 @@ export default function Create(props: Props) {
                                     <div>
                                         <h2 className='font-semibold text-lg mb-4'>Earnings</h2>
                                         <div className='space-y-6'>
+
                                             <div className='flex flex-col gap-3'>
-                                                {/* Show Rate Per Hour if College Instructor, else Base Salary */}
-                                                {isCollegeInstructor ? (
-                                                    <>
-                                                        <Label htmlFor="rate_per_hour">Rate Per Hour</Label>
-                                                        <div className='relative'>
-                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                            <Input
-                                                                id="rate_per_hour"
-                                                                type="text"
-                                                                inputMode="numeric"
-                                                                pattern="[0-9.,]*"
-                                                                
-                                                                placeholder="Rate Per Hour"
-                                                                className="pl-8"
-                                                                min={0}
-                                                                value={formatWithCommas(data.rate_per_hour ?? '')}
-                                                                onChange={e => {
-                                                                    const raw = e.target.value.replace(/,/g, '');
-                                                                    if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                                    setData('rate_per_hour', raw);
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Label htmlFor="base_salary">Base Salary</Label>
-                                                        <div className='relative'>
-                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                            <Input
-                                                                id="base_salary"
-                                                                type="text"
-                                                                inputMode="numeric"
-                                                                pattern="[0-9.,]*"
-                                                                
-                                                                placeholder="Salary"
-                                                                className="pl-8"
-                                                                min={0}
-                                                                value={formatWithCommas(data.base_salary ?? '')}
-                                                                onChange={e => {
-                                                                    const raw = e.target.value.replace(/,/g, '');
-                                                                    // Only allow numbers and period
-                                                                    if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                                    setData('base_salary', raw);
-                                                                    // Auto-calculate PhilHealth based on base salary
-                                                                    const baseSalaryNum = Number(raw) || 0;
-                                                                    const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
-                                                                    setData('philhealth', calculatedPhilHealth.toString());
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </>
-                                                )}
+                                                {/* Show both fields if college instructor and another role are selected */}
+                                                {(() => {
+                                                    const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
+                                                    const isCollege = rolesArr.includes('college instructor');
+                                                    const hasOtherRole = rolesArr.length > 1;
+                                                    if (isCollege && hasOtherRole) {
+                                                        return <>
+                                                            <Label htmlFor="base_salary">Base Salary</Label>
+                                                            <div className='relative'>
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                <Input
+                                                                    id="base_salary"
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9.,]*"
+                                                                    placeholder="Salary"
+                                                                    className="pl-8"
+                                                                    min={0}
+                                                                    value={formatWithCommas(data.base_salary ?? '')}
+                                                                    onChange={e => {
+                                                                        const raw = e.target.value.replace(/,/g, '');
+                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                        setData('base_salary', raw);
+                                                                        const baseSalaryNum = Number(raw) || 0;
+                                                                        const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
+                                                                        setData('philhealth', calculatedPhilHealth.toString());
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <Label htmlFor="rate_per_hour">Rate Per Hour</Label>
+                                                            <div className='relative'>
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                <Input
+                                                                    id="rate_per_hour"
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9.,]*"
+                                                                    placeholder="Rate Per Hour"
+                                                                    className="pl-8"
+                                                                    min={0}
+                                                                    value={formatWithCommas(data.rate_per_hour ?? '')}
+                                                                    onChange={e => {
+                                                                        const raw = e.target.value.replace(/,/g, '');
+                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                        setData('rate_per_hour', raw);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </>;
+                                                    } else if (isCollege) {
+                                                        return <>
+                                                            <Label htmlFor="rate_per_hour">Rate Per Hour</Label>
+                                                            <div className='relative'>
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                <Input
+                                                                    id="rate_per_hour"
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9.,]*"
+                                                                    placeholder="Rate Per Hour"
+                                                                    className="pl-8"
+                                                                    min={0}
+                                                                    value={formatWithCommas(data.rate_per_hour ?? '')}
+                                                                    onChange={e => {
+                                                                        const raw = e.target.value.replace(/,/g, '');
+                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                        setData('rate_per_hour', raw);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </>;
+                                                    } else {
+                                                        return <>
+                                                            <Label htmlFor="base_salary">Base Salary</Label>
+                                                            <div className='relative'>
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                <Input
+                                                                    id="base_salary"
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9.,]*"
+                                                                    placeholder="Salary"
+                                                                    className="pl-8"
+                                                                    min={0}
+                                                                    value={formatWithCommas(data.base_salary ?? '')}
+                                                                    onChange={e => {
+                                                                        const raw = e.target.value.replace(/,/g, '');
+                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                        setData('base_salary', raw);
+                                                                        const baseSalaryNum = Number(raw) || 0;
+                                                                        const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
+                                                                        setData('philhealth', calculatedPhilHealth.toString());
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </>;
+                                                    }
+                                                })()}
 
                                                 {/* Honorarium (optional) */}
                                                 <div className='flex flex-col gap-3'>
