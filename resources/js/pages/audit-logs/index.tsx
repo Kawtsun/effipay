@@ -64,12 +64,33 @@ export default function AuditLogs() {
                         <Card key={log.id} className="px-6 py-4">
                             <div className="flex flex-col gap-1">
                                 <div className="text-base font-medium text-muted-foreground space-x-1">
-                                    <span className="text-primary font-semibold">{log.username}</span>
-                                    <span className="">{log.action}</span>
-                                    <span className="">{log.entity_type}</span>
-                                    <span className="">ID:</span>
-                                    <span className="">{log.entity_id}</span>
-                                    <span className="text-foreground font-bold">{log.name}</span>
+                                    {log.entity_type === 'employee' ? (
+                                        <>
+                                            <span className="text-primary font-semibold">{log.username}</span>
+                                            <span className="">{log.action}</span>
+                                            <span className="">Employee</span>
+                                            <span className="">ID:</span>
+                                            <span className="">{log.entity_id}</span>
+                                            <span className="text-foreground font-bold">{log.name}</span>
+                                        </>
+                                    ) : log.entity_type === 'salary' ? (
+                                        <>
+                                            <span className="text-primary font-semibold">{log.username}</span>
+                                            <span className="">{log.action}</span>
+                                            <span className="">salary default</span>
+                                            <span className="">type:</span>
+                                            <span className="font-bold text-foreground">{log.name}</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-primary font-semibold">{log.username}</span>
+                                            <span className="">{log.action}</span>
+                                            <span className="">{log.entity_type}</span>
+                                            <span className="">ID:</span>
+                                            <span className="font-bold text-foreground">{log.entity_id}</span>
+                                            <span className="text-foreground font-bold">{log.name}</span>
+                                        </>
+                                    )}
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-1">
                                     {new Date(log.date).toLocaleString()}

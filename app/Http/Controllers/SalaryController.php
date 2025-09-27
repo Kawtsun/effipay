@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Models\Employees;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class SalaryController extends Controller
 {
@@ -114,7 +115,30 @@ class SalaryController extends Controller
         if (!array_key_exists('college_rate', $data)) {
             $data['college_rate'] = $salary->college_rate;
         }
+        $oldData = $salary->toArray();
         $salary->update($data);
+
+        // Audit log: salary updated
+        $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
+        // Determine only changed fields
+        // Only log fields that can be manually edited
+        $manualFields = ['base_salary', 'college_rate', 'pag_ibig'];
+        $changedManualFields = [];
+        foreach ($manualFields as $field) {
+            if (array_key_exists($field, $data) && array_key_exists($field, $oldData) && $oldData[$field] != $data[$field]) {
+                $changedManualFields[] = ucfirst(str_replace('_', ' ', $field));
+            }
+        }
+        $editedLabel = count($changedManualFields) === 1 ? $changedManualFields[0] : implode(', ', $changedManualFields);
+        \App\Models\AuditLogs::create([
+            'username'    => $username,
+            'action'      => 'updated',
+            'name'        => $salary->employee_type . (count($changedManualFields) ? ' - ' . $editedLabel : ''),
+            'entity_type' => 'salary',
+            'entity_id'   => null,
+            'details'     => json_encode(['old' => $oldData, 'new' => $data]),
+            'date'        => now('Asia/Manila'),
+        ]);
 
         return redirect()
             ->route('salary.index', ['type' => $salary->employee_type]);
