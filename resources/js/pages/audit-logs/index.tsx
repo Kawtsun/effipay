@@ -4,6 +4,8 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { ScrollText } from 'lucide-react';
 
+import { Card } from "@/components/ui/card";
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Audit Logs',
@@ -12,6 +14,54 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function index() {
+    // Mock audit log data (simplified)
+    const auditLogs = [
+        {
+            id: 1,
+            action: 'edited',
+            employeeId: '0001',
+            employeeName: 'Sakiko Togawa',
+            admin: 'Admin',
+            timestamp: '2025/22/03 10:11:12',
+        },
+        {
+            id: 2,
+            action: 'edited',
+            employeeId: '0003',
+            employeeName: 'Mutsumi Wakaba',
+            admin: 'Admin',
+            timestamp: '2025/22/03 10:11:12',
+        },
+        {
+            id: 3,
+            action: 'deleted',
+            employeeId: '0002',
+            employeeName: 'Uika Misumi',
+            admin: 'Admin',
+            timestamp: '2025/22/03 10:11:12',
+        },
+        {
+            id: 4,
+            action: 'created',
+            employeeId: '0004',
+            employeeName: 'Yuka Terasaki',
+            admin: 'Admin',
+            timestamp: '2025/22/03 10:12:01',
+        },
+        {
+            id: 5,
+            action: 'edited',
+            employeeId: '0005',
+            employeeName: 'Moe Kamikokuryo',
+            admin: 'Admin',
+            timestamp: '2025/22/03 10:13:45',
+        },
+    ];
+
+    // Import shadcn Card components
+    // If not already imported, add these at the top:
+    // import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Audit Logs" />
@@ -27,20 +77,16 @@ export default function index() {
                     </p>
                 </div>
 
-                {/* MAIN CONTENT */}
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                </div>
-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+                {/* AUDIT LOG ROWS */}
+                <div className="flex flex-col gap-4">
+                    {auditLogs.map(log => (
+                        <Card key={log.id} className="px-6 py-4">
+                            <div className="text-base">
+                                {log.admin} {log.action} Employee <span className="font-semibold">{log.employeeId} ({log.employeeName})</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">Last {log.timestamp}</div>
+                        </Card>
+                    ))}
                 </div>
             </div>
         </AppLayout>
