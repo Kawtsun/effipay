@@ -38,6 +38,16 @@ class TimeKeepingController extends Controller {
         // Get employee and compute rate per hour
         $employee = \App\Models\Employees::find($employeeId);
         $base_salary = $employee ? $employee->base_salary : 0;
+
+        // Fetch all roles and schedules for this employee
+        $employeeRoles = \App\Models\EmployeeRole::where('employee_id', $employeeId)->get(['role', 'start_work', 'end_work']);
+        $rolesWithSchedules = $employeeRoles->map(function($role) {
+            return [
+                'role' => $role->role,
+                'start_work' => $role->start_work,
+                'end_work' => $role->end_work,
+            ];
+        });
         $work_hours_per_day = $employee && $employee->work_hours_per_day ? $employee->work_hours_per_day : 8;
         $rate_per_day = ($base_salary * 12) / 288;
         $rate_per_hour = $work_hours_per_day > 0 ? $rate_per_day / $work_hours_per_day : 0;
@@ -55,6 +65,7 @@ class TimeKeepingController extends Controller {
             'success' => true,
             'records' => $formatted,
             'rate_per_hour' => $rate_per_hour,
+            'roles_with_schedules' => $rolesWithSchedules,
         ]);
     }
     /**
@@ -452,11 +463,25 @@ class TimeKeepingController extends Controller {
         $monthStart = strtotime($month . '-01');
         $daysInMonth = (int)date('t', $monthStart);
         $workHoursPerDay = !empty($employee->work_hours_per_day) ? floatval($employee->work_hours_per_day) : 8;
-        // Calculate work hours per day from start/end, minus 1 hour for break
-        if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
-            $start = strtotime($employee->work_start_time);
-            $end = strtotime($employee->work_end_time);
-            $workMinutes = $end - $start;
+        // Calculate work hours per day from earliest start and latest end, minus 1 hour for break
+        $startTimes = [];
+        $endTimes = [];
+        if (!empty($employee->work_start_time)) {
+            $startTimes[] = strtotime($employee->work_start_time);
+        }
+        if (!empty($employee->work_start_time_2)) {
+            $startTimes[] = strtotime($employee->work_start_time_2);
+        }
+        if (!empty($employee->work_end_time)) {
+            $endTimes[] = strtotime($employee->work_end_time);
+        }
+        if (!empty($employee->work_end_time_2)) {
+            $endTimes[] = strtotime($employee->work_end_time_2);
+        }
+        if (count($startTimes) > 0 && count($endTimes) > 0) {
+            $earliestStart = min($startTimes);
+            $latestEnd = max($endTimes);
+            $workMinutes = $latestEnd - $earliestStart;
             if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
             $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
         }

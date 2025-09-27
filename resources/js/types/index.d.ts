@@ -62,6 +62,8 @@ export interface Employees {
     work_hours_per_day: number;
     work_start_time: string;
     work_end_time: string;
+    work_start_time_2?: string;
+    work_end_time_2?: string;
         late_count?: number;
         early_count?: number;
         overtime_count?: number;
