@@ -651,7 +651,7 @@ export default function Edit({
                                                             if (actualWorkMinutes2 <= 0) actualWorkMinutes2 += 24 * 60;
                                                             totalMinutes += actualWorkMinutes2;
                                                         }
-                                                        const breakMinutes = getTotalWorkHours() >= 4 ? 60 : 0;
+                                            const breakMinutes = getTotalWorkHours() >= 5 ? 60 : 0;
                                                         const overallMinutes = Math.round(getTotalWorkHours() * 60);
                                                         const displayMinutes = Math.max(1, overallMinutes - breakMinutes);
                                                         const hours = Math.floor(displayMinutes / 60);
@@ -675,7 +675,7 @@ export default function Edit({
                                                                 📅 Schedule: {starts.map((s, i) => `${formatTime12Hour(s)} - ${formatTime12Hour(ends[i] || '')}`).join(' & ')}<br />
                                                                 <span className="text-xs text-blue-600 dark:text-blue-400">
                                                                     Overall work time: {overallStart && overallEnd ? `${formatTime12Hour(overallStart)} - ${formatTime12Hour(overallEnd)}` : ''} ({durationText})<br />
-                                                                    {getTotalWorkHours() >= 4 ? '*Break time is included. 1 hour is subtracted from total work hours.' : '*No break time.'}
+                                                                    {getTotalWorkHours() >= 5 ? '*Break time is included. 1 hour is subtracted from total work hours.' : '*No break time.'}
                                                                 </span>
                                                             </>
                                                         );
