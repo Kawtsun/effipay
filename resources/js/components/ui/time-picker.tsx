@@ -11,6 +11,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import TimePickerScrollArea from "@/components/time-picker-scroll-area"
 
 interface TimePickerProps {
   value: string
@@ -90,37 +91,41 @@ export function TimePicker({
               {/* Hours */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Hour</Label>
-                <div className="grid grid-cols-3 gap-1 max-h-32 overflow-y-auto">
-                  {hours.map((hour) => (
-                    <Button
-                      key={hour}
-                      variant={selectedHour === hour ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleTimeSelect(hour, selectedMinute, isAM)}
-                      className="h-8"
-                    >
-                      {hour}
-                    </Button>
-                  ))}
-                </div>
+                <TimePickerScrollArea>
+                  <div className="grid grid-cols-3 gap-1">
+                    {hours.map((hour) => (
+                      <Button
+                        key={hour}
+                        variant={selectedHour === hour ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleTimeSelect(hour, selectedMinute, isAM)}
+                        className="h-8"
+                      >
+                        {hour}
+                      </Button>
+                    ))}
+                  </div>
+                </TimePickerScrollArea>
               </div>
 
               {/* Minutes */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Minute</Label>
-                <div className="grid grid-cols-3 gap-1 max-h-32 overflow-y-auto">
-                  {minutes.map((minute) => (
-                    <Button
-                      key={minute}
-                      variant={selectedMinute === minute ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleTimeSelect(selectedHour, minute, isAM)}
-                      className="h-8"
-                    >
-                      {minute.toString().padStart(2, '0')}
-                    </Button>
-                  ))}
-                </div>
+                <TimePickerScrollArea>
+                  <div className="grid grid-cols-3 gap-1">
+                    {minutes.map((minute) => (
+                      <Button
+                        key={minute}
+                        variant={selectedMinute === minute ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleTimeSelect(selectedHour, minute, isAM)}
+                        className="h-8"
+                      >
+                        {minute.toString().padStart(2, '0')}
+                      </Button>
+                    ))}
+                  </div>
+                </TimePickerScrollArea>
               </div>
 
               {/* AM/PM */}
