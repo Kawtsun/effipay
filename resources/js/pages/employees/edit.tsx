@@ -118,6 +118,19 @@ export default function Edit({
         tea: employee.tea !== null && employee.tea !== undefined ? employee.tea.toString() : '',
         honorarium: employee.honorarium !== null && employee.honorarium !== undefined ? employee.honorarium.toString() : '',
     });
+    // Initialize checkboxes based on employee roles
+    const initialRolesArr = employee.roles ? employee.roles.split(',').map(r => r.trim()) : [];
+    const [isCollegeInstructorChecked, setIsCollegeInstructorChecked] = useState(initialRolesArr.includes('college instructor'));
+    const [isBasicEduInstructorChecked, setIsBasicEduInstructorChecked] = useState(initialRolesArr.includes('basic education instructor'));
+    
+        // Sync roles field with checkboxes
+        useEffect(() => {
+            let rolesArr = data.roles ? data.roles.split(',').map(r => r.trim()).filter(r => r) : [];
+            rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
+            if (isCollegeInstructorChecked) rolesArr.push('college instructor');
+            if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
+            setData('roles', rolesArr.join(','));
+        }, [isCollegeInstructorChecked, isBasicEduInstructorChecked]);
 
     // Watch for College Instructor role to clear contribution fields and remove validation
     // For college instructor, always show the current value from the employee record (do not clear)
@@ -272,7 +285,7 @@ export default function Edit({
                 page,
             }),
         },
-        
+
         {
             title: `#${employee.id} - ${formatFullName(employee.last_name, employee.first_name, employee.middle_name)}`,
             href: route('employees.show', employee.id),
@@ -463,58 +476,31 @@ export default function Edit({
                                                 </label>
                                                 <label className="flex items-center gap-2 text-sm select-none mt-2">
                                                     <Checkbox
-                                                        checked={data.roles.split(',').some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
-                                                        onCheckedChange={(checked) => {
-                                                            const rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
-                                                            if (checked) {
-                                                                setData('roles', [...rolesArr, 'instructor'].filter(Boolean).join(','));
-                                                            } else {
-                                                                setData('roles', rolesArr.join(','));
-                                                            }
-                                                        }}
+                                                        checked={isCollegeInstructorChecked}
+                                                        onCheckedChange={checked => setIsCollegeInstructorChecked(!!checked)}
                                                         className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
                                                     />
-                                                    Instructor
+                                                    College Instructor
                                                 </label>
-                                                <div className="pl-6 mt-1">
-                                                    <EmployeeInstructorRadioRole
-                                                        value={data.roles.split(',').find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
-                                                        onChange={val => {
-                                                            // Remove any instructor and teaching role, add the new teaching role only
-                                                            const rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
-                                                            setData('roles', [val, ...rolesArr].filter(Boolean).join(','));
-                                                            if (val === 'college instructor') {
-                                                                setTimeout(() => {
-                                                                    collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                                }, 100);
-                                                            }
-                                                        }}
-                                                        disabled={!data.roles.split(',').some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
+                                                <label className="flex items-center gap-2 text-sm select-none mt-2">
+                                                    <Checkbox
+                                                        checked={isBasicEduInstructorChecked}
+                                                        onCheckedChange={checked => setIsBasicEduInstructorChecked(!!checked)}
+                                                        className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
                                                     />
-                                                </div>
-                                                <AnimatePresence>
-                                                    {data.roles.split(',').includes('college instructor') && (
-                                                        <motion.div
-                                                            ref={collegeDeptRef}
-                                                            initial={{ opacity: 0, y: -20, scale: 0.98 }}
-                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                            exit={{ opacity: 0, y: -20, scale: 0.98 }}
-                                                            transition={{ duration: 0.35, ease: 'easeOut' }}
-                                                            className="pl-4 mt-2"
-                                                        >
-                                                            <div className="text-xs font-semibold mb-1">College Department</div>
-                                                            <CollegeProgramScrollArea>
-                                                                <EmployeeCollegeRadioDepartment
-                                                                    value={collegeProgram}
-                                                                    onChange={setCollegeProgram}
-                                                                />
-                                                            </CollegeProgramScrollArea>
-                                                            {collegeProgramError && (
-                                                                <div className="text-xs text-red-500 mt-1">{collegeProgramError}</div>
-                                                            )}
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
+                                                    Basic Education Instructor
+                                                </label>
+                                                {isCollegeInstructorChecked && (
+                                                    <div className="pl-4 mt-2">
+                                                        <div className="text-xs font-semibold mb-1">College Department</div>
+                                                        <CollegeProgramScrollArea>
+                                                            <EmployeeCollegeRadioDepartment
+                                                                value={collegeProgram}
+                                                                onChange={setCollegeProgram}
+                                                            />
+                                                        </CollegeProgramScrollArea>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="text-xs text-muted-foreground mt-1">
                                                 Please select at least one role before choosing employee type or status.
