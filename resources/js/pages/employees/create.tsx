@@ -263,6 +263,13 @@ export default function Create(props: Props) {
                 return;
             }
         }
+        // If Others is the only role, require honorarium
+        if (isOthers && rolesArr.length === 1) {
+            if ((!data.honorarium || !data.honorarium.trim()) && (!baseSalaryValue || !baseSalaryValue.trim())) {
+                toast.error('Honorarium is required.');
+                return;
+            }
+        }
         if (!data.employee_type) {
             toast.error('Employee Type is required.');
             return;
@@ -786,10 +793,25 @@ export default function Create(props: Props) {
 
                                                 {/* Honorarium (optional) */}
                                                 <div className='flex flex-col gap-3'>
-                                                    <Label htmlFor="honorarium">Honorarium <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                                                    {(() => {
+                                                        const rolesArr = data.roles.split(',').map(r => r.trim());
+                                                        const isOthersOnly = rolesArr.length === 1 && rolesArr[0] === othersRole.trim() && othersRole.trim() !== '';
+                                                        return (
+                                                            <Label htmlFor="honorarium">
+                                                                Honorarium
+                                                                {isOthersOnly ? null : <span className="text-xs text-muted-foreground">(optional)</span>}
+                                                            </Label>
+                                                        );
+                                                    })()}
                                                     <div className='relative'>
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                        <Input id="honorarium" type="text" inputMode="numeric" pattern="[0-9,]*" placeholder="Honorarium" className="pl-8" min={0} value={formatWithCommas(data.honorarium ?? '')} onChange={e => { const raw = e.target.value.replace(/,/g, ''); setData('honorarium', raw); }} />
+                                                        <Input id="honorarium" type="text" inputMode="decimal" pattern="^[0-9]*\.?[0-9]{0,2}$" placeholder="Honorarium" className="pl-8" min={0} value={data.honorarium ?? ''} onChange={e => {
+                                                            const raw = e.target.value.replace(/,/g, '');
+                                                            // Accept only valid decimal numbers with up to 2 decimal places
+                                                            if (/^\d*(\.\d{0,2})?$/.test(raw)) {
+                                                                setData('honorarium', raw);
+                                                            }
+                                                        }} />
                                                     </div>
                                                 </div>
                                             </div>
