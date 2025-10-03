@@ -150,8 +150,9 @@ class EmployeesController extends Controller
         $isCollege = in_array('college instructor', $rolesArr);
         $isAdmin = in_array('administrator', $rolesArr);
         $isBasicEdu = in_array('basic education instructor', $rolesArr);
-        // Only nullify base_salary if college instructor is the ONLY role (not also admin/basic edu)
-        if ($isCollege && !$isAdmin && !$isBasicEdu) {
+        $isOthersOnly = count($rolesArr) === 1 && !$isCollege && !$isAdmin && !$isBasicEdu && $rolesArr[0] !== '';
+        // Nullify base_salary if college instructor is the ONLY role or if Others is the ONLY role
+        if (($isCollege && !$isAdmin && !$isBasicEdu) || $isOthersOnly) {
             $data['base_salary'] = null;
         }
         // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor (and not mixed roles)

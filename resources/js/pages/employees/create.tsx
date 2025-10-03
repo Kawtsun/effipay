@@ -222,9 +222,9 @@ export default function Create(props: Props) {
         const isCollege = rolesArr.includes('college instructor');
         const isOthers = rolesArr.includes(othersRole.trim()) && othersRole.trim() !== '';
 
-        // If 'Others' is checked, base salary should be empty
+        // If 'Others' is checked and is the only role, allow base_salary to be empty
         let baseSalaryValue = data.base_salary;
-        if (isOthers) {
+        if (isOthers && rolesArr.length === 1) {
             baseSalaryValue = '';
         }
 
@@ -243,7 +243,8 @@ export default function Create(props: Props) {
                 toast.error('Rate Per Hour is required.');
                 return;
             }
-        } else if (isAdmin || isBasicEdu) {
+        } else if ((isAdmin || isBasicEdu) && !(isOthers && rolesArr.length === 1)) {
+            // Only require base_salary if not Others-only
             if (!baseSalaryValue || !baseSalaryValue.trim()) {
                 toast.error('Base Salary is required unless "Others" is checked.');
                 return;

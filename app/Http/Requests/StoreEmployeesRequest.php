@@ -22,20 +22,21 @@ class StoreEmployeesRequest extends FormRequest
      */
     public function rules(): array
     {
-    $isCollege = false;
-    $roles = request('roles', '');
-    if (is_array($roles)) {
-        $isCollege = in_array('college instructor', $roles);
-    } else {
-        $isCollege = strpos($roles, 'college instructor') !== false;
-    }
-    return [
+        $roles = request('roles', '');
+        $rolesArr = is_array($roles)
+            ? array_filter(array_map('trim', $roles))
+            : array_filter(array_map('trim', explode(',', $roles)));
+        $isCollege = in_array('college instructor', $rolesArr);
+        $isAdmin = in_array('administrator', $rolesArr);
+        $isBasicEdu = in_array('basic education instructor', $rolesArr);
+        $isOthersOnly = count($rolesArr) === 1 && !$isCollege && !$isAdmin && !$isBasicEdu && $rolesArr[0] !== '';
+        return [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'employee_type' => 'required|string|max:255',
             'employee_status' => 'required|string|max:255',
-            'base_salary' => 'required|numeric|min:0',
+            'base_salary' => $isOthersOnly ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
             'sss' => $isCollege ? 'nullable|numeric' : 'required|numeric|min:0',
             'philhealth' => $isCollege ? 'nullable|numeric|max:2500' : 'required|numeric|min:250|max:2500',
             'pag_ibig' => $isCollege ? 'nullable|numeric' : 'required|numeric|min:200',
@@ -48,22 +49,21 @@ class StoreEmployeesRequest extends FormRequest
                 'string',
                 function($attribute, $value, $fail) {
                     $rolesArr = array_filter(array_map('trim', explode(',', $value)));
-                    // Allow multiple instructor types to be selected
-                    if (count(array_intersect($rolesArr, ['college instructor', 'basic education instructor'])) === 0 && !in_array('administrator', $rolesArr)) {
+                    // At least one role must be selected
+                    if (count($rolesArr) === 0 || ($rolesArr[0] === '')) {
                         $fail('At least one role must be selected.');
                     }
-                    $allowed = ['college instructor', 'basic education instructor', 'administrator'];
+                    // Allow any custom role, but block empty string
                     foreach ($rolesArr as $role) {
-                        if (!in_array($role, $allowed)) {
-                            $fail('Invalid role: ' . $role);
+                        if ($role === '') {
+                            $fail('Role cannot be empty.');
                         }
                     }
                 }
             ],
             'college_program' => [
-                Rule::requiredIf(function() {
-                    $roles = request('roles', '');
-                    return strpos($roles, 'college instructor') !== false;
+                Rule::requiredIf(function() use ($rolesArr) {
+                    return in_array('college instructor', $rolesArr);
                 }),
                 'nullable',
                 'string',
