@@ -466,15 +466,24 @@ export default function Create(props: Props) {
 
     // Clear contributions for basic education instructor and others
     useEffect(() => {
-        const rolesArr = data.roles.split(',').map(r => r.trim());
-        const isCustomOthers = rolesArr.includes(othersRole.trim()) && othersRole.trim() !== '';
+    const rolesArr = data.roles.split(',').map(r => r.trim());
+    const isCustomOthers = rolesArr.includes(othersRole.trim()) && othersRole.trim() !== '';
+    if (isCustomOthers && rolesArr.length === 1) {
+        setData('base_salary', '');
+    } else {
+        fetch(`/api/salary?roles=${encodeURIComponent(data.roles)}&employee_type=${data.employee_type}`)
+            .then(res => res.json())
+            .then(result => {
+                setData('base_salary', result.base_salary.toString());
+            });
         if (rolesArr.includes('basic education instructor') || isCustomOthers) {
             setData('sss', '');
             setData('philhealth', '');
             setData('pag_ibig', '');
             setData('withholding_tax', '');
         }
-    }, [data.roles, othersRole, setData]);
+    }
+}, [data.roles, othersRole, setData]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
