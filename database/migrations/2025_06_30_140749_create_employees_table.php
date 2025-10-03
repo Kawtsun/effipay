@@ -22,6 +22,8 @@ return new class extends Migration
             $table->integer('philhealth')->nullable();
             $table->integer('pag_ibig')->nullable();
             $table->integer('withholding_tax')->nullable();
+            // work_days relation: see work_days table (hasMany)
+            // work_start_time and work_end_time are now per-day in work_days table
             $table->timestamps();
         });
     }

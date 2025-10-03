@@ -1,3 +1,4 @@
+
 // ...existing imports and type definitions...
 function formatWithCommas(value: string): string {
     if (!value) return '';
@@ -6,7 +7,7 @@ function formatWithCommas(value: string): string {
         ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
         : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
-
+import React from 'react';
 import { EmployeeStatus } from '@/components/employee-status';
 import { calculateSSS } from '@/utils/salaryFormulas';
 import { calculatePhilHealth, calculateWithholdingTax } from '@/utils/salaryFormulas';
@@ -26,7 +27,7 @@ import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-
 import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
 import EmployeeInstructorRadioRole from '@/components/employee-instructor-radio-role';
 import { AnimatePresence, motion } from 'framer-motion';
-import WorkDaysSelector from '@/components/work-days-selector';
+import { WorkDaysSelector, WorkDayTime } from '@/components/work-days-selector';
 
 type Props = {
     search: string;
@@ -51,6 +52,7 @@ type Props = {
 
 export default function Create(props: Props) {
     // --- Instructor Role Selection as Checkboxes ---
+    const [selectedIndex, setSelectedIndex] = useState(0);
     // Track checkbox state for college/basic education instructor
     const [isCollegeInstructorChecked, setIsCollegeInstructorChecked] = useState(false);
     const [isBasicEduInstructorChecked, setIsBasicEduInstructorChecked] = useState(false);
@@ -106,7 +108,7 @@ export default function Create(props: Props) {
         china_bank: string;
         tea: string;
         honorarium: string;
-        work_days: string[];
+        work_days: WorkDayTime[];
     };
     const { data, setData } = useForm<EmployeeFormData>({
         first_name: '',
@@ -135,7 +137,7 @@ export default function Create(props: Props) {
         china_bank: '',
         tea: '',
         honorarium: '',
-        work_days: [], // <-- Add work_days as array of strings
+        work_days: [], // now array of WorkDayTime
     });
 
     // base_salary cleared if Others role is checked
@@ -652,29 +654,18 @@ export default function Create(props: Props) {
                                     <h1 className='font-bold text-xl mb-6'>Work Schedule</h1>
                                     <div className='space-y-6'>
                                         {/* Work Days Selector */}
-                                        <WorkDaysSelector
-                                            value={data.work_days}
-                                            onChange={days => setData('work_days', days)}
-                                        />
-                                        {/* Work hours per day is auto-derived; input removed */}
-                                        <div className='flex flex-row gap-6'>
-                                            <div className='flex flex-col gap-3'>
-                                                <TimePicker
-                                                    value={data.work_start_time}
-                                                    onChange={(value) => setData('work_start_time', value)}
-                                                    label="Work Start Time"
-                                                    placeholder="Select start time"
+                                        {/* Work Days Selector with navigation and single time picker */}
+                                        {(() => {
+                                            const [selectedIndex, setSelectedIndex] = React.useState(0);
+                                            return (
+                                                <WorkDaysSelector
+                                                    value={data.work_days}
+                                                    onChange={(days: WorkDayTime[]) => setData('work_days', days)}
+                                                    selectedIndex={selectedIndex}
+                                                    onSelectIndex={setSelectedIndex}
                                                 />
-                                            </div>
-                                            <div className='flex flex-col gap-3'>
-                                                <TimePicker
-                                                    value={data.work_end_time}
-                                                    onChange={(value) => setData('work_end_time', value)}
-                                                    label="Work End Time"
-                                                    placeholder="Select end time"
-                                                />
-                                            </div>
-                                        </div>
+                                            );
+                                        })()}
                                         {data.work_start_time && data.work_end_time && (
                                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                                                 <p className="text-sm text-blue-700 dark:text-blue-300">

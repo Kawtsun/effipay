@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Check, CheckCircle, XCircle } from 'lucide-react';
 import React from 'react';
+import { TimePicker } from '@/components/ui/time-picker';
 
 const WEEKDAYS = [
     { key: 'mon', label: 'Mon' },
@@ -14,26 +15,42 @@ const WEEKENDS = [
     { key: 'sun', label: 'Sun' },
 ];
 
-export type WorkDaysSelectorProps = {
-    value: string[];
-    onChange: (days: string[]) => void;
+
+export type WorkDayTime = {
+    day: string;
+    work_start_time: string;
+    work_end_time: string;
 };
 
-export default function WorkDaysSelector({ value, onChange }: WorkDaysSelectorProps) {
-    const isSelected = (key: string) => value.includes(key);
+export type WorkDaysSelectorProps = {
+    value: WorkDayTime[];
+    onChange: (days: WorkDayTime[]) => void;
+    selectedIndex: number;
+    onSelectIndex: (idx: number) => void;
+};
+export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex }: WorkDaysSelectorProps) {
+    // Helper to get default times
+    const defaultStart = '08:00';
+    const defaultEnd = '16:00';
+
+    const isSelected = (key: string) => value.some(d => d.day === key);
     const allWeekdays = WEEKDAYS.map(d => d.key);
     const allWeekends = WEEKENDS.map(d => d.key);
     const allDays = [...allWeekdays, ...allWeekends];
 
-    const areAllWeekdays = allWeekdays.every(k => value.includes(k));
-    const areAllWeekends = allWeekends.every(k => value.includes(k));
-    const areAllDays = allDays.every(k => value.includes(k));
+    const areAllWeekdays = allWeekdays.every(k => isSelected(k));
+    const areAllWeekends = allWeekends.every(k => isSelected(k));
+    const areAllDays = allDays.every(k => isSelected(k));
 
+    // Add or remove a day
     const toggleDay = (key: string) => {
         if (isSelected(key)) {
-            onChange(value.filter(d => d !== key));
+            onChange(value.filter(d => d.day !== key));
         } else {
-            onChange([...value, key]);
+            onChange([
+                ...value,
+                { day: key, work_start_time: defaultStart, work_end_time: defaultEnd },
+            ]);
         }
     };
     // Toggle all days
@@ -41,44 +58,63 @@ export default function WorkDaysSelector({ value, onChange }: WorkDaysSelectorPr
         if (areAllDays) {
             onChange([]);
         } else {
-            onChange(allDays);
+            onChange(allDays.map(day => {
+                const found = value.find(d => d.day === day);
+                return found || { day, work_start_time: defaultStart, work_end_time: defaultEnd };
+            }));
         }
     };
     // Toggle all weekdays
     const handleWeekdays = () => {
         if (areAllWeekdays) {
-            onChange(value.filter(d => !allWeekdays.includes(d)));
+            onChange(value.filter(d => !allWeekdays.includes(d.day)));
         } else {
-            onChange([...allWeekdays, ...value.filter(d => allWeekends.includes(d))]);
+            const weekends = value.filter(d => allWeekends.includes(d.day));
+            const weekdays = allWeekdays.map(day => {
+                const found = value.find(d => d.day === day);
+                return found || { day, work_start_time: defaultStart, work_end_time: defaultEnd };
+            });
+            onChange([...weekdays, ...weekends]);
         }
     };
     // Toggle all weekends
     const handleWeekends = () => {
         if (areAllWeekends) {
-            onChange(value.filter(d => !allWeekends.includes(d)));
+            onChange(value.filter(d => !allWeekends.includes(d.day)));
         } else {
-            onChange([...allWeekends, ...value.filter(d => allWeekdays.includes(d))]);
+            const weekdays = value.filter(d => allWeekdays.includes(d.day));
+            const weekends = allWeekends.map(day => {
+                const found = value.find(d => d.day === day);
+                return found || { day, work_start_time: defaultStart, work_end_time: defaultEnd };
+            });
+            onChange([...weekdays, ...weekends]);
         }
     };
     const clearAll = () => onChange([]);
+
+    // Navigation helpers and time setter for selected day
+    const hasDays = value.length > 0;
+    const currentDay = hasDays ? value[selectedIndex] : undefined;
+    const goPrev = () => {
+        if (!hasDays) return;
+        onSelectIndex((selectedIndex - 1 + value.length) % value.length);
+    };
+    const goNext = () => {
+        if (!hasDays) return;
+        onSelectIndex((selectedIndex + 1) % value.length);
+    };
+    const setTime = (field: 'work_start_time' | 'work_end_time', time: string) => {
+        if (!currentDay) return;
+        onChange(value.map((d, i) => i === selectedIndex ? { ...d, [field]: time } : d));
+    };
 
     return (
         <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 mb-2">
                 <span className="font-semibold text-sm">Work Days</span>
-                {/* <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={handleAll}
-                >
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                </Button> */}
-
                 <Button type='button' size="icon" variant="ghost" onClick={handleAll} title="Select all">
                     <CheckCircle className='w-5 h-5 text-green-600' />
                 </Button>
-
                 <Button type="button" size="icon" variant="ghost" onClick={clearAll} title="Clear all">
                     <XCircle className="w-5 h-5 text-red-500" />
                 </Button>
@@ -98,18 +134,21 @@ export default function WorkDaysSelector({ value, onChange }: WorkDaysSelectorPr
                         </Button>
                     </div>
                     <div className="flex gap-1">
-                        {WEEKDAYS.map(day => (
-                            <Button
-                                key={day.key}
-                                type="button"
-                                size="icon"
-                                variant={isSelected(day.key) ? 'default' : 'outline'}
-                                onClick={() => toggleDay(day.key)}
-                                title={day.label}
-                            >
-                                <span className="text-xs">{day.label}</span>
-                            </Button>
-                        ))}
+                        {WEEKDAYS.map(day => {
+                            const selected = value.some(d => d.day === day.key);
+                            return (
+                                <Button
+                                    key={day.key}
+                                    type="button"
+                                    size="icon"
+                                    variant={selected ? 'default' : 'outline'}
+                                    onClick={() => toggleDay(day.key)}
+                                    title={day.label}
+                                >
+                                    <span className="text-xs">{day.label}</span>
+                                </Button>
+                            );
+                        })}
                     </div>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -126,20 +165,51 @@ export default function WorkDaysSelector({ value, onChange }: WorkDaysSelectorPr
                         </Button>
                     </div>
                     <div className="flex gap-1">
-                        {WEEKENDS.map(day => (
-                            <Button
-                                key={day.key}
-                                type="button"
-                                size="icon"
-                                variant={isSelected(day.key) ? 'default' : 'outline'}
-                                onClick={() => toggleDay(day.key)}
-                                title={day.label}
-                            >
-                                <span className="text-xs">{day.label}</span>
-                            </Button>
-                        ))}
+                        {WEEKENDS.map(day => {
+                            const selected = value.some(d => d.day === day.key);
+                            return (
+                                <Button
+                                    key={day.key}
+                                    type="button"
+                                    size="icon"
+                                    variant={selected ? 'default' : 'outline'}
+                                    onClick={() => toggleDay(day.key)}
+                                    title={day.label}
+                                >
+                                    <span className="text-xs">{day.label}</span>
+                                </Button>
+                            );
+                        })}
                     </div>
                 </div>
+            </div>
+            {/* Single time picker for selected day */}
+            <div className="flex items-center gap-2 mt-4">
+                {hasDays && (
+                    <>
+                        <Button type="button" size="sm" variant="outline" onClick={goPrev}>&lt;</Button>
+                        <span className="text-xs font-semibold w-16 text-center">{currentDay ? currentDay.day.toUpperCase() : ''}</span>
+                        <Button type="button" size="sm" variant="outline" onClick={goNext}>&gt;</Button>
+                        <span className="ml-4 text-xs">Start</span>
+                        <div className="w-36">
+                            <TimePicker
+                                value={currentDay && currentDay.work_start_time ? currentDay.work_start_time : ''}
+                                onChange={val => setTime('work_start_time', val)}
+                                label={undefined}
+                                placeholder="Select start time"
+                            />
+                        </div>
+                        <span className="ml-2 text-xs">End</span>
+                        <div className="w-36">
+                            <TimePicker
+                                value={currentDay && currentDay.work_end_time ? currentDay.work_end_time : ''}
+                                onChange={val => setTime('work_end_time', val)}
+                                label={undefined}
+                                placeholder="Select end time"
+                            />
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
