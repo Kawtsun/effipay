@@ -7,7 +7,6 @@ function formatWithCommas(value: string): string {
         ? int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
         : int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
-import React from 'react';
 import { EmployeeStatus } from '@/components/employee-status';
 import { calculateSSS } from '@/utils/salaryFormulas';
 import { calculatePhilHealth, calculateWithholdingTax } from '@/utils/salaryFormulas';
@@ -655,18 +654,12 @@ export default function Create(props: Props) {
                                     <div className='space-y-6'>
                                         {/* Work Days Selector */}
                                         {/* Work Days Selector with navigation and single time picker */}
-                                        {(() => {
-                                            const [selectedIndex, setSelectedIndex] = React.useState(0);
-                                            return (
-                                                <WorkDaysSelector
-                                                    value={data.work_days}
-                                                    onChange={(days: WorkDayTime[]) => setData('work_days', days)}
-                                                    selectedIndex={selectedIndex}
-                                                    onSelectIndex={setSelectedIndex}
-                                                />
-                                            );
-                                        })()}
-
+                                        <WorkDaysSelector
+                                            value={data.work_days}
+                                            onChange={(days: WorkDayTime[]) => setData('work_days', days)}
+                                            selectedIndex={selectedIndex}
+                                            onSelectIndex={setSelectedIndex}
+                                        />
                                     </div>
                                 </div>
                             </div>

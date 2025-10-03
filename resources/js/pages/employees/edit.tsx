@@ -26,37 +26,48 @@ import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
 import EmployeeInstructorRadioRole from '@/components/employee-instructor-radio-role';
 import { AnimatePresence, motion } from 'framer-motion';
 import { formatFullName } from '@/utils/formatFullName';
+import { WorkDaysSelector } from '@/components/work-days-selector';
+
+type WorkDayTime = {
+    id?: number;
+    day: string;
+    work_start_time: string;
+    work_end_time: string;
+};
+
+type EmployeeTypeWithWorkDays = {
+    id: number;
+    last_name: string;
+    first_name: string;
+    middle_name: string;
+    employee_type: string;
+    employee_status: string;
+    roles: string;
+    base_salary: number;
+    rate_per_hour?: number;
+    college_rate?: number;
+    sss: number;
+    philhealth: number;
+    pag_ibig: number;
+    withholding_tax: number;
+    work_hours_per_day: number;
+    work_start_time: string;
+    work_end_time: string;
+    sss_salary_loan?: number;
+    sss_calamity_loan?: number;
+    pagibig_multi_loan?: number;
+    pagibig_calamity_loan?: number;
+    peraa_con?: number;
+    tuition?: number;
+    china_bank?: number;
+    tea?: number;
+    honorarium?: number;
+    college_program?: string;
+    work_days?: WorkDayTime[];
+};
 
 type Props = {
-    employee: {
-        id: number;
-        last_name: string;
-        first_name: string;
-        middle_name: string;
-        employee_type: string;
-        employee_status: string;
-        roles: string;
-        base_salary: number;
-        rate_per_hour?: number;
-        college_rate?: number;
-        sss: number;
-        philhealth: number;
-        pag_ibig: number;
-        withholding_tax: number;
-        work_hours_per_day: number;
-        work_start_time: string;
-        work_end_time: string;
-        sss_salary_loan?: number;
-        sss_calamity_loan?: number;
-        pagibig_multi_loan?: number;
-        pagibig_calamity_loan?: number;
-        peraa_con?: number;
-        tuition?: number;
-        china_bank?: number;
-        tea?: number;
-        honorarium?: number;
-        college_program?: string;
-    };
+    employee: EmployeeTypeWithWorkDays;
     employeeCategory?: string;
     search?: string;
     filters?: Record<string, unknown>;
@@ -91,7 +102,44 @@ export default function Edit({
     const [showChinaBankInput, setShowChinaBankInput] = useState(!!employee.china_bank);
     const [showTEAInput, setShowTEAInput] = useState(!!employee.tea);
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
-    const { data, setData } = useForm({
+    // Initialize work_days from employee prop (should be passed from backend)
+    // Defensive: ensure work_days is always an array
+    const initialWorkDays: WorkDayTime[] = Array.isArray(employee.work_days)
+        ? employee.work_days.map((wd: any) => ({
+            ...wd,
+            work_start_time: wd.work_start_time?.slice(0,5) || '',
+            work_end_time: wd.work_end_time?.slice(0,5) || '',
+        }))
+        : [];
+
+    const { data, setData } = useForm<{
+        last_name: string;
+        first_name: string;
+        middle_name: string;
+        employee_type: string;
+        employee_status: string;
+        roles: string;
+        base_salary: string;
+        rate_per_hour: string;
+        sss: string;
+        philhealth: string;
+        pag_ibig: string;
+        withholding_tax: string;
+        work_hours_per_day: string;
+        work_start_time: string;
+        work_end_time: string;
+        college_program: string;
+        sss_salary_loan: string;
+        sss_calamity_loan: string;
+        pagibig_multi_loan: string;
+        pagibig_calamity_loan: string;
+        peraa_con: string;
+        tuition: string;
+        china_bank: string;
+        tea: string;
+        honorarium: string;
+        work_days: WorkDayTime[];
+    }>({
         last_name: employee.last_name || '',
         first_name: employee.first_name || '',
         middle_name: employee.middle_name || '',
@@ -116,21 +164,29 @@ export default function Edit({
         tuition: employee.tuition !== null && employee.tuition !== undefined ? employee.tuition.toString() : '',
         china_bank: employee.china_bank !== null && employee.china_bank !== undefined ? employee.china_bank.toString() : '',
         tea: employee.tea !== null && employee.tea !== undefined ? employee.tea.toString() : '',
-        honorarium: employee.honorarium !== null && employee.honorarium !== undefined ? employee.honorarium.toString() : '',
+    honorarium: employee.honorarium !== null && employee.honorarium !== undefined ? employee.honorarium.toString() : '',
+    work_days: initialWorkDays,
     });
+
+    // For WorkDaysSelector navigation (must be after all hooks)
+    // Only one instance of selectedIndex state
+    // (removed duplicate selectedIndex declaration)
     // Initialize checkboxes based on employee roles
-    const initialRolesArr = employee.roles ? employee.roles.split(',').map(r => r.trim()) : [];
+    const initialRolesArr = employee.roles ? employee.roles.split(',').map((r: string) => r.trim()) : [];
     const [isCollegeInstructorChecked, setIsCollegeInstructorChecked] = useState(initialRolesArr.includes('college instructor'));
     const [isBasicEduInstructorChecked, setIsBasicEduInstructorChecked] = useState(initialRolesArr.includes('basic education instructor'));
-    
-        // Sync roles field with checkboxes
-        useEffect(() => {
-            let rolesArr = data.roles ? data.roles.split(',').map(r => r.trim()).filter(r => r) : [];
-            rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
-            if (isCollegeInstructorChecked) rolesArr.push('college instructor');
-            if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
-            setData('roles', rolesArr.join(','));
-        }, [isCollegeInstructorChecked, isBasicEduInstructorChecked]);
+
+    // For WorkDaysSelector navigation (must be after all hooks)
+    const [selectedIndex, setSelectedIndex] = useState(0);
+
+    // Sync roles field with checkboxes
+    useEffect(() => {
+        let rolesArr = data.roles ? data.roles.split(',').map(r => r.trim()).filter(r => r) : [];
+        rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
+        if (isCollegeInstructorChecked) rolesArr.push('college instructor');
+        if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
+        setData('roles', rolesArr.join(','));
+    }, [isCollegeInstructorChecked, isBasicEduInstructorChecked]);
 
     // Watch for College Instructor role to clear contribution fields and remove validation
     // For college instructor, always show the current value from the employee record (do not clear)
@@ -531,49 +587,14 @@ export default function Edit({
                                 <div>
                                     <h1 className='font-bold text-xl mb-6'>Work Schedule</h1>
                                     <div className='space-y-6'>
-                                        {/* Work hours per day is auto-derived; input removed */}
-                                        <div className='flex flex-row gap-6'>
-                                            <div className='flex flex-col gap-3'>
-                                                <TimePicker
-                                                    value={data.work_start_time}
-                                                    onChange={(value) => setData('work_start_time', value)}
-                                                    label="Work Start Time"
-                                                    placeholder="Select start time"
-                                                />
-                                            </div>
-                                            <div className='flex flex-col gap-3'>
-                                                <TimePicker
-                                                    value={data.work_end_time}
-                                                    onChange={(value) => setData('work_end_time', value)}
-                                                    label="Work End Time"
-                                                    placeholder="Select end time"
-                                                />
-                                            </div>
-                                        </div>
-                                        {data.work_start_time && data.work_end_time && (
-                                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                                                <p className="text-sm text-blue-700 dark:text-blue-300">
-                                                    {(() => {
-                                                        const [startHour, startMinute] = data.work_start_time.split(':').map(Number);
-                                                        const [endHour, endMinute] = data.work_end_time.split(':').map(Number);
-                                                        const startMinutes = startHour * 60 + startMinute;
-                                                        const endMinutes = endHour * 60 + endMinute;
-                                                        let actualWorkMinutes = endMinutes - startMinutes;
-                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
-                                                        const hours = Math.floor(totalMinutes / 60);
-                                                        const minutes = totalMinutes % 60;
-                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
-                                                        return (
-                                                            <>
-                                                                📅 Schedule: {formatTime12Hour(data.work_start_time)} - {formatTime12Hour(data.work_end_time)} ({durationText})<br />
-                                                                <span className="text-xs text-blue-600 dark:text-blue-400">*Break time is included. 1 hour is subtracted from total work hours.</span>
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </p>
-                                            </div>
-                                        )}
+                                        {/* Work Days Selector */}
+                                        {/* Work Days Selector with navigation and single time picker */}
+                                        <WorkDaysSelector
+                                            value={data.work_days}
+                                            onChange={(days: WorkDayTime[]) => setData('work_days', days)}
+                                            selectedIndex={selectedIndex}
+                                            onSelectIndex={setSelectedIndex}
+                                        />
                                     </div>
                                 </div>
                             </div>
