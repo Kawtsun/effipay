@@ -1,3 +1,4 @@
+// ...existing imports and type definitions...
 function formatWithCommas(value: string): string {
     if (!value) return '';
     const [int, dec] = value.split('.');
@@ -108,43 +109,16 @@ export default function Create(props: Props) {
 
     // base_salary cleared if Others role is checked
     useEffect(() => {
-        const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
-        const hasOthers = isOthersChecked;
-        const hasAdmin = rolesArr.includes('administrator');
-        const hasBasicEdu = rolesArr.includes('basic education instructor');
-        // Only clear if Others is the only checked role AND input is not empty
-        if (hasOthers && othersRole.trim() && !hasAdmin && !hasBasicEdu && rolesArr.length === 1) {
-            if (data.base_salary !== '') {
-                setTimeout(() => setData('base_salary', ''), 0);
-            }
-        }
-        // If admin or basic edu is checked when Others is already checked and base_salary is empty
-        else if (hasOthers && othersRole.trim() && (hasAdmin || hasBasicEdu) && data.base_salary === '') {
-            let restoreType = null;
-            if (hasAdmin && salaryDefaults['Regular']) {
-                restoreType = 'Regular';
-            } else if (hasBasicEdu && salaryDefaults['Full Time']) {
-                restoreType = 'Full Time';
-            }
-            if (restoreType) {
-                const restoreSalary = salaryDefaults[restoreType].base_salary.toString();
-                setTimeout(() => setData('base_salary', restoreSalary), 0);
-            }
-        }
-        // If Others is checked when admin or basic edu was already checked: do nothing
-        // Else: do nothing
-    }, [isOthersChecked, othersRole, data.roles, salaryDefaults, setData, data.base_salary]);
-
-    // Watch for College Instructor role to clear contribution fields and remove validation
-    useEffect(() => {
         const rolesArr = data.roles.split(',').map(r => r.trim());
-        if (rolesArr.includes('college instructor')) {
-            // Clear SSS, PhilHealth, Pag-IBIG, Withholding Tax
+        const hasCollege = rolesArr.includes('college instructor');
+        const hasBasicEdu = rolesArr.includes('basic education instructor');
+        const hasOthers = rolesArr.includes(othersRole.trim()) && othersRole.trim() !== '';
+        // Clear contributions if any of the three roles are selected
+        if (hasCollege || hasBasicEdu || hasOthers) {
             if (data.sss !== '') setData('sss', '');
             if (data.philhealth !== '') setData('philhealth', '');
             if (data.pag_ibig !== '') setData('pag_ibig', '');
             if (data.withholding_tax !== '') setData('withholding_tax', '');
-            // Set rate_per_hour from salaryDefaults.college_rate if available
             if (
                 salaryDefaults[data.employee_type]?.college_rate !== undefined &&
                 data.rate_per_hour !== salaryDefaults[data.employee_type].college_rate.toString()
@@ -152,7 +126,6 @@ export default function Create(props: Props) {
                 setData('rate_per_hour', salaryDefaults[data.employee_type].college_rate.toString());
             }
         } else {
-            // Restore defaults if not college instructor and fields are empty
             if (data.sss === '' && salaryDefaults[data.employee_type]?.sss)
                 setData('sss', salaryDefaults[data.employee_type].sss.toString());
             if (data.philhealth === '' && salaryDefaults[data.employee_type]?.philhealth)
@@ -161,10 +134,12 @@ export default function Create(props: Props) {
                 setData('pag_ibig', salaryDefaults[data.employee_type].pag_ibig.toString());
             if (data.withholding_tax === '' && salaryDefaults[data.employee_type]?.withholding_tax)
                 setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
-            // Clear rate_per_hour if not college instructor
             if (data.rate_per_hour !== '') setData('rate_per_hour', '');
         }
-    }, [data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax]);
+    }, [data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, othersRole]);
+
+    // Watch for College Instructor role to clear contribution fields and remove validation
+    // Removed duplicate useEffect for contribution clearing
     // Determine if College Instructor is selected
     const rolesArrManual = data.roles.split(',').map(r => r.trim());
     const isCollegeInstructor = rolesArrManual.includes('college instructor');
@@ -488,6 +463,18 @@ export default function Create(props: Props) {
     useEffect(() => {
         setData('college_program', collegeProgram);
     }, [collegeProgram, setData]);
+
+    // Clear contributions for basic education instructor and others
+    useEffect(() => {
+        const rolesArr = data.roles.split(',').map(r => r.trim());
+        const isCustomOthers = rolesArr.includes(othersRole.trim()) && othersRole.trim() !== '';
+        if (rolesArr.includes('basic education instructor') || isCustomOthers) {
+            setData('sss', '');
+            setData('philhealth', '');
+            setData('pag_ibig', '');
+            setData('withholding_tax', '');
+        }
+    }, [data.roles, othersRole, setData]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
