@@ -43,4 +43,9 @@ class Employees extends Model
     {
         return $this->hasMany(Payroll::class);
     }
+
+    public function workDays()
+    {
+        return $this->hasMany(WorkDay::class, 'employee_id');
+    }
 }

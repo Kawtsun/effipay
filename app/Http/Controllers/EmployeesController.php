@@ -49,9 +49,10 @@ class EmployeesController extends Controller
             $query->where('college_program', $request->collegeProgram);
         }
 
-        $employees = $query->paginate(10)->withQueryString();
 
-        // Ensure all required fields are present for each employee
+        $employees = $query->with('workDays')->paginate(10)->withQueryString();
+
+        // Ensure all required fields are present for each employee, including work_days
         $employeesArray = array_map(function ($emp) {
             return [
                 'id' => $emp->id,
@@ -80,6 +81,14 @@ class EmployeesController extends Controller
                 'china_bank' => $emp->china_bank,
                 'tea' => $emp->tea,
                 'honorarium' => $emp->honorarium,
+                'work_days' => $emp->workDays ? $emp->workDays->map(function($wd) {
+                    return [
+                        'id' => $wd->id,
+                        'day' => $wd->day,
+                        'work_start_time' => $wd->work_start_time,
+                        'work_end_time' => $wd->work_end_time,
+                    ];
+                })->toArray() : [],
             ];
         }, $employees->items());
 
@@ -132,6 +141,7 @@ class EmployeesController extends Controller
             'salaryDefaults'  => $salaryDefaults,
             'employee'        => [
                 'honorarium' => '', // default empty for new employee
+                'work_days' => [], // default empty work_days for new employee
             ],
         ]);
     }
@@ -141,6 +151,7 @@ class EmployeesController extends Controller
      */
     public function store(StoreEmployeesRequest $request)
     {
+
         $data = $request->validated();
         // Always set college_rate from rate_per_hour if present in request
         if (request()->has('rate_per_hour')) {
@@ -162,6 +173,24 @@ class EmployeesController extends Controller
             $data['philhealth'] = round($philhealth, 2);
         }
         $employee = Employees::create($data);
+
+        // Save per-day work times if provided
+    $workDays = $request['work_days'] ?? [];
+        if (is_array($workDays) && count($workDays)) {
+            foreach ($workDays as $workDay) {
+                if (
+                    isset($workDay['day']) &&
+                    isset($workDay['work_start_time']) &&
+                    isset($workDay['work_end_time'])
+                ) {
+                    $employee->workDays()->create([
+                        'day' => $workDay['day'],
+                        'work_start_time' => $workDay['work_start_time'],
+                        'work_end_time' => $workDay['work_end_time'],
+                    ]);
+                }
+            }
+        }
 
         // Audit log: employee created
         $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
@@ -230,6 +259,7 @@ class EmployeesController extends Controller
                 ],
             ])
             ->toArray();
+        $employee->load('workDays');
         return Inertia::render('employees/edit', [
             'employee' => [
                 'id' => $employee->id,
@@ -258,6 +288,14 @@ class EmployeesController extends Controller
                 'china_bank' => $employee->china_bank,
                 'tea' => $employee->tea,
                 'honorarium' => $employee->honorarium,
+                'work_days' => $employee->workDays ? $employee->workDays->map(function($wd) {
+                    return [
+                        'id' => $wd->id,
+                        'day' => $wd->day,
+                        'work_start_time' => $wd->work_start_time,
+                        'work_end_time' => $wd->work_end_time,
+                    ];
+                })->toArray() : [],
             ],
             'search'   => $request->input('search', ''),
             'filters'  => [
@@ -295,8 +333,30 @@ class EmployeesController extends Controller
             $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
             $data['philhealth'] = round($philhealth, 2);
         }
+
         $oldData = $employee->toArray();
         $employee->update($data);
+
+        // Update per-day work times if provided
+        $workDays = $request['work_days'] ?? [];
+        if (is_array($workDays)) {
+            // Remove all previous work days for this employee
+            $employee->workDays()->delete();
+            // Add new work days
+            foreach ($workDays as $workDay) {
+                if (
+                    isset($workDay['day']) &&
+                    isset($workDay['work_start_time']) &&
+                    isset($workDay['work_end_time'])
+                ) {
+                    $employee->workDays()->create([
+                        'day' => $workDay['day'],
+                        'work_start_time' => $workDay['work_start_time'],
+                        'work_end_time' => $workDay['work_end_time'],
+                    ]);
+                }
+            }
+        }
 
         // Audit log: employee updated
         $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
