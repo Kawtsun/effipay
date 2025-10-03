@@ -55,12 +55,13 @@ export default function Create(props: Props) {
     const [isOthersChecked, setIsOthersChecked] = useState(false);
     const [othersRole, setOthersRole] = useState('');
 
-    // Sync roles field with checkboxes and others role
+    // Sync roles field with checkboxes and custom 'Others' role input
     useEffect(() => {
         let rolesArr = data.roles ? data.roles.split(',').map(r => r.trim()).filter(r => r) : [];
         rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor' && r !== 'others' && r !== othersRole);
         if (isCollegeInstructorChecked) rolesArr.push('college instructor');
         if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
+        // Always send the custom 'Others' input as the role if checked
         if (isOthersChecked && othersRole.trim()) rolesArr.push(othersRole.trim());
         setData('roles', rolesArr.join(','));
     }, [isCollegeInstructorChecked, isBasicEduInstructorChecked, isOthersChecked, othersRole]);
@@ -104,6 +105,35 @@ export default function Create(props: Props) {
         tea: '',
         honorarium: '',
     });
+
+    // base_salary cleared if Others role is checked
+    useEffect(() => {
+        const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
+        const hasOthers = isOthersChecked;
+        const hasAdmin = rolesArr.includes('administrator');
+        const hasBasicEdu = rolesArr.includes('basic education instructor');
+        // Only clear if Others is the only checked role AND input is not empty
+        if (hasOthers && othersRole.trim() && !hasAdmin && !hasBasicEdu && rolesArr.length === 1) {
+            if (data.base_salary !== '') {
+                setTimeout(() => setData('base_salary', ''), 0);
+            }
+        }
+        // If admin or basic edu is checked when Others is already checked and base_salary is empty
+        else if (hasOthers && othersRole.trim() && (hasAdmin || hasBasicEdu) && data.base_salary === '') {
+            let restoreType = null;
+            if (hasAdmin && salaryDefaults['Regular']) {
+                restoreType = 'Regular';
+            } else if (hasBasicEdu && salaryDefaults['Full Time']) {
+                restoreType = 'Full Time';
+            }
+            if (restoreType) {
+                const restoreSalary = salaryDefaults[restoreType].base_salary.toString();
+                setTimeout(() => setData('base_salary', restoreSalary), 0);
+            }
+        }
+        // If Others is checked when admin or basic edu was already checked: do nothing
+        // Else: do nothing
+    }, [isOthersChecked, othersRole, data.roles, salaryDefaults, setData, data.base_salary]);
 
     // Watch for College Instructor role to clear contribution fields and remove validation
     useEffect(() => {
@@ -379,7 +409,10 @@ export default function Create(props: Props) {
     useEffect(() => {
         if (salaryDefaults && salaryDefaults[data.employee_type]) {
             const def = salaryDefaults[data.employee_type];
-            setData('base_salary', def.base_salary.toString());
+            // Only set base_salary if Others is NOT checked
+            if (!(isOthersChecked && othersRole.trim())) {
+                setData('base_salary', def.base_salary.toString());
+            }
             // Only set rate_per_hour if college instructor, using college_rate
             if (data.roles.split(',').map(r => r.trim()).includes('college instructor') && def.college_rate !== undefined) {
                 setData('rate_per_hour', def.college_rate.toString());
@@ -407,7 +440,7 @@ export default function Create(props: Props) {
                 setData('work_end_time', '17:00');
             }
         }
-    }, [data.employee_type, salaryDefaults, setData, data.roles]);
+    }, [data.employee_type, salaryDefaults, setData, data.roles, isOthersChecked, othersRole]);
 
     // Auto-calculate work hours when start/end times change
     useEffect(() => {
