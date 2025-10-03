@@ -48,11 +48,8 @@ class StoreEmployeesRequest extends FormRequest
                 'string',
                 function($attribute, $value, $fail) {
                     $rolesArr = array_filter(array_map('trim', explode(',', $value)));
-                    $instructors = array_intersect($rolesArr, ['college instructor', 'basic education instructor']);
-                    if (count($instructors) > 1) {
-                        $fail('Only one instructor type can be selected.');
-                    }
-                    if (count($instructors) === 0 && !in_array('administrator', $rolesArr)) {
+                    // Allow multiple instructor types to be selected
+                    if (count(array_intersect($rolesArr, ['college instructor', 'basic education instructor'])) === 0 && !in_array('administrator', $rolesArr)) {
                         $fail('At least one role must be selected.');
                     }
                     $allowed = ['college instructor', 'basic education instructor', 'administrator'];

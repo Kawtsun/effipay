@@ -48,6 +48,19 @@ type Props = {
 };
 
 export default function Create(props: Props) {
+    // --- Instructor Role Selection as Checkboxes ---
+    // Track checkbox state for college/basic education instructor
+    const [isCollegeInstructorChecked, setIsCollegeInstructorChecked] = useState(false);
+    const [isBasicEduInstructorChecked, setIsBasicEduInstructorChecked] = useState(false);
+
+    // Sync roles field with checkboxes
+    useEffect(() => {
+        let rolesArr = data.roles ? data.roles.split(',').map(r => r.trim()).filter(r => r) : [];
+        rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
+        if (isCollegeInstructorChecked) rolesArr.push('college instructor');
+        if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
+        setData('roles', rolesArr.join(','));
+    }, [isCollegeInstructorChecked, isBasicEduInstructorChecked]);
     const { search, filters, page, salaryDefaults } = props;
     // Add state for showing/hiding Salary Loan input
     const [showSalaryLoanInput, setShowSalaryLoanInput] = useState(false);
@@ -170,15 +183,30 @@ export default function Create(props: Props) {
             toast.error('First Name is required.');
             return;
         }
-        // College Instructor: Rate Per Hour required
-        if (data.roles.split(',').includes('college instructor') && (!data.rate_per_hour || !data.rate_per_hour.trim())) {
-            toast.error('Rate Per Hour is required.');
-            return;
-        }
-        // Non-college: Base Salary required
-        if (!data.roles.split(',').includes('college instructor') && (!data.base_salary || !data.base_salary.trim())) {
-            toast.error('Base Salary is required.');
-            return;
+    const rolesArr = data.roles.split(',').map(r => r.trim());
+    const isAdmin = rolesArr.includes('administrator');
+    const isBasicEdu = rolesArr.includes('basic education instructor');
+    const isCollege = rolesArr.includes('college instructor');
+        // If both college instructor and (admin or basic edu) are selected, require both fields
+        if (isCollege && (isAdmin || isBasicEdu)) {
+            if (!data.base_salary || !data.base_salary.trim()) {
+                toast.error('Base Salary is required.');
+                return;
+            }
+            if (!data.rate_per_hour || !data.rate_per_hour.trim()) {
+                toast.error('Rate Per Hour is required.');
+                return;
+            }
+        } else if (isCollege) {
+            if (!data.rate_per_hour || !data.rate_per_hour.trim()) {
+                toast.error('Rate Per Hour is required.');
+                return;
+            }
+        } else if (isAdmin || isBasicEdu) {
+            if (!data.base_salary || !data.base_salary.trim()) {
+                toast.error('Base Salary is required.');
+                return;
+            }
         }
         if (!data.employee_type) {
             toast.error('Employee Type is required.');
@@ -199,7 +227,6 @@ export default function Create(props: Props) {
 
         // Validate Pag-IBIG minimum only if not college instructor
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-        const isCollege = data.roles.split(',').includes('college instructor');
         if (!isCollege && pagIbigValue < 200) {
             toast.error('Pag-IBIG must be at least ₱200.');
             return;
@@ -467,57 +494,31 @@ export default function Create(props: Props) {
                                                 </label>
                                                 <label className="flex items-center gap-2 text-sm select-none mt-2">
                                                     <Checkbox
-                                                        checked={data.roles.split(',').some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
-                                                        onCheckedChange={(checked) => {
-                                                            const rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
-                                                            if (checked) {
-                                                                // Add 'instructor' as a UI flag only if no teaching role is selected
-                                                                setData('roles', [...rolesArr, 'instructor'].filter(Boolean).join(','));
-                                                            } else {
-                                                                // Remove 'instructor' and any teaching role
-                                                                setData('roles', rolesArr.join(','));
-                                                            }
-                                                        }}
+                                                        checked={isCollegeInstructorChecked}
+                                                        onCheckedChange={checked => setIsCollegeInstructorChecked(!!checked)}
                                                         className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
                                                     />
-                                                    Instructor
+                                                    College Instructor
                                                 </label>
-                                                <div className="pl-6 mt-1">
-                                                    <EmployeeInstructorRadioRole
-                                                        value={data.roles.split(',').find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
-                                                        onChange={val => {
-                                                            // Remove any instructor and teaching role, add the new teaching role only
-                                                            const rolesArr = data.roles.split(',').filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor' && r !== '');
-                                                            setData('roles', [val, ...rolesArr].filter(Boolean).join(','));
-                                                            if (val === 'college instructor') {
-                                                                setTimeout(() => {
-                                                                    collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                                }, 100);
-                                                            }
-                                                        }}
-                                                        disabled={!data.roles.split(',').some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
+                                                <label className="flex items-center gap-2 text-sm select-none mt-2">
+                                                    <Checkbox
+                                                        checked={isBasicEduInstructorChecked}
+                                                        onCheckedChange={checked => setIsBasicEduInstructorChecked(!!checked)}
+                                                        className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
                                                     />
-                                                </div>
-                                                <AnimatePresence>
-                                                    {data.roles.split(',').includes('college instructor') && (
-                                                        <motion.div
-                                                            ref={collegeDeptRef}
-                                                            initial={{ opacity: 0, y: -20, scale: 0.98 }}
-                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                            exit={{ opacity: 0, y: -20, scale: 0.98 }}
-                                                            transition={{ duration: 0.35, ease: 'easeOut' }}
-                                                            className="pl-4 mt-2"
-                                                        >
-                                                            <div className="text-xs font-semibold mb-1">College Department</div>
-                                                            <CollegeProgramScrollArea>
-                                                                <EmployeeCollegeRadioDepartment
-                                                                    value={collegeProgram}
-                                                                    onChange={setCollegeProgram}
-                                                                />
-                                                            </CollegeProgramScrollArea>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
+                                                    Basic Education Instructor
+                                                </label>
+                                                {isCollegeInstructorChecked && (
+                                                    <div className="pl-4 mt-2">
+                                                        <div className="text-xs font-semibold mb-1">College Department</div>
+                                                        <CollegeProgramScrollArea>
+                                                            <EmployeeCollegeRadioDepartment
+                                                                value={collegeProgram}
+                                                                onChange={setCollegeProgram}
+                                                            />
+                                                        </CollegeProgramScrollArea>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="text-xs text-muted-foreground mt-1">
                                                 Please select at least one role before choosing employee type or status.
@@ -605,59 +606,104 @@ export default function Create(props: Props) {
                                         <h2 className='font-semibold text-lg mb-4'>Earnings</h2>
                                         <div className='space-y-6'>
                                             <div className='flex flex-col gap-3'>
-                                                {/* Show Rate Per Hour if College Instructor, else Base Salary */}
-                                                {isCollegeInstructor ? (
-                                                    <>
-                                                        <Label htmlFor="rate_per_hour">Rate Per Hour</Label>
-                                                        <div className='relative'>
-                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                            <Input
-                                                                id="rate_per_hour"
-                                                                type="text"
-                                                                inputMode="numeric"
-                                                                pattern="[0-9.,]*"
-                                                                
-                                                                placeholder="Rate Per Hour"
-                                                                className="pl-8"
-                                                                min={0}
-                                                                value={formatWithCommas(data.rate_per_hour ?? '')}
-                                                                onChange={e => {
-                                                                    const raw = e.target.value.replace(/,/g, '');
-                                                                    if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                                    setData('rate_per_hour', raw);
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Label htmlFor="base_salary">Base Salary</Label>
-                                                        <div className='relative'>
-                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                            <Input
-                                                                id="base_salary"
-                                                                type="text"
-                                                                inputMode="numeric"
-                                                                pattern="[0-9.,]*"
-                                                                
-                                                                placeholder="Salary"
-                                                                className="pl-8"
-                                                                min={0}
-                                                                value={formatWithCommas(data.base_salary ?? '')}
-                                                                onChange={e => {
-                                                                    const raw = e.target.value.replace(/,/g, '');
-                                                                    // Only allow numbers and period
-                                                                    if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                                    setData('base_salary', raw);
-                                                                    // Auto-calculate PhilHealth based on base salary
-                                                                    const baseSalaryNum = Number(raw) || 0;
-                                                                    const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
-                                                                    setData('philhealth', calculatedPhilHealth.toString());
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </>
-                                                )}
+                                                {/* Show both fields if two or more roles and one is college instructor */}
+                                                {(() => {
+                                                    const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
+                                                    const isCollege = rolesArr.includes('college instructor');
+                                                    const showBoth = isCollege && rolesArr.length > 1;
+                                                    if (showBoth) {
+                                                        return <>
+                                                            <Label htmlFor="base_salary">Base Salary</Label>
+                                                            <div className='relative'>
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                <Input
+                                                                    id="base_salary"
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9.,]*"
+                                                                    placeholder="Salary"
+                                                                    className="pl-8"
+                                                                    min={0}
+                                                                    value={formatWithCommas(data.base_salary ?? '')}
+                                                                    onChange={e => {
+                                                                        const raw = e.target.value.replace(/,/g, '');
+                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                        setData('base_salary', raw);
+                                                                        const baseSalaryNum = Number(raw) || 0;
+                                                                        const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
+                                                                        setData('philhealth', calculatedPhilHealth.toString());
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <Label htmlFor="rate_per_hour">Rate Per Hour</Label>
+                                                            <div className='relative'>
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                <Input
+                                                                    id="rate_per_hour"
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9.,]*"
+                                                                    placeholder="Rate Per Hour"
+                                                                    className="pl-8"
+                                                                    min={0}
+                                                                    value={formatWithCommas(data.rate_per_hour ?? '')}
+                                                                    onChange={e => {
+                                                                        const raw = e.target.value.replace(/,/g, '');
+                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                        setData('rate_per_hour', raw);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </>;
+                                                    } else if (isCollege) {
+                                                        return <>
+                                                            <Label htmlFor="rate_per_hour">Rate Per Hour</Label>
+                                                            <div className='relative'>
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                <Input
+                                                                    id="rate_per_hour"
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9.,]*"
+                                                                    placeholder="Rate Per Hour"
+                                                                    className="pl-8"
+                                                                    min={0}
+                                                                    value={formatWithCommas(data.rate_per_hour ?? '')}
+                                                                    onChange={e => {
+                                                                        const raw = e.target.value.replace(/,/g, '');
+                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                        setData('rate_per_hour', raw);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </>;
+                                                    } else {
+                                                        return <>
+                                                            <Label htmlFor="base_salary">Base Salary</Label>
+                                                            <div className='relative'>
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                <Input
+                                                                    id="base_salary"
+                                                                    type="text"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9.,]*"
+                                                                    placeholder="Salary"
+                                                                    className="pl-8"
+                                                                    min={0}
+                                                                    value={formatWithCommas(data.base_salary ?? '')}
+                                                                    onChange={e => {
+                                                                        const raw = e.target.value.replace(/,/g, '');
+                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                        setData('base_salary', raw);
+                                                                        const baseSalaryNum = Number(raw) || 0;
+                                                                        const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
+                                                                        setData('philhealth', calculatedPhilHealth.toString());
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </>;
+                                                    }
+                                                })()}
 
                                                 {/* Honorarium (optional) */}
                                                 <div className='flex flex-col gap-3'>

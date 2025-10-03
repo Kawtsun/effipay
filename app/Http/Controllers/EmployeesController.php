@@ -20,12 +20,12 @@ class EmployeesController extends Controller
     {
         $query = Employees::query();
 
-                if ($request->filled('search')) {
-                        $query->where(function($q) use ($request) {
-                                $q->where('last_name', 'like', '%' . $request->search . '%')
-                                    ->orWhere('first_name', 'like', '%' . $request->search . '%')
-                                    ->orWhere('middle_name', 'like', '%' . $request->search . '%');
-                        });
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('last_name', 'like', '%' . $request->search . '%')
+                    ->orWhere('first_name', 'like', '%' . $request->search . '%')
+                    ->orWhere('middle_name', 'like', '%' . $request->search . '%');
+            });
         }
 
         if ($request->filled('types')) {
@@ -37,7 +37,7 @@ class EmployeesController extends Controller
         }
 
         if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 foreach ($request->roles as $role) {
                     $q->orWhere('roles', 'like', '%' . $role . '%');
                 }
@@ -141,39 +141,42 @@ class EmployeesController extends Controller
      */
     public function store(StoreEmployeesRequest $request)
     {
-    $data = $request->validated();
-    // Always set college_rate from rate_per_hour if present in request
-    if (request()->has('rate_per_hour')) {
-        $data['college_rate'] = request()->input('rate_per_hour');
-    }
-    $isCollege = isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'));
-    // If role is college instructor, nullify base_salary only
-    if ($isCollege) {
-        $data['base_salary'] = null;
-    }
-    // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor
-    if (!$isCollege && isset($data['base_salary']) && $data['base_salary'] !== null) {
-        $base_salary = (float) $data['base_salary'];
-        $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
-        $data['philhealth'] = round($philhealth, 2);
-    }
-    $employee = Employees::create($data);
+        $data = $request->validated();
+        // Always set college_rate from rate_per_hour if present in request
+        if (request()->has('rate_per_hour')) {
+            $data['college_rate'] = request()->input('rate_per_hour');
+        }
+        $rolesArr = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : explode(',', $data['roles'])) : [];
+        $isCollege = in_array('college instructor', $rolesArr);
+        $isAdmin = in_array('administrator', $rolesArr);
+        $isBasicEdu = in_array('basic education instructor', $rolesArr);
+        // Only nullify base_salary if college instructor is the ONLY role (not also admin/basic edu)
+        if ($isCollege && !$isAdmin && !$isBasicEdu) {
+            $data['base_salary'] = null;
+        }
+        // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor (and not mixed roles)
+        if ((!$isCollege || ($isAdmin || $isBasicEdu)) && isset($data['base_salary']) && $data['base_salary'] !== null) {
+            $base_salary = (float) $data['base_salary'];
+            $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
+            $data['philhealth'] = round($philhealth, 2);
+        }
+        $employee = Employees::create($data);
 
-    // Audit log: employee created
-    $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
-    \App\Models\AuditLogs::create([
-        'username'    => $username,
-        'action'      => 'created',
-        'name'        => $employee->last_name . ', ' . $employee->first_name,
-        'entity_type' => 'employee',
-        'entity_id'   => $employee->id,
-        'details'     => json_encode($data),
-        'date'        => now('Asia/Manila'),
-    ]);
+        // Audit log: employee created
+        $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
+        \App\Models\AuditLogs::create([
+            'username'    => $username,
+            'action'      => 'created',
+            'name'        => $employee->last_name . ', ' . $employee->first_name,
+            'entity_type' => 'employee',
+            'entity_id'   => $employee->id,
+            'details'     => json_encode($data),
+            'date'        => now('Asia/Manila'),
+        ]);
 
         // Restore previous filters from referer
         $redirectParams = [];
-    $referer = request()->header('referer');
+        $referer = request()->header('referer');
         if ($referer) {
             $query = parse_url($referer, PHP_URL_QUERY);
             if ($query) {
@@ -272,40 +275,43 @@ class EmployeesController extends Controller
      */
     public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
-    $data = $request->validated();
-    // Always set college_rate from rate_per_hour if present in request
-    if (request()->has('rate_per_hour')) {
-        $data['college_rate'] = request()->input('rate_per_hour');
-    }
-    $isCollege = isset($data['roles']) && (is_array($data['roles']) ? in_array('college instructor', $data['roles']) : str_contains($data['roles'], 'college instructor'));
-    // If role is college instructor, nullify base_salary only
-    if ($isCollege) {
-        $data['base_salary'] = null;
-    }
-    // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor
-    if (!$isCollege && isset($data['base_salary']) && $data['base_salary'] !== null) {
-        $base_salary = (float) $data['base_salary'];
-        $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
-        $data['philhealth'] = round($philhealth, 2);
-    }
-    $oldData = $employee->toArray();
-    $employee->update($data);
+        $data = $request->validated();
+        // Always set college_rate from rate_per_hour if present in request
+        if (request()->has('rate_per_hour')) {
+            $data['college_rate'] = request()->input('rate_per_hour');
+        }
+        $rolesArr = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : explode(',', $data['roles'])) : [];
+        $isCollege = in_array('college instructor', $rolesArr);
+        $isAdmin = in_array('administrator', $rolesArr);
+        $isBasicEdu = in_array('basic education instructor', $rolesArr);
+        // Only nullify base_salary if college instructor is the ONLY role (not also admin/basic edu)
+        if ($isCollege && !$isAdmin && !$isBasicEdu) {
+            $data['base_salary'] = null;
+        }
+        // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor (and not mixed roles)
+        if ((!$isCollege || ($isAdmin || $isBasicEdu)) && isset($data['base_salary']) && $data['base_salary'] !== null) {
+            $base_salary = (float) $data['base_salary'];
+            $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
+            $data['philhealth'] = round($philhealth, 2);
+        }
+        $oldData = $employee->toArray();
+        $employee->update($data);
 
-    // Audit log: employee updated
-    $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
-    \App\Models\AuditLogs::create([
-        'username'    => $username,
-        'action'      => 'updated',
-        'name'        => $employee->last_name . ', ' . $employee->first_name,
-        'entity_type' => 'employee',
-        'entity_id'   => $employee->id,
-        'details'     => json_encode(['old' => $oldData, 'new' => $data]),
-        'date'        => now('Asia/Manila'),
-    ]);
+        // Audit log: employee updated
+        $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
+        \App\Models\AuditLogs::create([
+            'username'    => $username,
+            'action'      => 'updated',
+            'name'        => $employee->last_name . ', ' . $employee->first_name,
+            'entity_type' => 'employee',
+            'entity_id'   => $employee->id,
+            'details'     => json_encode(['old' => $oldData, 'new' => $data]),
+            'date'        => now('Asia/Manila'),
+        ]);
 
         // Restore previous filters from referer
         $redirectParams = [];
-    $referer = request()->header('referer');
+        $referer = request()->header('referer');
         if ($referer) {
             $query = parse_url($referer, PHP_URL_QUERY);
             if ($query) {
@@ -336,7 +342,7 @@ class EmployeesController extends Controller
         $employee->delete();
 
         // Audit log: employee deleted
-    $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
+        $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
         \App\Models\AuditLogs::create([
             'username'    => $username,
             'action'      => 'deleted',
