@@ -108,11 +108,67 @@ export default function Create(props: Props) {
     });
 
     // base_salary cleared if Others role is checked
+
+    // Sync college_program and handle salary/contributions for roles
+    
+
+    // Watch for College Instructor role to clear contribution fields and remove validation
+    // Removed duplicate useEffect for contribution clearing
+    // Determine if College Instructor is selected
+    const rolesArrManual = data.roles.split(',').map(r => r.trim());
+    const isCollegeInstructor = rolesArrManual.includes('college instructor');
+    const isBasicEduInstructor = rolesArrManual.includes('basic education instructor');
+    const isOthersRole = rolesArrManual.includes(othersRole.trim()) && othersRole.trim() !== '';
+
+    // Track manual mode for contributions
+    const [manualContribMode, setManualContribMode] = useState(isCollegeInstructor || isBasicEduInstructor || isOthersRole);
+
+    // Watch for role changes to toggle manual/auto mode
     useEffect(() => {
+        const rolesArrManual = data.roles.split(',').map(r => r.trim());
+        const isNowCollegeInstructor = rolesArrManual.includes('college instructor');
+        const isNowBasicEduInstructor = rolesArrManual.includes('basic education instructor');
+        const isNowOthersRole = rolesArrManual.includes(othersRole.trim()) && othersRole.trim() !== '';
+        setManualContribMode(isNowCollegeInstructor || isNowBasicEduInstructor || isNowOthersRole);
+    }, [data.roles, othersRole]);
+
+    // manual contribution mode
+    const [collegeProgram, setCollegeProgram] = useState('');
+    const collegeDeptRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (manualContribMode) return; // Suspend auto-calc in manual mode
+        const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
+        const sssNum = Number(data.sss.replace(/,/g, '')) || 0;
+        const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
+        const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
+        if (data.sss.replace(/,/g, '') !== sssNum.toFixed(2)) {
+            setData('sss', sssNum.toFixed(2));
+        }
+        if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
+            setData('philhealth', calculatedPhilHealth.toFixed(2));
+        }
+        const calculatedWithholdingTax = calculateWithholdingTax(baseSalaryNum, sssNum, pagIbigNum, calculatedPhilHealth);
+        if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
+            setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
+        }
+    }, [data.base_salary, data.pag_ibig, data.philhealth, data.sss, data.withholding_tax, setData, manualContribMode]);
+
+    useEffect(() => {
+        setData('college_program', collegeProgram);
+
         const rolesArr = data.roles.split(',').map(r => r.trim());
         const hasCollege = rolesArr.includes('college instructor');
         const hasBasicEdu = rolesArr.includes('basic education instructor');
         const hasOthers = rolesArr.includes(othersRole.trim()) && othersRole.trim() !== '';
+        // Only clear base_salary if the ONLY role is the custom others role (and nothing else)
+        if (rolesArr.length === 1 && hasOthers) {
+            setData('base_salary', '');
+        } else if (hasOthers && data.base_salary === '') {
+            // If others is present but not the only role, and base_salary is currently cleared, restore it to default
+            if (salaryDefaults[data.employee_type]?.base_salary !== undefined) {
+                setData('base_salary', salaryDefaults[data.employee_type].base_salary.toString());
+            }
+        }
         // Clear contributions if any of the three roles are selected
         if (hasCollege || hasBasicEdu || hasOthers) {
             if (data.sss !== '') setData('sss', '');
@@ -136,45 +192,7 @@ export default function Create(props: Props) {
                 setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
             if (data.rate_per_hour !== '') setData('rate_per_hour', '');
         }
-    }, [data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, othersRole]);
-
-    // Watch for College Instructor role to clear contribution fields and remove validation
-    // Removed duplicate useEffect for contribution clearing
-    // Determine if College Instructor is selected
-    const rolesArrManual = data.roles.split(',').map(r => r.trim());
-    const isCollegeInstructor = rolesArrManual.includes('college instructor');
-    const isBasicEduInstructor = rolesArrManual.includes('basic education instructor');
-    const isOthersRole = rolesArrManual.includes(othersRole.trim()) && othersRole.trim() !== '';
-    // Track manual mode for contributions
-    const [manualContribMode, setManualContribMode] = useState(isCollegeInstructor || isBasicEduInstructor || isOthersRole);
-
-    // Watch for role changes to toggle manual/auto mode
-    useEffect(() => {
-        const rolesArrManual = data.roles.split(',').map(r => r.trim());
-        const isNowCollegeInstructor = rolesArrManual.includes('college instructor');
-        const isNowBasicEduInstructor = rolesArrManual.includes('basic education instructor');
-        const isNowOthersRole = rolesArrManual.includes(othersRole.trim()) && othersRole.trim() !== '';
-        setManualContribMode(isNowCollegeInstructor || isNowBasicEduInstructor || isNowOthersRole);
-    }, [data.roles, othersRole]);
-    const [collegeProgram, setCollegeProgram] = useState('');
-    const collegeDeptRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (manualContribMode) return; // Suspend auto-calc in manual mode
-        const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
-        const sssNum = Number(data.sss.replace(/,/g, '')) || 0;
-        const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-        const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
-        if (data.sss.replace(/,/g, '') !== sssNum.toFixed(2)) {
-            setData('sss', sssNum.toFixed(2));
-        }
-        if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
-            setData('philhealth', calculatedPhilHealth.toFixed(2));
-        }
-        const calculatedWithholdingTax = calculateWithholdingTax(baseSalaryNum, sssNum, pagIbigNum, calculatedPhilHealth);
-        if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
-            setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
-        }
-    }, [data.base_salary, data.pag_ibig, data.philhealth, data.sss, data.withholding_tax, setData, manualContribMode]);
+    }, [collegeProgram, data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, othersRole]);
 
 
     // Helper function to format time to 12-hour format
@@ -460,30 +478,7 @@ export default function Create(props: Props) {
     }, [data.work_start_time, data.work_end_time, setData]);
 
     // When collegeProgram changes, sync to form state
-    useEffect(() => {
-        setData('college_program', collegeProgram);
-    }, [collegeProgram, setData]);
-
-    // Clear contributions for basic education instructor and others
-    useEffect(() => {
-    const rolesArr = data.roles.split(',').map(r => r.trim());
-    const isCustomOthers = rolesArr.includes(othersRole.trim()) && othersRole.trim() !== '';
-    if (isCustomOthers && rolesArr.length === 1) {
-        setData('base_salary', '');
-    } else {
-        fetch(`/api/salary?roles=${encodeURIComponent(data.roles)}&employee_type=${data.employee_type}`)
-            .then(res => res.json())
-            .then(result => {
-                setData('base_salary', result.base_salary.toString());
-            });
-        if (rolesArr.includes('basic education instructor') || isCustomOthers) {
-            setData('sss', '');
-            setData('philhealth', '');
-            setData('pag_ibig', '');
-            setData('withholding_tax', '');
-        }
-    }
-}, [data.roles, othersRole, setData]);
+    
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
