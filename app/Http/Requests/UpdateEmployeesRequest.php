@@ -48,15 +48,12 @@ class UpdateEmployeesRequest extends FormRequest
                 'string',
                 function($attribute, $value, $fail) {
                     $rolesArr = array_filter(array_map('trim', explode(',', $value)));
-                    $instructors = array_intersect($rolesArr, ['college instructor', 'basic education instructor']);
-                    // Allow multiple instructor types
-                    if (count($instructors) === 0 && !in_array('administrator', $rolesArr)) {
+                    if (count($rolesArr) === 0) {
                         $fail('At least one role must be selected.');
                     }
-                    $allowed = ['college instructor', 'basic education instructor', 'administrator'];
                     foreach ($rolesArr as $role) {
-                        if (!in_array($role, $allowed)) {
-                            $fail('Invalid role: ' . $role);
+                        if ($role === '') {
+                            $fail('Role cannot be empty.');
                         }
                     }
                 }

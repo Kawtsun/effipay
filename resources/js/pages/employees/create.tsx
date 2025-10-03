@@ -52,15 +52,18 @@ export default function Create(props: Props) {
     // Track checkbox state for college/basic education instructor
     const [isCollegeInstructorChecked, setIsCollegeInstructorChecked] = useState(false);
     const [isBasicEduInstructorChecked, setIsBasicEduInstructorChecked] = useState(false);
+    const [isOthersChecked, setIsOthersChecked] = useState(false);
+    const [othersRole, setOthersRole] = useState('');
 
-    // Sync roles field with checkboxes
+    // Sync roles field with checkboxes and others role
     useEffect(() => {
         let rolesArr = data.roles ? data.roles.split(',').map(r => r.trim()).filter(r => r) : [];
-        rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
+        rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor' && r !== 'others' && r !== othersRole);
         if (isCollegeInstructorChecked) rolesArr.push('college instructor');
         if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
+        if (isOthersChecked && othersRole.trim()) rolesArr.push(othersRole.trim());
         setData('roles', rolesArr.join(','));
-    }, [isCollegeInstructorChecked, isBasicEduInstructorChecked]);
+    }, [isCollegeInstructorChecked, isBasicEduInstructorChecked, isOthersChecked, othersRole]);
     const { search, filters, page, salaryDefaults } = props;
     // Add state for showing/hiding Salary Loan input
     const [showSalaryLoanInput, setShowSalaryLoanInput] = useState(false);
@@ -183,14 +186,22 @@ export default function Create(props: Props) {
             toast.error('First Name is required.');
             return;
         }
-    const rolesArr = data.roles.split(',').map(r => r.trim());
-    const isAdmin = rolesArr.includes('administrator');
-    const isBasicEdu = rolesArr.includes('basic education instructor');
-    const isCollege = rolesArr.includes('college instructor');
+        const rolesArr = data.roles.split(',').map(r => r.trim());
+        const isAdmin = rolesArr.includes('administrator');
+        const isBasicEdu = rolesArr.includes('basic education instructor');
+        const isCollege = rolesArr.includes('college instructor');
+        const isOthers = rolesArr.includes(othersRole.trim()) && othersRole.trim() !== '';
+
+        // If 'Others' is checked, base salary should be empty
+        let baseSalaryValue = data.base_salary;
+        if (isOthers) {
+            baseSalaryValue = '';
+        }
+
         // If both college instructor and (admin or basic edu) are selected, require both fields
         if (isCollege && (isAdmin || isBasicEdu)) {
-            if (!data.base_salary || !data.base_salary.trim()) {
-                toast.error('Base Salary is required.');
+            if (!baseSalaryValue || !baseSalaryValue.trim()) {
+                toast.error('Base Salary is required unless "Others" is checked.');
                 return;
             }
             if (!data.rate_per_hour || !data.rate_per_hour.trim()) {
@@ -203,8 +214,8 @@ export default function Create(props: Props) {
                 return;
             }
         } else if (isAdmin || isBasicEdu) {
-            if (!data.base_salary || !data.base_salary.trim()) {
-                toast.error('Base Salary is required.');
+            if (!baseSalaryValue || !baseSalaryValue.trim()) {
+                toast.error('Base Salary is required unless "Others" is checked.');
                 return;
             }
         }
@@ -252,7 +263,7 @@ export default function Create(props: Props) {
         const cleanedData = {
             ...data,
             employee_name: employee_name,
-            base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
+            base_salary: baseSalaryValue === '' ? '' : Number(baseSalaryValue.replace(/,/g, '')) || 0,
             sss: Number(data.sss.replace(/,/g, '')) || 0,
             philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
             pag_ibig: pagIbigValue,
@@ -302,7 +313,8 @@ export default function Create(props: Props) {
     // Validation for roles selection
     const rolesArr = data.roles ? data.roles.split(',') : [];
     const hasTeachingRole = rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor');
-    const canSubmit = rolesArr.includes('administrator') || hasTeachingRole;
+    const hasOthersRole = isOthersChecked && othersRole.trim() !== '';
+    const canSubmit = rolesArr.includes('administrator') || hasTeachingRole || hasOthersRole;
 
     // For EmployeeType, filter options based on roles
     // const teachingTypes = [
@@ -508,6 +520,26 @@ export default function Create(props: Props) {
                                                     />
                                                     Basic Education Instructor
                                                 </label>
+                                                <label className="flex items-center gap-2 text-sm select-none mt-2">
+                                                    <Checkbox
+                                                        checked={isOthersChecked}
+                                                        onCheckedChange={checked => setIsOthersChecked(!!checked)}
+                                                        className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                                                    />
+                                                    Others
+                                                </label>
+                                                {isOthersChecked && (
+                                                    <div className="pl-4 mt-2">
+                                                        <Input
+                                                            id="others_role"
+                                                            type="text"
+                                                            placeholder="Please specify other role"
+                                                            value={othersRole}
+                                                            onChange={e => setOthersRole(e.target.value)}
+                                                            className="w-full"
+                                                        />
+                                                    </div>
+                                                )}
                                                 {isCollegeInstructorChecked && (
                                                     <div className="pl-4 mt-2">
                                                         <div className="text-xs font-semibold mb-1">College Department</div>
