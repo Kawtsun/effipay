@@ -138,75 +138,62 @@ export default function Create(props: Props) {
     // Watch for College Instructor role to clear contribution fields and remove validation
     useEffect(() => {
         const rolesArr = data.roles.split(',').map(r => r.trim());
-        const isCollegeInstructor = rolesArr.includes('college instructor');
-        const updates: Record<string, string> = {};
-        if (isCollegeInstructor) {
-            // Blank all contribution fields and set college rate, only if different
-            if (data.sss !== '') updates.sss = '';
-            if (data.philhealth !== '') updates.philhealth = '';
-            if (data.pag_ibig !== '') updates.pag_ibig = '';
-            if (data.withholding_tax !== '') updates.withholding_tax = '';
-            const collegeRate = salaryDefaults[data.employee_type]?.college_rate?.toString();
-            if (collegeRate !== undefined && data.rate_per_hour !== collegeRate) {
-                updates.rate_per_hour = collegeRate;
+        if (rolesArr.includes('college instructor')) {
+            // Clear SSS, PhilHealth, Pag-IBIG, Withholding Tax
+            if (data.sss !== '') setData('sss', '');
+            if (data.philhealth !== '') setData('philhealth', '');
+            if (data.pag_ibig !== '') setData('pag_ibig', '');
+            if (data.withholding_tax !== '') setData('withholding_tax', '');
+            // Set rate_per_hour from salaryDefaults.college_rate if available
+            if (
+                salaryDefaults[data.employee_type]?.college_rate !== undefined &&
+                data.rate_per_hour !== salaryDefaults[data.employee_type].college_rate.toString()
+            ) {
+                setData('rate_per_hour', salaryDefaults[data.employee_type].college_rate.toString());
             }
         } else {
-            // Calculate contributions and restore defaults, only if different
-            const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
-            const sssNum = Number(data.sss.replace(/,/g, '')) || 0;
-            const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-            const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
-            const defaultSSS = salaryDefaults[data.employee_type]?.sss?.toString();
-            const defaultPhilHealth = salaryDefaults[data.employee_type]?.philhealth?.toString();
-            const defaultPagIbig = salaryDefaults[data.employee_type]?.pag_ibig?.toString();
-            const defaultWithholdingTax = salaryDefaults[data.employee_type]?.withholding_tax?.toString();
-            if (data.sss === '' && defaultSSS && data.sss !== defaultSSS)
-                updates.sss = defaultSSS;
-            else if (data.sss.replace(/,/g, '') !== sssNum.toFixed(2))
-                updates.sss = sssNum.toFixed(2);
-            if (data.philhealth === '' && defaultPhilHealth && data.philhealth !== defaultPhilHealth)
-                updates.philhealth = defaultPhilHealth;
-            else if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2))
-                updates.philhealth = calculatedPhilHealth.toFixed(2);
-            if (data.pag_ibig === '' && defaultPagIbig && data.pag_ibig !== defaultPagIbig)
-                updates.pag_ibig = defaultPagIbig;
-            if (data.withholding_tax === '' && defaultWithholdingTax && data.withholding_tax !== defaultWithholdingTax)
-                updates.withholding_tax = defaultWithholdingTax;
-            else {
-                const calculatedWithholdingTax = calculateWithholdingTax(baseSalaryNum, sssNum, pagIbigNum, calculatedPhilHealth);
-                if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2))
-                    updates.withholding_tax = calculatedWithholdingTax.toFixed(2);
-            }
-            // Clear rate_per_hour if not college instructor, only if not already blank
-            if (data.rate_per_hour !== '') updates.rate_per_hour = '';
+            // Restore defaults if not college instructor and fields are empty
+            if (data.sss === '' && salaryDefaults[data.employee_type]?.sss)
+                setData('sss', salaryDefaults[data.employee_type].sss.toString());
+            if (data.philhealth === '' && salaryDefaults[data.employee_type]?.philhealth)
+                setData('philhealth', salaryDefaults[data.employee_type].philhealth.toString());
+            if (data.pag_ibig === '' && salaryDefaults[data.employee_type]?.pag_ibig)
+                setData('pag_ibig', salaryDefaults[data.employee_type].pag_ibig.toString());
+            if (data.withholding_tax === '' && salaryDefaults[data.employee_type]?.withholding_tax)
+                setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
+            // Clear rate_per_hour if not college instructor
+            if (data.rate_per_hour !== '') setData('rate_per_hour', '');
         }
-        if (Object.keys(updates).length > 0) {
-            setData(prev => ({ ...prev, ...updates }));
-        }
-    }, [
-        data.roles,
-        data.employee_type,
-        salaryDefaults,
-        data.base_salary,
-        data.pag_ibig,
-        data.sss,
-        data.philhealth,
-        data.withholding_tax,
-        data.rate_per_hour,
-        setData
-    ]);
+    }, [data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax]);
     // Determine if College Instructor is selected
-    // Manual contribution mode: enabled for all roles (administrator, college instructor, basic education instructor, and any custom 'Others' role)
-    const hasAnyRole = data.roles.split(',').map(r => r.trim()).filter(Boolean).length > 0;
-    const [manualContribMode, setManualContribMode] = useState(hasAnyRole);
+    const isCollegeInstructor = data.roles.split(',').includes('college instructor');
+    // Track manual mode for contributions
+    const [manualContribMode, setManualContribMode] = useState(isCollegeInstructor);
 
+    // Watch for role changes to toggle manual/auto mode
     useEffect(() => {
-        const rolesArr = data.roles.split(',').map(r => r.trim());
-        setManualContribMode(rolesArr.length > 0);
+        const isNowCollegeInstructor = data.roles.split(',').includes('college instructor');
+        setManualContribMode(isNowCollegeInstructor);
     }, [data.roles]);
     const [collegeProgram, setCollegeProgram] = useState('');
     const collegeDeptRef = useRef<HTMLDivElement>(null);
-        // ...existing code...
+    useEffect(() => {
+        if (manualContribMode) return; // Suspend auto-calc in manual mode
+        const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
+        const sssNum = Number(data.sss.replace(/,/g, '')) || 0;
+        const pagIbigNum = Number(data.pag_ibig.replace(/,/g, '')) || 0;
+        const calculatedPhilHealth = calculatePhilHealth(baseSalaryNum);
+        if (data.sss.replace(/,/g, '') !== sssNum.toFixed(2)) {
+            setData('sss', sssNum.toFixed(2));
+        }
+        if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
+            setData('philhealth', calculatedPhilHealth.toFixed(2));
+        }
+        const calculatedWithholdingTax = calculateWithholdingTax(baseSalaryNum, sssNum, pagIbigNum, calculatedPhilHealth);
+        if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
+            setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
+        }
+    }, [data.base_salary, data.pag_ibig, data.philhealth, data.sss, data.withholding_tax, setData, manualContribMode]);
 
 
     // Helper function to format time to 12-hour format
@@ -893,11 +880,11 @@ export default function Create(props: Props) {
                                                 <Label htmlFor="withholding_tax">Withholding Tax</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="withholding_tax" type="text" required placeholder="Withholding Tax" className="pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" min={0} disabled value={formatWithCommas(data.withholding_tax ?? '')} />
+                                                    <Input id="withholding_tax" type="text" required={!data.roles.split(',').includes('college instructor')} placeholder="Withholding Tax" className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"} inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" min={data.roles.split(',').includes('college instructor') ? undefined : 0} disabled={!manualContribMode} value={formatWithCommas(data.withholding_tax ?? '')} onChange={e => { if (!manualContribMode) return; const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('withholding_tax', raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
-                                                    Automated for all roles
+                                                    {manualContribMode ? 'Manual entry enabled' : 'Automated'}
                                                 </p>
                                             </div>
                                         </div>
