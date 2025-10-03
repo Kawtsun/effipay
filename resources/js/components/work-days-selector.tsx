@@ -184,30 +184,65 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
                 </div>
             </div>
             {/* Single time picker for selected day */}
-            <div className="flex items-center gap-2 mt-4">
+            <div className="flex flex-col gap-2 mt-4">
                 {hasDays && (
                     <>
-                        <Button type="button" size="sm" variant="outline" onClick={goPrev}>&lt;</Button>
-                        <span className="text-xs font-semibold w-16 text-center">{currentDay ? currentDay.day.toUpperCase() : ''}</span>
-                        <Button type="button" size="sm" variant="outline" onClick={goNext}>&gt;</Button>
-                        <span className="ml-4 text-xs">Start</span>
-                        <div className="w-36">
-                            <TimePicker
-                                value={currentDay && currentDay.work_start_time ? currentDay.work_start_time : ''}
-                                onChange={val => setTime('work_start_time', val)}
-                                label={undefined}
-                                placeholder="Select start time"
-                            />
+                        <div className="flex items-center gap-2">
+                            <Button type="button" size="sm" variant="outline" onClick={goPrev}>&lt;</Button>
+                            <span className="text-xs font-semibold w-16 text-center">{currentDay ? currentDay.day.toUpperCase() : ''}</span>
+                            <Button type="button" size="sm" variant="outline" onClick={goNext}>&gt;</Button>
+                            <span className="ml-4 text-xs">Start</span>
+                            <div className="w-36">
+                                <TimePicker
+                                    value={currentDay && currentDay.work_start_time ? currentDay.work_start_time : ''}
+                                    onChange={val => setTime('work_start_time', val)}
+                                    label={undefined}
+                                    placeholder="Select start time"
+                                />
+                            </div>
+                            <span className="ml-2 text-xs">End</span>
+                            <div className="w-36">
+                                <TimePicker
+                                    value={currentDay && currentDay.work_end_time ? currentDay.work_end_time : ''}
+                                    onChange={val => setTime('work_end_time', val)}
+                                    label={undefined}
+                                    placeholder="Select end time"
+                                />
+                            </div>
                         </div>
-                        <span className="ml-2 text-xs">End</span>
-                        <div className="w-36">
-                            <TimePicker
-                                value={currentDay && currentDay.work_end_time ? currentDay.work_end_time : ''}
-                                onChange={val => setTime('work_end_time', val)}
-                                label={undefined}
-                                placeholder="Select end time"
-                            />
-                        </div>
+                        {/* Work hours hint for current day */}
+                        {currentDay && currentDay.work_start_time && currentDay.work_end_time && (
+                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mt-2">
+                                <p className="text-sm text-blue-700 dark:text-blue-300">
+                                    {(() => {
+                                        const [startHour, startMinute] = currentDay.work_start_time.split(':').map(Number);
+                                        const [endHour, endMinute] = currentDay.work_end_time.split(':').map(Number);
+                                        const startMinutes = startHour * 60 + startMinute;
+                                        const endMinutes = endHour * 60 + endMinute;
+                                        let actualWorkMinutes = endMinutes - startMinutes;
+                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                        const hours = Math.floor(totalMinutes / 60);
+                                        const minutes = totalMinutes % 60;
+                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                        // Format time to 12-hour
+                                        const formatTime12Hour = (time: string) => {
+                                            if (!time) return '';
+                                            const [h, m] = time.split(':').map(Number);
+                                            const period = h >= 12 ? 'PM' : 'AM';
+                                            const hour12 = h % 12 === 0 ? 12 : h % 12;
+                                            return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
+                                        };
+                                        return (
+                                            <>
+                                                📅 Schedule: {formatTime12Hour(currentDay.work_start_time)} - {formatTime12Hour(currentDay.work_end_time)} ({durationText})<br />
+                                                <span className="text-xs text-blue-600 dark:text-blue-400">*Break time is included. 1 hour is subtracted from total work hours.</span>
+                                            </>
+                                        );
+                                    })()}
+                                </p>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
