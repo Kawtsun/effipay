@@ -49,9 +49,7 @@ class UpdateEmployeesRequest extends FormRequest
                 function($attribute, $value, $fail) {
                     $rolesArr = array_filter(array_map('trim', explode(',', $value)));
                     $instructors = array_intersect($rolesArr, ['college instructor', 'basic education instructor']);
-                    if (count($instructors) > 1) {
-                        $fail('Only one instructor type can be selected.');
-                    }
+                    // Allow multiple instructor types
                     if (count($instructors) === 0 && !in_array('administrator', $rolesArr)) {
                         $fail('At least one role must be selected.');
                     }

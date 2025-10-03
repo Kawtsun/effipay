@@ -195,8 +195,8 @@ export default function Edit({
             toast.error('Rate Per Hour is required.');
             return;
         }
-        // Non-college: Base Salary required
-        if (!data.roles.split(',').includes('college instructor') && (!data.base_salary || !data.base_salary.trim())) {
+        // Basic Education Instructor: Base Salary required
+        if (data.roles.split(',').includes('basic education instructor') && (!data.base_salary || !data.base_salary.trim())) {
             toast.error('Base Salary is required.');
             return;
         }
