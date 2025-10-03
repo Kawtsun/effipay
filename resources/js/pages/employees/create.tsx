@@ -166,15 +166,21 @@ export default function Create(props: Props) {
         }
     }, [data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax]);
     // Determine if College Instructor is selected
-    const isCollegeInstructor = data.roles.split(',').includes('college instructor');
+    const rolesArrManual = data.roles.split(',').map(r => r.trim());
+    const isCollegeInstructor = rolesArrManual.includes('college instructor');
+    const isBasicEduInstructor = rolesArrManual.includes('basic education instructor');
+    const isOthersRole = rolesArrManual.includes(othersRole.trim()) && othersRole.trim() !== '';
     // Track manual mode for contributions
-    const [manualContribMode, setManualContribMode] = useState(isCollegeInstructor);
+    const [manualContribMode, setManualContribMode] = useState(isCollegeInstructor || isBasicEduInstructor || isOthersRole);
 
     // Watch for role changes to toggle manual/auto mode
     useEffect(() => {
-        const isNowCollegeInstructor = data.roles.split(',').includes('college instructor');
-        setManualContribMode(isNowCollegeInstructor);
-    }, [data.roles]);
+        const rolesArrManual = data.roles.split(',').map(r => r.trim());
+        const isNowCollegeInstructor = rolesArrManual.includes('college instructor');
+        const isNowBasicEduInstructor = rolesArrManual.includes('basic education instructor');
+        const isNowOthersRole = rolesArrManual.includes(othersRole.trim()) && othersRole.trim() !== '';
+        setManualContribMode(isNowCollegeInstructor || isNowBasicEduInstructor || isNowOthersRole);
+    }, [data.roles, othersRole]);
     const [collegeProgram, setCollegeProgram] = useState('');
     const collegeDeptRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
