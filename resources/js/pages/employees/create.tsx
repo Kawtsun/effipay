@@ -26,6 +26,7 @@ import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-
 import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
 import EmployeeInstructorRadioRole from '@/components/employee-instructor-radio-role';
 import { AnimatePresence, motion } from 'framer-motion';
+import WorkDaysSelector from '@/components/work-days-selector';
 
 type Props = {
     search: string;
@@ -78,7 +79,36 @@ export default function Create(props: Props) {
     const [showChinaBankInput, setShowChinaBankInput] = useState(false);
     const [showTEAInput, setShowTEAInput] = useState(false);
     const trimToHM = (t?: string) => (t ? t.split(':').slice(0, 2).join(':') : '');
-    const { data, setData } = useForm({
+    type EmployeeFormData = {
+        first_name: string;
+        middle_name: string;
+        last_name: string;
+        employee_name: string;
+        employee_type: string;
+        employee_status: string;
+        roles: string;
+        base_salary: string;
+        rate_per_hour: string;
+        sss: string;
+        philhealth: string;
+        pag_ibig: string;
+        withholding_tax: string;
+        work_hours_per_day: string;
+        work_start_time: string;
+        work_end_time: string;
+        college_program: string;
+        sss_salary_loan: string;
+        sss_calamity_loan: string;
+        pagibig_multi_loan: string;
+        pagibig_calamity_loan: string;
+        peraa_con: string;
+        tuition: string;
+        china_bank: string;
+        tea: string;
+        honorarium: string;
+        work_days: string[];
+    };
+    const { data, setData } = useForm<EmployeeFormData>({
         first_name: '',
         middle_name: '',
         last_name: '',
@@ -105,6 +135,7 @@ export default function Create(props: Props) {
         china_bank: '',
         tea: '',
         honorarium: '',
+        work_days: [], // <-- Add work_days as array of strings
     });
 
     // base_salary cleared if Others role is checked
@@ -620,6 +651,11 @@ export default function Create(props: Props) {
                                 <div>
                                     <h1 className='font-bold text-xl mb-6'>Work Schedule</h1>
                                     <div className='space-y-6'>
+                                        {/* Work Days Selector */}
+                                        <WorkDaysSelector
+                                            value={data.work_days}
+                                            onChange={days => setData('work_days', days)}
+                                        />
                                         {/* Work hours per day is auto-derived; input removed */}
                                         <div className='flex flex-row gap-6'>
                                             <div className='flex flex-col gap-3'>
