@@ -190,11 +190,11 @@ export default function Create(props: Props) {
         const rolesArr = data.roles.split(',').map(r => r.trim());
         const hasCollege = rolesArr.includes('college instructor');
         const hasBasicEdu = rolesArr.includes('basic education instructor');
-        const hasOthers = rolesArr.includes(othersRole.trim()) && othersRole.trim() !== '';
+        const hasOthers = isOthersChecked;
         // Only clear base_salary if the ONLY role is the custom others role (and nothing else)
-        if (rolesArr.length! <= 1 && hasOthers) {
+        if (hasOthers && rolesArr.length === 1) {
             setData('base_salary', '');
-        } else if (hasOthers && data.base_salary === '') {
+        } else if (hasOthers && rolesArr.length > 1 && data.base_salary === '') {
             // If others is present but not the only role, and base_salary is currently cleared, restore it to default
             if (salaryDefaults[data.employee_type]?.base_salary !== undefined) {
                 setData('base_salary', salaryDefaults[data.employee_type].base_salary.toString());
@@ -224,7 +224,7 @@ export default function Create(props: Props) {
                 setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
             if (data.rate_per_hour !== '') setData('rate_per_hour', '');
         }
-    }, [collegeProgram, data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, othersRole]);
+    }, [collegeProgram, data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, isOthersChecked]);
 
 
     // Helper function to format time to 12-hour format
