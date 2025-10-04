@@ -138,11 +138,10 @@ export default function Create(props: Props) {
         honorarium: '',
         work_days: [], // now array of WorkDayTime
     });
-
     // base_salary cleared if Others role is checked
 
     // Sync college_program and handle salary/contributions for roles
-    
+
 
     // Watch for College Instructor role to clear contribution fields and remove validation
     // Removed duplicate useEffect for contribution clearing
@@ -193,7 +192,7 @@ export default function Create(props: Props) {
         const hasBasicEdu = rolesArr.includes('basic education instructor');
         const hasOthers = rolesArr.includes(othersRole.trim()) && othersRole.trim() !== '';
         // Only clear base_salary if the ONLY role is the custom others role (and nothing else)
-        if (rolesArr.length === 1 && hasOthers) {
+        if (rolesArr.length! <= 1 && hasOthers) {
             setData('base_salary', '');
         } else if (hasOthers && data.base_salary === '') {
             // If others is present but not the only role, and base_salary is currently cleared, restore it to default
@@ -203,16 +202,17 @@ export default function Create(props: Props) {
         }
         // Clear contributions if any of the three roles are selected
         if (hasCollege || hasBasicEdu || hasOthers) {
-            if (data.sss !== '') setData('sss', '');
-            if (data.philhealth !== '') setData('philhealth', '');
-            if (data.pag_ibig !== '') setData('pag_ibig', '');
-            if (data.withholding_tax !== '') setData('withholding_tax', '');
-            if (
-                salaryDefaults[data.employee_type]?.college_rate !== undefined &&
-                data.rate_per_hour !== salaryDefaults[data.employee_type].college_rate.toString()
-            ) {
-                setData('rate_per_hour', salaryDefaults[data.employee_type].college_rate.toString());
-            }
+            setData(data => ({
+                ...data,
+                sss: '',
+                philhealth: '',
+                pag_ibig: '',
+                withholding_tax: '',
+                rate_per_hour:
+                    salaryDefaults[data.employee_type]?.college_rate !== undefined
+                        ? salaryDefaults[data.employee_type].college_rate.toString()
+                        : data.rate_per_hour,
+            }));
         } else {
             if (data.sss === '' && salaryDefaults[data.employee_type]?.sss)
                 setData('sss', salaryDefaults[data.employee_type].sss.toString());
@@ -459,7 +459,7 @@ export default function Create(props: Props) {
                 setData('rate_per_hour', '');
             }
             // Only set SSS, PhilHealth, Pag-IBIG, Withholding Tax if not college instructor
-            if (!data.roles.split(',').map(r => r.trim()).includes('college instructor')) {
+            if (data.roles.split(',').map(r => r.trim()).includes('administrator')) {
                 setData('sss', def.sss.toString());
                 setData('philhealth', def.philhealth.toString());
                 setData('pag_ibig', def.pag_ibig.toString());
@@ -510,7 +510,7 @@ export default function Create(props: Props) {
     }, [data.work_start_time, data.work_end_time, setData]);
 
     // When collegeProgram changes, sync to form state
-    
+
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
