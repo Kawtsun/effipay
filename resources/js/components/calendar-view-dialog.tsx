@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { CalendarCarousel } from "./calendar-carousel";
 import DialogScrollArea from "./dialog-scroll-area";
 
@@ -18,6 +19,7 @@ interface CalendarViewDialogProps {
 }
 
 export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
+  const { csrfToken } = usePage().props as { csrfToken: string };
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
   // Store both date and is_automated for each observance
   const [markedDates, setMarkedDates] = useState<string[]>([]);
@@ -107,7 +109,7 @@ export function CalendarViewDialog({ open, onClose }: CalendarViewDialogProps) {
       await fetch('/fetch-holidays', {
         method: 'POST',
         headers: {
-          'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '',
+          'X-CSRF-TOKEN': csrfToken,
           'Content-Type': 'application/json',
         },
       });
