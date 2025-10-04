@@ -307,7 +307,7 @@ export default function Create(props: Props) {
 
         // Validate Pag-IBIG minimum only if not college instructor
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-        if (!isCollege && pagIbigValue < 200) {
+        if ((!isCollege || !isBasicEdu || !isOthers) && isAdmin && pagIbigValue < 200) {
             toast.error('Pag-IBIG must be at least ₱200.');
             return;
         }
@@ -812,7 +812,13 @@ export default function Create(props: Props) {
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        required={!data.roles.split(',').includes('college instructor')}
+                                                        required={
+                                                            (() => {
+                                                                const rolesArr = data.roles.split(',').map(r => r.trim());
+                                                                const isOthersOnly = rolesArr.length === 1 && (rolesArr[0] === 'others' || rolesArr[0] === othersRole.trim());
+                                                                return !isOthersOnly && !rolesArr.includes('college instructor');
+                                                            })()
+                                                        }
                                                         placeholder="SSS"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         min={data.roles.split(',').includes('college instructor') ? undefined : 0}
@@ -839,7 +845,13 @@ export default function Create(props: Props) {
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        required={!data.roles.split(',').includes('college instructor')}
+                                                        required={
+                                                            (() => {
+                                                                const rolesArr = data.roles.split(',').map(r => r.trim());
+                                                                const isOthersOnly = rolesArr.length === 1 && (rolesArr[0] === 'others' || rolesArr[0] === othersRole.trim());
+                                                                return !isOthersOnly && !rolesArr.includes('college instructor');
+                                                            })()
+                                                        }
                                                         placeholder="PhilHealth"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         style={{ lineHeight: '1.5rem' }}
@@ -863,7 +875,23 @@ export default function Create(props: Props) {
                                                 <Label htmlFor="pag-ibig">Pag-IBIG</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" required={!data.roles.split(',').includes('college instructor')} placeholder="Pag-IBIG" className="pl-8" min={data.roles.split(',').includes('college instructor') ? undefined : 200} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw); }} />
+                                                    <Input
+                                                        id="pag-ibig"
+                                                        type="text"
+                                                        inputMode="decimal"
+                                                        pattern="^[0-9,]+(\.[0-9]{1,2})?$"
+                                                        required={
+                                                            (() => {
+                                                                const rolesArr = data.roles.split(',').map(r => r.trim());
+                                                                const isOthersOnly = rolesArr.length === 1 && (rolesArr[0] === 'others' || rolesArr[0] === othersRole.trim());
+                                                                return !isOthersOnly && !rolesArr.includes('college instructor');
+                                                            })()
+                                                        }
+                                                        placeholder="Pag-IBIG"
+                                                        className="pl-8"
+                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 200}
+                                                        value={formatWithCommas(data.pag_ibig ?? '')}
+                                                        onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
@@ -874,7 +902,24 @@ export default function Create(props: Props) {
                                                 <Label htmlFor="withholding_tax">Withholding Tax</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="withholding_tax" type="text" required={!data.roles.split(',').includes('college instructor')} placeholder="Withholding Tax" className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"} inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" min={data.roles.split(',').includes('college instructor') ? undefined : 0} disabled={!manualContribMode} value={formatWithCommas(data.withholding_tax ?? '')} onChange={e => { if (!manualContribMode) return; const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('withholding_tax', raw); }} />
+                                                    <Input
+                                                        id="withholding_tax"
+                                                        type="text"
+                                                        required={
+                                                            (() => {
+                                                                const rolesArr = data.roles.split(',').map(r => r.trim());
+                                                                const isOthersOnly = rolesArr.length === 1 && (rolesArr[0] === 'others' || rolesArr[0] === othersRole.trim());
+                                                                return !isOthersOnly && !rolesArr.includes('college instructor');
+                                                            })()
+                                                        }
+                                                        placeholder="Withholding Tax"
+                                                        className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
+                                                        inputMode="decimal"
+                                                        pattern="^[0-9,]+(\.[0-9]{1,2})?$"
+                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 0}
+                                                        disabled={!manualContribMode}
+                                                        value={formatWithCommas(data.withholding_tax ?? '')}
+                                                        onChange={e => { if (!manualContribMode) return; const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('withholding_tax', raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
