@@ -192,7 +192,7 @@ export default function Create(props: Props) {
         const hasBasicEdu = rolesArr.includes('basic education instructor');
         const hasOthers = isOthersChecked;
         // Only clear base_salary if the ONLY role is the custom others role (and nothing else)
-        if (hasOthers && rolesArr.length === 1) {
+        if (hasOthers && rolesArr.length >= 0) {
             setData('base_salary', '');
         } else if (hasOthers && rolesArr.length > 1 && data.base_salary === '') {
             // If others is present but not the only role, and base_salary is currently cleared, restore it to default
@@ -776,7 +776,7 @@ export default function Create(props: Props) {
                                                 <div className='flex flex-col gap-3'>
                                                     {(() => {
                                                         const rolesArr = data.roles.split(',').map(r => r.trim());
-                                                        const isOthersOnly = rolesArr.length === 1 && rolesArr[0] === othersRole.trim() && othersRole.trim() !== '';
+                                                        const isOthersOnly = rolesArr.length >= 0;
                                                         return (
                                                             <Label htmlFor="honorarium">
                                                                 Honorarium
