@@ -45,7 +45,7 @@ class ReportsController extends Controller
             $query->where('college_program', $request->collegeProgram);
         }
 
-        $employees = $query->paginate(10)->withQueryString();
+        $employees = $query->with('workDays')->paginate(10)->withQueryString();
         $month = $request->input('month'); // Optionally filter by month
         $employeesArray = array_map(function ($emp) use ($month) {
             // Fetch payroll for this employee and month (if month provided)
@@ -89,6 +89,14 @@ class ReportsController extends Controller
                 'net_pay' => $net_pay,
                 'per_payroll' => $net_pay, // For summary, just net_pay
                 // Optionally add more payroll fields as needed
+                'work_days' => $emp->workDays ? $emp->workDays->map(function($wd) {
+                    return [
+                        'id' => $wd->id,
+                        'day' => $wd->day,
+                        'work_start_time' => $wd->work_start_time,
+                        'work_end_time' => $wd->work_end_time,
+                    ];
+                })->toArray() : [],
             ];
         }, $employees->items());
 

@@ -15,6 +15,7 @@ import { Skeleton } from "./ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { RolesBadges } from "./roles-badges";
 import DialogScrollArea from "./dialog-scroll-area";
+import { EmployeeScheduleBadges } from "./employee-schedule-badges";
 
 interface Props {
   employee: Employees | null;
@@ -81,10 +82,10 @@ export default function BTRDialog({ employee, onClose }: Props) {
   // Generate days for the month
   const daysInMonth = selectedMonth
     ? new Date(
-        parseInt(selectedMonth.split("-")[0]),
-        parseInt(selectedMonth.split("-")[1]),
-        0
-      ).getDate()
+      parseInt(selectedMonth.split("-")[0]),
+      parseInt(selectedMonth.split("-")[1]),
+      0
+    ).getDate()
     : 0;
   const year = selectedMonth ? selectedMonth.split("-")[0] : "";
   const month = selectedMonth ? selectedMonth.split("-")[1] : "";
@@ -139,11 +140,10 @@ export default function BTRDialog({ employee, onClose }: Props) {
                   <div className="space-y-2 text-sm">
                     <Info label="Status" value={employee.employee_status} />
                     <Info label="Type" value={employee.employee_type} />
-                    <Info label="Schedule" value={
-                      employee.work_start_time && employee.work_end_time && employee.work_hours_per_day
-                        ? `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${employee.work_hours_per_day} hours)`
-                        : '-'
-                    } />
+                    <div className="mb-2">
+                      <span className="text-xs text-muted-foreground">Schedule</span>
+                      <EmployeeScheduleBadges workDays={employee.work_days || []} />
+                    </div>
                   </div>
                 </div>
                 <div>

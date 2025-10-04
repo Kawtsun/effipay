@@ -81,6 +81,7 @@ export interface Employees {
     tea?: number;
     calamity_loan?: number;
     multipurpose_loan?: number;
+    work_days?: WorkDayTime[];
 }
 
 export interface Salary {

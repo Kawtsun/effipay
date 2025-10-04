@@ -16,6 +16,7 @@ import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { MonthRangePicker } from "./ui/month-range-picker";
 import { Skeleton } from "./ui/skeleton";
 import { RolesBadges } from "./roles-badges"; // Ensure RolesBadges is imported
+import { EmployeeScheduleBadges } from './employee-schedule-badges';
 
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
@@ -111,8 +112,8 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     const recordsMinLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
     useEffect(() => {
         if (!employee || !selectedMonth) return;
-    if (recordsMinLoadingTimeout.current) clearTimeout(recordsMinLoadingTimeout.current);
-    recordsMinLoadingTimeout.current = setTimeout(() => {}, 400);
+        if (recordsMinLoadingTimeout.current) clearTimeout(recordsMinLoadingTimeout.current);
+        recordsMinLoadingTimeout.current = setTimeout(() => { }, 400);
         fetch(`/api/timekeeping/records?employee_id=${employee.id}&month=${selectedMonth}`)
             .then((res) => res.json())
             .then((data) => {
@@ -126,7 +127,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                     toast.error("No timekeeping data found for this month.");
                 }
             })
-            .finally(() => {});
+            .finally(() => { });
     }, [employee, selectedMonth]);
     // Use records.length === 0 to determine if there is data, matching BTRDialog
 
@@ -219,22 +220,10 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                             <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
-                                                <Info label="Schedule" value={(() => {
-                                                    if (employee.work_start_time && employee.work_end_time) {
-                                                        const [startHour, startMinute] = employee.work_start_time.split(':').map(Number);
-                                                        const [endHour, endMinute] = employee.work_end_time.split(':').map(Number);
-                                                        const startMinutes = startHour * 60 + startMinute;
-                                                        const endMinutes = endHour * 60 + endMinute;
-                                                        let actualWorkMinutes = endMinutes - startMinutes;
-                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
-                                                        const hours = Math.floor(totalMinutes / 60);
-                                                        const minutes = totalMinutes % 60;
-                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
-                                                        return `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${durationText})`;
-                                                    }
-                                                    return '-';
-                                                })()} />
+                                                <div className="mb-2">
+                                                    <span className="text-xs text-muted-foreground">Schedule</span>
+                                                    <EmployeeScheduleBadges workDays={employee.work_days || []} />
+                                                </div>
                                             </div>
                                         </div>
                                         <div>

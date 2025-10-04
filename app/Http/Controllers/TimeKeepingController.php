@@ -165,7 +165,7 @@ class TimeKeepingController extends Controller {
             $query->where('college_program', $request->collegeProgram);
         }
 
-        $employees = $query->paginate(10)->withQueryString();
+        $employees = $query->with('workDays')->paginate(10)->withQueryString();
 
         $employeesArray = array_map(function ($emp) {
             // Overtime pay calculation function (matches frontend)
@@ -295,6 +295,14 @@ class TimeKeepingController extends Controller {
                 'absences' => $absences,
                 'rate_per_day' => $rate_per_day,
                 'rate_per_hour' => $rate_per_hour,
+                'work_days' => $emp->workDays ? $emp->workDays->map(function($wd) {
+                    return [
+                        'id' => $wd->id,
+                        'day' => $wd->day,
+                        'work_start_time' => $wd->work_start_time,
+                        'work_end_time' => $wd->work_end_time,
+                    ];
+                })->toArray() : [],
             ];
         }, $employees->items());
 
