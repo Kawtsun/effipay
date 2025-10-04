@@ -113,10 +113,10 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
         <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 mb-2">
                 <span className="font-semibold text-sm">Work Days</span>
-                <Button type='button' size="icon" variant="ghost" onClick={handleAll} title="Select all">
+                <Button type='button' size="icon" variant="ghost" onClick={handleAll} title="Select all" className='rounded-full w-8 h-8'>
                     <CheckCircle className='w-5 h-5 text-green-600' />
                 </Button>
-                <Button type="button" size="icon" variant="ghost" onClick={clearAll} title="Clear all">
+                <Button type="button" size="icon" variant="ghost" onClick={clearAll} title="Clear all" className='rounded-full w-8 h-8'>
                     <XCircle className="w-5 h-5 text-red-500" />
                 </Button>
             </div>

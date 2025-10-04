@@ -1,5 +1,9 @@
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
+import { PlusCircle, MinusCircle } from "lucide-react";
+import React, { useState } from "react";
 
 export type WorkDayTime = {
   day: string;
@@ -50,6 +54,7 @@ function getDurationText(start: string, end: string): string {
 
 
 export function EmployeeScheduleBadges({ workDays }: { workDays: WorkDayTime[] }) {
+  const [show, setShow] = useState(false);
   if (!workDays || workDays.length === 0) {
     return <span className="text-muted-foreground">-</span>;
   }
@@ -65,22 +70,54 @@ export function EmployeeScheduleBadges({ workDays }: { workDays: WorkDayTime[] }
   ];
   const dayOrder = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   return (
-    <div className="flex flex-wrap gap-2">
-      {workDays.map((wd) => {
-        const colorIdx = dayOrder.indexOf(wd.day);
-        const colorClass = colorIdx >= 0 ? colors[colorIdx] : colors[0];
-        return (
-          <Badge
-            key={wd.day}
-            variant="outline"
-            className={`px-3 py-1 text-xs font-medium border ${colorClass} min-w-[250px] justify-start flex`}
+    <div>
+      <div className="mb-2 flex gap-2">
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          onClick={() => setShow((v) => !v)}
+          className="rounded-full w-8 h-8 flex items-center justify-center"
+          aria-label={show ? "Hide Schedule" : "Show Schedule"}
+        >
+          {show ? <MinusCircle className="w-5 h-5 text-red-500" /> : <PlusCircle className="w-5 h-5 text-green-600" />}
+        </Button>
+      </div>
+      <AnimatePresence initial={false}>
+        {show && (
+          <motion.div
+            className="flex flex-wrap gap-2"
+            initial={{ opacity: 0, scale: 0.95, y: -10, height: 0 }}
+            animate={{ opacity: 1, scale: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, scale: 0.95, y: -10, height: 0 }}
+            style={{ overflow: 'hidden' }}
+            transition={{ type: "spring", stiffness: 300, damping: 24, duration: 0.32 }}
           >
-            <span className="font-semibold mr-1">{DAY_LABELS[wd.day] || wd.day}:</span>
-            {formatTime12Hour(wd.work_start_time)} - {formatTime12Hour(wd.work_end_time)}
-            <span className="ml-2 text-[11px] text-muted-foreground">({getDurationText(wd.work_start_time, wd.work_end_time)})</span>
-          </Badge>
-        );
-      })}
+            {workDays.map((wd, idx) => {
+              const colorIdx = dayOrder.indexOf(wd.day);
+              const colorClass = colorIdx >= 0 ? colors[colorIdx] : colors[0];
+              return (
+                <motion.div
+                  key={wd.day}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ delay: idx * 0.04, type: "spring", stiffness: 300, damping: 24 }}
+                >
+                  <Badge
+                    variant="outline"
+                    className={`px-3 py-1 text-xs font-medium border ${colorClass} min-w-[250px] justify-start flex`}
+                  >
+                    <span className="font-semibold mr-1">{DAY_LABELS[wd.day] || wd.day}:</span>
+                    {formatTime12Hour(wd.work_start_time)} - {formatTime12Hour(wd.work_end_time)}
+                    <span className="ml-2 text-[11px] text-muted-foreground">({getDurationText(wd.work_start_time, wd.work_end_time)})</span>
+                  </Badge>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
