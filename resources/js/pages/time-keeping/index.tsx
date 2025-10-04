@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { formatFullName } from '../../utils/formatFullName';
 type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string };
 const MIN_SPINNER_MS = 400;
@@ -20,7 +21,7 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Users, Shield, GraduationCap, Book, Eye, Import, Fingerprint, Loader2, Calendar } from 'lucide-react';
 import { CalendarViewDialog } from '@/components/calendar-view-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
 export default function TimeKeeping() {
+    const { csrfToken } = usePage().props as { csrfToken: string };
     const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
     const [selectedBtrEmployee, setSelectedBtrEmployee] = useState<Employees | null>(null);
     const [calendarOpen, setCalendarOpen] = useState(false);
@@ -153,7 +155,7 @@ export default function TimeKeeping() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 body: JSON.stringify({ records: rows }),
             })
