@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Employees;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -332,7 +333,7 @@ class EmployeesSeeder extends Seeder
             $last_name = $parts[0] ?? '';
             $middle_name = count($parts) > 2 ? $parts[count($parts) - 1] : '';
             $first_name = count($parts) > 2 ? implode(' ', array_slice($parts, 1, -1)) : ($parts[1] ?? '');
-            Employees::create([
+            $employee = Employees::create([
                 'last_name' => $last_name,
                 'first_name' => $first_name,
                 'middle_name' => $middle_name,
@@ -350,6 +351,54 @@ class EmployeesSeeder extends Seeder
                 'work_start_time' => $workStartTime,
                 'work_end_time' => $workEndTime,
             ]);
+
+            // Randomize work days for each employee
+            $workDayOptions = [
+                // Mon-Wed-Fri
+                [
+                    ['day' => 'mon', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'wed', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'fri', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                ],
+                // Tue-Thu-Sat
+                [
+                    ['day' => 'tue', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'thu', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'sat', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                ],
+                // Mon-Sat (full week except Sun)
+                [
+                    ['day' => 'mon', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'tue', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'wed', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'thu', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'fri', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'sat', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                ],
+                // Mon-Tue-Wed-Thu-Fri (no Sat)
+                [
+                    ['day' => 'mon', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'tue', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'wed', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'thu', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'fri', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                ],
+                // Sat only
+                [
+                    ['day' => 'sat', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                ],
+            ];
+            $selectedWorkDays = $workDayOptions[array_rand($workDayOptions)];
+            foreach ($selectedWorkDays as $workDay) {
+                DB::table('work_days')->insert([
+                    'employee_id' => $employee->id,
+                    'day' => $workDay['day'],
+                    'work_start_time' => $workDay['work_start_time'],
+                    'work_end_time' => $workDay['work_end_time'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
     }
 }
