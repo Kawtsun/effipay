@@ -172,6 +172,19 @@ class EmployeesController extends Controller
             $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
             $data['philhealth'] = round($philhealth, 2);
         }
+
+        // Sanitize numeric fields: convert empty strings to null
+        foreach ([
+            'base_salary', 'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
+            'college_rate', 'rate_per_hour',
+            'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 'pagibig_calamity_loan',
+            'peraa_con', 'tuition', 'china_bank', 'tea', 'honorarium'
+        ] as $field) {
+            if (isset($data[$field]) && ($data[$field] === '' || $data[$field] === null)) {
+                $data[$field] = null;
+            }
+        }
+
         $employee = Employees::create($data);
 
         // Save per-day work times if provided

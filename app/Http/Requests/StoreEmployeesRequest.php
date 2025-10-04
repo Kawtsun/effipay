@@ -30,6 +30,7 @@ class StoreEmployeesRequest extends FormRequest
         $isAdmin = in_array('administrator', $rolesArr);
         $isBasicEdu = in_array('basic education instructor', $rolesArr);
         $isOthersOnly = count($rolesArr) === 1 && !$isCollege && !$isAdmin && !$isBasicEdu && $rolesArr[0] !== '';
+        $contribOptional = $isCollege || $isOthersOnly;
         return [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
@@ -37,10 +38,10 @@ class StoreEmployeesRequest extends FormRequest
             'employee_type' => 'required|string|max:255',
             'employee_status' => 'required|string|max:255',
             'base_salary' => $isOthersOnly ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
-            'sss' => $isCollege ? 'nullable|numeric' : 'required|numeric|min:0',
-            'philhealth' => $isCollege ? 'nullable|numeric|max:2500' : 'required|numeric|min:250|max:2500',
-            'pag_ibig' => $isCollege ? 'nullable|numeric' : 'required|numeric|min:200',
-            'withholding_tax' => $isCollege ? 'nullable|numeric' : 'required|numeric|min:0',
+            'sss' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
+            'philhealth' => $contribOptional ? 'nullable|numeric|max:2500' : 'required|numeric|min:250|max:2500',
+            'pag_ibig' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:200',
+            'withholding_tax' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
             'work_hours_per_day' => 'required|integer|min:1|max:24',
             'work_start_time' => 'required|date_format:H:i',
             'work_end_time' => 'required|date_format:H:i|after:work_start_time',
