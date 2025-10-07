@@ -162,16 +162,7 @@ class EmployeesController extends Controller
         $isAdmin = in_array('administrator', $rolesArr);
         $isBasicEdu = in_array('basic education instructor', $rolesArr);
         $isOthersOnly = count($rolesArr) === 1 && !$isCollege && !$isAdmin && !$isBasicEdu && $rolesArr[0] !== '';
-        // Nullify base_salary if college instructor is the ONLY role or if Others is the ONLY role
-        if (($isCollege && !$isAdmin && !$isBasicEdu) || $isOthersOnly) {
-            $data['base_salary'] = null;
-        }
-        // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor (and not mixed roles)
-        if ((!$isCollege || ($isAdmin || $isBasicEdu)) && isset($data['base_salary']) && $data['base_salary'] !== null) {
-            $base_salary = (float) $data['base_salary'];
-            $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
-            $data['philhealth'] = round($philhealth, 2);
-        }
+        // Do not force nulls; always save what the frontend sends so backend matches frontend
 
         // Sanitize numeric fields: convert empty strings to null
         foreach ([

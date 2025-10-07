@@ -21,16 +21,20 @@ class StoreEmployeesRequest extends FormRequest
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
+    // $isCollege = in_array('college instructor', $rolesArr);
+    // $isBasicEdu = in_array('basic education instructor', $rolesArr);
+    // $isOthersOnly = count($rolesArr) === 1 && !$isCollege && !$isAdmin && !$isBasicEdu && $rolesArr[0] !== '';
     {
         $roles = request('roles', '');
         $rolesArr = is_array($roles)
             ? array_filter(array_map('trim', $roles))
             : array_filter(array_map('trim', explode(',', $roles)));
-        $isCollege = in_array('college instructor', $rolesArr);
-        $isAdmin = in_array('administrator', $rolesArr);
-        $isBasicEdu = in_array('basic education instructor', $rolesArr);
-        $isOthersOnly = count($rolesArr) === 1 && !$isCollege && !$isAdmin && !$isBasicEdu && $rolesArr[0] !== '';
-        $contribOptional = $isCollege || $isOthersOnly;
+    $isAdmin = in_array('administrator', $rolesArr);
+    $isCollege = in_array('college instructor', $rolesArr);
+    $isBasicEdu = in_array('basic education instructor', $rolesArr);
+    $isOthersOnly = count($rolesArr) === 1 && !$isCollege && !$isAdmin && !$isBasicEdu && $rolesArr[0] !== '';
+    // Contributions required only for administrator
+    $contribOptional = !$isAdmin;
         return [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
@@ -81,4 +85,4 @@ class StoreEmployeesRequest extends FormRequest
             'honorarium' => 'nullable|numeric|min:0',
         ];
     }
-}
+};

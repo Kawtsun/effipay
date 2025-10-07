@@ -335,10 +335,11 @@ export default function Create(props: Props) {
             ...data,
             employee_name: employee_name,
             base_salary: baseSalaryValue === '' ? '' : Number(baseSalaryValue.replace(/,/g, '')) || 0,
-            sss: Number(data.sss.replace(/,/g, '')) || 0,
-            philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
-            pag_ibig: pagIbigValue,
-            withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
+            rate_per_hour: (isCollege ? data.rate_per_hour : ''),
+            sss: data.sss === '' ? null : Number(data.sss.replace(/,/g, '')),
+            philhealth: data.philhealth === '' ? null : Number(data.philhealth.replace(/,/g, '')),
+            pag_ibig: data.pag_ibig === '' ? null : pagIbigValue,
+            withholding_tax: data.withholding_tax === '' ? null : Number(data.withholding_tax.replace(/,/g, '')),
             work_hours_per_day: workHours,
             work_start_time: startTime,
             work_end_time: endTime,
@@ -820,8 +821,8 @@ export default function Create(props: Props) {
                                                         required={
                                                             (() => {
                                                                 const rolesArr = data.roles.split(',').map(r => r.trim());
-                                                                const isOthersOnly = rolesArr.length === 1 && (rolesArr[0] === 'others' || rolesArr[0] === othersRole.trim());
-                                                                return !isOthersOnly && !rolesArr.includes('college instructor');
+                                                                // Only require contributions for administrator role
+                                                                return rolesArr.includes('administrator');
                                                             })()
                                                         }
                                                         placeholder="SSS"
@@ -853,8 +854,7 @@ export default function Create(props: Props) {
                                                         required={
                                                             (() => {
                                                                 const rolesArr = data.roles.split(',').map(r => r.trim());
-                                                                const isOthersOnly = rolesArr.length === 1 && (rolesArr[0] === 'others' || rolesArr[0] === othersRole.trim());
-                                                                return !isOthersOnly && !rolesArr.includes('college instructor');
+                                                                return rolesArr.includes('administrator');
                                                             })()
                                                         }
                                                         placeholder="PhilHealth"
@@ -888,8 +888,7 @@ export default function Create(props: Props) {
                                                         required={
                                                             (() => {
                                                                 const rolesArr = data.roles.split(',').map(r => r.trim());
-                                                                const isOthersOnly = rolesArr.length === 1 && (rolesArr[0] === 'others' || rolesArr[0] === othersRole.trim());
-                                                                return !isOthersOnly && !rolesArr.includes('college instructor');
+                                                                return rolesArr.includes('administrator');
                                                             })()
                                                         }
                                                         placeholder="Pag-IBIG"
@@ -913,8 +912,7 @@ export default function Create(props: Props) {
                                                         required={
                                                             (() => {
                                                                 const rolesArr = data.roles.split(',').map(r => r.trim());
-                                                                const isOthersOnly = rolesArr.length === 1 && (rolesArr[0] === 'others' || rolesArr[0] === othersRole.trim());
-                                                                return !isOthersOnly && !rolesArr.includes('college instructor');
+                                                                return rolesArr.includes('administrator');
                                                             })()
                                                         }
                                                         placeholder="Withholding Tax"
