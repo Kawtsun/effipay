@@ -1,6 +1,6 @@
 import { Employees } from "@/types";
 import { Badge } from "./ui/badge";
-import { Shield, GraduationCap, Book } from "lucide-react";
+import { Shield, GraduationCap, Book, User } from "lucide-react";
 
 const COLLEGE_PROGRAMS = [
   { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
@@ -32,7 +32,10 @@ export function RolesBadges({ roles, activeRoles, employee }: { roles: string; a
     const rest = rolesArr.filter((r) => !filtered.includes(r));
     rolesArr = [...filtered, ...rest];
   } else {
-    rolesArr = order.filter((r) => rolesArr.includes(r));
+    // Show standard roles in order, then custom roles
+    const ordered = order.filter((r) => rolesArr.includes(r));
+    const custom = rolesArr.filter((r) => !order.includes(r));
+    rolesArr = [...ordered, ...custom];
   }
   return (
     <div className="flex flex-wrap gap-2 max-w-lg px-4 py-2 break-words whitespace-pre-line">
@@ -56,9 +59,12 @@ export function RolesBadges({ roles, activeRoles, employee }: { roles: string; a
         } else if (role === "basic education instructor") {
           color = "warning";
           icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+        } else {
+          color = "purple";
+          icon = <User className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
         }
         return (
-          <Badge key={role} variant={color} className="capitalize flex items-center">
+          <Badge key={role} variant={color} className={`capitalize flex items-center${!order.includes(role) ? ' custom-role-badge' : ''}`}>
             {icon}
             {role.replace(/\b\w/g, (c) => c.toUpperCase())}
             {extra}
