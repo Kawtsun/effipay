@@ -102,6 +102,7 @@ class EmployeesController extends Controller
             'employees'   => $employeesArray,
             'currentPage' => $employees->currentPage(),
             'totalPages'  => $employees->lastPage(),
+            'perPage'     => $perPage,
             'search'      => $request->input('search', ''),
             'filters'     => [
                 'types'    => (array) $request->input('types', []),

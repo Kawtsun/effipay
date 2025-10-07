@@ -22,6 +22,7 @@ interface EmployeesProps {
     employees: Employees[]
     currentPage: number
     totalPages: number
+    perPage?: number
     search?: string
     filters: { types: string[]; statuses: string[] }
 }
@@ -64,12 +65,7 @@ export default function Index({
     const [viewing, setViewing] = useState<Employees | null>(null)
     const [loading, setLoading] = useState(false)
     const spinnerStart = useRef<number>(0)
-    const [pageSize, setPageSize] = useState<number>(() => {
-        if (typeof window === 'undefined') return 10
-        const saved = window.localStorage.getItem(PAGE_SIZE_STORAGE_KEY)
-        const parsed = saved ? Number(saved) : NaN
-        return !Number.isNaN(parsed) && parsed > 0 ? parsed : 10
-    })
+    const [pageSize, setPageSize] = useState<number>(10)
 
     // Local state seeded from props
     const [searchTerm, setSearchTerm] = useState(initialSearch)

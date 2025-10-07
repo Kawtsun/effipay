@@ -49,7 +49,6 @@ type TableEmployeeProps = {
 
 const MAX_ROWS = 10
 const ROW_HEIGHT = 53
-const PAGE_SIZE_STORAGE_KEY = 'employees.table.pageSize'
 
 const COLLEGE_PROGRAMS = [
     { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
@@ -365,14 +364,9 @@ export default function TableEmployee({
         },
     ], [onView, onDelete, editHrefFor, activeRoles])
 
-    const [pagination, setPagination] = React.useState<PaginationState>(() => {
-        let initialSize = MAX_ROWS
-        if (typeof window !== 'undefined') {
-            const saved = window.localStorage.getItem(PAGE_SIZE_STORAGE_KEY)
-            const parsed = saved ? Number(saved) : NaN
-            if (!Number.isNaN(parsed) && parsed > 0) initialSize = parsed
-        }
-        return { pageIndex: Math.max(0, currentPage - 1), pageSize: initialSize }
+    const [pagination, setPagination] = React.useState<PaginationState>({
+        pageIndex: Math.max(0, currentPage - 1),
+        pageSize: MAX_ROWS,
     })
     const [sorting, setSorting] = React.useState<SortingState>([])
 
@@ -380,10 +374,7 @@ export default function TableEmployee({
         setPagination(prev => ({ ...prev, pageIndex: Math.max(0, currentPage - 1) }))
     }, [currentPage])
 
-    React.useEffect(() => {
-        if (typeof window === 'undefined') return
-        window.localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pagination.pageSize))
-    }, [pagination.pageSize])
+    // No local persistence for page size; always reset to default when page mounts
 
     const table = useReactTable({
         data,
