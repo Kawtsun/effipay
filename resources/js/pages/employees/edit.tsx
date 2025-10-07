@@ -149,7 +149,7 @@ export default function Edit({
         base_salary: employee.base_salary !== null && employee.base_salary !== undefined ? employee.base_salary.toString() : '',
         rate_per_hour: employee.college_rate !== null && employee.college_rate !== undefined ? employee.college_rate.toString() : '',
         sss: employee.sss !== null && employee.sss !== undefined ? employee.sss.toString() : '',
-        philhealth: employee.philhealth !== null && employee.philhealth !== undefined ? employee.philhealth.toString() : '',
+    philhealth: employee.philhealth !== null && employee.philhealth !== undefined ? employee.philhealth.toString() : '',
         pag_ibig: employee.pag_ibig !== null && employee.pag_ibig !== undefined ? employee.pag_ibig.toString() : '',
         withholding_tax: employee.withholding_tax !== null && employee.withholding_tax !== undefined ? employee.withholding_tax.toString() : '',
         work_hours_per_day: employee.work_hours_per_day !== null && employee.work_hours_per_day !== undefined ? employee.work_hours_per_day.toString() : '',
@@ -205,14 +205,14 @@ export default function Edit({
     useEffect(() => {
         const rolesArr = data.roles.split(',').map(r => r.trim());
         if (!rolesArr.includes('college instructor')) {
-            // Restore defaults if not college instructor and fields are empty
-            if (data.sss === '' && salaryDefaults?.[data.employee_type]?.sss)
+            // Restore defaults if not college instructor and fields are truly undefined (not null or empty string)
+            if (typeof data.sss === 'undefined' && salaryDefaults?.[data.employee_type]?.sss)
                 setData('sss', salaryDefaults[data.employee_type].sss.toString());
-            if (data.philhealth === '' && salaryDefaults?.[data.employee_type]?.philhealth)
+            if (typeof data.philhealth === 'undefined' && salaryDefaults?.[data.employee_type]?.philhealth)
                 setData('philhealth', salaryDefaults[data.employee_type].philhealth.toString());
-            if (data.pag_ibig === '' && salaryDefaults?.[data.employee_type]?.pag_ibig)
+            if (typeof data.pag_ibig === 'undefined' && salaryDefaults?.[data.employee_type]?.pag_ibig)
                 setData('pag_ibig', salaryDefaults[data.employee_type].pag_ibig.toString());
-            if (data.withholding_tax === '' && salaryDefaults?.[data.employee_type]?.withholding_tax)
+            if (typeof data.withholding_tax === 'undefined' && salaryDefaults?.[data.employee_type]?.withholding_tax)
                 setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
         }
         // For college instructor, do nothing: keep the current value from the employee record
