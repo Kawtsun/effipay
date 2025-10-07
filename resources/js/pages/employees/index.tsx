@@ -387,8 +387,12 @@ export default function Index({
                                                                         i = <User className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                                     }
                                                                     return (
-                                                                        <Badge key={role} variant={c} className="capitalize flex items-center">
-                                                                            {i}{capitalizeWords(role)}{e}
+                                                                        <Badge
+                                                                          key={role}
+                                                                          variant={c}
+                                                                          className={`capitalize flex items-center${!order.includes(role) ? ' custom-role-badge' : ''}`}
+                                                                        >
+                                                                          {i}{capitalizeWords(role)}{e}
                                                                         </Badge>
                                                                     );
                                                                 })}
@@ -396,8 +400,12 @@ export default function Index({
                                                         );
                                                         const badgeContent = (
                                                             <span className="inline-flex items-center gap-1">
-                                                                <Badge key={mainRole} variant={color} className="capitalize flex items-center">
-                                                                    {icon}{capitalizeWords(mainRole)}{mainRole === 'college instructor' && emp.college_program ? <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}]</span> : null}
+                                                                <Badge
+                                                                  key={mainRole}
+                                                                  variant={color}
+                                                                  className={`capitalize flex items-center${!order.includes(mainRole) ? ' custom-role-badge' : ''}`}
+                                                                >
+                                                                  {icon}{capitalizeWords(mainRole)}{mainRole === 'college instructor' && emp.college_program ? <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}]</span> : null}
                                                                 </Badge>
                                                                 {additionalRolesCount > 0 && (
                                                                     <Badge variant="success" className="cursor-pointer">+{additionalRolesCount}</Badge>
