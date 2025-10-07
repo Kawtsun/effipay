@@ -171,22 +171,30 @@ export default function Edit({
     // For WorkDaysSelector navigation (must be after all hooks)
     // Only one instance of selectedIndex state
     // (removed duplicate selectedIndex declaration)
-    // Initialize checkboxes based on employee roles
+    // Initialize checkboxes and custom 'Others' role based on employee roles
     const initialRolesArr = employee.roles ? employee.roles.split(',').map((r: string) => r.trim()) : [];
     const [isCollegeInstructorChecked, setIsCollegeInstructorChecked] = useState(initialRolesArr.includes('college instructor'));
     const [isBasicEduInstructorChecked, setIsBasicEduInstructorChecked] = useState(initialRolesArr.includes('basic education instructor'));
+    const [isOthersChecked, setIsOthersChecked] = useState(initialRolesArr.some(r => !['administrator', 'college instructor', 'basic education instructor'].includes(r)));
+    const [othersRole, setOthersRole] = useState(() => {
+        const found = initialRolesArr.find(r => !['administrator', 'college instructor', 'basic education instructor'].includes(r));
+        return found || '';
+    });
 
     // For WorkDaysSelector navigation (must be after all hooks)
     const [selectedIndex, setSelectedIndex] = useState(0);
 
-    // Sync roles field with checkboxes
+    // Sync roles field with checkboxes and custom 'Others' role
     useEffect(() => {
         let rolesArr = data.roles ? data.roles.split(',').map(r => r.trim()).filter(r => r) : [];
-        rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor');
+        // Remove all standard and custom roles
+        rolesArr = rolesArr.filter(r => !['administrator', 'college instructor', 'basic education instructor'].includes(r) && r !== othersRole);
+        if (data.roles.split(',').includes('administrator')) rolesArr.push('administrator');
         if (isCollegeInstructorChecked) rolesArr.push('college instructor');
         if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
+        if (isOthersChecked && othersRole.trim()) rolesArr.push(othersRole.trim().toLowerCase());
         setData('roles', rolesArr.join(','));
-    }, [isCollegeInstructorChecked, isBasicEduInstructorChecked]);
+    }, [isCollegeInstructorChecked, isBasicEduInstructorChecked, isOthersChecked, othersRole]);
 
     // Watch for College Instructor role to clear contribution fields and remove validation
     // For college instructor, always show the current value from the employee record (do not clear)
@@ -546,6 +554,26 @@ export default function Edit({
                                                     />
                                                     Basic Education Instructor
                                                 </label>
+                                                <label className="flex items-center gap-2 text-sm select-none mt-2">
+                                                    <Checkbox
+                                                        checked={isOthersChecked}
+                                                        onCheckedChange={checked => setIsOthersChecked(!!checked)}
+                                                        className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                                                    />
+                                                    Others
+                                                </label>
+                                                {isOthersChecked && (
+                                                    <div className="pl-4 mt-2">
+                                                        <Input
+                                                            id="others_role"
+                                                            type="text"
+                                                            placeholder="Please specify other role"
+                                                            value={othersRole}
+                                                            onChange={e => setOthersRole(e.target.value)}
+                                                            className="w-full"
+                                                        />
+                                                    </div>
+                                                )}
                                                 {isCollegeInstructorChecked && (
                                                     <div className="pl-4 mt-2">
                                                         <div className="text-xs font-semibold mb-1">College Department</div>
