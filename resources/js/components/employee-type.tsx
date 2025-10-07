@@ -23,6 +23,7 @@ export function EmployeeType({ value, onChange, roles = [], disabled = false, ty
   const adminTypes = [
     { value: 'Regular', label: 'Regular' },
     { value: 'Provisionary', label: 'Provisionary' },
+    { value: 'Retired', label: 'Retired'}
   ];
   let availableTypes = types ?? [...teachingTypes, ...adminTypes.filter(t => t.value === 'Regular')];
   if (!types && roles && roles.length > 0) {
