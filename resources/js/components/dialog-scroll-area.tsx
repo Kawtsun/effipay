@@ -10,7 +10,7 @@ interface DialogScrollAreaProps {
 export default function DialogScrollArea({ children, className = '', style }: DialogScrollAreaProps) {
   return (
     <ScrollArea
-      className={`h-[80vh] max-h-[80vh] rounded-md bg-white dark:bg-gray-950 ${className}`}
+      className={`h-[80vh] max-h-[80vh] rounded-md ${className}`}
       style={style}
       type="auto"
     >

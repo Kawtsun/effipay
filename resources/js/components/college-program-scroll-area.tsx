@@ -10,7 +10,7 @@ interface CollegeProgramScrollAreaProps {
 export default function CollegeProgramScrollArea({ children, className = '', style }: CollegeProgramScrollAreaProps) {
   return (
     <ScrollArea
-      className={`h-40 max-h-40 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 ${className}`}
+      className={`h-40 max-h-40 rounded-md border border-gray-200 dark:border-gray-700 ${className}`}
       style={style}
       type="always"
     >

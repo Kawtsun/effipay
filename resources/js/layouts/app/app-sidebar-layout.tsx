@@ -23,7 +23,7 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
                     <AppSidebar />
                     <AppContent variant="sidebar">
                         <AppContentScrollArea>
-                            <div className="sticky top-0 z-10 bg-white dark:bg-gray-950">
+                            <div className="sticky top-0 z-1000 bg-white dark:bg-black">
                                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                             </div>
                             {children}

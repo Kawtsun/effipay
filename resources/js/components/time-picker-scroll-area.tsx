@@ -14,7 +14,7 @@ interface TimePickerScrollAreaProps {
 export default function TimePickerScrollArea({ children, className = '', style }: TimePickerScrollAreaProps) {
   return (
     <ScrollArea
-      className={`max-h-32 h-32 rounded-md bg-white dark:bg-gray-950 ${className}`}
+      className={`max-h-32 h-32 rounded-md ${className}`}
       style={style}
       type="auto"
     >
