@@ -88,7 +88,6 @@ export default function TableEmployee({
     activeRoles = [],
 }: TableEmployeeProps) {
     const density: 'comfortable' | 'compact' = 'compact'
-    const zebra = true
     const stickyId = true
 
     const columns = React.useMemo<ColumnDef<Employees>[]>(() => [
@@ -200,7 +199,7 @@ export default function TableEmployee({
         {
             id: 'roles',
             enableSorting: false,
-            header: ({ column }) => (
+            header: () => (
                 <div className="px-2">
                     <Button
                         variant="ghost"
@@ -391,7 +390,6 @@ export default function TableEmployee({
         columns,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
-        state: { pagination },
         onPaginationChange: setPagination,
         manualPagination: true,
         pageCount: totalPages,
@@ -421,12 +419,12 @@ export default function TableEmployee({
                 <Table className="select-none w-full min-w-[900px] text-sm" style={{ tableLayout: 'fixed', width: '100%' }}>
                     <TableHeader>
                         {table.getHeaderGroups().map(headerGroup => (
-                            <TableRow key={headerGroup.id} className="bg-muted/50 hover:bg-muted/70 sticky top-0 z-[1]">
+                            <TableRow key={headerGroup.id} className="bg-muted/50/80 backdrop-blur-sm sticky top-0 z-[1]">
                                 {headerGroup.headers.map((header, idx) => (
-                                    <TableHead key={header.id} className={cn('h-10 whitespace-nowrap text-muted-foreground/90', stickyId && idx === 0 ? 'sticky left-0 z-[2] bg-muted/50' : '')} style={{ width: (header.getSize?.() as number) || undefined }}>
+                                    <TableHead key={header.id} className={cn('h-11 whitespace-nowrap text-muted-foreground/90', stickyId && idx === 0 ? 'sticky left-0 z-[2] bg-muted/50/80 backdrop-blur-sm' : '')} style={{ width: (header.getSize?.() as number) || undefined }}>
                                         {header.isPlaceholder ? null : (
                                             typeof header.column.columnDef.header === 'function'
-                                                ? (header.column.columnDef.header as any)({ column: header.column, table })
+                                                ? (header.column.columnDef.header as (ctx: { column: typeof header.column; table: typeof table }) => React.ReactNode)({ column: header.column, table })
                                                 : header.column.columnDef.header
                                         )}
                                     </TableHead>
@@ -445,17 +443,15 @@ export default function TableEmployee({
                             <>
                                 {table.getRowModel().rows.map(row => (
                                     <TableRow key={row.id} className={cn(
-                                        'transition-opacity duration-300 border-b last:border-0',
-                                        zebra ? 'even:bg-muted/30 hover:bg-muted/40' : 'hover:bg-muted/40',
+                                        'transition-opacity duration-300 border-b last:border-0 hover:bg-muted/40',
                                         loading ? 'opacity-50' : 'opacity-100'
                                     )}>
                                         {row.getVisibleCells().map((cell, idx) => (
                                             <TableCell key={cell.id} className={cn(
-                                                density === 'compact' ? 'py-2' : 'py-3',
+                                                density === 'compact' ? 'py-1.5' : 'py-3',
                                                 idx === 0 ? cn('pl-4', stickyId ? 'sticky left-0 z-[1] bg-inherit' : '') : ''
                                             )} style={{ width: (cell.column.getSize?.() as number) || undefined }}>
-                                                {/* Using our own renderers in column cell definitions */}
-                                                {(cell.column.columnDef.cell as any)({ row })}
+                                            {(cell.column.columnDef.cell as (ctx: { row: typeof row }) => React.ReactNode)({ row })}
                                             </TableCell>
                                         ))}
                                     </TableRow>
