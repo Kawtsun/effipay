@@ -277,6 +277,11 @@ export default function Edit({
             toast.error('Base Salary is required.');
             return;
         }
+        // Require honorarium if both base salary and honorarium are empty
+        if ((!data.base_salary || !data.base_salary.trim()) && (!data.honorarium || !data.honorarium.trim())) {
+            toast.error('Either Base Salary or Honorarium is required.');
+            return;
+        }
         if (!data.employee_type) {
             toast.error('Employee Type is required.');
             return;

@@ -325,9 +325,13 @@ class EmployeesController extends Controller
         // Log the data being saved for debugging
         Log::info('Employee update data', $data);
         $data = $request->validated();
-        // Always set college_rate from rate_per_hour if present in request
-        if (request()->has('rate_per_hour')) {
+        // Only set college_rate from rate_per_hour if college instructor is selected
+        $rolesArr = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : explode(',', $data['roles'])) : [];
+        $isCollege = in_array('college instructor', $rolesArr);
+        if ($isCollege && request()->has('rate_per_hour')) {
             $data['college_rate'] = request()->input('rate_per_hour');
+        } else {
+            $data['college_rate'] = null;
         }
         $rolesArr = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : explode(',', $data['roles'])) : [];
         $isCollege = in_array('college instructor', $rolesArr);
