@@ -265,6 +265,7 @@ export default function Index({
                                     types: appliedFilters.types.length ? appliedFilters.types : undefined,
                                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                                     page: currentPage,
+                                    perPage: pageSize,
                                 })}
                             >
                                 <Button className="flex items-center gap-2 whitespace-nowrap">
@@ -335,6 +336,7 @@ export default function Index({
                                                                 page: currentPage,
                                                                 collegeProgram: appliedFilters.collegeProgram || undefined,
                             perPage: pageSize,
+                            per_page: pageSize,
                                                             })}
                         activeRoles={appliedFilters.roles}
                     />
@@ -359,6 +361,7 @@ export default function Index({
                                     : [],
                         }}
                         page={currentPage}
+                        perPage={pageSize}
                     />
 
                     {/* Pagination UI is provided by TableEmployee */}

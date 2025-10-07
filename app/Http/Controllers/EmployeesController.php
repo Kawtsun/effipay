@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class EmployeesController extends Controller
 {
@@ -121,6 +122,7 @@ class EmployeesController extends Controller
         $statuses = (array) $request->input('statuses', []);
         $roles    = (array) $request->input('roles', []);
         $page     = $request->input('page', 1);
+        $perPage  = (int) $request->input('perPage', $request->input('per_page', 10));
 
         $employeeTypes = ['Full Time', 'Part Time', 'Provisionary', 'Regular'];
         $salaryDefaults = \App\Models\Salary::whereIn('employee_type', $employeeTypes)
@@ -142,6 +144,7 @@ class EmployeesController extends Controller
             'search'          => $search,
             'filters'         => ['types' => $types, 'statuses' => $statuses, 'roles' => $roles],
             'page'            => $page,
+            'perPage'         => $perPage,
             'employeeTypes'   => $employeeTypes,
             'salaryDefaults'  => $salaryDefaults,
             'employee'        => [
@@ -348,13 +351,15 @@ class EmployeesController extends Controller
         $employee->update($data);
         // If status changed, record in status history
         if (isset($data['employee_status']) && $data['employee_status'] !== $oldStatus) {
-            DB::table('employee_status_histories')->insert([
-                'employee_id' => $employee->id,
-                'status' => $data['employee_status'],
-                'effective_date' => date('Y-m-d'),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            if (Schema::hasTable('employee_status_histories')) {
+                DB::table('employee_status_histories')->insert([
+                    'employee_id' => $employee->id,
+                    'status' => $data['employee_status'],
+                    'effective_date' => date('Y-m-d'),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
         // Update per-day work times if provided
@@ -398,7 +403,7 @@ class EmployeesController extends Controller
             if ($query) {
                 parse_str($query, $params);
                 // In store and update, always preserve all filters, and ensure roles is always an array if present
-                foreach (['search', 'types', 'statuses', 'roles', 'collegeProgram', 'page'] as $key) {
+                foreach (['search', 'types', 'statuses', 'roles', 'collegeProgram', 'page', 'perPage', 'per_page'] as $key) {
                     if (isset($params[$key])) {
                         if ($key === 'roles') {
                             $redirectParams[$key] = (array)$params[$key];
@@ -441,6 +446,7 @@ class EmployeesController extends Controller
                 'roles' => array_values((array) ($request['roles'] ?? [])),
                 'collegeProgram' => $request['collegeProgram'] ?? '',
                 'page' => $request['page'] ?? 1,
+                'perPage' => $request['perPage'] ?? $request['per_page'] ?? 10,
             ])
             ->with('success', 'Employee deleted successfully!');
     }
