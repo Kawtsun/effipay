@@ -1,6 +1,7 @@
 import { FC } from "react"
 import { useForm } from "@inertiajs/react"
 import { Employees } from "@/types"
+import { formatFullName } from "@/utils/formatFullName"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,6 +69,10 @@ const EmployeeDelete: FC<Props> = ({
     )
   }
 
+  function toTitleCase(str: string) {
+    return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+}
+
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogContent>
@@ -75,7 +80,7 @@ const EmployeeDelete: FC<Props> = ({
           <AlertDialogTitle>Confirm delete?</AlertDialogTitle>
           <AlertDialogDescription>
             Permanently delete{" "}
-            <strong>{employee ? `${(employee.last_name || '').replace(/\b\w/g, c => c.toUpperCase())}, ${(employee.first_name || '').replace(/\b\w/g, c => c.toUpperCase())}, ${(employee.middle_name || '').replace(/\b\w/g, c => c.toUpperCase())}` : ''}</strong> (ID: {employee?.id})?
+            <strong>{employee ? toTitleCase(formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}</strong> (ID: {employee?.id})?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
