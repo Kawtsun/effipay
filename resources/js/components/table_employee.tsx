@@ -7,7 +7,7 @@ import {
     SortingState,
     useReactTable,
 } from '@tanstack/react-table'
-import { Eye, Pencil, Trash, Shield, GraduationCap, Book, User, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react'
+import { Eye, Pencil, Trash, Shield, GraduationCap, Book, User, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, MoreHorizontal } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
     Table,
@@ -17,6 +17,15 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -31,6 +40,7 @@ type TableEmployeeProps = {
     currentPage: number
     totalPages: number
     onPageChange: (page: number) => void
+    onPageSizeChange?: (pageSize: number) => void
     onView: (emp: Employees) => void
     onDelete: (emp: Employees) => void
     editHrefFor: (emp: Employees) => string
@@ -39,6 +49,7 @@ type TableEmployeeProps = {
 
 const MAX_ROWS = 10
 const ROW_HEIGHT = 53
+const PAGE_SIZE_STORAGE_KEY = 'employees.table.pageSize'
 
 const COLLEGE_PROGRAMS = [
     { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
@@ -70,11 +81,16 @@ export default function TableEmployee({
     currentPage,
     totalPages,
     onPageChange,
+    onPageSizeChange,
     onView,
     onDelete,
     editHrefFor,
     activeRoles = [],
 }: TableEmployeeProps) {
+    const density: 'comfortable' | 'compact' = 'compact'
+    const zebra = true
+    const stickyId = true
+
     const columns = React.useMemo<ColumnDef<Employees>[]>(() => [
         {
             accessorKey: 'id',
@@ -304,7 +320,8 @@ export default function TableEmployee({
                 const emp = row.original
                 return (
                     <div className="px-4 py-2 whitespace-nowrap text-right">
-                        <div className="flex justify-end items-center gap-2">
+                        {/* Desktop actions */}
+                        <div className="hidden md:flex justify-end items-center gap-2">
                             <Button variant="secondary" onClick={() => onView(emp)}>
                                 <Eye />
                                 View
@@ -318,6 +335,30 @@ export default function TableEmployee({
                                 Delete
                             </Button>
                         </div>
+                        {/* Mobile actions */}
+                        <div className="md:hidden flex justify-end">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => onView(emp)}>
+                                        View
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href={editHrefFor(emp)} className={buttonVariants({ variant: 'ghost' })}>Edit</Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => onDelete(emp)}>
+                                        Delete
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
                 )
             },
@@ -325,15 +366,25 @@ export default function TableEmployee({
         },
     ], [onView, onDelete, editHrefFor, activeRoles])
 
-    const [pagination, setPagination] = React.useState<PaginationState>({
-        pageIndex: Math.max(0, currentPage - 1),
-        pageSize: MAX_ROWS,
+    const [pagination, setPagination] = React.useState<PaginationState>(() => {
+        let initialSize = MAX_ROWS
+        if (typeof window !== 'undefined') {
+            const saved = window.localStorage.getItem(PAGE_SIZE_STORAGE_KEY)
+            const parsed = saved ? Number(saved) : NaN
+            if (!Number.isNaN(parsed) && parsed > 0) initialSize = parsed
+        }
+        return { pageIndex: Math.max(0, currentPage - 1), pageSize: initialSize }
     })
     const [sorting, setSorting] = React.useState<SortingState>([])
 
     React.useEffect(() => {
         setPagination(prev => ({ ...prev, pageIndex: Math.max(0, currentPage - 1) }))
     }, [currentPage])
+
+    React.useEffect(() => {
+        if (typeof window === 'undefined') return
+        window.localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pagination.pageSize))
+    }, [pagination.pageSize])
 
     const table = useReactTable({
         data,
@@ -364,13 +415,15 @@ export default function TableEmployee({
                 </div>
             )}
 
+            {/* Toolbar removed per request */}
+
             <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
                 <Table className="select-none w-full min-w-[900px] text-sm" style={{ tableLayout: 'fixed', width: '100%' }}>
                     <TableHeader>
                         {table.getHeaderGroups().map(headerGroup => (
                             <TableRow key={headerGroup.id} className="bg-muted/50 hover:bg-muted/70 sticky top-0 z-[1]">
-                                {headerGroup.headers.map(header => (
-                                    <TableHead key={header.id} className="h-10 whitespace-nowrap text-muted-foreground/90" style={{ width: (header.getSize?.() as number) || undefined }}>
+                                {headerGroup.headers.map((header, idx) => (
+                                    <TableHead key={header.id} className={cn('h-10 whitespace-nowrap text-muted-foreground/90', stickyId && idx === 0 ? 'sticky left-0 z-[2] bg-muted/50' : '')} style={{ width: (header.getSize?.() as number) || undefined }}>
                                         {header.isPlaceholder ? null : (
                                             typeof header.column.columnDef.header === 'function'
                                                 ? (header.column.columnDef.header as any)({ column: header.column, table })
@@ -391,9 +444,16 @@ export default function TableEmployee({
                         ) : (
                             <>
                                 {table.getRowModel().rows.map(row => (
-                                    <TableRow key={row.id} className={cn('transition-opacity duration-300 hover:bg-muted/40 border-b last:border-0', loading ? 'opacity-50' : 'opacity-100')}>
+                                    <TableRow key={row.id} className={cn(
+                                        'transition-opacity duration-300 border-b last:border-0',
+                                        zebra ? 'even:bg-muted/30 hover:bg-muted/40' : 'hover:bg-muted/40',
+                                        loading ? 'opacity-50' : 'opacity-100'
+                                    )}>
                                         {row.getVisibleCells().map((cell, idx) => (
-                                            <TableCell key={cell.id} className={cn('py-3', idx === 0 ? 'pl-4' : '')} style={{ width: (cell.column.getSize?.() as number) || undefined }}>
+                                            <TableCell key={cell.id} className={cn(
+                                                density === 'compact' ? 'py-2' : 'py-3',
+                                                idx === 0 ? cn('pl-4', stickyId ? 'sticky left-0 z-[1] bg-inherit' : '') : ''
+                                            )} style={{ width: (cell.column.getSize?.() as number) || undefined }}>
                                                 {/* Using our own renderers in column cell definitions */}
                                                 {(cell.column.columnDef.cell as any)({ row })}
                                             </TableCell>
@@ -418,7 +478,24 @@ export default function TableEmployee({
             </div>
 
             <div className="mt-4 flex min-h-[56px] items-center justify-between rounded-md border bg-card px-3 py-2 text-sm">
-                <div className="text-muted-foreground">Page {currentPage} of {totalPages}</div>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                    <span>Rows per page</span>
+                    <Select value={`${pagination.pageSize}`} onValueChange={(value) => {
+                        const size = Number(value)
+                        setPagination(p => ({ ...p, pageIndex: 0, pageSize: size }))
+                        if (onPageSizeChange) onPageSizeChange(size)
+                    }}>
+                        <SelectTrigger className="h-8 w-[80px]">
+                            <SelectValue placeholder={pagination.pageSize} />
+                        </SelectTrigger>
+                        <SelectContent side="top">
+                            {[10, 20, 25, 30, 40, 50].map(size => (
+                                <SelectItem key={size} value={`${size}`}>{size}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <span className="hidden sm:inline">Page {currentPage} of {totalPages}</span>
+                </div>
                 <div className="flex items-center space-x-2">
                     <Button
                         variant="outline"

@@ -29,6 +29,7 @@ interface EmployeesProps {
 type FilterState = { types: string[]; statuses: string[]; roles: string[] }
 
 const MIN_SPINNER_MS = 400
+const PAGE_SIZE_STORAGE_KEY = 'employees.table.pageSize'
 
 // Add this mapping at the top of the file (or near the badge logic)
 const COLLEGE_PROGRAMS = [
@@ -63,6 +64,12 @@ export default function Index({
     const [viewing, setViewing] = useState<Employees | null>(null)
     const [loading, setLoading] = useState(false)
     const spinnerStart = useRef<number>(0)
+    const [pageSize, setPageSize] = useState<number>(() => {
+        if (typeof window === 'undefined') return 10
+        const saved = window.localStorage.getItem(PAGE_SIZE_STORAGE_KEY)
+        const parsed = saved ? Number(saved) : NaN
+        return !Number.isNaN(parsed) && parsed > 0 ? parsed : 10
+    })
 
     // Local state seeded from props
     const [searchTerm, setSearchTerm] = useState(initialSearch)
@@ -102,7 +109,7 @@ export default function Index({
     }, [props.flash]);
 
     // Visit helper
-    const visit = useCallback((params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string }>, options: { preserve?: boolean } = {}) => {
+    const visit = useCallback((params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
         spinnerStart.current = Date.now()
         setLoading(true)
 
@@ -132,11 +139,13 @@ export default function Index({
                     statuses: hasFilters ? appliedFilters.statuses : undefined,
                     roles: hasFilters ? appliedFilters.roles : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                    perPage: pageSize,
+                    per_page: pageSize,
                 },
                 { preserve: true }
             )
         },
-        [visit, appliedFilters, hasFilters]
+        [visit, appliedFilters, hasFilters, pageSize]
     )
 
     // Filter apply
@@ -152,11 +161,13 @@ export default function Index({
                     statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
                     roles: newFilters.roles.length ? newFilters.roles : undefined,
                     collegeProgram: newFilters.collegeProgram || undefined,
+                    perPage: pageSize,
+                    per_page: pageSize,
                 },
                 { preserve: true }
             )
         },
-        [visit, searchTerm]
+        [visit, searchTerm, pageSize]
     )
 
     // Reset filters
@@ -164,8 +175,8 @@ export default function Index({
         const empty = { types: [], statuses: [], roles: [] };
         setFilters(empty);
         setAppliedFilters(empty);
-        visit({ search: searchTerm || undefined, page: 1 }, { preserve: true });
-    }, [visit, searchTerm])
+        visit({ search: searchTerm || undefined, page: 1, perPage: pageSize, per_page: pageSize }, { preserve: true });
+    }, [visit, searchTerm, pageSize])
 
     // Pagination
     const handlePage = useCallback(
@@ -178,11 +189,13 @@ export default function Index({
                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                     roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                    perPage: pageSize,
+                    per_page: pageSize,
                 },
                 { preserve: true }
             )
         },
-        [visit, searchTerm, appliedFilters]
+        [visit, searchTerm, appliedFilters, pageSize]
     )
 
     // Delete modal
@@ -292,6 +305,25 @@ export default function Index({
                         currentPage={currentPage}
                         totalPages={totalPages}
                         onPageChange={handlePage}
+                        onPageSizeChange={(size) => {
+                            setPageSize(size)
+                            if (typeof window !== 'undefined') {
+                                window.localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(size))
+                            }
+                            visit(
+                                {
+                                    search: searchTerm || undefined,
+                                    page: 1,
+                                    types: appliedFilters.types.length ? appliedFilters.types : undefined,
+                                    statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
+                                    roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
+                                    collegeProgram: appliedFilters.collegeProgram || undefined,
+                                    perPage: size,
+                                    per_page: size,
+                                },
+                                { preserve: true }
+                            )
+                        }}
                         onView={(emp) => setViewing(emp)}
                         onDelete={(emp) => handleDelete(emp)}
                         editHrefFor={(emp) => route('employees.edit', {
@@ -302,6 +334,7 @@ export default function Index({
                                                                 roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
                                                                 page: currentPage,
                                                                 collegeProgram: appliedFilters.collegeProgram || undefined,
+                            perPage: pageSize,
                                                             })}
                         activeRoles={appliedFilters.roles}
                     />

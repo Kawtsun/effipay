@@ -52,7 +52,10 @@ class EmployeesController extends Controller
         }
 
 
-        $employees = $query->with('workDays')->paginate(10)->withQueryString();
+        // Resolve page size from request (supports both perPage and per_page)
+        $perPage = (int) ($request->input('perPage', $request->input('per_page', 10)));
+        if ($perPage <= 0) { $perPage = 10; }
+        $employees = $query->with('workDays')->paginate($perPage)->withQueryString();
 
         // Ensure all required fields are present for each employee, including work_days
         $employeesArray = array_map(function ($emp) {
