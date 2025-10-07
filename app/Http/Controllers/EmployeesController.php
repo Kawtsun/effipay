@@ -380,29 +380,52 @@ class EmployeesController extends Controller
     // Only record leave status in history if under leave limit
     if (isset($data['employee_status']) && $data['employee_status'] !== $oldStatus) {
         if (Schema::hasTable('employee_status_histories')) {
-            // Define which statuses count as leave
-            $leaveStatuses = ['on leave', 'sick leave', 'vacation leave']; // Add more as needed
-            if (in_array($data['employee_status'], $leaveStatuses)) {
-                $leaveCount = DB::table('employee_status_histories')
+            $leaveStatuses = ['paid leave', 'sick leave', 'vacation leave', 'maternity leave', 'study leave'];
+            $activeStatuses = ['active'];
+            $currentStatus = strtolower(trim($data['employee_status']));
+            $oldStatusNormalized = strtolower(trim($oldStatus));
+            // If changing to a leave status, record leave start only if no open leave exists
+            if (in_array($currentStatus, $leaveStatuses)) {
+                $openLeave = DB::table('employee_status_histories')
                     ->where('employee_id', $employee->id)
                     ->whereIn('status', $leaveStatuses)
-                    ->count();
-                if ($leaveCount < self::LEAVE_LIMIT) {
+                    ->whereNull('leave_end_date')
+                    ->first();
+                if (!$openLeave) {
                     DB::table('employee_status_histories')->insert([
                         'employee_id' => $employee->id,
                         'status' => $data['employee_status'],
                         'effective_date' => date('Y-m-d'),
+                        'leave_start_date' => date('Y-m-d'),
+                        'leave_end_date' => null,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
                 }
-                // else: do not record, limit reached
-            } else {
-                // Not a leave status, always record
+            }
+            // If changing from leave to active, record leave end
+            elseif (in_array($currentStatus, $activeStatuses) && in_array($oldStatusNormalized, $leaveStatuses)) {
+                $lastLeave = DB::table('employee_status_histories')
+                    ->where('employee_id', $employee->id)
+                    ->whereIn('status', $leaveStatuses)
+                    ->whereNull('leave_end_date')
+                    ->orderByDesc('leave_start_date')
+                    ->first();
+                if ($lastLeave) {
+                    DB::table('employee_status_histories')
+                        ->where('id', $lastLeave->id)
+                        ->update(['leave_end_date' => date('Y-m-d'), 'updated_at' => now()]);
+                }
+                // Do NOT insert a new 'active' row here; only update the leave record
+            }
+            // For other status changes, just record the change
+            else {
                 DB::table('employee_status_histories')->insert([
                     'employee_id' => $employee->id,
                     'status' => $data['employee_status'],
                     'effective_date' => date('Y-m-d'),
+                    'leave_start_date' => null,
+                    'leave_end_date' => null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);

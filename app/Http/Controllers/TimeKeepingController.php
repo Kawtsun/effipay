@@ -222,15 +222,25 @@ class TimeKeepingController extends Controller {
                 );
                 // Get leave dates for this employee
                 $leaveStatuses = ['on leave', 'sick leave', 'vacation leave', 'Paid Leave'];
-                $leaveDates = DB::table('employee_status_histories')
+                $leaveIntervals = DB::table('employee_status_histories')
                     ->where('employee_id', $emp->id)
                     ->whereIn('status', $leaveStatuses)
-                    ->pluck('effective_date')->toArray();
+                    ->whereNotNull('leave_start_date')
+                    ->get(['leave_start_date', 'leave_end_date']);
+                $isInLeaveInterval = function($date) use ($leaveIntervals) {
+                    foreach ($leaveIntervals as $interval) {
+                        $start = $interval->leave_start_date;
+                        $end = $interval->leave_end_date;
+                        if ($start && !$end && $date >= $start) return true;
+                        if ($start && $end && $date >= $start && $date <= $end) return true;
+                    }
+                    return false;
+                };
                 foreach ($period as $dateObj) {
                     $date = $dateObj->format('Y-m-d');
                     $dayOfWeek = $dateObj->format('N'); // 1=Mon, 7=Sun
                     if (!in_array($dayOfWeek, $workDays)) continue; // skip if not a workday
-                    if (in_array($date, $leaveDates)) continue; // skip if leave day
+                    if ($isInLeaveInterval($date)) continue; // skip if in leave interval
                     $dayRecords = $records->where('date', $date);
                     $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
                     $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
