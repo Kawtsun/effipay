@@ -18,7 +18,7 @@ import AppLayout from '@/layouts/app-layout'
 import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, Link, router, usePage } from '@inertiajs/react'
-import { Eye, Loader2, Pencil, Trash, Users, Shield, GraduationCap, Book, UserPlus2 } from 'lucide-react'
+import { Eye, Loader2, Pencil, Trash, Users, Shield, GraduationCap, Book, UserPlus2, User } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -341,7 +341,10 @@ export default function Index({
                                                             const rest = rolesArr.filter(r => !filtered.includes(r));
                                                             displayRoles = [...filtered, ...rest];
                                                         } else {
-                                                            displayRoles = order.filter(r => rolesArr.includes(r));
+                                                            // Show standard roles in order, then custom roles
+                                                            const ordered = order.filter(r => rolesArr.includes(r));
+                                                            const custom = rolesArr.filter(r => !order.includes(r));
+                                                            displayRoles = [...ordered, ...custom];
                                                         }
                                                         if (displayRoles.length === 0) return '';
                                                         const mainRole = displayRoles[0];
@@ -357,6 +360,9 @@ export default function Index({
                                                         } else if (mainRole === 'basic education instructor') {
                                                             color = 'warning';
                                                             icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                        } else {
+                                                            color = 'purple';
+                                                            icon = <User className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                         }
                                                         const tooltipContent = (
                                                             <div className="flex flex-wrap gap-2">
@@ -376,6 +382,9 @@ export default function Index({
                                                                     } else if (role === 'basic education instructor') {
                                                                         c = 'warning';
                                                                         i = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                                    } else {
+                                                                        c = 'purple'
+                                                                        i = <User className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                                     }
                                                                     return (
                                                                         <Badge key={role} variant={c} className="capitalize flex items-center">
