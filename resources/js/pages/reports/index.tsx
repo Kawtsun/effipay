@@ -312,7 +312,10 @@ export default function ReportsIndex() {
                                                             const rest = rolesArr.filter((r: string) => !filtered.includes(r));
                                                             displayRoles = [...filtered, ...rest];
                                                         } else {
-                                                            displayRoles = order.filter(r => rolesArr.includes(r));
+                                                            // Show standard roles in order, then custom roles
+                                                            const ordered = order.filter(r => rolesArr.includes(r));
+                                                            const custom = rolesArr.filter(r => !order.includes(r));
+                                                            displayRoles = [...ordered, ...custom];
                                                         }
                                                         if (displayRoles.length === 0) return '';
                                                         const mainRole = displayRoles[0];
@@ -328,6 +331,9 @@ export default function ReportsIndex() {
                                                         } else if (mainRole === 'basic education instructor') {
                                                             color = 'warning';
                                                             icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                        } else {
+                                                            color = 'purple';
+                                                            icon = <Users className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                         }
                                                         const tooltipContent = (
                                                             <div className="flex flex-wrap gap-2">
@@ -347,9 +353,12 @@ export default function ReportsIndex() {
                                                                     } else if (role === 'basic education instructor') {
                                                                         c = 'warning';
                                                                         i = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+                                                                    } else {
+                                                                        c = 'purple';
+                                                                        i = <Users className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
                                                                     }
                                                                     return (
-                                                                        <Badge key={role} variant={c} className="capitalize flex items-center">
+                                                                        <Badge key={role} variant={c} className={`capitalize flex items-center${!order.includes(role) ? ' custom-role-badge' : ''}`}>
                                                                             {i}{capitalizeWords(role)}{e}
                                                                         </Badge>
                                                                     );
@@ -358,7 +367,7 @@ export default function ReportsIndex() {
                                                         );
                                                         const badgeContent = (
                                                             <span className="inline-flex items-center gap-1">
-                                                                <Badge key={mainRole} variant={color} className="capitalize flex items-center">
+                                                                <Badge key={mainRole} variant={color} className={`capitalize flex items-center${!order.includes(mainRole) ? ' custom-role-badge' : ''}`}>
                                                                     {icon}{capitalizeWords(mainRole)}{mainRole === 'college instructor' && emp.college_program ? <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}]</span> : null}
                                                                 </Badge>
                                                                 {additionalRolesCount > 0 && (
