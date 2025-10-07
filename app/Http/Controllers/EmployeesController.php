@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 use App\Models\Employees;
 use App\Http\Requests\StoreEmployeesRequest;
@@ -328,9 +329,16 @@ class EmployeesController extends Controller
     public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
         $data = $request->validated();
-        // Always set college_rate from rate_per_hour if present in request
-        if (request()->has('rate_per_hour')) {
+        // Log the data being saved for debugging
+        Log::info('Employee update data', $data);
+        $data = $request->validated();
+        // Only set college_rate from rate_per_hour if college instructor is selected
+        $rolesArr = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : explode(',', $data['roles'])) : [];
+        $isCollege = in_array('college instructor', $rolesArr);
+        if ($isCollege && request()->has('rate_per_hour')) {
             $data['college_rate'] = request()->input('rate_per_hour');
+        } else {
+            $data['college_rate'] = null;
         }
         $rolesArr = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : explode(',', $data['roles'])) : [];
         $isCollege = in_array('college instructor', $rolesArr);
@@ -340,17 +348,35 @@ class EmployeesController extends Controller
         if ($isCollege && !$isAdmin && !$isBasicEdu) {
             $data['base_salary'] = null;
         }
-        // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor (and not mixed roles)
-        if ((!$isCollege || ($isAdmin || $isBasicEdu)) && isset($data['base_salary']) && $data['base_salary'] !== null) {
+        // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor (and not mixed roles),
+        // and only if the user did not clear the field (i.e., if philhealth is not empty/null)
+        if (
+            (!$isCollege || ($isAdmin || $isBasicEdu)) &&
+            isset($data['base_salary']) && $data['base_salary'] !== null &&
+            isset($data['philhealth']) && $data['philhealth'] !== '' && $data['philhealth'] !== null
+        ) {
             $base_salary = (float) $data['base_salary'];
             $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
             $data['philhealth'] = round($philhealth, 2);
         }
+        // Sanitize numeric fields: convert empty strings or null to null (for consistency with store)
+        foreach ([
+            'base_salary', 'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
+            'college_rate', 'rate_per_hour',
+            'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 'pagibig_calamity_loan',
+            'peraa_con', 'tuition', 'china_bank', 'tea', 'honorarium'
+        ] as $field) {
+            if (isset($data[$field]) && ($data[$field] === '' || $data[$field] === null)) {
+                $data[$field] = null;
+            }
+        }
 
-        $oldData = $employee->toArray();
-        $oldStatus = $employee->employee_status;
-        $employee->update($data);
-        // If status changed, record in status history
+    $oldData = $employee->toArray();
+    $oldStatus = $employee->employee_status;
+    $employee->update($data);
+
+    // Normal flow resumes: no debug JSON response
+    // If status changed, record in status history
         if (isset($data['employee_status']) && $data['employee_status'] !== $oldStatus) {
             if (Schema::hasTable('employee_status_histories')) {
                 DB::table('employee_status_histories')->insert([

@@ -152,16 +152,20 @@ export default function Create(props: Props) {
     const isOthersRole = rolesArrManual.includes(othersRole.trim()) && othersRole.trim() !== '';
 
     // Track manual mode for contributions
-    const [manualContribMode, setManualContribMode] = useState(isCollegeInstructor || isBasicEduInstructor || isOthersRole);
+    const [manualContribMode, setManualContribMode] = useState(
+        isCollegeInstructor || isBasicEduInstructor || isOthersRole || data.employee_type.toLowerCase() === 'retired'
+    );
 
-    // Watch for role changes to toggle manual/auto mode
+    // Watch for role or employee_type changes to toggle manual/auto mode
     useEffect(() => {
         const rolesArrManual = data.roles.split(',').map(r => r.trim());
         const isNowCollegeInstructor = rolesArrManual.includes('college instructor');
         const isNowBasicEduInstructor = rolesArrManual.includes('basic education instructor');
         const isNowOthersRole = rolesArrManual.includes(othersRole.trim()) && othersRole.trim() !== '';
-        setManualContribMode(isNowCollegeInstructor || isNowBasicEduInstructor || isNowOthersRole);
-    }, [data.roles, othersRole]);
+        setManualContribMode(
+            isNowCollegeInstructor || isNowBasicEduInstructor || isNowOthersRole || data.employee_type.toLowerCase() === 'retired'
+        );
+    }, [data.roles, othersRole, data.employee_type]);
 
     // manual contribution mode
     const [collegeProgram, setCollegeProgram] = useState('');
@@ -215,6 +219,9 @@ export default function Create(props: Props) {
                         ? salaryDefaults[data.employee_type].college_rate.toString()
                         : data.rate_per_hour,
             }));
+        } else if (data.employee_type.toLowerCase() === 'retired') {
+            // Do not auto-fill contributions for retired
+            if (data.rate_per_hour !== '') setData('rate_per_hour', '');
         } else {
             if (data.sss === '' && salaryDefaults[data.employee_type]?.sss)
                 setData('sss', salaryDefaults[data.employee_type].sss.toString());
@@ -225,6 +232,12 @@ export default function Create(props: Props) {
             if (data.withholding_tax === '' && salaryDefaults[data.employee_type]?.withholding_tax)
                 setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
             if (data.rate_per_hour !== '') setData('rate_per_hour', '');
+        }
+
+        // Clear college department selection if college instructor is unselected
+        if (!hasCollege) {
+            setCollegeProgram('');
+            setData('college_program', '');
         }
     }, [collegeProgram, data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, isOthersChecked]);
 
@@ -309,7 +322,7 @@ export default function Create(props: Props) {
 
         // Validate Pag-IBIG minimum only if not college instructor
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-        if ((!isCollege || !isBasicEdu || !isOthers) && isAdmin && pagIbigValue < 200) {
+        if ((!isCollege || !isBasicEdu || !isOthers) && (isAdmin && !(data.employee_type = 'Retired')) && pagIbigValue < 200) {
             toast.error('Pag-IBIG must be at least ₱200.');
             return;
         }
@@ -820,8 +833,8 @@ export default function Create(props: Props) {
                                                         pattern="[0-9.,]*"
                                                         required={
                                                             (() => {
+                                                                if (data.employee_type && data.employee_type.toLowerCase() === 'retired') return false;
                                                                 const rolesArr = data.roles.split(',').map(r => r.trim());
-                                                                // Only require contributions for administrator role
                                                                 return rolesArr.includes('administrator');
                                                             })()
                                                         }
@@ -853,6 +866,7 @@ export default function Create(props: Props) {
                                                         pattern="[0-9.,]*"
                                                         required={
                                                             (() => {
+                                                                if (data.employee_type && data.employee_type.toLowerCase() === 'retired') return false;
                                                                 const rolesArr = data.roles.split(',').map(r => r.trim());
                                                                 return rolesArr.includes('administrator');
                                                             })()
@@ -887,6 +901,7 @@ export default function Create(props: Props) {
                                                         pattern="^[0-9,]+(\.[0-9]{1,2})?$"
                                                         required={
                                                             (() => {
+                                                                if (data.employee_type && data.employee_type.toLowerCase() === 'retired') return false;
                                                                 const rolesArr = data.roles.split(',').map(r => r.trim());
                                                                 return rolesArr.includes('administrator');
                                                             })()
@@ -911,6 +926,7 @@ export default function Create(props: Props) {
                                                         type="text"
                                                         required={
                                                             (() => {
+                                                                if (data.employee_type && data.employee_type.toLowerCase() === 'retired') return false;
                                                                 const rolesArr = data.roles.split(',').map(r => r.trim());
                                                                 return rolesArr.includes('administrator');
                                                             })()

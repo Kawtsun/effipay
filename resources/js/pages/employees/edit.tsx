@@ -149,7 +149,7 @@ export default function Edit({
         base_salary: employee.base_salary !== null && employee.base_salary !== undefined ? employee.base_salary.toString() : '',
         rate_per_hour: employee.college_rate !== null && employee.college_rate !== undefined ? employee.college_rate.toString() : '',
         sss: employee.sss !== null && employee.sss !== undefined ? employee.sss.toString() : '',
-        philhealth: employee.philhealth !== null && employee.philhealth !== undefined ? employee.philhealth.toString() : '',
+    philhealth: employee.philhealth !== null && employee.philhealth !== undefined ? employee.philhealth.toString() : '',
         pag_ibig: employee.pag_ibig !== null && employee.pag_ibig !== undefined ? employee.pag_ibig.toString() : '',
         withholding_tax: employee.withholding_tax !== null && employee.withholding_tax !== undefined ? employee.withholding_tax.toString() : '',
         work_hours_per_day: employee.work_hours_per_day !== null && employee.work_hours_per_day !== undefined ? employee.work_hours_per_day.toString() : '',
@@ -186,14 +186,19 @@ export default function Edit({
 
     // Sync roles field with checkboxes and custom 'Others' role
     useEffect(() => {
-        let rolesArr = data.roles ? data.roles.split(',').map(r => r.trim()).filter(r => r) : [];
-        // Remove all standard and custom roles
-        rolesArr = rolesArr.filter(r => !['administrator', 'college instructor', 'basic education instructor'].includes(r) && r !== othersRole);
-        if (data.roles.split(',').includes('administrator')) rolesArr.push('administrator');
-        if (isCollegeInstructorChecked) rolesArr.push('college instructor');
-        if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
-        if (isOthersChecked && othersRole.trim()) rolesArr.push(othersRole.trim().toLowerCase());
-        setData('roles', rolesArr.join(','));
+        let rolesArr: string[] = [];
+        // If only custom role is checked, set only that role
+        if (isOthersChecked && othersRole.trim() && !isCollegeInstructorChecked && !isBasicEduInstructorChecked && !data.roles.split(',').includes('administrator')) {
+            rolesArr = [othersRole.trim().toLowerCase()];
+        } else {
+            if (data.roles.split(',').includes('administrator')) rolesArr.push('administrator');
+            if (isCollegeInstructorChecked) rolesArr.push('college instructor');
+            if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
+            if (isOthersChecked && othersRole.trim()) {
+                rolesArr.push(othersRole.trim().toLowerCase());
+            }
+        }
+        setData('roles', Array.from(new Set(rolesArr)).join(','));
     }, [isCollegeInstructorChecked, isBasicEduInstructorChecked, isOthersChecked, othersRole]);
 
     // Watch for College Instructor role to clear contribution fields and remove validation
@@ -201,28 +206,45 @@ export default function Edit({
     useEffect(() => {
         const rolesArr = data.roles.split(',').map(r => r.trim());
         if (!rolesArr.includes('college instructor')) {
-            // Restore defaults if not college instructor and fields are empty
-            if (data.sss === '' && salaryDefaults?.[data.employee_type]?.sss)
+            // Restore defaults if not college instructor and fields are truly undefined (not null or empty string)
+            if (typeof data.sss === 'undefined' && salaryDefaults?.[data.employee_type]?.sss)
                 setData('sss', salaryDefaults[data.employee_type].sss.toString());
-            if (data.philhealth === '' && salaryDefaults?.[data.employee_type]?.philhealth)
+            if (typeof data.philhealth === 'undefined' && salaryDefaults?.[data.employee_type]?.philhealth)
                 setData('philhealth', salaryDefaults[data.employee_type].philhealth.toString());
-            if (data.pag_ibig === '' && salaryDefaults?.[data.employee_type]?.pag_ibig)
+            if (typeof data.pag_ibig === 'undefined' && salaryDefaults?.[data.employee_type]?.pag_ibig)
                 setData('pag_ibig', salaryDefaults[data.employee_type].pag_ibig.toString());
-            if (data.withholding_tax === '' && salaryDefaults?.[data.employee_type]?.withholding_tax)
+            if (typeof data.withholding_tax === 'undefined' && salaryDefaults?.[data.employee_type]?.withholding_tax)
                 setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
+            // Clear college department selection
+            setCollegeProgram('');
+            setData('college_program', '');
         }
         // For college instructor, do nothing: keep the current value from the employee record
     }, [data.roles, data.employee_type]);
     // Determine if College Instructor is selected
     const isCollegeInstructor = data.roles.split(',').includes('college instructor');
+    const isBasicEduInstructor = data.roles.split(',').includes('basic education instructor');
+    const isCustomRole = (() => {
+        const rolesArr = data.roles.split(',').map(r => r.trim());
+        return rolesArr.some(r => !['administrator', 'college instructor', 'basic education instructor'].includes(r) && r !== '');
+    })();
     // Track manual mode for contributions
-    const [manualContribMode, setManualContribMode] = useState(isCollegeInstructor);
+    const [manualContribMode, setManualContribMode] = useState(
+        (isCollegeInstructor || isBasicEduInstructor || isCustomRole) || (employee.employee_type && employee.employee_type.toLowerCase() === 'retired')
+    );
 
-    // Watch for role changes to toggle manual/auto mode
+    // Watch for role or employee_type changes to toggle manual/auto mode
     useEffect(() => {
-        const isNowCollegeInstructor = data.roles.split(',').includes('college instructor');
-        setManualContribMode(isNowCollegeInstructor);
-    }, [data.roles]);
+        const rolesArr = data.roles.split(',').map(r => r.trim());
+        const isNowCollegeInstructor = rolesArr.includes('college instructor');
+        const isNowBasicEduInstructor = rolesArr.includes('basic education instructor');
+        const isNowCustomRole = rolesArr.some(r => !['administrator', 'college instructor', 'basic education instructor'].includes(r) && r !== '');
+        if (data.employee_type && data.employee_type.toLowerCase() === 'retired') {
+            setManualContribMode(true);
+        } else {
+            setManualContribMode(isNowCollegeInstructor || isNowBasicEduInstructor || isNowCustomRole);
+        }
+    }, [data.roles, data.employee_type]);
 
     const [collegeProgram, setCollegeProgram] = useState(employee.college_program || '');
     const [collegeProgramError, setCollegeProgramError] = useState('');
@@ -264,6 +286,11 @@ export default function Edit({
             toast.error('Base Salary is required.');
             return;
         }
+        // Require honorarium if both base salary and honorarium are empty
+        if ((!data.base_salary || !data.base_salary.trim()) && (!data.honorarium || !data.honorarium.trim())) {
+            toast.error('Either Base Salary or Honorarium is required.');
+            return;
+        }
         if (!data.employee_type) {
             toast.error('Employee Type is required.');
             return;
@@ -281,12 +308,38 @@ export default function Edit({
             return;
         }
 
-        // Validate Pag-IBIG minimum only if not college instructor
+        // Validate SSS, PhilHealth, Pag-IBIG, Withholding Tax only if not college instructor, not basic education instructor, and not custom role
         const pagIbigValue = Number(data.pag_ibig.replace(/,/g, '')) || 0;
-        const isCollege = data.roles.split(',').includes('college instructor');
-        if (!isCollege && pagIbigValue < 200) {
-            toast.error('Pag-IBIG must be at least ₱200.');
-            return;
+        const philhealthValue = Number(data.philhealth.replace(/,/g, '')) || 0;
+        const sssValue = Number(data.sss.replace(/,/g, '')) || 0;
+        const withholdingTaxValue = Number(data.withholding_tax.replace(/,/g, '')) || 0;
+        const rolesArr = data.roles.split(',');
+        const isCollege = rolesArr.includes('college instructor');
+        const isBasicEdu = rolesArr.includes('basic education instructor');
+        const isOthers = isOthersChecked
+        // Only enforce min/max if NOT retired
+        const isRetired = data.employee_type && data.employee_type.toLowerCase() === 'retired';
+        if (!(isCollege || isBasicEdu || isOthers) && !isRetired) {
+            if (sssValue < 0) {
+                toast.error('The SSS field must be at least 0.');
+                return;
+            }
+            if (philhealthValue < 250) {
+                toast.error('The philhealth field must be at least 250.');
+                return;
+            }
+            if (philhealthValue > 2500) {
+                toast.error('The philhealth field must be at most 2500.');
+                return;
+            }
+            if (pagIbigValue < 200) {
+                toast.error('Pag-IBIG must be at least ₱200.');
+                return;
+            }
+            if (withholdingTaxValue < 0) {
+                toast.error('The withholding tax field must be at least 0.');
+                return;
+            }
         }
 
         // Derive work hours from start/end time instead of blocking submission
@@ -307,11 +360,11 @@ export default function Edit({
         const cleanedData = {
             ...data,
             employee_name,
-            base_salary: Number(data.base_salary.replace(/,/g, '')) || 0,
-            sss: Number(data.sss.replace(/,/g, '')) || 0,
-            philhealth: Number(data.philhealth.replace(/,/g, '')) || 0,
-            pag_ibig: pagIbigValue,
-            withholding_tax: Number(data.withholding_tax.replace(/,/g, '')) || 0,
+            base_salary: data.base_salary === '' ? null : Number(data.base_salary.replace(/,/g, '')),
+            sss: data.sss === '' ? null : Number(data.sss.replace(/,/g, '')),
+            philhealth: data.philhealth === '' ? null : Number(data.philhealth.replace(/,/g, '')),
+            pag_ibig: data.pag_ibig === '' ? null : pagIbigValue,
+            withholding_tax: data.withholding_tax === '' ? null : Number(data.withholding_tax.replace(/,/g, '')),
             work_hours_per_day: workHours,
             work_start_time: startTime,
             work_end_time: endTime,
@@ -359,7 +412,7 @@ export default function Edit({
     // Validation for roles selection
     const rolesArr = data.roles ? data.roles.split(',') : [];
     const hasTeachingRole = rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor');
-    const canSubmit = rolesArr.includes('administrator') || hasTeachingRole;
+    const canSubmit = rolesArr.includes('administrator') || hasTeachingRole || othersRole;
 
     // For EmployeeType, filter options based on roles
     const teachingTypes = [
@@ -410,13 +463,13 @@ export default function Edit({
     useEffect(() => {
         if (salaryDefaults && salaryDefaults[data.employee_type]) {
             const def = salaryDefaults[data.employee_type];
-            // Only set defaults if the field is truly undefined or null, not just empty string
-            if (data.base_salary === undefined || data.base_salary === null) setData('base_salary', def.base_salary.toString());
-            if (data.sss === undefined || data.sss === null) setData('sss', def.sss.toString());
-            if (data.philhealth === undefined || data.philhealth === null) setData('philhealth', def.philhealth.toString());
-            if (data.pag_ibig === undefined || data.pag_ibig === null) setData('pag_ibig', def.pag_ibig.toString());
-            if (data.withholding_tax === undefined || data.withholding_tax === null) setData('withholding_tax', def.withholding_tax.toString());
-            if (data.work_hours_per_day === undefined || data.work_hours_per_day === null) setData('work_hours_per_day', def.work_hours_per_day.toString());
+            // Only set defaults if the field is truly undefined (not null or empty string)
+            if (typeof data.base_salary === 'undefined') setData('base_salary', def.base_salary.toString());
+            if (typeof data.sss === 'undefined') setData('sss', def.sss.toString());
+            if (typeof data.philhealth === 'undefined') setData('philhealth', def.philhealth.toString());
+            if (typeof data.pag_ibig === 'undefined') setData('pag_ibig', def.pag_ibig.toString());
+            if (typeof data.withholding_tax === 'undefined') setData('withholding_tax', def.withholding_tax.toString());
+            if (typeof data.work_hours_per_day === 'undefined') setData('work_hours_per_day', def.work_hours_per_day.toString());
             // Do NOT override existing work start/end times on edit.
         }
     }, [data.employee_type, salaryDefaults, data.base_salary, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, data.work_hours_per_day, setData]);
@@ -454,20 +507,21 @@ export default function Edit({
     // useEffect: When base_salary, sss, or pag_ibig change, recalculate PhilHealth and Withholding Tax (unless manual mode)
     useEffect(() => {
         if (manualContribMode) return;
+        // Only auto-calculate if the field is not empty (user hasn't cleared it)
         const baseSalary = Number(data.base_salary.replace(/,/g, '')) || 0;
         const sss = Number(data.sss.replace(/,/g, '')) || 0;
         const pagIbig = Number(data.pag_ibig.replace(/,/g, '')) || 0;
         const calculatedPhilHealth = calculatePhilHealth(baseSalary);
 
-        if (data.sss.replace(/,/g, '') !== sss.toFixed(2)) {
+        if (data.sss !== '' && data.sss.replace(/,/g, '') !== sss.toFixed(2)) {
             setData('sss', sss.toFixed(2));
         }
 
-        if (data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
+        if (data.philhealth !== '' && data.philhealth.replace(/,/g, '') !== calculatedPhilHealth.toFixed(2)) {
             setData('philhealth', calculatedPhilHealth.toFixed(2));
         }
         const calculatedWithholdingTax = calculateWithholdingTax(baseSalary, sss, pagIbig, calculatedPhilHealth);
-        if (data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
+        if (data.withholding_tax !== '' && data.withholding_tax.replace(/,/g, '') !== calculatedWithholdingTax.toFixed(2)) {
             setData('withholding_tax', calculatedWithholdingTax.toFixed(2));
         }
     }, [data.base_salary, data.sss, data.pag_ibig, data.philhealth, data.withholding_tax, setData, manualContribMode]);
@@ -757,16 +811,16 @@ export default function Edit({
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        required={!data.roles.split(',').includes('college instructor')}
+                                                        required={data.employee_type && data.employee_type.toLowerCase() === 'retired' ? false : data.roles.split(',').includes('administrator')}
                                                         placeholder="SSS"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
-                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 0}
+                                                        min={(data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor') || (othersRole && data.roles.split(',').includes('others'))) ? undefined : 0}
                                                         value={formatWithCommas(data.sss ?? '')}
                                                         disabled={!manualContribMode}
                                                         onChange={e => {
                                                             if (!manualContribMode) return;
                                                             const raw = e.target.value.replace(/,/g, '');
-                                                            setData('sss', raw);
+                                                            setData('sss', raw === '' ? '' : raw);
                                                         }}
                                                     />
                                                 </div>
@@ -781,25 +835,45 @@ export default function Edit({
                                                 </Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10">₱</span>
-                                                    <Input
-                                                        id="philhealth"
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9.,]*"
-                                                        required={!data.roles.split(',').includes('college instructor')}
-                                                        placeholder="PhilHealth"
-                                                        className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
-                                                        style={{ lineHeight: '1.5rem' }}
-                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 250}
-                                                        max={data.roles.split(',').includes('college instructor') ? undefined : 2500}
-                                                        disabled={!manualContribMode}
-                                                        value={formatWithCommas(data.philhealth ?? '')}
-                                                        onChange={e => {
-                                                            if (!manualContribMode) return;
-                                                            const raw = e.target.value.replace(/,/g, '');
-                                                            setData('philhealth', raw);
-                                                        }}
-                                                    />
+                                                    {(!(data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor') || (othersRole && data.roles.split(',').includes('others')))) ? (
+                                                        <Input
+                                                            id="philhealth"
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9.,]*"
+                                                            required={data.employee_type && data.employee_type.toLowerCase() === 'retired' ? false : data.roles.split(',').includes('administrator')}
+                                                            placeholder="PhilHealth"
+                                                            className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
+                                                            style={{ lineHeight: '1.5rem' }}
+                                                            min={250}
+                                                            max={2500}
+                                                            disabled={!manualContribMode}
+                                                            value={formatWithCommas(data.philhealth ?? '')}
+                                                            onChange={e => {
+                                                                if (!manualContribMode) return;
+                                                                const raw = e.target.value.replace(/,/g, '');
+                                                                setData('philhealth', raw === '' ? '' : raw);
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <Input
+                                                            id="philhealth"
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9.,]*"
+                                                            required={false}
+                                                            placeholder="PhilHealth"
+                                                            className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
+                                                            style={{ lineHeight: '1.5rem' }}
+                                                            disabled={!manualContribMode}
+                                                            value={formatWithCommas(data.philhealth ?? '')}
+                                                            onChange={e => {
+                                                                if (!manualContribMode) return;
+                                                                const raw = e.target.value.replace(/,/g, '');
+                                                                setData('philhealth', raw === '' ? '' : raw);
+                                                            }}
+                                                        />
+                                                    )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
@@ -810,11 +884,11 @@ export default function Edit({
                                                 <Label htmlFor="pag-ibig">Pag-IBIG</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" required={!data.roles.split(',').includes('college instructor')} placeholder="Pag-IBIG" className="pl-8" min={data.roles.split(',').includes('college instructor') ? undefined : 200} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw); }} />
+                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" required={data.employee_type && data.employee_type.toLowerCase() === 'retired' ? false : data.roles.split(',').includes('administrator')} placeholder="Pag-IBIG" className="pl-8" min={data.roles.split(',').includes('administrator') ? 200 : undefined} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw === '' ? '' : raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
-                                                    {data.roles.split(',').includes('college instructor') ? 'Manual entry enabled' : 'Must be at least ₱200'}
+                                                    {(data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor') || (othersRole && data.roles.split(',').includes('others'))) ? 'Manual entry enabled' : 'Must be at least ₱200'}
                                                 </p>
                                             </div>
                                             <div className='flex flex-col gap-3'>
@@ -824,18 +898,18 @@ export default function Edit({
                                                     <Input
                                                         id="withholding_tax"
                                                         type="text"
-                                                        required={!data.roles.split(',').includes('college instructor')}
+                                                        required={data.employee_type && data.employee_type.toLowerCase() === 'retired' ? false : data.roles.split(',').includes('administrator')}
                                                         placeholder="Withholding Tax"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         inputMode="decimal"
                                                         pattern="^[0-9,]+(\.[0-9]{1,2})?$"
-                                                        min={data.roles.split(',').includes('college instructor') ? undefined : 0}
+                                                        min={(data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor') || (othersRole && data.roles.split(',').includes('others'))) ? undefined : 0}
                                                         disabled={!manualContribMode}
                                                         value={formatWithCommas(data.withholding_tax ?? '')}
                                                         onChange={e => {
                                                             if (!manualContribMode) return;
                                                             const raw = e.target.value.replace(/[^\d.,]/g, '');
-                                                            setData('withholding_tax', raw);
+                                                            setData('withholding_tax', raw === '' ? '' : raw);
                                                         }}
                                                     />
                                                 </div>
