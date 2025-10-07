@@ -226,6 +226,12 @@ export default function Create(props: Props) {
                 setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
             if (data.rate_per_hour !== '') setData('rate_per_hour', '');
         }
+
+        // Clear college department selection if college instructor is unselected
+        if (!hasCollege) {
+            setCollegeProgram('');
+            setData('college_program', '');
+        }
     }, [collegeProgram, data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, isOthersChecked]);
 
 

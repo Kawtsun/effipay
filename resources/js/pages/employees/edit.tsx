@@ -215,6 +215,9 @@ export default function Edit({
                 setData('pag_ibig', salaryDefaults[data.employee_type].pag_ibig.toString());
             if (typeof data.withholding_tax === 'undefined' && salaryDefaults?.[data.employee_type]?.withholding_tax)
                 setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
+            // Clear college department selection
+            setCollegeProgram('');
+            setData('college_program', '');
         }
         // For college instructor, do nothing: keep the current value from the employee record
     }, [data.roles, data.employee_type]);
