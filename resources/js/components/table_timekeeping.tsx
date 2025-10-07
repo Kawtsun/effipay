@@ -185,17 +185,30 @@ export default function TableTimekeeping({
         },
         {
             id: 'roles',
-            enableSorting: false,
-            header: () => (
+            accessorFn: (row) => {
+                if (!row.roles) return ''
+                const rolesArr = row.roles.split(',').map(r => r.trim()).filter(Boolean)
+                const order = ['administrator', 'college instructor', 'basic education instructor']
+                const ordered = order.filter(r => rolesArr.includes(r))
+                const custom = rolesArr.filter(r => !order.includes(r))
+                return [...ordered, ...custom].join(', ').toLowerCase()
+            },
+            header: ({ column }) => (
                 <div className="px-2">
                     <Button
                         variant="ghost"
                         size="sm"
                         className="data-[state=open]:bg-accent -ml-2 h-8 px-2"
-                        disabled
+                        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
                     >
                         <span className="text-xs font-semibold uppercase tracking-wide">Roles</span>
-                        <ArrowUpDown />
+                        {column.getIsSorted() === 'desc' ? (
+                            <ArrowDown />
+                        ) : column.getIsSorted() === 'asc' ? (
+                            <ArrowUp />
+                        ) : (
+                            <ArrowUpDown />
+                        )}
                     </Button>
                 </div>
             ),
