@@ -186,16 +186,17 @@ export default function Edit({
 
     // Sync roles field with checkboxes and custom 'Others' role
     useEffect(() => {
-        let rolesArr = data.roles ? data.roles.split(',').map(r => r.trim()).filter(r => r) : [];
-        // Remove all standard roles and all custom roles
-        rolesArr = rolesArr.filter(r => ['administrator', 'college instructor', 'basic education instructor'].includes(r));
-        if (data.roles.split(',').includes('administrator')) rolesArr.push('administrator');
-        if (isCollegeInstructorChecked) rolesArr.push('college instructor');
-        if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
-        // Only allow one custom role
-        if (isOthersChecked && othersRole.trim()) {
-            rolesArr = rolesArr.filter(r => ['administrator', 'college instructor', 'basic education instructor'].includes(r));
-            rolesArr.push(othersRole.trim().toLowerCase());
+        let rolesArr: string[] = [];
+        // If only custom role is checked, set only that role
+        if (isOthersChecked && othersRole.trim() && !isCollegeInstructorChecked && !isBasicEduInstructorChecked && !data.roles.split(',').includes('administrator')) {
+            rolesArr = [othersRole.trim().toLowerCase()];
+        } else {
+            if (data.roles.split(',').includes('administrator')) rolesArr.push('administrator');
+            if (isCollegeInstructorChecked) rolesArr.push('college instructor');
+            if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
+            if (isOthersChecked && othersRole.trim()) {
+                rolesArr.push(othersRole.trim().toLowerCase());
+            }
         }
         setData('roles', Array.from(new Set(rolesArr)).join(','));
     }, [isCollegeInstructorChecked, isBasicEduInstructorChecked, isOthersChecked, othersRole]);
@@ -301,7 +302,7 @@ export default function Edit({
         const rolesArr = data.roles.split(',');
         const isCollege = rolesArr.includes('college instructor');
         const isBasicEdu = rolesArr.includes('basic education instructor');
-        const isOthers = othersRole && rolesArr.includes('others');
+        const isOthers = isOthersChecked
         if (!(isCollege || isBasicEdu || isOthers)) {
             if (sssValue < 0) {
                 toast.error('The SSS field must be at least 0.');
@@ -395,7 +396,7 @@ export default function Edit({
     // Validation for roles selection
     const rolesArr = data.roles ? data.roles.split(',') : [];
     const hasTeachingRole = rolesArr.includes('college instructor') || rolesArr.includes('basic education instructor');
-    const canSubmit = rolesArr.includes('administrator') || hasTeachingRole;
+    const canSubmit = rolesArr.includes('administrator') || hasTeachingRole || othersRole;
 
     // For EmployeeType, filter options based on roles
     const teachingTypes = [
@@ -794,7 +795,7 @@ export default function Edit({
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        required={!(data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor') || (othersRole && data.roles.split(',').includes('others')))}
+                                                        required={data.roles.split(',').includes('administrator')}
                                                         placeholder="SSS"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         min={(data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor') || (othersRole && data.roles.split(',').includes('others'))) ? undefined : 0}
@@ -824,7 +825,7 @@ export default function Edit({
                                                             type="text"
                                                             inputMode="numeric"
                                                             pattern="[0-9.,]*"
-                                                            required
+                                                            required={data.roles.split(',').includes('administrator')}
                                                             placeholder="PhilHealth"
                                                             className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                             style={{ lineHeight: '1.5rem' }}
@@ -867,7 +868,7 @@ export default function Edit({
                                                 <Label htmlFor="pag-ibig">Pag-IBIG</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" required={!(data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor') || (othersRole && data.roles.split(',').includes('others')))} placeholder="Pag-IBIG" className="pl-8" min={(!(data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor') || (othersRole && data.roles.split(',').includes('others')))) ? 200 : undefined} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw === '' ? '' : raw); }} />
+                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" required={data.roles.split(',').includes('administrator')} placeholder="Pag-IBIG" className="pl-8" min={data.roles.split(',').includes('administrator') ? 200 : undefined} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw === '' ? '' : raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
@@ -881,7 +882,7 @@ export default function Edit({
                                                     <Input
                                                         id="withholding_tax"
                                                         type="text"
-                                                        required={!(data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor') || (othersRole && data.roles.split(',').includes('others')))}
+                                                        required={data.roles.split(',').includes('administrator')}
                                                         placeholder="Withholding Tax"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         inputMode="decimal"
