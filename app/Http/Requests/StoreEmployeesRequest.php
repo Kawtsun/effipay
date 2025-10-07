@@ -29,21 +29,28 @@ class StoreEmployeesRequest extends FormRequest
         $rolesArr = is_array($roles)
             ? array_filter(array_map('trim', $roles))
             : array_filter(array_map('trim', explode(',', $roles)));
-    $isAdmin = in_array('administrator', $rolesArr);
-    $isCollege = in_array('college instructor', $rolesArr);
-    $isBasicEdu = in_array('basic education instructor', $rolesArr);
-    $isOthersOnly = count($rolesArr) === 1 && !$isCollege && !$isAdmin && !$isBasicEdu && $rolesArr[0] !== '';
-    // Contributions required only for administrator
-    $contribOptional = !$isAdmin;
+        $isAdmin = in_array('administrator', $rolesArr);
+        $isCollege = in_array('college instructor', $rolesArr);
+        $isBasicEdu = in_array('basic education instructor', $rolesArr);
+        // Detect any custom role (others) by checking if any role is not admin, college, or basic edu
+        $isOthers = false;
+        foreach ($rolesArr as $role) {
+            if ($role !== '' && $role !== 'administrator' && $role !== 'college instructor' && $role !== 'basic education instructor') {
+                $isOthers = true;
+                break;
+            }
+        }
+        // Contributions are optional if ANY of these roles are present
+        $contribOptional = ($isCollege || $isBasicEdu || $isOthers);
         return [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'employee_type' => 'required|string|max:255',
             'employee_status' => 'required|string|max:255',
-            'base_salary' => $isOthersOnly ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
+            'base_salary' => $isOthers ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
             'sss' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
-            'philhealth' => $contribOptional ? 'nullable|numeric|max:2500' : 'required|numeric|min:250|max:2500',
+            'philhealth' => $contribOptional ? 'nullable' : 'required|numeric|min:250|max:2500',
             'pag_ibig' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:200',
             'withholding_tax' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
             'work_hours_per_day' => 'required|integer|min:1|max:24',
