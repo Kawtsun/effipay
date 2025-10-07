@@ -455,22 +455,10 @@ class TimeKeepingController extends Controller {
             }
         }
 
-        // Absences: count workdays (Mon-Fri) where both clock_in and clock_out are missing, null, or whitespace
-        // If employee is on leave status for that day (from status history), do not count absents for that day
-        $leave_statuses = ['on leave', 'sick leave', 'vacation leave', 'maternity leave', 'paternity leave', 'special leave', 'paid leave'];
-    $absent_hours = 0;
-    $leave_days = 0;
+        // --- Use employee's workDays schedule for absence and total hours calculation ---
+        $absent_hours = 0;
         $monthStart = strtotime($month . '-01');
         $daysInMonth = (int)date('t', $monthStart);
-        $workHoursPerDay = !empty($employee->work_hours_per_day) ? floatval($employee->work_hours_per_day) : 8;
-        // Calculate work hours per day from start/end, minus 1 hour for break
-        if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
-            $start = strtotime($employee->work_start_time);
-            $end = strtotime($employee->work_end_time);
-            $workMinutes = $end - $start;
-            if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
-            $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
-        }
         // Fetch all observance dates for this month
         $observanceDates = DB::table('observances')
             ->where('date', 'like', "$month%")
@@ -478,37 +466,25 @@ class TimeKeepingController extends Controller {
             ->toArray();
         $observanceSet = array_flip($observanceDates); // for fast lookup
 
-        // Fetch status history for this employee, ordered by effective_date
-        $statusHistory = DB::table('employee_status_histories')
-            ->where('employee_id', $employee->id)
-            ->orderBy('effective_date')
-            ->get();
+        // Get employee's workDays schedule as associative array: key=day (0=Sun, 6=Sat, or 'mon', etc.), value=workDay model
+        $workDaysModels = $employee->workDays ? $employee->workDays->keyBy(function($wd) {
+            // Accept both int and string day representations
+            // If day is numeric, use as int; else, convert string to lowercase
+            return is_numeric($wd->day) ? intval($wd->day) : strtolower($wd->day);
+        }) : collect();
 
-        // Helper: get status for a given date from history
-        $getStatusForDate = function($date) use ($statusHistory, $employee) {
-            $status = $employee->employee_status; // fallback to current
-            foreach ($statusHistory as $row) {
-                if ($row->effective_date <= $date) {
-                    $status = $row->status;
-                } else {
-                    break;
-                }
-            }
-            return strtolower($status);
-        };
+        // Helper to map PHP day number (0=Sun, 6=Sat) to string ('sun', ...)
+        $phpDayToStr = ['sun','mon','tue','wed','thu','fri','sat'];
 
         for ($i = 1; $i <= $daysInMonth; $i++) {
             $date = date('Y-m-d', strtotime($month . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
-            $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
-            if ($dayOfWeek >= 6) continue; // skip weekends
+            $dayOfWeekNum = date('w', strtotime($date)); // 0=Sun, 6=Sat
+            $dayOfWeekStr = $phpDayToStr[$dayOfWeekNum];
+            // Find workDay model for this day (prefer string key, fallback to int key)
+            $workDay = $workDaysModels->get($dayOfWeekStr, $workDaysModels->get($dayOfWeekNum));
+            if (!$workDay) continue; // not a scheduled work day
             // Skip if date is in observances table
             if (isset($observanceSet[$date])) continue;
-            // Check if on leave for this date
-            $status = $getStatusForDate($date);
-            if (in_array($status, $leave_statuses)) {
-                $leave_days++;
-                continue; // skip absence if on leave
-            }
             $tk = $records->where('date', $date);
             // If no record, or all records for the day have missing/null/whitespace clock_in and clock_out
             $allAbsent = true;
@@ -522,23 +498,34 @@ class TimeKeepingController extends Controller {
                     }
                 }
             }
-            // If no record for the day, or all records have empty clock_in and clock_out
+            // Calculate work hours for this day from workDay schedule
+            $workHoursPerDay = 8;
+            if (!empty($workDay->work_start_time) && !empty($workDay->work_end_time)) {
+                $start = strtotime($workDay->work_start_time);
+                $end = strtotime($workDay->work_end_time);
+                $workMinutes = $end - $start;
+                if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
+                $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
+            }
             if ($tk->count() === 0 || $allAbsent) {
                 $absent_hours += $workHoursPerDay;
             }
         }
-        $absences = ($absent_hours);
+        $absences = $absent_hours;
 
         // If there is at least one record in the month, always return success and computed values
         $hasData = $records->count() > 0;
-        // Calculate total_hours for all roles: sum of actual hours worked from time in/out (excluding weekends, minus 1 hour break per day if worked at least 4 hours)
+        // Calculate total_hours for all roles: sum of actual hours worked from time in/out (only on scheduled work days, minus 1 hour break per day if worked at least 4 hours)
         $actualHoursWorked = 0;
         foreach ($records as $tk) {
             $date = $tk->date;
-            $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
-            if ($dayOfWeek >= 6) continue; // skip weekends
+            $dayOfWeekNum = date('w', strtotime($date));
+            $dayOfWeekStr = $phpDayToStr[$dayOfWeekNum];
+            $workDay = $workDaysModels->get($dayOfWeekStr, $workDaysModels->get($dayOfWeekNum));
+            if (!$workDay) continue;
             if (!empty($tk->clock_in) && !empty($tk->clock_out)) {
-                $scheduledStart = !empty($employee->work_start_time) ? strtotime($employee->work_start_time) : null;
+                // Use scheduled start from workDay if available
+                $scheduledStart = !empty($workDay->work_start_time) ? strtotime($workDay->work_start_time) : null;
                 $in = strtotime($tk->clock_in);
                 $out = strtotime($tk->clock_out);
                 // If clock_in is earlier than scheduled start, use scheduled start
@@ -561,7 +548,6 @@ class TimeKeepingController extends Controller {
             'overtime_count_weekdays' => $overtime_count_weekdays,
             'overtime_count_weekends' => $overtime_count_weekends,
             'absences' => $absences,
-            'leave_days' => $leave_days,
             'base_salary' => $base_salary,
             'rate_per_day' => $rate_per_day,
             'rate_per_hour' => $rate_per_hour,

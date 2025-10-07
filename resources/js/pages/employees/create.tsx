@@ -193,7 +193,7 @@ export default function Create(props: Props) {
         const hasOthers = isOthersChecked;
 
         // If Others is checked and base_salary is empty, keep it cleared
-        if (hasOthers && data.base_salary === '') {
+        if (hasOthers && rolesArr.length >= 0) {
             setData('base_salary', '');
         } else if (!hasOthers && data.base_salary === '') {
             // If Others is unchecked and base_salary is empty, restore default
