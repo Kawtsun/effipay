@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 
 class EmployeesController extends Controller
 {
+    // Fixed allowed number of leaves per employee
+    public const LEAVE_LIMIT = 2; // Change this value as needed
     /**
      * Display a listing of the resource.
      */
@@ -368,9 +370,27 @@ class EmployeesController extends Controller
     $oldStatus = $employee->employee_status;
     $employee->update($data);
 
-    // Normal flow resumes: no debug JSON response
-    // If status changed, record in status history
-        if (isset($data['employee_status']) && $data['employee_status'] !== $oldStatus) {
+    // Only record leave status in history if under leave limit
+    if (isset($data['employee_status']) && $data['employee_status'] !== $oldStatus) {
+        // Define which statuses count as leave
+        $leaveStatuses = ['on leave', 'sick leave', 'vacation leave']; // Add more as needed
+        if (in_array($data['employee_status'], $leaveStatuses)) {
+            $leaveCount = DB::table('employee_status_histories')
+                ->where('employee_id', $employee->id)
+                ->whereIn('status', $leaveStatuses)
+                ->count();
+            if ($leaveCount < self::LEAVE_LIMIT) {
+                DB::table('employee_status_histories')->insert([
+                    'employee_id' => $employee->id,
+                    'status' => $data['employee_status'],
+                    'effective_date' => date('Y-m-d'),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+            // else: do not record, limit reached
+        } else {
+            // Not a leave status, always record
             DB::table('employee_status_histories')->insert([
                 'employee_id' => $employee->id,
                 'status' => $data['employee_status'],
@@ -379,6 +399,7 @@ class EmployeesController extends Controller
                 'updated_at' => now(),
             ]);
         }
+    }
 
         // Update per-day work times if provided
         $workDays = $request['work_days'] ?? [];
