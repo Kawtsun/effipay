@@ -36,7 +36,8 @@ class UpdateEmployeesRequest extends FormRequest
             break;
         }
     }
-    $contribOptional = ($isCollege || $isBasicEdu || $isOthers);
+    $employeeType = request('employee_type', '');
+    $contribOptional = ($isCollege || $isBasicEdu || $isOthers || strtolower($employeeType) === 'retired');
     return [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',

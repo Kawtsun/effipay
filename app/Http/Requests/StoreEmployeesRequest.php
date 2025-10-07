@@ -40,8 +40,9 @@ class StoreEmployeesRequest extends FormRequest
                 break;
             }
         }
-        // Contributions are optional if ANY of these roles are present
-        $contribOptional = ($isCollege || $isBasicEdu || $isOthers);
+    $employeeType = request('employee_type', '');
+    // Contributions are optional if ANY of these roles are present OR employee_type is Retired
+    $contribOptional = ($isCollege || $isBasicEdu || $isOthers || strtolower($employeeType) === 'retired');
         return [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
