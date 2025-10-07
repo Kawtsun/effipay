@@ -206,15 +206,37 @@ class TimeKeepingController extends Controller {
             $overtime_pay_weekends = 0;
             $overtime_count_weekdays = 0;
             $overtime_count_weekends = 0;
-            // Absences: count days with no clock_in and clock_out, then convert to decimal hours
+            // Absences: check all workdays, exclude leave days, count as absent if no clock-in/out and not a leave day
             $absent_days = 0;
-            $dates = $records->pluck('date')->unique();
-            foreach ($dates as $date) {
-                $dayRecords = $records->where('date', $date);
-                $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
-                $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
-                if (!$hasClockIn && !$hasClockOut) {
-                    $absent_days++;
+            // Get all workdays for this employee (assuming Mon-Fri, or use $emp->workDays if available)
+            $workDays = $emp->workDays && count($emp->workDays) ? $emp->workDays->pluck('day')->toArray() : [1,2,3,4,5]; // 1=Mon, 7=Sun
+            // Get the full date range from the earliest to latest timekeeping record
+            $allDates = $records->pluck('date')->unique()->toArray();
+            if (count($allDates) > 0) {
+                $startDate = min($allDates);
+                $endDate = max($allDates);
+                $period = new \DatePeriod(
+                    new \DateTime($startDate),
+                    new \DateInterval('P1D'),
+                    (new \DateTime($endDate))->modify('+1 day')
+                );
+                // Get leave dates for this employee
+                $leaveStatuses = ['on leave', 'sick leave', 'vacation leave', 'Paid Leave'];
+                $leaveDates = DB::table('employee_status_histories')
+                    ->where('employee_id', $emp->id)
+                    ->whereIn('status', $leaveStatuses)
+                    ->pluck('effective_date')->toArray();
+                foreach ($period as $dateObj) {
+                    $date = $dateObj->format('Y-m-d');
+                    $dayOfWeek = $dateObj->format('N'); // 1=Mon, 7=Sun
+                    if (!in_array($dayOfWeek, $workDays)) continue; // skip if not a workday
+                    if (in_array($date, $leaveDates)) continue; // skip if leave day
+                    $dayRecords = $records->where('date', $date);
+                    $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
+                    $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
+                    if (!$hasClockIn && !$hasClockOut) {
+                        $absent_days++;
+                    }
                 }
             }
             $absences = 0;
@@ -489,6 +511,13 @@ class TimeKeepingController extends Controller {
             if (!$workDay) continue; // not a scheduled work day
             // Skip if date is in observances table
             if (isset($observanceSet[$date])) continue;
+            // Skip if date is a leave day for this employee
+            $leaveStatuses = ['on leave', 'sick leave', 'vacation leave', 'Paid Leave'];
+            $leaveDates = DB::table('employee_status_histories')
+                ->where('employee_id', $employee->id)
+                ->whereIn('status', $leaveStatuses)
+                ->pluck('effective_date')->toArray();
+            if (in_array($date, $leaveDates)) continue;
             $tk = $records->where('date', $date);
             // If no record, or all records for the day have missing/null/whitespace clock_in and clock_out
             $allAbsent = true;
