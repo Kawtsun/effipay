@@ -165,7 +165,10 @@ class TimeKeepingController extends Controller {
             $query->where('college_program', $request->collegeProgram);
         }
 
-        $employees = $query->with('workDays')->paginate(10)->withQueryString();
+        // Support perPage/per_page like EmployeesController
+        $perPage = (int) ($request->input('perPage', $request->input('per_page', 10)));
+        if ($perPage <= 0) { $perPage = 10; }
+        $employees = $query->with('workDays')->paginate($perPage)->withQueryString();
 
         $employeesArray = array_map(function ($emp) {
             // Overtime pay calculation function (matches frontend)
@@ -311,6 +314,7 @@ class TimeKeepingController extends Controller {
             'currentPage' => $employees->currentPage(),
             'totalPages'  => $employees->lastPage(),
             'search'      => $request->input('search', ''),
+            'perPage'     => $perPage,
             'filters'     => [
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),

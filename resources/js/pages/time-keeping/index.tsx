@@ -1,45 +1,34 @@
 import { usePage } from '@inertiajs/react';
-import { formatFullName } from '../../utils/formatFullName';
 type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string };
 const MIN_SPINNER_MS = 400;
 import EmployeeFilter from '@/components/employee-filter';
-// @ts-ignore
 import Encoding from 'encoding-japanese';
-import EmployeePagination from '@/components/employee-pagination';
+// import EmployeePagination from '@/components/employee-pagination';
+import TableTimekeeping from '@/components/table_timekeeping'
 import EmployeeSearch from '@/components/employee-search';
 import TimeKeepingViewDialog from '@/components/timekeeping-view-dialog';
 import BTRDialog from '@/components/btr-dialog';
 import { Button } from '@/components/ui/button';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+ 
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Users, Shield, GraduationCap, Book, Eye, Import, Fingerprint, Loader2, Calendar } from 'lucide-react';
+import { Users, Import, Loader2, Calendar } from 'lucide-react';
 import { CalendarViewDialog } from '@/components/calendar-view-dialog';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+ 
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
-// @ts-ignore
 import * as XLSX from 'xlsx';
 
 export default function TimeKeeping() {
-    const { csrfToken } = usePage().props as { csrfToken: string };
+    const { csrfToken } = usePage().props as unknown as { csrfToken: string };
     const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
     const [selectedBtrEmployee, setSelectedBtrEmployee] = useState<Employees | null>(null);
     const [calendarOpen, setCalendarOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const MAX_ROWS = 10;
-    const ROW_HEIGHT = 53; // px
+    const [pageSize, setPageSize] = useState<number>(10)
 
     const handleImportClick = () => {
         if (fileInputRef.current) {
@@ -237,7 +226,7 @@ export default function TimeKeeping() {
     const spinnerStart = useRef<number>(0);
 
     // Visit helper
-    const visit = useCallback((params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string }>, options: { preserve?: boolean } = {}) => {
+    const visit = useCallback((params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
         spinnerStart.current = Date.now();
         setLoading(true);
         router.visit(route('time-keeping.index'), {
@@ -264,8 +253,10 @@ export default function TimeKeeping() {
             statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
             roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
             collegeProgram: appliedFilters.collegeProgram || undefined,
+            perPage: pageSize,
+            per_page: pageSize,
         }, { preserve: true });
-    }, [visit, appliedFilters]);
+    }, [visit, appliedFilters, pageSize]);
 
     // Filter apply
     const handleFilterChange = useCallback((newFilters: FilterState) => {
@@ -278,16 +269,18 @@ export default function TimeKeeping() {
             statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
             roles: newFilters.roles.length ? newFilters.roles : undefined,
             collegeProgram: newFilters.collegeProgram || undefined,
+            perPage: pageSize,
+            per_page: pageSize,
         }, { preserve: true });
-    }, [visit, searchTerm]);
+    }, [visit, searchTerm, pageSize]);
 
     // Reset filters
     const resetFilters = useCallback(() => {
         const empty = { types: [], statuses: [], roles: [], collegeProgram: '' };
         setFilters(empty);
         setAppliedFilters(empty);
-        visit({ search: searchTerm || undefined, page: 1 }, { preserve: true });
-    }, [visit, searchTerm]);
+        visit({ search: searchTerm || undefined, page: 1, perPage: pageSize, per_page: pageSize }, { preserve: true });
+    }, [visit, searchTerm, pageSize]);
 
     // Pagination
     const handlePage = useCallback((page: number) => {
@@ -298,8 +291,10 @@ export default function TimeKeeping() {
             statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
             roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
             collegeProgram: appliedFilters.collegeProgram || undefined,
+            perPage: pageSize,
+            per_page: pageSize,
         }, { preserve: true });
-    }, [visit, searchTerm, appliedFilters]);
+    }, [visit, searchTerm, appliedFilters, pageSize]);
 
     const crumbs: BreadcrumbItem[] = [
         {
@@ -387,164 +382,29 @@ export default function TimeKeeping() {
                             <Loader2 className="h-16 w-16 animate-spin text-primary" />
                         </div>
                     )}
-                    <div className="w-full overflow-x-auto">
-                        <Table className="select-none min-w-[900px]" style={{ tableLayout: 'fixed', width: '100%' }}>
-                            <TableHeader className=''>
-                                <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
-                                    <TableHead style={{ width: 120 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
-                                    <TableHead style={{ width: 400 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
-                                    <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
-                                    <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
-                                    <TableHead style={{ width: 350 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Roles</TableHead>
-                                    <TableHead style={{ width: 180 }} className='text-right text-xs font-semibold uppercase  tracking-wide px-4 py-2'>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-
-                            <TableBody>
-                                {employees.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center text-muted-foreground" style={{ width: '100%' }}>
-                                            No employees found.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    <>
-                                        {employees.map((emp: Employees) => (
-                                            <TableRow
-                                                key={emp.id}
-                                                className="transition-opacity duration-300"
-                                            >
-                                                <TableCell style={{ width: 120 }} className="px-4 py-2">{emp.id}</TableCell>
-                                                <TableCell style={{ width: 400 }} className="px-4 py-2">{formatFullName(emp.last_name, emp.first_name, emp.middle_name)}</TableCell>
-                                                <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
-                                                <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
-                                                <TableCell style={{ width: 350 }} className="px-4 py-2 min-w-[160px]">
-                                                    {(() => {
-                                                        if (!emp.roles) return '';
-                                                        const rolesArr = emp.roles.split(',').map((r: string) => r.trim()).filter(Boolean);
-                                                        const order = ['administrator', 'college instructor', 'basic education instructor'];
-                                                        let displayRoles = rolesArr;
-                                                        if (appliedFilters.roles.length > 0) {
-                                                            const filtered = appliedFilters.roles.filter(r => rolesArr.includes(r));
-                                                            const rest = rolesArr.filter((r: string) => !filtered.includes(r));
-                                                            displayRoles = [...filtered, ...rest];
-                                                        } else {
-                                                            // Show standard roles in order, then custom roles
-                                                            const ordered = order.filter(r => rolesArr.includes(r));
-                                                            const custom = rolesArr.filter(r => !order.includes(r));
-                                                            displayRoles = [...ordered, ...custom];
-                                                        }
-                                                        if (displayRoles.length === 0) return '';
-                                                        const mainRole = displayRoles[0];
-                                                        const additionalRolesCount = displayRoles.length - 1;
-                                                        let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
-                                                        let icon = null;
-                                                        if (mainRole === 'administrator') {
-                                                            color = 'info';
-                                                            icon = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                        } else if (mainRole === 'college instructor') {
-                                                            color = 'purple';
-                                                            icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                        } else if (mainRole === 'basic education instructor') {
-                                                            color = 'warning';
-                                                            icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                        } else {
-                                                            color = 'purple';
-                                                            icon = <Users className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                        }
-                                                        // Tooltip: all roles as badges, with full program name for college instructor
-                                                        const tooltipContent = (
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {displayRoles.map(role => {
-                                                                    let c: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
-                                                                    let i = null;
-                                                                    let e = null;
-                                                                    if (role === 'administrator') {
-                                                                        c = 'info';
-                                                                        i = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                                    } else if (role === 'college instructor') {
-                                                                        c = 'purple';
-                                                                        i = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                                        if (emp.college_program) {
-                                                                            e = <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}] {getCollegeProgramLabel(emp.college_program)}</span>;
-                                                                        }
-                                                                    } else if (role === 'basic education instructor') {
-                                                                        c = 'warning';
-                                                                        i = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                                    } else {
-                                                                        c = 'purple';
-                                                                        i = <Users className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                                    }
-                                                                    return (
-                                                                        <Badge key={role} variant={c} className={`capitalize flex items-center${!order.includes(role) ? ' custom-role-badge' : ''}`}>
-                                                                            {i}{capitalizeWords(role)}{e}
-                                                                        </Badge>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        );
-                                                        // Main badge: show acronym for college instructor, +N for additional roles
-                                                        const badgeContent = (
-                                                            <span className="inline-flex items-center gap-1">
-                                                                <Badge key={mainRole} variant={color} className={`capitalize flex items-center${!order.includes(mainRole) ? ' custom-role-badge' : ''}`}>
-                                                                    {icon}{capitalizeWords(mainRole)}{mainRole === 'college instructor' && emp.college_program ? <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}]</span> : null}
-                                                                </Badge>
-                                                                {additionalRolesCount > 0 && (
-                                                                    <Badge variant="success" className="cursor-pointer">+{additionalRolesCount}</Badge>
-                                                                )}
-                                                            </span>
-                                                        );
-                                                        // Tooltip logic
-                                                        // Only one role and not college instructor: no tooltip
-                                                        if (displayRoles.length === 1 && mainRole !== 'college instructor') {
-                                                            return badgeContent;
-                                                        }
-                                                        // Otherwise, show tooltip (for college instructor or multiple roles)
-                                                        return (
-                                                            <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>{badgeContent}</TooltipTrigger>
-                                                                    <TooltipContent side="top" className="max-w-lg px-4 py-3 whitespace-pre-line break-words">{tooltipContent}</TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        );
-                                                    })()}
-                                                </TableCell>
-                                                <TableCell style={{ width: 180 }} className="px-4 py-2 whitespace-nowrap text-right">
-                                                    <div className='flex justify-end items-center gap-2'>
-                                                        <Button variant="secondary" onClick={() => { setSelectedEmployee(emp); }}>
-                                                            <Eye />
-                                                            View
-                                                        </Button>
-                                                        <Button onClick={() => setSelectedBtrEmployee(emp)}>
-                                                            <Fingerprint />
-                                                            BTR
-                                                        </Button>
-                                                    </div>
-
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-
-                                        {Array.from({ length: Math.max(0, MAX_ROWS - employees.length) }).map((_, i) => (
-                                            <TableRow key={`empty-${i}`}>
-                                                <TableCell style={{ width: 120, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                                <TableCell style={{ width: 200, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                                <TableCell style={{ width: 160, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                                <TableCell style={{ width: 160, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                                <TableCell style={{ width: 240, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                                <TableCell style={{ width: 180, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                            </TableRow>
-                                        ))}
-                                    </>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    <div className="mt-4 flex min-h-[56px] justify-center">
-                        <EmployeePagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePage} />
-                    </div>
+                    <TableTimekeeping
+                        data={employees}
+                        loading={loading}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={handlePage}
+                        onPageSizeChange={(size) => {
+                            setPageSize(size)
+                            visit({
+                                search: searchTerm || undefined,
+                                page: 1,
+                                types: appliedFilters.types.length ? appliedFilters.types : undefined,
+                                statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
+                                roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
+                                collegeProgram: appliedFilters.collegeProgram || undefined,
+                                perPage: size,
+                                per_page: size,
+                            }, { preserve: true })
+                        }}
+                        onView={(emp) => setSelectedEmployee(emp)}
+                        onBTR={(emp) => setSelectedBtrEmployee(emp)}
+                        activeRoles={appliedFilters.roles}
+                    />
                 </div>
             </div>
             {/* Floating Modal for Late/Early Departures */}
