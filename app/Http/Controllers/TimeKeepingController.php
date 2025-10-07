@@ -456,7 +456,10 @@ class TimeKeepingController extends Controller {
         }
 
         // Absences: count workdays (Mon-Fri) where both clock_in and clock_out are missing, null, or whitespace
-        $absent_hours = 0;
+        // If employee is on leave status for that day (from status history), do not count absents for that day
+        $leave_statuses = ['on leave', 'sick leave', 'vacation leave', 'maternity leave', 'paternity leave', 'special leave', 'paid leave'];
+    $absent_hours = 0;
+    $leave_days = 0;
         $monthStart = strtotime($month . '-01');
         $daysInMonth = (int)date('t', $monthStart);
         $workHoursPerDay = !empty($employee->work_hours_per_day) ? floatval($employee->work_hours_per_day) : 8;
@@ -469,17 +472,43 @@ class TimeKeepingController extends Controller {
             $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
         }
         // Fetch all observance dates for this month
-    $observanceDates = DB::table('observances')
+        $observanceDates = DB::table('observances')
             ->where('date', 'like', "$month%")
             ->pluck('date')
             ->toArray();
         $observanceSet = array_flip($observanceDates); // for fast lookup
+
+        // Fetch status history for this employee, ordered by effective_date
+        $statusHistory = DB::table('employee_status_histories')
+            ->where('employee_id', $employee->id)
+            ->orderBy('effective_date')
+            ->get();
+
+        // Helper: get status for a given date from history
+        $getStatusForDate = function($date) use ($statusHistory, $employee) {
+            $status = $employee->employee_status; // fallback to current
+            foreach ($statusHistory as $row) {
+                if ($row->effective_date <= $date) {
+                    $status = $row->status;
+                } else {
+                    break;
+                }
+            }
+            return strtolower($status);
+        };
+
         for ($i = 1; $i <= $daysInMonth; $i++) {
             $date = date('Y-m-d', strtotime($month . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
             $dayOfWeek = date('N', strtotime($date)); // 1=Mon, 7=Sun
             if ($dayOfWeek >= 6) continue; // skip weekends
             // Skip if date is in observances table
             if (isset($observanceSet[$date])) continue;
+            // Check if on leave for this date
+            $status = $getStatusForDate($date);
+            if (in_array($status, $leave_statuses)) {
+                $leave_days++;
+                continue; // skip absence if on leave
+            }
             $tk = $records->where('date', $date);
             // If no record, or all records for the day have missing/null/whitespace clock_in and clock_out
             $allAbsent = true;
@@ -532,6 +561,7 @@ class TimeKeepingController extends Controller {
             'overtime_count_weekdays' => $overtime_count_weekdays,
             'overtime_count_weekends' => $overtime_count_weekends,
             'absences' => $absences,
+            'leave_days' => $leave_days,
             'base_salary' => $base_salary,
             'rate_per_day' => $rate_per_day,
             'rate_per_hour' => $rate_per_hour,

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\DB;
+
 use App\Models\Employees;
 use App\Http\Requests\StoreEmployeesRequest;
 use App\Http\Requests\UpdateEmployeesRequest;
@@ -339,7 +341,18 @@ class EmployeesController extends Controller
         }
 
         $oldData = $employee->toArray();
+        $oldStatus = $employee->employee_status;
         $employee->update($data);
+        // If status changed, record in status history
+        if (isset($data['employee_status']) && $data['employee_status'] !== $oldStatus) {
+            DB::table('employee_status_histories')->insert([
+                'employee_id' => $employee->id,
+                'status' => $data['employee_status'],
+                'effective_date' => date('Y-m-d'),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         // Update per-day work times if provided
         $workDays = $request['work_days'] ?? [];
