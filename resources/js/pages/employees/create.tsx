@@ -60,13 +60,13 @@ export default function Create(props: Props) {
 
     // Sync roles field with checkboxes and custom 'Others' role input
     useEffect(() => {
-        let rolesArr = data.roles ? data.roles.split(',').map(r => r.trim()).filter(r => r) : [];
-        rolesArr = rolesArr.filter(r => r !== 'college instructor' && r !== 'basic education instructor' && r !== 'others' && r !== othersRole);
-        if (isCollegeInstructorChecked) rolesArr.push('college instructor');
-        if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
-        // Always send the custom 'Others' input as the role if checked
-        if (isOthersChecked && othersRole.trim()) rolesArr.push(othersRole.trim());
-        setData('roles', rolesArr.join(','));
+    // Build rolesArr only from checked roles and custom 'Others' role if checked
+    const rolesArr = [];
+    if (data.roles.split(',').includes('administrator')) rolesArr.push('administrator');
+    if (isCollegeInstructorChecked) rolesArr.push('college instructor');
+    if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
+    if (isOthersChecked && othersRole.trim()) rolesArr.push(othersRole.trim().toLowerCase());
+    setData('roles', rolesArr.join(','));
     }, [isCollegeInstructorChecked, isBasicEduInstructorChecked, isOthersChecked, othersRole]);
     const { search, filters, page, salaryDefaults } = props;
     // Add state for showing/hiding Salary Loan input
@@ -165,7 +165,7 @@ export default function Create(props: Props) {
 
     // manual contribution mode
     const [collegeProgram, setCollegeProgram] = useState('');
-    const collegeDeptRef = useRef<HTMLDivElement>(null);
+    // const collegeDeptRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (manualContribMode) return; // Suspend auto-calc in manual mode
         const baseSalaryNum = Number(data.base_salary.replace(/,/g, '')) || 0;
@@ -191,15 +191,17 @@ export default function Create(props: Props) {
         const hasCollege = rolesArr.includes('college instructor');
         const hasBasicEdu = rolesArr.includes('basic education instructor');
         const hasOthers = isOthersChecked;
-        // Only clear base_salary if the ONLY role is the custom others role (and nothing else)
-        if (hasOthers && rolesArr.length >= 0) {
+
+        // If Others is checked and base_salary is empty, keep it cleared
+        if (hasOthers && data.base_salary === '') {
             setData('base_salary', '');
-        } else if (hasOthers && rolesArr.length > 1 && data.base_salary === '') {
-            // If others is present but not the only role, and base_salary is currently cleared, restore it to default
+        } else if (!hasOthers && data.base_salary === '') {
+            // If Others is unchecked and base_salary is empty, restore default
             if (salaryDefaults[data.employee_type]?.base_salary !== undefined) {
                 setData('base_salary', salaryDefaults[data.employee_type].base_salary.toString());
             }
         }
+
         // Clear contributions if any of the three roles are selected
         if (hasCollege || hasBasicEdu || hasOthers) {
             setData(data => ({
@@ -677,7 +679,10 @@ export default function Create(props: Props) {
                                                 {(() => {
                                                     const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
                                                     const isCollege = rolesArr.includes('college instructor');
-                                                    const showBoth = isCollege && rolesArr.length > 1;
+                                                    // Only count other roles that are actually checked (not just custom role value)
+                                                    const validRoles = ['administrator', 'basic education instructor'];
+                                                    const checkedOtherRoles = rolesArr.filter(r => validRoles.includes(r));
+                                                    const showBoth = isCollege && (checkedOtherRoles.length > 0 || isOthersChecked);
                                                     if (showBoth) {
                                                         return <>
                                                             <Label htmlFor="base_salary">Base Salary</Label>
