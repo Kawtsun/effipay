@@ -15,14 +15,6 @@ import BiometricTimeRecordTemplate from './print-templates/BiometricTimeRecordTe
 import { AnimatePresence, motion } from 'framer-motion';
 import { Printer, FileText } from 'lucide-react';
 import { MonthPicker } from './ui/month-picker';
-interface Employee {
-    id: number;
-    first_name: string;
-    middle_name: string;
-    last_name: string;
-    roles?: string;
-    work_hours_per_day?: number;
-}
 
 interface Payroll {
     payroll_date: string;
@@ -103,10 +95,13 @@ interface BTRRecord {
     timeOut: string;
 }
 
+import { Employees } from '@/types';
+
+// Updated to use Employees type instead of local Employee interface
 interface PrintDialogProps {
   open: boolean;
   onClose: () => void;
-  employee: Employee;
+  employee: Employees | null;
 }
 
 // Toggle for auto-download vs. view in new tab
@@ -163,8 +158,12 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
 };
 
 export default function PrintDialog({ open, onClose, employee }: PrintDialogProps) {
+    if (!employee) {
+        return null;
+    }
+    
     const [selectedMonth, setSelectedMonth] = useState<string>('');
-    const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, selectedMonth);
+    const { summary: timekeepingSummary } = useEmployeePayroll(employee.id, selectedMonth);
     const [btrRecords, setBtrRecords] = useState<BTRRecord[]>([]);
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [payrollData, setPayrollData] = useState<PayslipData | null>(null);

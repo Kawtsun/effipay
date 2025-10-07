@@ -45,7 +45,11 @@ class ReportsController extends Controller
             $query->where('college_program', $request->collegeProgram);
         }
 
-        $employees = $query->with('workDays')->paginate(10)->withQueryString();
+        // Get perPage from request, prioritizing 'perPage' then 'per_page', defaulting to 10
+        $perPage = $request->input('perPage') ?? $request->input('per_page', 10);
+        $perPage = max(1, min(100, (int) $perPage)); // Ensure it's between 1 and 100
+        
+        $employees = $query->with('workDays')->paginate($perPage)->withQueryString();
         $month = $request->input('month'); // Optionally filter by month
         $employeesArray = array_map(function ($emp) use ($month) {
             // Fetch payroll for this employee and month (if month provided)
@@ -105,6 +109,7 @@ class ReportsController extends Controller
             'currentPage' => $employees->currentPage(),
             'totalPages'  => $employees->lastPage(),
             'search'      => $request->input('search', ''),
+            'perPage'     => $perPage,
             'filters'     => [
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),

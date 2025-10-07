@@ -20,6 +20,7 @@ interface Props {
   search: string
   filters: { category?: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string }
   page: number
+  perPage?: number
   onDeleted?: () => void
 }
 
@@ -30,13 +31,13 @@ const EmployeeDelete: FC<Props> = ({
   search,
   filters,
   page,
+  perPage,
   onDeleted,
 }) => {
   const form = useForm()
 
   function confirmDelete() {
     if (!employee) return
-
 
     form.delete(
       route('employees.destroy', {
@@ -48,13 +49,20 @@ const EmployeeDelete: FC<Props> = ({
         roles: Array.isArray(filters.roles) ? filters.roles : filters.roles ? [filters.roles] : [],
         collegeProgram: filters.collegeProgram,
         page,
+        perPage,
+        per_page: perPage,
       }),
       {
         preserveScroll: true,
         onSuccess: () => {
           setOpen(false)
           onDeleted?.()
-          window?.Inertia?.router?.reload?.({ only: ['employeeClassifications'] })
+          // Optional client reload of specific props if available
+          // @ts-expect-error Inertia injected on window in some setups
+          if (typeof window !== 'undefined' && window.Inertia?.router?.reload) {
+            // @ts-expect-error see above
+            window.Inertia.router.reload({ only: ['employeeClassifications'] })
+          }
         },
       }
     )
@@ -67,7 +75,7 @@ const EmployeeDelete: FC<Props> = ({
           <AlertDialogTitle>Confirm delete?</AlertDialogTitle>
           <AlertDialogDescription>
             Permanently delete{" "}
-            <strong>{employee?.employee_name}</strong> (ID: {employee?.id})?
+            <strong>{employee ? `${(employee.last_name || '').replace(/\b\w/g, c => c.toUpperCase())}, ${(employee.first_name || '').replace(/\b\w/g, c => c.toUpperCase())}, ${(employee.middle_name || '').replace(/\b\w/g, c => c.toUpperCase())}` : ''}</strong> (ID: {employee?.id})?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -13,6 +13,7 @@ use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class EmployeesController extends Controller
 {
@@ -55,7 +56,10 @@ class EmployeesController extends Controller
         }
 
 
-        $employees = $query->with('workDays')->paginate(10)->withQueryString();
+        // Resolve page size from request (supports both perPage and per_page)
+        $perPage = (int) ($request->input('perPage', $request->input('per_page', 10)));
+        if ($perPage <= 0) { $perPage = 10; }
+        $employees = $query->with('workDays')->paginate($perPage)->withQueryString();
 
         // Ensure all required fields are present for each employee, including work_days
         $employeesArray = array_map(function ($emp) {
@@ -101,6 +105,7 @@ class EmployeesController extends Controller
             'employees'   => $employeesArray,
             'currentPage' => $employees->currentPage(),
             'totalPages'  => $employees->lastPage(),
+            'perPage'     => $perPage,
             'search'      => $request->input('search', ''),
             'filters'     => [
                 'types'    => (array) $request->input('types', []),
@@ -121,6 +126,7 @@ class EmployeesController extends Controller
         $statuses = (array) $request->input('statuses', []);
         $roles    = (array) $request->input('roles', []);
         $page     = $request->input('page', 1);
+        $perPage  = (int) $request->input('perPage', $request->input('per_page', 10));
 
         $employeeTypes = ['Full Time', 'Part Time', 'Provisionary', 'Regular'];
         $salaryDefaults = \App\Models\Salary::whereIn('employee_type', $employeeTypes)
@@ -142,6 +148,7 @@ class EmployeesController extends Controller
             'search'          => $search,
             'filters'         => ['types' => $types, 'statuses' => $statuses, 'roles' => $roles],
             'page'            => $page,
+            'perPage'         => $perPage,
             'employeeTypes'   => $employeeTypes,
             'salaryDefaults'  => $salaryDefaults,
             'employee'        => [
@@ -372,14 +379,26 @@ class EmployeesController extends Controller
 
     // Only record leave status in history if under leave limit
     if (isset($data['employee_status']) && $data['employee_status'] !== $oldStatus) {
-        // Define which statuses count as leave
-        $leaveStatuses = ['on leave', 'sick leave', 'vacation leave']; // Add more as needed
-        if (in_array($data['employee_status'], $leaveStatuses)) {
-            $leaveCount = DB::table('employee_status_histories')
-                ->where('employee_id', $employee->id)
-                ->whereIn('status', $leaveStatuses)
-                ->count();
-            if ($leaveCount < self::LEAVE_LIMIT) {
+        if (Schema::hasTable('employee_status_histories')) {
+            // Define which statuses count as leave
+            $leaveStatuses = ['on leave', 'sick leave', 'vacation leave']; // Add more as needed
+            if (in_array($data['employee_status'], $leaveStatuses)) {
+                $leaveCount = DB::table('employee_status_histories')
+                    ->where('employee_id', $employee->id)
+                    ->whereIn('status', $leaveStatuses)
+                    ->count();
+                if ($leaveCount < self::LEAVE_LIMIT) {
+                    DB::table('employee_status_histories')->insert([
+                        'employee_id' => $employee->id,
+                        'status' => $data['employee_status'],
+                        'effective_date' => date('Y-m-d'),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+                // else: do not record, limit reached
+            } else {
+                // Not a leave status, always record
                 DB::table('employee_status_histories')->insert([
                     'employee_id' => $employee->id,
                     'status' => $data['employee_status'],
@@ -388,16 +407,6 @@ class EmployeesController extends Controller
                     'updated_at' => now(),
                 ]);
             }
-            // else: do not record, limit reached
-        } else {
-            // Not a leave status, always record
-            DB::table('employee_status_histories')->insert([
-                'employee_id' => $employee->id,
-                'status' => $data['employee_status'],
-                'effective_date' => date('Y-m-d'),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
         }
     }
 
@@ -442,7 +451,7 @@ class EmployeesController extends Controller
             if ($query) {
                 parse_str($query, $params);
                 // In store and update, always preserve all filters, and ensure roles is always an array if present
-                foreach (['search', 'types', 'statuses', 'roles', 'collegeProgram', 'page'] as $key) {
+                foreach (['search', 'types', 'statuses', 'roles', 'collegeProgram', 'page', 'perPage', 'per_page'] as $key) {
                     if (isset($params[$key])) {
                         if ($key === 'roles') {
                             $redirectParams[$key] = (array)$params[$key];
@@ -485,6 +494,7 @@ class EmployeesController extends Controller
                 'roles' => array_values((array) ($request['roles'] ?? [])),
                 'collegeProgram' => $request['collegeProgram'] ?? '',
                 'page' => $request['page'] ?? 1,
+                'perPage' => $request['perPage'] ?? $request['per_page'] ?? 10,
             ])
             ->with('success', 'Employee deleted successfully!');
     }
