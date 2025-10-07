@@ -229,16 +229,22 @@ export default function Edit({
         return rolesArr.some(r => !['administrator', 'college instructor', 'basic education instructor'].includes(r) && r !== '');
     })();
     // Track manual mode for contributions
-    const [manualContribMode, setManualContribMode] = useState(isCollegeInstructor || isBasicEduInstructor || isCustomRole);
+    const [manualContribMode, setManualContribMode] = useState(
+        (isCollegeInstructor || isBasicEduInstructor || isCustomRole) || (employee.employee_type && employee.employee_type.toLowerCase() === 'retired')
+    );
 
-    // Watch for role changes to toggle manual/auto mode
+    // Watch for role or employee_type changes to toggle manual/auto mode
     useEffect(() => {
         const rolesArr = data.roles.split(',').map(r => r.trim());
         const isNowCollegeInstructor = rolesArr.includes('college instructor');
         const isNowBasicEduInstructor = rolesArr.includes('basic education instructor');
         const isNowCustomRole = rolesArr.some(r => !['administrator', 'college instructor', 'basic education instructor'].includes(r) && r !== '');
-        setManualContribMode(isNowCollegeInstructor || isNowBasicEduInstructor || isNowCustomRole);
-    }, [data.roles]);
+        if (data.employee_type && data.employee_type.toLowerCase() === 'retired') {
+            setManualContribMode(true);
+        } else {
+            setManualContribMode(isNowCollegeInstructor || isNowBasicEduInstructor || isNowCustomRole);
+        }
+    }, [data.roles, data.employee_type]);
 
     const [collegeProgram, setCollegeProgram] = useState(employee.college_program || '');
     const [collegeProgramError, setCollegeProgramError] = useState('');
@@ -311,7 +317,9 @@ export default function Edit({
         const isCollege = rolesArr.includes('college instructor');
         const isBasicEdu = rolesArr.includes('basic education instructor');
         const isOthers = isOthersChecked
-        if (!(isCollege || isBasicEdu || isOthers)) {
+        // Only enforce min/max if NOT retired
+        const isRetired = data.employee_type && data.employee_type.toLowerCase() === 'retired';
+        if (!(isCollege || isBasicEdu || isOthers) && !isRetired) {
             if (sssValue < 0) {
                 toast.error('The SSS field must be at least 0.');
                 return;
@@ -803,7 +811,7 @@ export default function Edit({
                                                         type="text"
                                                         inputMode="numeric"
                                                         pattern="[0-9.,]*"
-                                                        required={data.roles.split(',').includes('administrator')}
+                                                        required={data.employee_type && data.employee_type.toLowerCase() === 'retired' ? false : data.roles.split(',').includes('administrator')}
                                                         placeholder="SSS"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         min={(data.roles.split(',').includes('college instructor') || data.roles.split(',').includes('basic education instructor') || (othersRole && data.roles.split(',').includes('others'))) ? undefined : 0}
@@ -833,7 +841,7 @@ export default function Edit({
                                                             type="text"
                                                             inputMode="numeric"
                                                             pattern="[0-9.,]*"
-                                                            required={data.roles.split(',').includes('administrator')}
+                                                            required={data.employee_type && data.employee_type.toLowerCase() === 'retired' ? false : data.roles.split(',').includes('administrator')}
                                                             placeholder="PhilHealth"
                                                             className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                             style={{ lineHeight: '1.5rem' }}
@@ -876,7 +884,7 @@ export default function Edit({
                                                 <Label htmlFor="pag-ibig">Pag-IBIG</Label>
                                                 <div className='relative'>
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" required={data.roles.split(',').includes('administrator')} placeholder="Pag-IBIG" className="pl-8" min={data.roles.split(',').includes('administrator') ? 200 : undefined} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw === '' ? '' : raw); }} />
+                                                    <Input id="pag-ibig" type="text" inputMode="decimal" pattern="^[0-9,]+(\.[0-9]{1,2})?$" required={data.employee_type && data.employee_type.toLowerCase() === 'retired' ? false : data.roles.split(',').includes('administrator')} placeholder="Pag-IBIG" className="pl-8" min={data.roles.split(',').includes('administrator') ? 200 : undefined} value={formatWithCommas(data.pag_ibig ?? '')} onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setData('pag_ibig', raw === '' ? '' : raw); }} />
                                                 </div>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Lightbulb width={18} height={18} color="var(--primary)" fill="var(--primary)" />
@@ -890,7 +898,7 @@ export default function Edit({
                                                     <Input
                                                         id="withholding_tax"
                                                         type="text"
-                                                        required={data.roles.split(',').includes('administrator')}
+                                                        required={data.employee_type && data.employee_type.toLowerCase() === 'retired' ? false : data.roles.split(',').includes('administrator')}
                                                         placeholder="Withholding Tax"
                                                         className={manualContribMode ? "pl-8" : "pl-8 bg-gray-50 cursor-not-allowed text-gray-700 leading-normal align-middle"}
                                                         inputMode="decimal"
