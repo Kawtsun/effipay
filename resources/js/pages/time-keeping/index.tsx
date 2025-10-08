@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string };
+type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string; othersRole?: string };
 const MIN_SPINNER_MS = 400;
 import EmployeeFilter from '@/components/employee-filter';
 import Encoding from 'encoding-japanese';
@@ -201,12 +201,14 @@ export default function TimeKeeping() {
         totalPages = 1,
         search: initialSearch = '',
         filters: initialFiltersRaw = { types: [], statuses: [], roles: [] },
+        othersRoles: initialOthersRoles = [],
     } = page.props as {
         employees?: Employees[];
         currentPage?: number;
         totalPages?: number;
         search?: string;
         filters?: FilterState;
+        othersRoles?: Array<{ value: string; label: string }>;
     };
 
     const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [] };
@@ -226,7 +228,7 @@ export default function TimeKeeping() {
     const spinnerStart = useRef<number>(0);
 
     // Visit helper
-    const visit = useCallback((params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
+    const visit = useCallback((params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
         spinnerStart.current = Date.now();
         setLoading(true);
         router.visit(route('time-keeping.index'), {
@@ -259,7 +261,7 @@ export default function TimeKeeping() {
     }, [visit, appliedFilters, pageSize]);
 
     // Filter apply
-    const handleFilterChange = useCallback((newFilters: FilterState) => {
+    const handleFilterChange = useCallback((newFilters: FilterState & { othersRole?: string }) => {
         setFilters(newFilters);
         setAppliedFilters(newFilters);
         visit({
@@ -269,6 +271,7 @@ export default function TimeKeeping() {
             statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
             roles: newFilters.roles.length ? newFilters.roles : undefined,
             collegeProgram: newFilters.collegeProgram || undefined,
+            othersRole: newFilters.othersRole || undefined,
             perPage: pageSize,
             per_page: pageSize,
         }, { preserve: true });
@@ -276,7 +279,7 @@ export default function TimeKeeping() {
 
     // Reset filters
     const resetFilters = useCallback(() => {
-        const empty = { types: [], statuses: [], roles: [], collegeProgram: '' };
+        const empty = { types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' };
         setFilters(empty);
         setAppliedFilters(empty);
         visit({ search: searchTerm || undefined, page: 1, perPage: pageSize, per_page: pageSize }, { preserve: true });
@@ -339,6 +342,8 @@ export default function TimeKeeping() {
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
                                 collegeProgram={filters.collegeProgram}
+                                othersRole={filters.othersRole}
+                                othersRoles={Array.isArray(initialOthersRoles) ? initialOthersRoles : []}
                                 onChange={newFilters => handleFilterChange({ ...filters, ...newFilters })}
                             />
                             <Button variant="secondary" type="button" onClick={() => setCalendarOpen(true)}>

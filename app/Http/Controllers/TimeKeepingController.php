@@ -165,6 +165,34 @@ class TimeKeepingController extends Controller {
             $query->where('college_program', $request->collegeProgram);
         }
 
+        // Filter by others role if set
+        if ($request->filled('othersRole')) {
+            $query->where('roles', 'like', '%' . $request->othersRole . '%');
+        }
+
+        // Get available custom roles (others roles)
+        $standardRoles = ['administrator', 'college instructor', 'basic education instructor'];
+        $othersRoles = [];
+        
+        // Get all unique roles from employees
+        $allRoles = \App\Models\Employees::pluck('roles')->filter()->map(function ($roles) {
+            return explode(',', $roles);
+        })->flatten()->map(function ($role) {
+            return trim($role);
+        })->filter()->unique()->values();
+        
+        // Filter out standard roles to get custom roles
+        $customRoles = $allRoles->filter(function ($role) use ($standardRoles) {
+            return !in_array(strtolower($role), $standardRoles);
+        })->map(function ($role) {
+            return [
+                'value' => $role,
+                'label' => ucwords($role)
+            ];
+        })->values()->toArray();
+        
+        $othersRoles = $customRoles;
+
         // Support perPage/per_page like EmployeesController
         $perPage = (int) ($request->input('perPage', $request->input('per_page', 10)));
         if ($perPage <= 0) { $perPage = 10; }
@@ -347,11 +375,13 @@ class TimeKeepingController extends Controller {
             'totalPages'  => $employees->lastPage(),
             'search'      => $request->input('search', ''),
             'perPage'     => $perPage,
+            'othersRoles' => $othersRoles,
             'filters'     => [
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
                 'roles'    => array_values((array) $request->input('roles', [])),
                 'collegeProgram' => $request->input('collegeProgram', ''),
+                'othersRole' => $request->input('othersRole', ''),
             ],
         ]);
     }

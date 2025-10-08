@@ -17,7 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 export default function ReportsIndex() {
     const page = usePage();
     // --- State and constants ---
-    type FilterState = { types: string[]; statuses: string[]; roles: string[] };
+    type FilterState = { types: string[]; statuses: string[]; roles: string[]; othersRole?: string };
     const MIN_SPINNER_MS = 400;
     const COLLEGE_PROGRAMS = [
         { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
@@ -44,36 +44,41 @@ export default function ReportsIndex() {
         currentPage = 1,
         totalPages = 1,
         search: initialSearch = '',
-        filters: initialFiltersRaw = { types: [], statuses: [], roles: [], collegeProgram: '' },
+        filters: initialFiltersRaw = { types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' },
+        othersRoles: initialOthersRoles = [],
     } = page.props as unknown as {
         employees: Employees[];
         currentPage: number;
         totalPages: number;
         search: string;
-        filters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram: string };
+        filters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string };
+        othersRoles?: Array<{ value: string; label: string }>;
     };
-    const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [], collegeProgram: '' };
+    const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' };
     const [viewing, setViewing] = useState(null as Employees | null);
     const [printDialog, setPrintDialog] = useState<{ open: boolean, employee: Employees | null }>({ open: false, employee: null });
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [printAllDialogOpen, setPrintAllDialogOpen] = useState(false);
     const [pageSize, setPageSize] = useState<number>(10)
     const toArray = (val: unknown) => Array.isArray(val) ? val : val ? [val] : [];
-    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string }>({
+    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+        othersRole: typeof initialFilters.othersRole !== 'undefined' ? initialFilters.othersRole : '',
     });
-    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string }>({
+    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+        othersRole: typeof initialFilters.othersRole !== 'undefined' ? initialFilters.othersRole : '',
     });
     const [loading, setLoading] = useState(false);
     const spinnerStart = useRef<number>(0);
     const hasFilters = Array.isArray(appliedFilters.types) && appliedFilters.types.length > 0
         || Array.isArray(appliedFilters.statuses) && appliedFilters.statuses.length > 0
-        || Array.isArray(appliedFilters.roles) && appliedFilters.roles.length > 0;
+        || Array.isArray(appliedFilters.roles) && appliedFilters.roles.length > 0
+        || (appliedFilters.othersRole && appliedFilters.othersRole.length > 0);
     // Toast/flash logic
     const flash = (page.props as unknown as { flash?: string | { type?: string; message?: string } }).flash;
     useEffect(() => {
@@ -97,7 +102,7 @@ export default function ReportsIndex() {
     // Show toast on success (optional, currently not used)
 
     // Visit helper
-    const visit = useCallback((params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
+    const visit = useCallback((params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
         spinnerStart.current = Date.now()
         setLoading(true)
 
@@ -138,7 +143,7 @@ export default function ReportsIndex() {
 
     // Filter apply
     const handleFilterChange = useCallback(
-        (newFilters: FilterState & { collegeProgram?: string }) => {
+        (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
             setFilters(newFilters)
             setAppliedFilters(newFilters)
             visit(
@@ -149,6 +154,7 @@ export default function ReportsIndex() {
                     statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
                     roles: newFilters.roles.length ? newFilters.roles : undefined,
                     collegeProgram: newFilters.collegeProgram || undefined,
+                    othersRole: newFilters.othersRole || undefined,
                     perPage: pageSize,
                     per_page: pageSize,
                 },
@@ -160,7 +166,7 @@ export default function ReportsIndex() {
 
     // Reset filters
     const resetFilters = useCallback(() => {
-        const empty = { types: [], statuses: [], roles: [] };
+        const empty = { types: [], statuses: [], roles: [], othersRole: '' };
         setFilters(empty);
         setAppliedFilters(empty);
         visit({ search: searchTerm || undefined, page: 1, perPage: pageSize, per_page: pageSize }, { preserve: true });
@@ -235,6 +241,8 @@ export default function ReportsIndex() {
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
                                 collegeProgram={filters.collegeProgram}
+                                othersRole={filters.othersRole}
+                                othersRoles={Array.isArray(initialOthersRoles) ? initialOthersRoles : []}
                                 onChange={newFilters => handleFilterChange({ ...filters, ...newFilters })}
                             />
                             <Button variant="default" onClick={() => setPrintAllDialogOpen(true)}>

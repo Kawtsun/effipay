@@ -24,10 +24,11 @@ interface EmployeesProps {
     totalPages: number
     perPage?: number
     search?: string
-    filters: { types: string[]; statuses: string[] }
+    filters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string }
+    othersRoles?: Array<{ value: string; label: string }>
 }
 
-type FilterState = { types: string[]; statuses: string[]; roles: string[] }
+type FilterState = { types: string[]; statuses: string[]; roles: string[]; othersRole?: string }
 
 const MIN_SPINNER_MS = 400
 const PAGE_SIZE_STORAGE_KEY = 'employees.table.pageSize'
@@ -58,7 +59,7 @@ export default function Index({
     totalPages,
     search: initialSearch = '',
     filters: initialFilters,
-}: EmployeesProps & { filters: FilterState & { collegeProgram?: string } }) {
+}: EmployeesProps & { filters: FilterState & { collegeProgram?: string; othersRole?: string } }) {
     const { props } = usePage<PageProps>()
     const [open, setOpen] = useState(false)
     const [sel, setSel] = useState<Employees | null>(null)
@@ -70,15 +71,17 @@ export default function Index({
     // Local state seeded from props
     const [searchTerm, setSearchTerm] = useState(initialSearch)
     const toArray = (val: unknown) => Array.isArray(val) ? val : val ? [val] : [];
-    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string }>({
+    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+        othersRole: typeof initialFilters.othersRole !== 'undefined' ? initialFilters.othersRole : '',
     })
-    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string }>({
+    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+        othersRole: typeof initialFilters.othersRole !== 'undefined' ? initialFilters.othersRole : '',
     })
     const hasFilters = appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0 || appliedFilters.roles.length > 0
 
@@ -105,7 +108,7 @@ export default function Index({
     }, [props.flash]);
 
     // Visit helper
-    const visit = useCallback((params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
+    const visit = useCallback((params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
         spinnerStart.current = Date.now()
         setLoading(true)
 
@@ -146,16 +149,21 @@ export default function Index({
 
     // Filter apply
     const handleFilterChange = useCallback(
-        (newFilters: FilterState & { collegeProgram?: string }) => {
+        (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
             setFilters(newFilters)
             setAppliedFilters(newFilters)
+            // Always treat othersRole as a real role in the roles array
+            let rolesToSend = newFilters.roles.filter(r => r !== 'others');
+            if (newFilters.roles.includes('others') && newFilters.othersRole) {
+                rolesToSend.push(newFilters.othersRole);
+            }
             visit(
                 {
                     search: searchTerm || undefined,
                     page: 1,
                     types: newFilters.types.length ? newFilters.types : undefined,
                     statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
-                    roles: newFilters.roles.length ? newFilters.roles : undefined,
+                    roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: newFilters.collegeProgram || undefined,
                     perPage: pageSize,
                     per_page: pageSize,
@@ -168,7 +176,7 @@ export default function Index({
 
     // Reset filters
     const resetFilters = useCallback(() => {
-        const empty = { types: [], statuses: [], roles: [] };
+        const empty = { types: [], statuses: [], roles: [], othersRole: '' };
         setFilters(empty);
         setAppliedFilters(empty);
         visit({ search: searchTerm || undefined, page: 1, perPage: pageSize, per_page: pageSize }, { preserve: true });
@@ -253,6 +261,8 @@ export default function Index({
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
                                 collegeProgram={filters.collegeProgram}
+                                othersRole={filters.othersRole}
+                                othersRoles={Array.isArray(props.othersRoles) ? props.othersRoles : []}
                                 onChange={newFilters => handleFilterChange({ ...filters, ...newFilters })}
                             />
                             <Link

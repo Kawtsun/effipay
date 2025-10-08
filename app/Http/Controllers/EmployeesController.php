@@ -42,19 +42,55 @@ class EmployeesController extends Controller
             $query->whereIn('employee_status', $request->statuses);
         }
 
+        // Robust comma-separated role matching for all roles (including custom roles)
         if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
-            $query->where(function ($q) use ($request) {
+            $query->where(function($q) use ($request) {
                 foreach ($request->roles as $role) {
-                    $q->orWhere('roles', 'like', '%' . $role . '%');
+                    $q->orWhere('roles', $role)
+                      ->orWhere('roles', 'like', $role . ',%')
+                      ->orWhere('roles', 'like', '%,' . $role . ',%')
+                      ->orWhere('roles', 'like', '%,' . $role);
                 }
             });
         }
 
-        // Filter by college program if set
-        if ($request->filled('collegeProgram')) {
+        // Filter by college program if set (only when college instructor is selected)
+        if ($request->filled('collegeProgram') && 
+            $request->filled('roles') && 
+            is_array($request->roles) && 
+            in_array('college instructor', $request->roles)) {
             $query->where('college_program', $request->collegeProgram);
         }
 
+        // (No separate othersRole filter block; handled by unified roles filter above)
+
+        // Get available custom roles (others roles)
+        $standardRoles = ['administrator', 'college instructor', 'basic education instructor'];
+        $othersRoles = [];
+        
+        // Get all unique roles from employees, robust to spaces/casing, but preserve original for display
+        $allRolesRaw = Employees::pluck('roles')->filter()->map(function ($roles) {
+            return explode(',', $roles);
+        })->flatten()->map(function ($role) {
+            return trim($role);
+        })->filter()->unique()->values();
+
+        $standardRoles = ['administrator', 'college instructor', 'basic education instructor'];
+        // Build a lookup for lowercased/trimmed roles
+        $allRolesLookup = $allRolesRaw->mapWithKeys(function ($role) {
+            return [strtolower($role) => $role];
+        });
+        $customRoles = $allRolesLookup->filter(function ($origRole, $lowerRole) use ($standardRoles) {
+            return !in_array($lowerRole, $standardRoles);
+        })->map(function ($origRole) {
+            return [
+                'value' => $origRole,
+                'label' => ucwords($origRole)
+            ];
+        })->values()->toArray();
+        $othersRoles = $customRoles;
+
+        // ...existing code...
 
         // Resolve page size from request (supports both perPage and per_page)
         $perPage = (int) ($request->input('perPage', $request->input('per_page', 10)));
@@ -101,17 +137,25 @@ class EmployeesController extends Controller
             ];
         }, $employees->items());
 
+        // DEBUG: Log all roles and custom roles extraction (after variables are defined)
+        Log::info('EMPLOYEES_ROLES_DEBUG', [
+            'allRolesRaw' => isset($allRolesRaw) ? $allRolesRaw->toArray() : null,
+            'allRolesLookup' => isset($allRolesLookup) ? $allRolesLookup->toArray() : null,
+            'customRoles' => isset($customRoles) ? $customRoles : null,
+        ]);
         return Inertia::render('employees/index', [
             'employees'   => $employeesArray,
             'currentPage' => $employees->currentPage(),
             'totalPages'  => $employees->lastPage(),
             'perPage'     => $perPage,
             'search'      => $request->input('search', ''),
+            'othersRoles' => $othersRoles,
             'filters'     => [
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
                 'roles'    => array_values((array) $request->input('roles', [])),
                 'collegeProgram' => $request->input('collegeProgram', ''),
+                'othersRole' => $request->input('othersRole', ''),
             ],
         ]);
     }
@@ -207,7 +251,6 @@ class EmployeesController extends Controller
                 }
             }
         }
-
         // Audit log: employee created
         $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
         \App\Models\AuditLogs::create([

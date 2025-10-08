@@ -9,7 +9,8 @@ import { employee_status, leave_statuses } from "./employee-status"
 import { Badge } from "./ui/badge"
 import EmployeeCollegeRadioDepartment from './employee-college-radio-department';
 import CollegeProgramScrollArea from './college-program-scroll-area';
-import EmployeeInstructorRadioRole from './employee-instructor-radio-role';
+import OthersRolesRadio from './others-roles-radio';
+import OthersRolesScrollArea from './others-roles-scroll-area';
 import { AnimatePresence, motion } from 'framer-motion';
 import FilterScrollArea from './filter-scroll-area';
 
@@ -17,14 +18,17 @@ interface FilterState {
   types: string[]
   statuses: string[]
   roles: string[]
-  collegeProgram?: string // NEW
+  collegeProgram?: string
+  othersRole?: string // NEW
 }
 
 interface Props {
   selectedTypes: string[]
   selectedStatuses: string[]
   selectedRoles: string[]
-  collegeProgram?: string // NEW
+  collegeProgram?: string
+  othersRole?: string // NEW
+  othersRoles?: Array<{ value: string; label: string }> // Available others roles
   onChange: (filters: FilterState) => void
 }
 
@@ -40,7 +44,9 @@ export default function EmployeeFilter({
   selectedTypes,
   selectedStatuses,
   selectedRoles,
-  collegeProgram: selectedCollegeProgram = '', // NEW
+  collegeProgram: selectedCollegeProgram = '',
+  othersRole: selectedOthersRole = '', // NEW
+  othersRoles = [], // NEW
   onChange,
 }: Props) {
   const [open, setOpen] = useState(false)
@@ -50,8 +56,10 @@ export default function EmployeeFilter({
   const [statuses, setStatuses] = useState<string[]>(selectedStatuses)
   const [roles, setRoles] = useState<string[]>(selectedRoles)
   const [collegeProgram, setCollegeProgram] = useState<string>(selectedCollegeProgram)
+  const [othersRole, setOthersRole] = useState<string>(selectedOthersRole) // NEW
 
   const collegeDeptRef = useRef<HTMLDivElement>(null);
+  const othersRolesRef = useRef<HTMLDivElement>(null);
 
   // sync draft when parent resets
   useEffect(() => {
@@ -70,6 +78,10 @@ export default function EmployeeFilter({
     setCollegeProgram(selectedCollegeProgram)
   }, [selectedCollegeProgram])
 
+  useEffect(() => {
+    setOthersRole(selectedOthersRole)
+  }, [selectedOthersRole])
+
   // toggle single value in array
   function toggle(arr: string[], val: string): string[] {
     return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
@@ -77,7 +89,7 @@ export default function EmployeeFilter({
 
   // apply and close
   const handleApply = () => {
-    onChange({ types, statuses, roles, collegeProgram })
+    onChange({ types, statuses, roles, collegeProgram, othersRole })
     setOpen(false)
   }
 
@@ -87,7 +99,8 @@ export default function EmployeeFilter({
     setStatuses([])
     setRoles([])
     setCollegeProgram('')
-    onChange({ types: [], statuses: [], roles: [], collegeProgram: '' })
+    setOthersRole('')
+    onChange({ types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' })
     setOpen(false)
   }
   const activeCount = selectedTypes.length + selectedStatuses.length + selectedRoles.length
@@ -160,7 +173,7 @@ export default function EmployeeFilter({
           <div>
             <h4 className="text-sm font-semibold mb-1 select-none">Roles</h4>
             <p className="text-xs text-muted-foreground mb-2 select-none">
-              Filter by administrator or instructor type.
+              Filter by employee roles.
             </p>
             <div className="flex flex-col gap-2">
               <label className="flex items-center gap-2 text-sm select-none">
@@ -180,35 +193,61 @@ export default function EmployeeFilter({
               </label>
               <label className="flex items-center gap-2 text-sm select-none">
                 <Checkbox
-                  checked={roles.some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
-                  onCheckedChange={(checked) => {
-                    const newRoles = roles.filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor');
-                    if (checked) {
-                      setRoles([...newRoles, 'instructor']);
-                    } else {
+                  checked={roles.includes('college instructor')}
+                  onCheckedChange={() => {
+                    const newRoles = roles.filter(r => r !== 'college instructor');
+                    if (roles.includes('college instructor')) {
                       setRoles(newRoles);
+                    } else {
+                      setRoles([...newRoles, 'college instructor']);
                     }
-                  }}
-                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
-                />
-                Instructor
-              </label>
-              <div className="pl-6 mt-1">
-                <EmployeeInstructorRadioRole
-                  value={roles.find(r => r === 'college instructor' || r === 'basic education instructor') || ''}
-                  onChange={val => {
-                    // Remove any instructor and teaching role, add the new teaching role only
-                    const newRoles = roles.filter(r => r !== 'instructor' && r !== 'college instructor' && r !== 'basic education instructor');
-                    setRoles(val ? [val, ...newRoles] : [...newRoles]);
-                    if (val === 'college instructor') {
+                    if (!roles.includes('college instructor')) {
                       setTimeout(() => {
                         collegeDeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }, 100);
                     }
                   }}
-                  disabled={!roles.some(r => r === 'instructor' || r === 'college instructor' || r === 'basic education instructor')}
+                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
                 />
-              </div>
+                College Instructor
+              </label>
+              <label className="flex items-center gap-2 text-sm select-none">
+                <Checkbox
+                  checked={roles.includes('basic education instructor')}
+                  onCheckedChange={() => {
+                    const newRoles = roles.filter(r => r !== 'basic education instructor');
+                    if (roles.includes('basic education instructor')) {
+                      setRoles(newRoles);
+                    } else {
+                      setRoles([...newRoles, 'basic education instructor']);
+                    }
+                  }}
+                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                />
+                Basic Education Instructor
+              </label>
+              <label className="flex items-center gap-2 text-sm select-none">
+                <Checkbox
+                  checked={roles.includes('others')}
+                  onCheckedChange={() => {
+                    const newRoles = roles.filter(r => r !== 'others');
+                    if (roles.includes('others')) {
+                      setRoles(newRoles);
+                      setOthersRole('');
+                    } else {
+                      setRoles([...newRoles, 'others']);
+                    }
+                    if (!roles.includes('others')) {
+                      setTimeout(() => {
+                        othersRolesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 100);
+                    }
+                  }}
+                  className="transition-all duration-200 ease-in-out transform data-[state=checked]:scale-110"
+                />
+                Others
+              </label>
+              
               {/* College program radio group, only show if college instructor is selected */}
               <AnimatePresence>
                 {roles.includes('college instructor') && (
@@ -227,6 +266,33 @@ export default function EmployeeFilter({
                         onChange={setCollegeProgram}
                       />
                     </CollegeProgramScrollArea>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Others roles radio group, only show if others is selected */}
+              <AnimatePresence>
+                {roles.includes('others') && (
+                  <motion.div
+                    ref={othersRolesRef}
+                    initial={{ opacity: 0, y: -20, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    className="pl-4 mt-2"
+                  >
+                    <div className="text-xs font-semibold mb-1">Custom Roles</div>
+                    <OthersRolesScrollArea>
+                      <OthersRolesRadio
+                        value={othersRole}
+                        onChange={(val) => {
+                          setOthersRole(val);
+                          // Don't add the specific role to roles array - just set othersRole
+                          // The "others" role in roles array handles the base filtering
+                        }}
+                        roles={othersRoles}
+                      />
+                    </OthersRolesScrollArea>
                   </motion.div>
                 )}
               </AnimatePresence>
