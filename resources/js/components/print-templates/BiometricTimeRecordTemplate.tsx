@@ -146,7 +146,6 @@ interface TimeRecord {
   time_out?: string | null;
   clock_in?: string | null;
   clock_out?: string | null;
-  leave_type?: string | null;
 }
 
 interface TableProps {
@@ -186,7 +185,6 @@ const TimekeepingTable: React.FC<TableProps> = ({ records, payPeriod }) => {
         <Text style={[styles.tableHeaderCell, styles.tableHeaderCellLeft, styles.dateCell]}>Date</Text>
         <Text style={styles.tableHeaderCell}>Time In</Text>
         <Text style={styles.tableHeaderCell}>Time Out</Text>
-        <Text style={[styles.tableHeaderCell, styles.tableHeaderCellRight]}>Leave Type</Text> {/* <-- Add this */}
       </View>
       {Array.from({ length: daysInMonth }, (_, i) => {
         const day = i + 1;
@@ -199,7 +197,6 @@ const TimekeepingTable: React.FC<TableProps> = ({ records, payPeriod }) => {
             <Text style={[styles.tableCell, styles.dateCell]}>{dateStr}{dayName ? ` (${dayName})` : ''}</Text>
             <Text style={styles.tableCell}>{rec?.timeIn || rec?.clock_in || rec?.time_in || "-"}</Text>
             <Text style={styles.tableCell}>{rec?.timeOut || rec?.clock_out || rec?.time_out || "-"}</Text>
-            <Text style={styles.tableCell}>{rec?.leave_type || "-"}</Text> {/* <-- Add this */}
           </View>
         );
       })}
