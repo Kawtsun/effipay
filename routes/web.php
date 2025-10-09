@@ -47,6 +47,8 @@ Route::middleware('auth')->group(function () {
 
     // API: Get daily biometric records for employee and month
     Route::get('/api/timekeeping/records', [TimeKeepingController::class, 'getEmployeeRecordsForMonth']);
+    // API: Get monthly summary for employee and month (ADD THIS LINE)
+    Route::get('/api/timekeeping/monthlySummary', [TimeKeepingController::class, 'monthlySummary']); 
 
     // Add merged months endpoint for selectors
     Route::get('/payroll/all-available-months', [PayrollController::class, 'getAllAvailableMonths'])->name('payroll.all-available-months');

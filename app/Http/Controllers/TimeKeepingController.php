@@ -556,11 +556,11 @@ class TimeKeepingController extends Controller
                 $query->where('leave_start_day', '<=', $monthEnd)
                     ->where('leave_end_day', '>=', $monthStart);
             })
-            ->get(['leave_start_day', 'leave_end_day']);
+            // ->where('status', 'Approved') // Ensure we only count approved leaves
+            ->get(['leave_start_day', 'leave_end_day', 'status']);
 
-        $leaveDatesSet = []; // This will hold all the individual excused dates
+        $leaveDatesMap = []; // NEW: This will hold date => type mapping
 
-        // 2. Iterate through each leave record to generate the excused dates for the month
         foreach ($approvedLeaves as $leave) {
             $startDate = max($leave->leave_start_day, $monthStart);
             $endDate = min($leave->leave_end_day, $monthEnd);
@@ -571,8 +571,12 @@ class TimeKeepingController extends Controller
                 (new \DateTime($endDate))->modify('+1 day')
             );
 
+            // CHANGE HERE: Access $leave->status, not $leave->leave_type
+            $type = $leave->status ?? 'DEFAULT'; // Use the status, fallback to DEFAULT if null (shouldn't happen)
+
             foreach ($period as $dateObj) {
-                $leaveDatesSet[$dateObj->format('Y-m-d')] = true; // Store for quick lookup
+                // Use the status as the value in the map
+                $leaveDatesMap[$dateObj->format('Y-m-d')] = $type;
             }
         }
         // --- END MODIFIED LEAVE DATE CALCULATION ---
@@ -684,7 +688,7 @@ class TimeKeepingController extends Controller
             'work_hours_per_day_exists' => $workHoursExists,
             'calculated_absences' => round($absences, 2),
             'display_absences_condition_2' => $isAbsencesValidNumber && $workHoursExists,
-            'leave_dates_in_month' => array_keys($leaveDatesSet),
+            'leave_dates_map' => $leaveDatesMap,
         ];
         // --- END DEBUG BLOCK ---
 
