@@ -458,6 +458,17 @@ class EmployeesController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+                        // Inject into leaves table as well
+                        if (Schema::hasTable('leaves')) {
+                            DB::table('leaves')->insert([
+                                'employee_id' => $employee->id,
+                                'status' => $data['employee_status'],
+                                'leave_start_day' => date('Y-m-d'),
+                                'leave_end_day' => null, // Leave end is null until status returns to active
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
                 }
             }
             // If changing from leave to active, record leave end
@@ -472,6 +483,20 @@ class EmployeesController extends Controller
                     DB::table('employee_status_histories')
                         ->where('id', $lastLeave->id)
                         ->update(['leave_end_date' => date('Y-m-d'), 'updated_at' => now()]);
+                        // Also update the latest open leave record in leaves table
+                        if (Schema::hasTable('leaves')) {
+                            $openLeaveRow = DB::table('leaves')
+                                ->where('employee_id', $employee->id)
+                                ->whereIn('status', $leaveStatuses)
+                                ->whereNull('leave_end_day') // Only open leave records
+                                ->orderByDesc('leave_start_day')
+                                ->first();
+                            if ($openLeaveRow) {
+                                DB::table('leaves')
+                                    ->where('id', $openLeaveRow->id)
+                                    ->update(['leave_end_day' => date('Y-m-d'), 'updated_at' => now()]);
+                            }
+                        }
                 }
                 // Do NOT insert a new 'active' row here; only update the leave record
             }
