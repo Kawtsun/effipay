@@ -400,14 +400,12 @@ export default function BTRDialog({ employee, onClose }: Props) {
 
                               {/* === MODIFIED TIME IN COLUMN === */}
                               <td className={`px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold rounded-md ${textClassName}`}>
-                                {/* If it's a paid leave day, display the leave type, otherwise display clock in or '-' */}
-                                {rec?.clock_in || rec?.time_in || (isPaidLeaveDay ? leaveType : "-")}
+                                {rec?.clock_in || rec?.time_in || "-"}
                               </td>
 
                               {/* === MODIFIED TIME OUT COLUMN === */}
                               <td className={`px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold rounded-r-md ${textClassName}`}>
-                                {/* If it's a paid leave day, display the leave type, otherwise display clock out or '-' */}
-                                {rec?.clock_out || rec?.time_out || (isPaidLeaveDay ? leaveType : "-")}
+                                {rec?.clock_out || rec?.time_out || "-"}
                               </td>
                             </tr>
                           );
