@@ -143,26 +143,42 @@ export default function ReportsIndex() {
 
     // Filter apply
     const handleFilterChange = useCallback(
-        (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
-            setFilters(newFilters)
-            setAppliedFilters(newFilters)
-            visit(
-                {
-                    search: searchTerm || undefined,
-                    page: 1,
-                    types: newFilters.types.length ? newFilters.types : undefined,
-                    statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
-                    roles: newFilters.roles.length ? newFilters.roles : undefined,
-                    collegeProgram: newFilters.collegeProgram || undefined,
-                    othersRole: newFilters.othersRole || undefined,
-                    perPage: pageSize,
-                    per_page: pageSize,
-                },
-                { preserve: true }
-            )
-        },
-        [visit, searchTerm, pageSize]
-    )
+    (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
+        // The local `filters` state should immediately reflect the UI controls
+        setFilters(newFilters);
+
+        // Now, construct the filters that will actually be APPLIED and sent to the backend
+        let applied = { ...newFilters };
+        let rolesToSend = [...applied.roles];
+
+        // If 'others' is selected and a specific 'othersRole' is chosen,
+        // we replace 'others' with the specific role for the backend query.
+        if (applied.roles.includes('others') && applied.othersRole) {
+            rolesToSend = rolesToSend.filter(r => r !== 'others');
+            rolesToSend.push(applied.othersRole);
+        }
+
+        // Update the applied filters state. We create a version for the UI display
+        // that keeps the specific role for the badge, but doesn't include 'others'.
+        const appliedForUI = { ...applied, roles: rolesToSend };
+        setAppliedFilters(appliedForUI);
+
+        visit(
+            {
+                search: searchTerm || undefined,
+                page: 1,
+                types: applied.types.length ? applied.types : undefined,
+                statuses: applied.statuses.length ? applied.statuses : undefined,
+                roles: rolesToSend.length ? rolesToSend : undefined,
+                collegeProgram: applied.collegeProgram || undefined,
+                perPage: pageSize,
+                per_page: pageSize,
+            },
+            { preserve: true }
+        );
+    },
+    [visit, searchTerm, pageSize]
+);
 
     // Reset filters
     const resetFilters = useCallback(() => {
@@ -175,14 +191,22 @@ export default function ReportsIndex() {
     // Pagination
     const handlePage = useCallback(
         (page: number) => {
+            let rolesToSend = [...appliedFilters.roles];
+            // Re-apply the same logic for pagination requests
+            if (appliedFilters.roles.includes('others') && appliedFilters.othersRole) {
+                rolesToSend = rolesToSend.filter(r => r !== 'others');
+                rolesToSend.push(appliedFilters.othersRole);
+            }
+
             visit(
                 {
                     search: searchTerm || undefined,
                     page,
                     types: appliedFilters.types.length ? appliedFilters.types : undefined,
                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
-                    roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
+                    roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                    // othersRole is now part of the 'roles' array, no need to send separately
                     perPage: pageSize,
                     per_page: pageSize,
                 },
@@ -264,6 +288,8 @@ export default function ReportsIndex() {
                             {appliedFilters.roles.length ? ' ' + appliedFilters.roles.map(capitalizeWords).join(', ') : ' All Roles'}
                             {appliedFilters.roles.includes('college instructor') && appliedFilters.collegeProgram ?
                                 ` / ${' '}${appliedFilters.collegeProgram} - ${getCollegeProgramLabel(appliedFilters.collegeProgram)}` : ''}
+                            {appliedFilters.roles.includes('others') && appliedFilters.othersRole ?
+                                ` / ${' '}${capitalizeWords(appliedFilters.othersRole)}` : ''}
                         </div>
                     </div>
                 </div>
