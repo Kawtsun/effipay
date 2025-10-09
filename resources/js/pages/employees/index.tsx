@@ -149,38 +149,42 @@ export default function Index({
 
     // Filter apply
     const handleFilterChange = useCallback(
-        (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
-            // Correctly build the roles to send to the backend
-            let finalFilters = { ...newFilters };
-            let rolesToSend = [...finalFilters.roles];
+    (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
+        // The local `filters` state should immediately reflect the UI controls
+        setFilters(newFilters);
 
-            // If 'others' checkbox is ticked
-            if (finalFilters.roles.includes('others') && finalFilters.othersRole) {
-                // If a specific custom role is selected, replace 'others' with the specific role.
-                rolesToSend = rolesToSend.filter(r => r !== 'others');
-                rolesToSend.push(finalFilters.othersRole);
-                // Also update the applied filters to remove the 'others' placeholder for correct UI display
-                finalFilters.roles = rolesToSend;
-            }
-            setFilters(finalFilters);
-            setAppliedFilters(finalFilters);
-            visit(
-                {
-                    search: searchTerm || undefined,
-                    page: 1,
-                    types: newFilters.types.length ? newFilters.types : undefined,
-                    statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
-                    roles: rolesToSend.length ? rolesToSend : undefined, // Use the constructed rolesToSend
-                    collegeProgram: finalFilters.collegeProgram || undefined,
-                    // othersRole is now part of the 'roles' array, no need to send separately
-                    perPage: pageSize,
-                    per_page: pageSize,
-                },
-                { preserve: true }
-            )
-        },
-        [visit, searchTerm, pageSize]
-    )
+        // Now, construct the filters that will actually be APPLIED and sent to the backend
+        let applied = { ...newFilters };
+        let rolesToSend = [...applied.roles];
+
+        // If 'others' is selected and a specific 'othersRole' is chosen,
+        // we replace 'others' with the specific role for the backend query.
+        if (applied.roles.includes('others') && applied.othersRole) {
+            rolesToSend = rolesToSend.filter(r => r !== 'others');
+            rolesToSend.push(applied.othersRole);
+        }
+
+        // Update the applied filters state. We create a version for the UI display
+        // that keeps the specific role for the badge, but doesn't include 'others'.
+        const appliedForUI = { ...applied, roles: rolesToSend };
+        setAppliedFilters(appliedForUI);
+
+        visit(
+            {
+                search: searchTerm || undefined,
+                page: 1,
+                types: applied.types.length ? applied.types : undefined,
+                statuses: applied.statuses.length ? applied.statuses : undefined,
+                roles: rolesToSend.length ? rolesToSend : undefined,
+                collegeProgram: applied.collegeProgram || undefined,
+                perPage: pageSize,
+                per_page: pageSize,
+            },
+            { preserve: true }
+        );
+    },
+    [visit, searchTerm, pageSize]
+);
 
     // Reset filters
     const resetFilters = useCallback(() => {
