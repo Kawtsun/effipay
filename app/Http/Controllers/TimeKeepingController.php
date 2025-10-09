@@ -522,17 +522,30 @@ class TimeKeepingController extends Controller
             if ($tk->clock_out && $employee->work_end_time) {
                 $workEnd = strtotime($employee->work_end_time);
                 $clockOut = strtotime($tk->clock_out);
-                // Only count overtime after exactly 1 hour past work end time
-                if ($clockOut > $workEnd + 3600) {
-                    $overtime_minutes = ($clockOut - ($workEnd + 3600)) / 60;
+
+                // Calculate the total raw difference in seconds between actual clock out and scheduled work end
+                $rawOvertimeSeconds = $clockOut - $workEnd;
+
+                // Check if the total raw overtime time is GREATER THAN OR EQUAL TO 1-hour (3600 seconds).
+                // This is the CRITICAL change: use >= instead of >
+                if ($rawOvertimeSeconds >= 3600) {
+
+                    // NEW LOGIC: If 1 hour or more is reached, count the ENTIRE RAW DIFFERENCE
+                    $overtime_minutes = $rawOvertimeSeconds / 60;
+
                     if ($overtime_minutes > 0) {
                         $overtime_hours = ($overtime_minutes / 60);
                         $dayOfWeek = date('N', strtotime($tk->date));
+
+                        // Overtime Pay Calculation
                         $pay = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
                             ? ($rate_per_hour * 0.25)
                             : ($rate_per_hour * 0.30);
+
                         $overtime_count += $overtime_hours;
                         $overtime_pay_total += $pay * $overtime_hours;
+
+                        // Overtime Weekend/Weekday count
                         if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
                             $overtime_count_weekdays += $overtime_hours;
                         } else {
@@ -540,6 +553,7 @@ class TimeKeepingController extends Controller
                         }
                     }
                 }
+                // If $rawOvertimeSeconds is less than 3600 (59 minutes or less), no overtime is counted.
             }
         }
 
