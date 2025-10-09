@@ -1,12 +1,10 @@
-// resources/js/Pages/salary/index.tsx
-
 import { Head, router, usePage } from '@inertiajs/react'
 import { calculateSSS } from '@/utils/salaryFormulas'
 import AppLayout from '@/layouts/app-layout'
 import { EmployeeType } from '@/components/employee-type'
 import { EmployeeSalaryEdit } from '@/components/employee-salary-edit'
 import { type BreadcrumbItem } from '@/types'
-import { Wallet, Pencil, Calculator, Lightbulb } from 'lucide-react'
+import { Wallet, Pencil, Calculator, Lightbulb, TrendingUp } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -19,6 +17,8 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PayrollDatePicker } from '@/components/ui/payroll-date-picker'
+// Corrected path for the dialog component
+import ThirteenthMonthPayDialog from '@/components/thirtheen-month-pay-dialog'
 
 type Defaults = {
   employee_type: string
@@ -45,6 +45,8 @@ export default function Index() {
   const [type, setType] = useState(selected || types[0])
   const [selectedDate, setSelectedDate] = useState('')
   const [isRunningPayroll, setIsRunningPayroll] = useState(false)
+  // State to control the dialog visibility
+  const [isThirteenthMonthDialogOpen, setIsThirteenthMonthDialogOpen] = useState(false);
 
   useEffect(() => setType(selected || types[0]), [selected, types])
   useEffect(() => {
@@ -58,12 +60,12 @@ export default function Index() {
     } else if (typeof flash === 'object' && flash !== null) {
       // If backend sends { type, message }
       if (flash.type === 'error') {
-          // Show specific toast if missing time keeping data
-          if (flash.message && flash.message.toLowerCase().includes('no time keeping data')) {
-            toast.error('Some employees have no time keeping data. Please check time keeping records before running payroll.');
-          } else {
-            toast.error(flash.message || 'An error occurred');
-          }
+        // Show specific toast if missing time keeping data
+        if (flash.message && flash.message.toLowerCase().includes('no time keeping data')) {
+          toast.error('Some employees have no time keeping data. Please check time keeping records before running payroll.');
+        } else {
+          toast.error(flash.message || 'An error occurred');
+        }
       } else if (flash.type === 'success') {
         toast.success(flash.message || 'Success');
       } else if (flash.message === 'Payroll already run twice for this month.') {
@@ -115,10 +117,6 @@ export default function Index() {
 
   const earningsCards = cards.filter(c => c.isEarning)
   const deductionCards = cards.filter(c => !c.isEarning)
-  // Calculate total compensation
-  // const totalCompensation =
-  //   Number(defaults.base_salary) -
-  //   (Number(calculateSSS(defaults.base_salary)) + Number(defaults.pag_ibig) + Number(defaults.philhealth));
 
   const allTypes = [
     { value: 'Full Time', label: 'Full Time' },
@@ -134,6 +132,7 @@ export default function Index() {
         <div className="py-6 px-8 space-y-6">
           {/* HEADER */}
           <div className="flex items-center justify-between">
+            {/* Left side: Title and Subtitle */}
             <div>
               <h1 className="flex items-center gap-2 text-2xl font-semibold">
                 <Wallet className="w-6 h-6 text-primary" />
@@ -143,7 +142,10 @@ export default function Index() {
                 Set default salary values by employee type and run payroll.
               </p>
             </div>
+
+            {/* Right side: Payroll and 13th Month Buttons */}
             <div className="flex items-center gap-4">
+              {/* Run Payroll Group */}
               <div className="flex items-center gap-2">
                 <PayrollDatePicker
                   value={selectedDate}
@@ -159,21 +161,20 @@ export default function Index() {
                   {isRunningPayroll ? 'Running...' : 'Run Payroll'}
                 </Button>
               </div>
-              
+
+              {/* 13th Month Button */}
+              <Button
+                onClick={() => setIsThirteenthMonthDialogOpen(true)}
+                variant="secondary"
+                className="flex items-center gap-2 transition-transform duration-150 hover:scale-[1.03]"
+              >
+                <TrendingUp className="w-4 h-4" />
+                13th Month Pay
+              </Button>
+
             </div>
           </div>
           <EmployeeType value={type} onChange={onTypeChange} types={allTypes} />
-
-          {/* Total Compensation Box */}
-          {/* <div className="mb-8">
-            <label className="block text-sm font-medium mb-2">Total Compensation</label>
-            <input
-              type="text"
-              value={`₱${totalCompensation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              readOnly
-              className="w-64 px-3 py-2 border rounded bg-gray-900 text-green-500 font-bold text-xl"
-            />
-          </div> */}
 
           {/* EARNINGS */}
           <section>
@@ -271,6 +272,11 @@ export default function Index() {
           </section>
         </div>
       </AppLayout>
+      {/* DIALOG COMPONENT INTEGRATION */}
+      <ThirteenthMonthPayDialog
+        isOpen={isThirteenthMonthDialogOpen}
+        onClose={() => setIsThirteenthMonthDialogOpen(false)}
+      />
     </>
   )
 }

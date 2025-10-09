@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Carbon\Carbon;
 use Inertia\Inertia;
 
 class PayrollController extends Controller
@@ -17,18 +18,14 @@ class PayrollController extends Controller
      * Run payroll for a given date (placeholder implementation)
      */
     public function runPayroll(Request $request)
-                // ...existing code...
-            // ...existing code...
-            // Debug: Output all fetched summary data (after summary is fetched)
     {
         $request->validate([
             'payroll_date' => 'required|date',
         ]);
 
         // Extract the month (YYYY-MM) from the selected payroll date
-        $payrollMonth = date('Y-m', strtotime($request->payroll_date));
-
-
+        $payrollDate = Carbon::parse($request->payroll_date);
+        $payrollMonth = $payrollDate->format('Y-m');
 
         // Get all employees
         $employees = \App\Models\Employees::all();
@@ -58,11 +55,16 @@ class PayrollController extends Controller
             }
 
             // Fetch timekeeping summary for this employee and month
-            $summary = app(\App\Http\Controllers\TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
+            // NOTE: We only fetch the summary for the CURRENT month for deductions, not for 13th month calculation.
+            $summary = app(TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
                 'employee_id' => $employee->id,
                 'month' => $payrollMonth
             ]));
             $summaryData = $summary->getData(true);
+            
+            // --- 13TH MONTH PAY CALCULATION START ---
+            $thirteenth_month_pay = $this->calculate13thMonthPay($employee, $payrollDate);
+            // --- 13TH MONTH PAY CALCULATION END ---
 
             // Check if employee is a College Instructor (case-insensitive, substring match)
             $isCollegeInstructor = false;
@@ -163,31 +165,27 @@ class PayrollController extends Controller
                 $tuition = !is_null($employee->tuition) ? $employee->tuition : 0;
                 $china_bank = !is_null($employee->china_bank) ? $employee->china_bank : 0;
                 $tea = !is_null($employee->tea) ? $employee->tea : 0;
-                $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
+                // Note: Honorarium defined above based on role logic
+                
                 $salary_loan = !is_null($employee->salary_loan) ? $employee->salary_loan : 0;
                 $calamity_loan = !is_null($employee->calamity_loan) ? $employee->calamity_loan : 0;
                 $multipurpose_loan = !is_null($employee->multipurpose_loan) ? $employee->multipurpose_loan : 0;
 
+                // Adjust Gross Pay to include 13th Month Pay (if given mid-month, it's one of the two payrolls)
+                $gross_pay_adjusted = $gross_pay + $thirteenth_month_pay;
+
                 $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax
                     + $sss_salary_loan + $sss_calamity_loan + $pagibig_multi_loan + $pagibig_calamity_loan
-                    + $peraa_con + $tuition + $china_bank + $tea + $honorarium
+                    + $peraa_con + $tuition + $china_bank + $tea; // Honorarium is an earning, not deduction
                     + $salary_loan + $calamity_loan + $multipurpose_loan;
-                $net_pay = $gross_pay - $total_deductions;
+                $net_pay = $gross_pay_adjusted - $total_deductions;
+                
                 \Illuminate\Support\Facades\Log::info([
                     'employee_id' => $employee->id,
-                    'sss_salary_loan' => $sss_salary_loan,
-                    'sss_calamity_loan' => $sss_calamity_loan,
-                    'pagibig_multi_loan' => $pagibig_multi_loan,
-                    'pagibig_calamity_loan' => $pagibig_calamity_loan,
-                    'peraa_con' => $peraa_con,
-                    'tuition' => $tuition,
-                    'china_bank' => $china_bank,
-                    'tea' => $tea,
-                    'honorarium' => $honorarium,
-                    'salary_loan' => $salary_loan,
-                    'calamity_loan' => $calamity_loan,
-                    'multipurpose_loan' => $multipurpose_loan,
+                    'thirteenth_month_pay' => $thirteenth_month_pay,
+                    // ... (rest of loan/deduction logging)
                 ]);
+                
                 $payrollData = [
                     'employee_id' => $employee->id,
                     'month' => $payrollMonth,
@@ -195,11 +193,12 @@ class PayrollController extends Controller
                     'base_salary' => $base_salary,
                     'college_rate' => isset($college_rate) ? $college_rate : null,
                     'honorarium' => $honorarium,
+                    'thirteenth_month_pay' => $thirteenth_month_pay, // ADDED 13th MONTH PAY
                     'overtime' => $overtime_hours,
                     'tardiness' => $tardiness,
                     'undertime' => $undertime,
                     'absences' => $absences,
-                    'gross_pay' => $gross_pay,
+                    'gross_pay' => $gross_pay_adjusted, // Use adjusted gross pay
                     'sss' => $sss,
                     'philhealth' => $philhealth,
                     'pag_ibig' => $pag_ibig,
@@ -218,6 +217,7 @@ class PayrollController extends Controller
                     'total_deductions' => $total_deductions,
                     'net_pay' => $net_pay,
                 ];
+                
                 \Illuminate\Support\Facades\Log::info('[Payroll Debug] Payroll::create array', $payrollData);
                 \App\Models\Payroll::create($payrollData);
                 $createdCount++;
@@ -228,6 +228,59 @@ class PayrollController extends Controller
         } else {
             return redirect()->back()->with('flash', 'Payroll already run twice for this month.');
         }
+    }
+
+    /**
+     * Calculates the prorated 13th Month Pay based on the formula: 
+     * (Sum of Adjusted Monthly Basic Salaries) / 12.
+     * The Adjusted Monthly Basic Salary = Base Salary - (Lates + Absences).
+     *
+     * @param \App\Models\Employees $employee
+     * @param \Carbon\Carbon $payrollDate The date of the current payroll run.
+     * @return float
+     */
+    private function calculate13thMonthPay(Employees $employee, Carbon $payrollDate): float
+    {
+        // 13th month is calculated from Jan 1 up to the current month being processed.
+        $currentYear = $payrollDate->year;
+        $monthCount = $payrollDate->month;
+        $totalAdjustedBasicSalary = 0.0;
+        
+        // We iterate from January (month 1) up to the current month index.
+        for ($month = 1; $month <= $monthCount; $month++) {
+            $monthString = $currentYear . '-' . str_pad($month, 2, '0', STR_PAD_LEFT);
+
+            // Fetch monthly summary for lates and absences up to the end of the previous month.
+            // NOTE: We rely on the TimeKeepingController's monthlySummary to provide the TARDINESS and ABSENCES 
+            // for the FULL MONTH, even if the payroll date is mid-month.
+            $summary = app(TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
+                'employee_id' => $employee->id,
+                'month' => $monthString
+            ]));
+            $summaryData = $summary->getData(true);
+            
+            // Get monetary values for deductions for this specific month
+            $late_deduction = $summaryData['late_deduction'] ?? 0.0;
+            $absence_deduction = $summaryData['absence_deduction'] ?? 0.0;
+            
+            // Use employee's current monthly base salary (which is assumed constant for the year)
+            $monthlyBaseSalary = !is_null($employee->base_salary) ? $employee->base_salary : 0.0;
+            
+            // Apply the formula: (base_salary - (late + absence))
+            $adjustedMonthlyBasicSalary = $monthlyBaseSalary - ($late_deduction + $absence_deduction);
+            
+            // Ensure the result is non-negative
+            $totalAdjustedBasicSalary += max(0, $adjustedMonthlyBasicSalary);
+        }
+        
+        // Calculate the 13th Month Pay: (Total Adjusted Basic Salary Earned) / 12
+        if ($totalAdjustedBasicSalary <= 0) {
+            return 0.0;
+        }
+        
+        $thirteenthMonthPay = round($totalAdjustedBasicSalary / 12, 2);
+        
+        return $thirteenthMonthPay;
     }
     /**
      * Get all unique months from both Payroll and TimeKeeping, sorted descending.
