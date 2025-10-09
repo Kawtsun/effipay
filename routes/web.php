@@ -9,6 +9,7 @@ use App\Http\Controllers\SalaryController;
 use App\Http\Controllers\TimeKeepingController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\LeaveReportController;
 use Inertia\Inertia;
 
 
@@ -54,6 +55,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
 
+    // Leave
+    Route::get('/leave-report', [LeaveReportController::class, 'index'])->name('leave.report');
 
     // Observances API
     Route::get('/observances', [ObservanceController::class, 'index']);
