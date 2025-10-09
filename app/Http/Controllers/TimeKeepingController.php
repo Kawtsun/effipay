@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 
-class TimeKeepingController extends Controller {
+class TimeKeepingController extends Controller
+{
 
     /**
      * Get daily biometric records for an employee and month (for BTRDialog)
@@ -133,7 +134,7 @@ class TimeKeepingController extends Controller {
         $query = \App\Models\Employees::query();
 
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('last_name', 'like', '%' . $request->search . '%')
                     ->orWhere('first_name', 'like', '%' . $request->search . '%')
                     ->orWhere('middle_name', 'like', '%' . $request->search . '%');
@@ -148,13 +149,28 @@ class TimeKeepingController extends Controller {
             $query->whereIn('employee_status', $request->statuses);
         }
 
+        $standardRoles = ['administrator', 'college instructor', 'basic education instructor'];
+
         if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
-            $query->where(function($q) use ($request) {
-                foreach ($request->roles as $role) {
+            $query->where(function ($q) use ($request, $standardRoles) {
+                $rolesToFilter = $request->roles;
+
+                // If 'others' is in the filter, it means "any role that is not a standard one".
+                if (in_array('others', $rolesToFilter)) {
+                    $rolesToFilter = array_diff($rolesToFilter, ['others']); // Remove 'others' from specific checks
+                    $q->orWhere(function ($subQuery) use ($standardRoles) {
+                        // This subquery should find employees where the roles string does NOT contain ANY of the standard roles.
+                        foreach ($standardRoles as $stdRole) {
+                            $subQuery->where('roles', 'not like', '%' . $stdRole . '%');
+                        }
+                    });
+                }
+
+                foreach ($rolesToFilter as $role) {
                     $q->orWhere('roles', $role)
-                      ->orWhere('roles', 'like', $role . ',%')
-                      ->orWhere('roles', 'like', '%,' . $role . ',%')
-                      ->orWhere('roles', 'like', '%,' . $role);
+                        ->orWhere('roles', 'like', $role . ',%')
+                        ->orWhere('roles', 'like', '%,' . $role . ',%')
+                        ->orWhere('roles', 'like', '%,' . $role);
                 }
             });
         }
@@ -171,14 +187,14 @@ class TimeKeepingController extends Controller {
         // Get available custom roles (others roles)
         $standardRoles = ['administrator', 'college instructor', 'basic education instructor'];
         $othersRoles = [];
-        
+
         // Get all unique roles from employees
         $allRoles = \App\Models\Employees::pluck('roles')->filter()->map(function ($roles) {
             return explode(',', $roles);
         })->flatten()->map(function ($role) {
             return trim($role);
         })->filter()->unique()->values();
-        
+
         // Filter out standard roles to get custom roles
         $customRoles = $allRoles->filter(function ($role) use ($standardRoles) {
             return !in_array(strtolower($role), $standardRoles);
@@ -188,17 +204,19 @@ class TimeKeepingController extends Controller {
                 'label' => ucwords($role)
             ];
         })->values()->toArray();
-        
+
         $othersRoles = $customRoles;
 
         // Support perPage/per_page like EmployeesController
         $perPage = (int) ($request->input('perPage', $request->input('per_page', 10)));
-        if ($perPage <= 0) { $perPage = 10; }
+        if ($perPage <= 0) {
+            $perPage = 10;
+        }
         $employees = $query->with('workDays')->paginate($perPage)->withQueryString();
 
         $employeesArray = array_map(function ($emp) {
             // Overtime pay calculation function (matches frontend)
-            $calculateOvertimePay = function($date, $ratePerHour) {
+            $calculateOvertimePay = function ($date, $ratePerHour) {
                 $dayOfWeek = date('w', strtotime($date)); // 0 (Sun) - 6 (Sat)
                 if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
                     return round($ratePerHour * 0.25, 2);
@@ -235,7 +253,7 @@ class TimeKeepingController extends Controller {
             // Absences: check all workdays, exclude leave days, count as absent if no clock-in/out and not a leave day
             $absent_days = 0;
             // Get all workdays for this employee (assuming Mon-Fri, or use $emp->workDays if available)
-            $workDays = $emp->workDays && count($emp->workDays) ? $emp->workDays->pluck('day')->toArray() : [1,2,3,4,5]; // 1=Mon, 7=Sun
+            $workDays = $emp->workDays && count($emp->workDays) ? $emp->workDays->pluck('day')->toArray() : [1, 2, 3, 4, 5]; // 1=Mon, 7=Sun
             // Get the full date range from the earliest to latest timekeeping record
             $allDates = $records->pluck('date')->unique()->toArray();
             if (count($allDates) > 0) {
@@ -253,7 +271,7 @@ class TimeKeepingController extends Controller {
                     ->whereIn('status', $leaveStatuses)
                     ->whereNotNull('leave_start_date')
                     ->get(['leave_start_date', 'leave_end_date']);
-                $isInLeaveInterval = function($date) use ($leaveIntervals) {
+                $isInLeaveInterval = function ($date) use ($leaveIntervals) {
                     foreach ($leaveIntervals as $interval) {
                         $start = $interval->leave_start_date;
                         $end = $interval->leave_end_date;
@@ -268,8 +286,12 @@ class TimeKeepingController extends Controller {
                     if (!in_array($dayOfWeek, $workDays)) continue; // skip if not a workday
                     if ($isInLeaveInterval($date)) continue; // skip if in leave interval
                     $dayRecords = $records->where('date', $date);
-                    $hasClockIn = $dayRecords->contains(function ($tk) { return !empty($tk->clock_in); });
-                    $hasClockOut = $dayRecords->contains(function ($tk) { return !empty($tk->clock_out); });
+                    $hasClockIn = $dayRecords->contains(function ($tk) {
+                        return !empty($tk->clock_in);
+                    });
+                    $hasClockOut = $dayRecords->contains(function ($tk) {
+                        return !empty($tk->clock_out);
+                    });
                     if (!$hasClockIn && !$hasClockOut) {
                         $absent_days++;
                     }
@@ -277,17 +299,17 @@ class TimeKeepingController extends Controller {
             }
             $absences = 0;
             if (!empty($emp->work_hours_per_day)) {
-                        // Calculate work hours per day from start/end, minus 1 hour for break
-                        if (!empty($emp->work_start_time) && !empty($emp->work_end_time)) {
-                            $start = strtotime($emp->work_start_time);
-                            $end = strtotime($emp->work_end_time);
-                            $workMinutes = $end - $start;
-                            if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
-                            $workHours = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
-                        } else {
-                            $workHours = floatval($emp->work_hours_per_day);
-                        }
-                        $absences = round($absent_days * $workHours, 2); // decimal hours
+                // Calculate work hours per day from start/end, minus 1 hour for break
+                if (!empty($emp->work_start_time) && !empty($emp->work_end_time)) {
+                    $start = strtotime($emp->work_start_time);
+                    $end = strtotime($emp->work_end_time);
+                    $workMinutes = $end - $start;
+                    if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
+                    $workHours = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
+                } else {
+                    $workHours = floatval($emp->work_hours_per_day);
+                }
+                $absences = round($absent_days * $workHours, 2); // decimal hours
             } else {
                 $absences = $absent_days; // fallback to days if no schedule
             }
@@ -356,7 +378,7 @@ class TimeKeepingController extends Controller {
                 'absences' => $absences,
                 'rate_per_day' => $rate_per_day,
                 'rate_per_hour' => $rate_per_hour,
-                'work_days' => $emp->workDays ? $emp->workDays->map(function($wd) {
+                'work_days' => $emp->workDays ? $emp->workDays->map(function ($wd) {
                     return [
                         'id' => $wd->id,
                         'day' => $wd->day,
@@ -529,10 +551,10 @@ class TimeKeepingController extends Controller {
         // We are skipping the 'status' filter as the column does not yet exist.
         // All found leaves are currently treated as excused/approved for absence calculation.
         $approvedLeaves = \App\Models\Leave::where('employee_id', $employeeId)
-            ->where(function($query) use ($monthStart, $monthEnd) {
+            ->where(function ($query) use ($monthStart, $monthEnd) {
                 // Ensure the leave period overlaps the month
                 $query->where('leave_start_day', '<=', $monthEnd)
-                      ->where('leave_end_day', '>=', $monthStart);
+                    ->where('leave_end_day', '>=', $monthStart);
             })
             ->get(['leave_start_day', 'leave_end_day']);
 
@@ -563,7 +585,7 @@ class TimeKeepingController extends Controller {
         $observanceSet = array_flip($observanceDates); // for fast lookup
 
         // FIX: Define daysInMonth for the loop to work
-        $daysInMonth = (int)date('t', strtotime($monthStart)); 
+        $daysInMonth = (int)date('t', strtotime($monthStart));
 
         // Get employee's workDays schedule as associative array: key=day ('mon', 'tue', etc.), value=workDay model
         $workDaysModels = $employee->workDays ? $employee->workDays->keyBy(function ($wd) {
@@ -589,7 +611,7 @@ class TimeKeepingController extends Controller {
 
             // Skip if date is an existing leave day (assuming approved since no status column)
             if (isset($leaveDatesSet[$date])) {
-                continue; 
+                continue;
             }
 
             $tk = $records->where('date', $date);
@@ -623,7 +645,7 @@ class TimeKeepingController extends Controller {
             }
         }
         $absences = $absent_hours;
-        
+
         $hasData = $records->count() > 0;
         // Calculate total_hours for all roles: sum of actual hours worked from time in/out (only on scheduled work days, minus 1 hour break per day if worked at least 4 hours)
         $actualHoursWorked = 0;
@@ -650,11 +672,11 @@ class TimeKeepingController extends Controller {
                 $actualHoursWorked += max(0, $hours);
             }
         }
-        
+
         // --- DEBUG BLOCK ---
         $isAbsencesValidNumber = is_numeric($absences);
         $workHoursExists = !empty($employee->work_hours_per_day);
-        
+
         $debug = [
             'has_timekeeping_records' => $hasData,
             'is_absences_numeric' => $isAbsencesValidNumber,
@@ -683,12 +705,12 @@ class TimeKeepingController extends Controller {
             'payroll_net_pay' => $payroll ? $payroll->net_pay : null,
             'total_hours' => round($actualHoursWorked, 2),
             // Including work_hours_per_day for front-end conditional logic
-            'work_hours_per_day' => $employee->work_hours_per_day, 
-            
+            'work_hours_per_day' => $employee->work_hours_per_day,
+
             // DEBUG DATA
             '_debug' => $debug,
         ];
-        
+
         // If College Instructor, add college_rate
         if ($employee && is_string($employee->roles) && stripos($employee->roles, 'college instructor') !== false) {
             $response['college_rate'] = $employee->college_rate ?? null;

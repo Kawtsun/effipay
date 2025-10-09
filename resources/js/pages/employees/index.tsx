@@ -150,23 +150,20 @@ export default function Index({
     // Filter apply
     const handleFilterChange = useCallback(
         (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
-            setFilters(newFilters)
-            setAppliedFilters(newFilters)
- 
             // Correctly build the roles to send to the backend
-            let rolesToSend = newFilters.roles.filter(r => r !== 'others'); // Start with non-'others' roles
- 
+            let finalFilters = { ...newFilters };
+            let rolesToSend = [...finalFilters.roles];
+
             // If 'others' checkbox is ticked
-            if (newFilters.roles.includes('others')) { 
-                if (newFilters.othersRole) { 
-                    // If a specific custom role is selected, add it to the filter.
-                    rolesToSend.push(newFilters.othersRole);
-                } else {
-                    // If just 'others' is checked, add the placeholder back.
-                    // The backend will interpret this to mean "any custom role".
-                    rolesToSend.push('others');
-                }
+            if (finalFilters.roles.includes('others') && finalFilters.othersRole) {
+                // If a specific custom role is selected, replace 'others' with the specific role.
+                rolesToSend = rolesToSend.filter(r => r !== 'others');
+                rolesToSend.push(finalFilters.othersRole);
+                // Also update the applied filters to remove the 'others' placeholder for correct UI display
+                finalFilters.roles = rolesToSend;
             }
+            setFilters(finalFilters);
+            setAppliedFilters(finalFilters);
             visit(
                 {
                     search: searchTerm || undefined,
@@ -174,7 +171,7 @@ export default function Index({
                     types: newFilters.types.length ? newFilters.types : undefined,
                     statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
                     roles: rolesToSend.length ? rolesToSend : undefined, // Use the constructed rolesToSend
-                    collegeProgram: newFilters.collegeProgram || undefined,
+                    collegeProgram: finalFilters.collegeProgram || undefined,
                     // othersRole is now part of the 'roles' array, no need to send separately
                     perPage: pageSize,
                     per_page: pageSize,
@@ -196,13 +193,20 @@ export default function Index({
     // Pagination
     const handlePage = useCallback(
         (page: number) => {
+            let rolesToSend = [...appliedFilters.roles];
+            // Re-apply the same logic for pagination requests
+            if (appliedFilters.roles.includes('others') && appliedFilters.othersRole) {
+                rolesToSend = rolesToSend.filter(r => r !== 'others');
+                rolesToSend.push(appliedFilters.othersRole);
+            }
+
             visit(
                 {
                     search: searchTerm || undefined,
                     page,
                     types: appliedFilters.types.length ? appliedFilters.types : undefined,
                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
-                    roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
+                    roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
                     // othersRole is now part of the 'roles' array, no need to send separately
                     perPage: pageSize,

@@ -53,6 +53,8 @@ class EmployeesController extends Controller
                 if (in_array('others', $rolesToFilter)) {
                     $rolesToFilter = array_diff($rolesToFilter, ['others']); // Remove 'others' from specific checks
                     $q->orWhere(function($subQuery) use ($standardRoles) {
+                        // This subquery should find employees where the roles string does NOT contain ANY of the standard roles.
+                        // The AND logic here is correct.
                         foreach ($standardRoles as $stdRole) {
                             $subQuery->where('roles', 'not like', '%' . $stdRole . '%');
                         }
