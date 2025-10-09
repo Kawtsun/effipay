@@ -109,6 +109,14 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
         onChange(value.map((d, i) => i === selectedIndex ? { ...d, [field]: time } : d));
     };
 
+    const formatTime12Hour = (time: string) => {
+        if (!time) return '';
+        const [h, m] = time.split(':').map(Number);
+        const period = h >= 12 ? 'PM' : 'AM';
+        const hour12 = h % 12 === 0 ? 12 : h % 12;
+        return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
+    };
+
     return (
         <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 mb-2">
@@ -237,22 +245,73 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
                                                 const endMinutes = endHour * 60 + endMinute;
                                                 let actualWorkMinutes = endMinutes - startMinutes;
                                                 if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+                                                // --- NEW DEFINITIVE BREAK LOGIC (Overlap and Cap) ---
+                                                const totalScheduledMinutes = actualWorkMinutes; // Rename for clarity
+
+                                                // FIXED BREAK WINDOW
+                                                const fixedBreakStartMinutes = 12 * 60; // 720 minutes (12:00 PM)
+                                                const fixedBreakEndMinutes = 13 * 60;   // 780 minutes (1:00 PM)
+                                                const mandatedDeduction = 60;          // 1 hour
+
+                                                // --- STEP 1: Calculate Overlap (Non-Work Time) ---
+                                                // This calculates the duration the employee is actually scheduled *during* the fixed 12 PM - 1 PM window.
+                                                const overlapStartMinutes = Math.max(startMinutes, fixedBreakStartMinutes);
+                                                const overlapEndMinutes = Math.min(endMinutes, fixedBreakEndMinutes);
+                                                const overlapMinutes = Math.max(0, overlapEndMinutes - overlapStartMinutes); // This time is never counted as work.
+
+                                                // --- STEP 2: Determine Final Deduction Amount (The Break Rule) ---
+                                                let finalDeductionMinutes;
+                                                let messageMinutes; // The minutes to show in the span message
+
+                                                if (endMinutes > fixedBreakEndMinutes) {
+                                                    // Rule Triggered: Full 1-hour break is mandated for net hours calculation.
+                                                    finalDeductionMinutes = mandatedDeduction;
+                                                    messageMinutes = mandatedDeduction; // Report 1 hour deduction in the message
+                                                } else {
+                                                    // Rule Not Triggered: Deduction equals the scheduled overlap.
+                                                    finalDeductionMinutes = overlapMinutes;
+                                                    messageMinutes = overlapMinutes; // Report the exact overlap time in the message
+                                                }
+
+                                                // --- STEP 3: Calculate Net Working Minutes (Payroll) ---
+                                                const totalMinutes = Math.max(0, totalScheduledMinutes - finalDeductionMinutes);
+
+                                                // --- Step 4: Prepare Reactive Output Strings (Using messageMinutes) ---
                                                 const hours = Math.floor(totalMinutes / 60);
                                                 const minutes = totalMinutes % 60;
                                                 const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
-                                                // Format time to 12-hour
-                                                const formatTime12Hour = (time: string) => {
-                                                    if (!time) return '';
-                                                    const [h, m] = time.split(':').map(Number);
-                                                    const period = h >= 12 ? 'PM' : 'AM';
-                                                    const hour12 = h % 12 === 0 ? 12 : h % 12;
-                                                    return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
-                                                };
+
+                                                const breakHours = Math.floor(messageMinutes / 60);
+                                                const breakMins = messageMinutes % 60;
+
+                                                // Build the readable time string (e.g., "1 hour" or "45 minutes")
+                                                let deductionAmount = '';
+                                                const hPart = breakHours > 0 ? `${breakHours} hour${breakHours > 1 ? 's' : ''}` : '';
+                                                const mPart = breakMins > 0 ? `${breakMins} minute${breakMins > 1 ? 's' : ''}` : '';
+                                                const separator = hPart && mPart ? ' and ' : '';
+                                                deductionAmount = `${hPart}${separator}${mPart}`;
+
+                                                // --- UPDATED SPAN MESSAGE GENERATION LOGIC ---
+                                                let breakText;
+
+                                                if (messageMinutes === 0) {
+                                                    breakText = 'No break time deduction.';
+                                                }
+                                                // Condition 1: If the reported time is less than 60 minutes (1-59 min), it's overlap.
+                                                else if (messageMinutes < mandatedDeduction) {
+                                                    breakText = `Your schedule is overlapping with the break time for ${deductionAmount}.`;
+                                                }
+                                                // Condition 2: If the reported time is 60 minutes or more (the full mandate).
+                                                else {
+                                                    // This handles 60 minutes, 1 hour 15 minutes, etc. (though 60 min is the practical max here).
+                                                    breakText = `A mandatory break of ${deductionAmount} is deducted from your total work hours.`;
+                                                }
+
                                                 return (
                                                     <>
-                                                        📅 Schedule: {formatTime12Hour(currentDay.work_start_time)} - {formatTime12Hour(currentDay.work_end_time)} ({durationText})<br />
-                                                        <span className="text-xs text-blue-600 dark:text-blue-400">*Break time is included. 1 hour is subtracted from total work hours.</span>
+                                                        📅 Schedule: {formatTime12Hour(currentDay.work_start_time)} - {formatTime12Hour(currentDay.work_end_time)} (Total Work Hours: {durationText})<br />
+                                                        Break Time: 12:00PM - 1:00PM<br />
+                                                        <span className="text-xs text-blue-600 dark:text-blue-400">*{breakText}</span>
                                                     </>
                                                 );
                                             })()}

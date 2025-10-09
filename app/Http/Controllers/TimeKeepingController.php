@@ -652,9 +652,27 @@ class TimeKeepingController extends Controller
             if (!empty($workDay->work_start_time) && !empty($workDay->work_end_time)) {
                 $start = strtotime($workDay->work_start_time);
                 $end = strtotime($workDay->work_end_time);
-                $workMinutes = $end - $start;
-                if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
-                $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
+                $totalScheduledSeconds = $end - $start;
+                if ($totalScheduledSeconds <= 0) $totalScheduledSeconds += 24 * 60 * 60;
+
+                // Define the fixed break end time and deduction duration
+                $fixedBreakEnd = strtotime('13:00:00'); // 1:00:00 PM
+                $breakDurationSeconds = 3600;             // 1 hour
+
+                // Check 1: Did the scheduled shift end strictly LATER THAN 1:00 PM?
+                // Note the change from >= to >
+                $shiftEndsAfterBreak = ($end > $fixedBreakEnd);
+
+                if ($shiftEndsAfterBreak) {
+                    // If yes, deduct the fixed 1 hour.
+                    $finalDeductionSeconds = $breakDurationSeconds;
+                } else {
+                    // If no (it ended at 1:00 PM or earlier), deduct nothing.
+                    $finalDeductionSeconds = 0;
+                }
+
+                $actualWorkSeconds = $totalScheduledSeconds - $finalDeductionSeconds;
+                $workHoursPerDay = max(0, round($actualWorkSeconds / 3600, 2));
             }
 
             if ($tk->count() === 0 || $allAbsent) {
@@ -685,8 +703,25 @@ class TimeKeepingController extends Controller
                 $worked = $out - $in;
                 if ($worked < 0) $worked += 24 * 60 * 60;
                 $hours = $worked / 3600;
-                // Subtract 1 hour break if worked at least 4 hours
-                if ($hours >= 4) $hours -= 1;
+
+                // Define the fixed break end time and deduction duration
+                $fixedBreakEnd = strtotime('13:00:00'); // 1:00:00 PM
+                $breakDurationSeconds = 3600;             // 1 hour
+
+                // Check 1: Did the actual clock-out end strictly LATER THAN 1:00 PM?
+                // Note the change from >= to >
+                $actualShiftEndsAfterBreak = ($out > $fixedBreakEnd);
+
+                if ($actualShiftEndsAfterBreak) {
+                    // If yes, deduct the fixed 1 hour.
+                    $finalDeductionSeconds = $breakDurationSeconds;
+                } else {
+                    // If no, deduct nothing.
+                    $finalDeductionSeconds = 0;
+                }
+
+                $workedSeconds = $worked - $finalDeductionSeconds;
+                $hours = $workedSeconds / 3600;
                 $actualHoursWorked += max(0, $hours);
             }
         }

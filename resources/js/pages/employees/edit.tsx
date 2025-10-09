@@ -107,8 +107,8 @@ export default function Edit({
     const initialWorkDays: WorkDayTime[] = Array.isArray(employee.work_days)
         ? employee.work_days.map((wd: any) => ({
             ...wd,
-            work_start_time: wd.work_start_time?.slice(0,5) || '',
-            work_end_time: wd.work_end_time?.slice(0,5) || '',
+            work_start_time: wd.work_start_time?.slice(0, 5) || '',
+            work_end_time: wd.work_end_time?.slice(0, 5) || '',
         }))
         : [];
 
@@ -149,7 +149,7 @@ export default function Edit({
         base_salary: employee.base_salary !== null && employee.base_salary !== undefined ? employee.base_salary.toString() : '',
         rate_per_hour: employee.college_rate !== null && employee.college_rate !== undefined ? employee.college_rate.toString() : '',
         sss: employee.sss !== null && employee.sss !== undefined ? employee.sss.toString() : '',
-    philhealth: employee.philhealth !== null && employee.philhealth !== undefined ? employee.philhealth.toString() : '',
+        philhealth: employee.philhealth !== null && employee.philhealth !== undefined ? employee.philhealth.toString() : '',
         pag_ibig: employee.pag_ibig !== null && employee.pag_ibig !== undefined ? employee.pag_ibig.toString() : '',
         withholding_tax: employee.withholding_tax !== null && employee.withholding_tax !== undefined ? employee.withholding_tax.toString() : '',
         work_hours_per_day: employee.work_hours_per_day !== null && employee.work_hours_per_day !== undefined ? employee.work_hours_per_day.toString() : '',
@@ -164,8 +164,8 @@ export default function Edit({
         tuition: employee.tuition !== null && employee.tuition !== undefined ? employee.tuition.toString() : '',
         china_bank: employee.china_bank !== null && employee.china_bank !== undefined ? employee.china_bank.toString() : '',
         tea: employee.tea !== null && employee.tea !== undefined ? employee.tea.toString() : '',
-    honorarium: employee.honorarium !== null && employee.honorarium !== undefined ? employee.honorarium.toString() : '',
-    work_days: initialWorkDays,
+        honorarium: employee.honorarium !== null && employee.honorarium !== undefined ? employee.honorarium.toString() : '',
+        work_days: initialWorkDays,
     });
 
     // For WorkDaysSelector navigation (must be after all hooks)
@@ -345,16 +345,41 @@ export default function Edit({
         // Derive work hours from start/end time instead of blocking submission
         const startTime = trimToHM(data.work_start_time);
         const endTime = trimToHM(data.work_end_time);
-        let workHours = Number(data.work_hours_per_day) || 8;
+        let workHours = Number(data.work_hours_per_day) || 8; // workHours is declared with 'let' here
+
         if (startTime && endTime) {
             const [startHour, startMinute] = startTime.split(':').map(Number);
             const [endHour, endMinute] = endTime.split(':').map(Number);
+
+            // Convert to total minutes since midnight
             const startMinutes = startHour * 60 + startMinute;
             const endMinutes = endHour * 60 + endMinute;
-            let actualWorkMinutes = endMinutes - startMinutes;
-            if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-            workHours = Math.max(1, Math.round(actualWorkMinutes / 60) - 1); // Subtract 1 hour for break
+
+            let totalScheduledMinutes = endMinutes - startMinutes;
+            if (totalScheduledMinutes <= 0) totalScheduledMinutes += 24 * 60; // Handle overnight
+
+            // FIXED BREAK LOGIC
+            const fixedBreakStartMinutes = 12 * 60; // 720 minutes (12:00 PM)
+            const fixedBreakEndMinutes = 13 * 60; // 780 minutes (1:00 PM)
+
+            // Calculate the START of the OVERLAP: The later of the shift start or the break start
+            const overlapStartMinutes = Math.max(startMinutes, fixedBreakStartMinutes);
+
+            // Calculate the END of the OVERLAP: The earlier of the shift end or the break end
+            const overlapEndMinutes = Math.min(endMinutes, fixedBreakEndMinutes);
+
+            // Calculate the duration of the overlap (in minutes).
+            const breakDeductionMinutes = Math.max(0, overlapEndMinutes - overlapStartMinutes);
+
+            // Subtract the calculated overlap duration from the total scheduled minutes
+            let actualWorkMinutes = totalScheduledMinutes - breakDeductionMinutes;
+
+            const actualWorkHours = Math.max(1, Math.round(actualWorkMinutes / 60)); // Convert to hours
+
+            // <--- THIS IS THE MISSING ASSIGNMENT --->
+            workHours = actualWorkHours;
         }
+
 
         const employee_name = `${data.last_name}, ${data.first_name}, ${data.middle_name}`;
         const cleanedData = {
@@ -488,12 +513,34 @@ export default function Edit({
             const endMinutes = endHour * 60 + endMinute;
 
             // Handle overnight shifts (end time is next day)
-            let actualWorkMinutes = endMinutes - startMinutes;
-            if (actualWorkMinutes <= 0) {
-                actualWorkMinutes += 24 * 60; // Add 24 hours
+            let totalScheduledMinutes = endMinutes - startMinutes;
+            if (totalScheduledMinutes <= 0) {
+                totalScheduledMinutes += 24 * 60; // Add 24 hours
             }
 
-            const actualWorkHours = Math.max(1, Math.round(actualWorkMinutes / 60) - 1); // Subtract 1 hour for break
+            // FIXED BREAK LOGIC
+            const fixedBreakStartMinutes = 12 * 60; // 720 minutes (12:00 PM)
+            const fixedBreakEndMinutes = 13 * 60; // 780 minutes (1:00 PM)
+            const breakDurationMinutes = 60; // 1 hour
+
+            // 1. Calculate the raw overlap
+            const overlapStartMinutes = Math.max(startMinutes, fixedBreakStartMinutes);
+            const overlapEndMinutes = Math.min(endMinutes, fixedBreakEndMinutes);
+            const rawDeductionMinutes = Math.max(0, overlapEndMinutes - overlapStartMinutes);
+
+            let finalDeductionMinutes = rawDeductionMinutes;
+
+            // 2. Apply the final rule: If the shift fully covers the break (ends at or after 1 PM), force 1 hour deduction.
+            if (endMinutes >= fixedBreakEndMinutes) {
+                finalDeductionMinutes = breakDurationMinutes; // Force 1 hour
+            }
+            // If no, it uses rawDeductionMinutes (0 or 45 min)
+
+            // 3. Subtract the final deduction
+            let actualWorkMinutes = totalScheduledMinutes - finalDeductionMinutes;
+
+            const actualWorkHours = Math.max(1, Math.round(actualWorkMinutes / 60)); // Convert to hours
+            // --- END NEW FIXED BREAK LOGIC ---
 
             // Only update if the calculated hours are reasonable (1-24 hours)
             if (actualWorkHours >= 1 && actualWorkHours <= 24) {
