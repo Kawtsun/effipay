@@ -214,68 +214,64 @@ export default function Create(props: Props) {
     }, [data.base_salary, data.pag_ibig, data.sss, data.philhealth, data.withholding_tax, setData, manualContribMode]);
 
     useEffect(() => {
-        setData('college_program', collegeProgram);
+    setData('college_program', collegeProgram);
 
-        const rolesArr = data.roles.split(',').map(r => r.trim());
-        const hasCollege = rolesArr.includes('college instructor');
-        const hasBasicEdu = rolesArr.includes('basic education instructor');
-        const hasAdmin = rolesArr.includes('administrator'); // Use isAdmin here
-        const hasOthers = isOthersChecked;
+    const rolesArr = data.roles.split(',').map(r => r.trim());
+    const hasCollege = rolesArr.includes('college instructor');
+    const hasBasicEdu = rolesArr.includes('basic education instructor');
+    const hasAdmin = rolesArr.includes('administrator');
+    const hasOthers = isOthersChecked;
 
-        // Determine if Base Salary should be treated as optional and thus, forced blank
-        const shouldBeOptional = hasOthers && !hasCollege && !hasBasicEdu && !hasAdmin;
+    // Determine if Base Salary should be treated as optional
+    const shouldBeOptional = hasOthers && !hasCollege && !hasBasicEdu && !hasAdmin;
+    setIsBaseSalaryOptional(shouldBeOptional);
 
-        // Control the new state flag:
-        setIsBaseSalaryOptional(shouldBeOptional); // <--- NEW LOGIC
-
-        // CRUCIAL MODIFICATION: Force data.base_salary to clear if the field becomes optional.
-        if (shouldBeOptional && data.base_salary !== '') {
-            setData('base_salary', '');
+    // Force data.base_salary to clear if the field becomes optional
+    if (shouldBeOptional && data.base_salary !== '') {
+        setData('base_salary', '');
+    }
+    // Restore default value ONLY if it is NOT optional AND the field is currently empty
+    else if (!shouldBeOptional && data.base_salary === '') {
+        if (salaryDefaults[data.employee_type]?.base_salary !== undefined) {
+            setData('base_salary', salaryDefaults[data.employee_type].base_salary.toString());
         }
-        // CRUCIAL MODIFICATION: Restore default value ONLY if it is NOT optional AND the field is currently empty.
-        else if (!shouldBeOptional && data.base_salary === '') {
-            if (salaryDefaults[data.employee_type]?.base_salary !== undefined) {
-                setData('base_salary', salaryDefaults[data.employee_type].base_salary.toString());
-            }
-        }
+    }
 
-        // Clear contributions if any of the three roles are selected
-        if (hasCollege || hasBasicEdu || hasOthers) {
-            setData(data => ({
-                ...data,
-                sss: '',
-                philhealth: '',
-                pag_ibig: '',
-                withholding_tax: '',
-                // MODIFIED: Only set the default rate if College Instructor is selected AND the field is currently empty.
-                // This preserves user input for both College and Basic Edu if they started typing.
-                // If the field is empty and College is checked, it sets the default rate.
-                rate_per_hour:
-                    (salaryDefaults[data.employee_type]?.college_rate !== undefined && hasCollege && data.rate_per_hour === '')
-                        ? salaryDefaults[data.employee_type].college_rate.toString()
-                        : data.rate_per_hour, // Keep the existing value for manual editing/Basic Edu
-            }));
-        } else if (data.employee_type.toLowerCase() === 'retired') {
-            // Do not auto-fill contributions for retired
-            if (data.rate_per_hour !== '') setData('rate_per_hour', '');
-        } else {
-            if (data.sss === '' && salaryDefaults[data.employee_type]?.sss)
-                setData('sss', salaryDefaults[data.employee_type].sss.toString());
-            if (data.philhealth === '' && salaryDefaults[data.employee_type]?.philhealth)
-                setData('philhealth', salaryDefaults[data.employee_type].philhealth.toString());
-            if (data.pag_ibig === '' && salaryDefaults[data.employee_type]?.pag_ibig)
-                setData('pag_ibig', salaryDefaults[data.employee_type].pag_ibig.toString());
-            if (data.withholding_tax === '' && salaryDefaults[data.employee_type]?.withholding_tax)
-                setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
-            if (data.rate_per_hour !== '') setData('rate_per_hour', '');
-        }
+    // Handle contributions based on roles
+    if (hasCollege || hasBasicEdu || hasOthers) {
+        setData(currentData => ({
+            ...currentData,
+            sss: '',
+            philhealth: '',
+            pag_ibig: '',
+            withholding_tax: '',
+            rate_per_hour:
+                (salaryDefaults[currentData.employee_type]?.college_rate !== undefined && hasCollege && currentData.rate_per_hour === '')
+                    ? salaryDefaults[currentData.employee_type].college_rate.toString()
+                    : currentData.rate_per_hour,
+        }));
+    } else if (data.employee_type.toLowerCase() === 'retired') {
+        if (data.rate_per_hour !== '') setData('rate_per_hour', '');
+    } else {
+        // Restore default contributions if fields are empty
+        if (data.sss === '' && salaryDefaults[data.employee_type]?.sss)
+            setData('sss', salaryDefaults[data.employee_type].sss.toString());
+        if (data.philhealth === '' && salaryDefaults[data.employee_type]?.philhealth)
+            setData('philhealth', salaryDefaults[data.employee_type].philhealth.toString());
+        if (data.pag_ibig === '' && salaryDefaults[data.employee_type]?.pag_ibig)
+            setData('pag_ibig', salaryDefaults[data.employee_type].pag_ibig.toString());
+        if (data.withholding_tax === '' && salaryDefaults[data.employee_type]?.withholding_tax)
+            setData('withholding_tax', salaryDefaults[data.employee_type].withholding_tax.toString());
+        if (data.rate_per_hour !== '') setData('rate_per_hour', '');
+    }
 
-        // Clear college department selection if college instructor is unselected
-        if (!hasCollege) {
-            setCollegeProgram('');
-            setData('college_program', '');
-        }
-    }, [collegeProgram, data.roles, data.employee_type, salaryDefaults, setData, data.rate_per_hour, data.sss, data.philhealth, data.pag_ibig, data.withholding_tax, isOthersChecked]);
+    // Clear college department selection if college instructor is unselected
+    if (!hasCollege) {
+        setCollegeProgram('');
+        setData('college_program', '');
+    }
+// 👇 REFINED DEPENDENCY ARRAY: This prevents the effect from running on every keystroke in the input fields.
+}, [data.roles, data.employee_type, isOthersChecked, collegeProgram, salaryDefaults, setData]);
 
 
     // Helper function to format time to 12-hour format
