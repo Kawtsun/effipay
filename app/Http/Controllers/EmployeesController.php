@@ -182,6 +182,8 @@ class EmployeesController extends Controller
         $types    = (array) $request->input('types', []);
         $statuses = (array) $request->input('statuses', []);
         $roles    = (array) $request->input('roles', []);
+        $collegeProgram = $request->input('collegeProgram', '');
+        $othersRole = $request->input('othersRole', '');
         $page     = $request->input('page', 1);
         $perPage  = (int) $request->input('perPage', $request->input('per_page', 10));
 
@@ -203,7 +205,7 @@ class EmployeesController extends Controller
 
         return Inertia::render('employees/create', [
             'search'          => $search,
-            'filters'         => ['types' => $types, 'statuses' => $statuses, 'roles' => $roles],
+            'filters'         => ['types' => $types, 'statuses' => $statuses, 'roles' => $roles, 'collegeProgram' => $collegeProgram, 'othersRole' => $othersRole],
             'page'            => $page,
             'perPage'         => $perPage,
             'employeeTypes'   => $employeeTypes,
@@ -317,6 +319,8 @@ class EmployeesController extends Controller
         $types    = (array) $request->input('types', []);
         $statuses = (array) $request->input('statuses', []);
         $roles    = (array) $request->input('roles', []);
+        $collegeProgram = $request->input('collegeProgram', '');
+        $othersRole = $request->input('othersRole', '');
         $page     = $request->input('page', 1);
         $employeeTypes = ['Full Time', 'Part Time', 'Provisionary', 'Regular'];
         $salaryDefaults = \App\Models\Salary::whereIn('employee_type', $employeeTypes)
@@ -375,6 +379,8 @@ class EmployeesController extends Controller
                 'types'    => $types,
                 'statuses' => $statuses,
                 'roles'    => $roles,
+                'collegeProgram' => $collegeProgram,
+                'othersRole' => $othersRole,
             ],
             'page'     => $page,
             'employeeTypes' => $employeeTypes,

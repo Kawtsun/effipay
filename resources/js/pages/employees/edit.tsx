@@ -70,7 +70,7 @@ type Props = {
     employee: EmployeeTypeWithWorkDays;
     employeeCategory?: string;
     search?: string;
-    filters?: Record<string, unknown>;
+    filters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string };
     page?: number;
     salaryDefaults?: Record<string, {
         base_salary: number;
@@ -422,8 +422,11 @@ export default function Edit({
             title: 'Employees',
             href: route('employees.index', {
                 search,
-                types: filters?.types,
-                statuses: filters?.statuses,
+                types: filters.types,
+                statuses: filters.statuses,
+                roles: filters.roles,
+                collegeProgram: filters.collegeProgram,
+                othersRole: filters.othersRole,
                 page,
             }),
         },
@@ -585,8 +588,11 @@ export default function Edit({
                     <Link
                         href={route('employees.index', {
                             search,
-                            types: filters?.types,
-                            statuses: filters?.statuses,
+                            types: filters.types,
+                            statuses: filters.statuses,
+                            roles: filters.roles,
+                            collegeProgram: filters.collegeProgram,
+                            othersRole: filters.othersRole,
                             page,
                         })}
                     >

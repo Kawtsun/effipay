@@ -30,7 +30,7 @@ import { WorkDaysSelector, WorkDayTime } from '@/components/work-days-selector';
 
 type Props = {
     search: string;
-    filters: { types: string[]; statuses: string[]; category?: string };
+    filters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string };
     page: number;
 
     // ← NEW props from controller
@@ -590,6 +590,9 @@ export default function Create(props: Props) {
                             search,
                             types: filters.types,
                             statuses: filters.statuses,
+                            roles: filters.roles,
+                            collegeProgram: filters.collegeProgram,
+                            othersRole: filters.othersRole,
                             page,
                         })}
                     >

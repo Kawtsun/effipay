@@ -290,6 +290,9 @@ export default function Index({
                                     search: searchTerm || undefined,
                                     types: appliedFilters.types.length ? appliedFilters.types : undefined,
                                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
+                                    roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
+                                    collegeProgram: appliedFilters.collegeProgram || undefined,
+                                    othersRole: appliedFilters.othersRole || undefined,
                                     page: currentPage,
                                     perPage: pageSize,
                                 })}
