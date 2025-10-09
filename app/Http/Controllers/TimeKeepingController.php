@@ -151,7 +151,10 @@ class TimeKeepingController extends Controller {
         if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
             $query->where(function($q) use ($request) {
                 foreach ($request->roles as $role) {
-                    $q->orWhere('roles', 'like', '%' . $role . '%');
+                    $q->orWhere('roles', $role)
+                      ->orWhere('roles', 'like', $role . ',%')
+                      ->orWhere('roles', 'like', '%,' . $role . ',%')
+                      ->orWhere('roles', 'like', '%,' . $role);
                 }
             });
         }
@@ -163,11 +166,6 @@ class TimeKeepingController extends Controller {
             in_array('college instructor', $request->roles)
         ) {
             $query->where('college_program', $request->collegeProgram);
-        }
-
-        // Filter by others role if set
-        if ($request->filled('othersRole')) {
-            $query->where('roles', 'like', '%' . $request->othersRole . '%');
         }
 
         // Get available custom roles (others roles)
@@ -381,7 +379,7 @@ class TimeKeepingController extends Controller {
                 'statuses' => (array) $request->input('statuses', []),
                 'roles'    => array_values((array) $request->input('roles', [])),
                 'collegeProgram' => $request->input('collegeProgram', ''),
-                'othersRole' => $request->input('othersRole', ''),
+                'othersRole' => '', // No longer a separate filter, reset for frontend state
             ],
         ]);
     }

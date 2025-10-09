@@ -42,10 +42,24 @@ class EmployeesController extends Controller
             $query->whereIn('employee_status', $request->statuses);
         }
 
+        $standardRoles = ['administrator', 'college instructor', 'basic education instructor'];
+
         // Robust comma-separated role matching for all roles (including custom roles)
         if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
-            $query->where(function($q) use ($request) {
-                foreach ($request->roles as $role) {
+            $query->where(function($q) use ($request, $standardRoles) {
+                $rolesToFilter = $request->roles;
+
+                // If 'others' is in the filter, it means "any role that is not a standard one".
+                if (in_array('others', $rolesToFilter)) {
+                    $rolesToFilter = array_diff($rolesToFilter, ['others']); // Remove 'others' from specific checks
+                    $q->orWhere(function($subQuery) use ($standardRoles) {
+                        foreach ($standardRoles as $stdRole) {
+                            $subQuery->where('roles', 'not like', '%' . $stdRole . '%');
+                        }
+                    });
+                }
+
+                foreach ($rolesToFilter as $role) {
                     $q->orWhere('roles', $role)
                       ->orWhere('roles', 'like', $role . ',%')
                       ->orWhere('roles', 'like', '%,' . $role . ',%')
@@ -61,11 +75,8 @@ class EmployeesController extends Controller
             in_array('college instructor', $request->roles)) {
             $query->where('college_program', $request->collegeProgram);
         }
-
-        // (No separate othersRole filter block; handled by unified roles filter above)
-
+        
         // Get available custom roles (others roles)
-        $standardRoles = ['administrator', 'college instructor', 'basic education instructor'];
         $othersRoles = [];
         
         // Get all unique roles from employees, robust to spaces/casing, but preserve original for display
@@ -155,7 +166,7 @@ class EmployeesController extends Controller
                 'statuses' => (array) $request->input('statuses', []),
                 'roles'    => array_values((array) $request->input('roles', [])),
                 'collegeProgram' => $request->input('collegeProgram', ''),
-                'othersRole' => $request->input('othersRole', ''),
+                'othersRole' => '', // No longer a separate filter, reset for frontend state
             ],
         ]);
     }
@@ -274,6 +285,7 @@ class EmployeesController extends Controller
                 foreach (['search', 'types', 'statuses', 'roles', 'collegeProgram', 'page'] as $key) {
                     if (isset($params[$key])) {
                         if ($key === 'roles') {
+                            // Ensure 'othersRole' is not passed as a separate filter here if it was in the referer
                             $redirectParams[$key] = (array)$params[$key];
                         } else {
                             $redirectParams[$key] = $params[$key];
@@ -520,6 +532,7 @@ class EmployeesController extends Controller
                 foreach (['search', 'types', 'statuses', 'roles', 'collegeProgram', 'page', 'perPage', 'per_page'] as $key) {
                     if (isset($params[$key])) {
                         if ($key === 'roles') {
+                            // Ensure 'othersRole' is not passed as a separate filter here if it was in the referer
                             $redirectParams[$key] = (array)$params[$key];
                         } else {
                             $redirectParams[$key] = $params[$key];
