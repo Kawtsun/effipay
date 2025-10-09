@@ -45,6 +45,16 @@ interface MonthlySummary {
 
 // BTRDialog.tsx (around line 45, or anywhere outside the component)
 
+const DAY_LABELS: Record<string, string> = {
+  mon: "Monday",
+  tue: "Tuesday",
+  wed: "Wednesday",
+  thu: "Thursday",
+  fri: "Friday",
+  sat: "Saturday",
+  sun: "Sunday",
+};
+
 const LEAVE_COLOR_MAP: Record<string, { bg: string; text: string; badge: string }> = {
   'Paid Leave': {
     bg: 'bg-green-100 dark:bg-green-900/30',
@@ -356,6 +366,12 @@ export default function BTRDialog({ employee, onClose }: Props) {
                             rowClassName = colors.bg; // Use specific background color
                             textClassName = colors.text; // Use specific text color
                           }
+
+                          const dateObj = new Date(dateStr);
+                          const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                          const workDays = employee?.work_days || [];
+                          const isWorkDay = workDays.some(workDay => DAY_LABELS[workDay.day] === dayName);
+                          const isPaidLeaveDay = isLeaveDay && isWorkDay;
                           // --- END UPDATED LOGIC ---
 
 
@@ -366,15 +382,13 @@ export default function BTRDialog({ employee, onClose }: Props) {
                             >
                               <td className={`px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-mono text-xs rounded-l-md ${textClassName}`}>
                                 {(() => {
-                                  const dateObj = new Date(dateStr);
-                                  const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
                                   const displayText = `${dateStr}${dayName ? ` (${dayName})` : ''}`;
 
                                   // Display the leave badge with the specific type
                                   return (
                                     <>
                                       {displayText}
-                                      {isLeaveDay && (
+                                      {isPaidLeaveDay && (
                                         <span className={`ml-2 px-2 py-0.5 text-[10px] font-bold rounded-full ${colors.badge}`}>
                                           {leaveType.toUpperCase()}
                                         </span>
@@ -386,14 +400,14 @@ export default function BTRDialog({ employee, onClose }: Props) {
 
                               {/* === MODIFIED TIME IN COLUMN === */}
                               <td className={`px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold rounded-md ${textClassName}`}>
-                                {/* If it's a leave day, display the leave type, otherwise display clock in or '-' */}
-                                {rec?.clock_in || rec?.time_in || (isLeaveDay ? leaveType : "-")}
+                                {/* If it's a paid leave day, display the leave type, otherwise display clock in or '-' */}
+                                {rec?.clock_in || rec?.time_in || (isPaidLeaveDay ? leaveType : "-")}
                               </td>
 
                               {/* === MODIFIED TIME OUT COLUMN === */}
                               <td className={`px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold rounded-r-md ${textClassName}`}>
-                                {/* If it's a leave day, display the leave type, otherwise display clock out or '-' */}
-                                {rec?.clock_out || rec?.time_out || (isLeaveDay ? leaveType : "-")}
+                                {/* If it's a paid leave day, display the leave type, otherwise display clock out or '-' */}
+                                {rec?.clock_out || rec?.time_out || (isPaidLeaveDay ? leaveType : "-")}
                               </td>
                             </tr>
                           );
