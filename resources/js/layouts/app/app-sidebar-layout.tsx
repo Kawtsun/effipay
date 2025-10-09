@@ -1,3 +1,4 @@
+// app-sidebar-layout.tsx
 import { AppContent } from '@/components/app-content';
 import AppContentScrollArea from '@/components/app-content-scroll-area';
 import { AppShell } from '@/components/app-shell';
@@ -8,10 +9,6 @@ import { Toaster } from '@/components/ui/sonner';
 import { type BreadcrumbItem } from '@/types';
 import { type PropsWithChildren } from 'react';
 
-// import { initializeTheme } from '@/hooks/use-appearance';
-
-// initializeTheme();
-
 export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWithChildren<{ breadcrumbs?: BreadcrumbItem[] }>) {
     return (
         <div className="min-h-screen w-full flex flex-col">
@@ -21,16 +18,16 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
             <AppShell variant="sidebar">
                 <div className="flex flex-1 pt-[94px]">
                     <AppSidebar />
+                    {/* 👇 REMOVE overflow-hidden from here */}
                     <AppContent variant="sidebar">
+                        <AppSidebarHeader breadcrumbs={breadcrumbs} />
                         <AppContentScrollArea>
-                            <div className="sticky top-0 z-10 bg-white dark:bg-black">
-                                <AppSidebarHeader breadcrumbs={breadcrumbs} />
-                            </div>
                             {children}
                         </AppContentScrollArea>
                     </AppContent>
-                        <Toaster richColors position={'top-right'} visibleToasts={5} />
+                    <Toaster richColors position={'top-right'} visibleToasts={5} />
                 </div>
+
             </AppShell>
         </div>
     );

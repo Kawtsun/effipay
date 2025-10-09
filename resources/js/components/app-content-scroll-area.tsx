@@ -1,3 +1,4 @@
+// app-content-scroll-area.tsx
 import { ScrollArea } from '@/components/ui/scroll-area';
 import React from 'react';
 
@@ -7,19 +8,16 @@ interface AppContentScrollAreaProps {
   style?: React.CSSProperties;
 }
 
-/**
- * AppContentScrollArea
- * A sticky, full-height scrollable area with custom shadcn/ui scrollbar.
- * Fills available viewport height minus header (assumed 94px).
- */
 export default function AppContentScrollArea({ children, className = '', style }: AppContentScrollAreaProps) {
-  return (
+   return (
     <ScrollArea
-      className={`h-[calc(100vh-94px)] max-h-[calc(100vh-94px)] w-full overflow-auto bg-transparent ${className}`}
+      // 👇 REPLACE the classes with an explicit height calculation.
+      // This will force it to the correct size.
+      className={`h-[calc(100vh-158px)] w-full overflow-auto bg-transparent ${className}`}
       style={style}
       type="auto"
     >
-      <div className="px-0 py-0 pr-4 h-full">{children}</div>
+      <div className="h-full px-0 py-0 pr-4">{children}</div>
     </ScrollArea>
   );
 }
