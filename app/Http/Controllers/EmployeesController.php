@@ -192,11 +192,11 @@ class EmployeesController extends Controller
             ->get()
             ->mapWithKeys(fn($row) => [
                 $row->employee_type => [
-                    'base_salary'     => $row->base_salary,
-                    'college_rate'    => $row->college_rate,
-                    'sss'             => $row->sss,
-                    'philhealth'      => $row->philhealth,
-                    'pag_ibig'        => $row->pag_ibig,
+                    'base_salary'      => $row->base_salary,
+                    'college_rate'     => $row->college_rate,
+                    'sss'              => $row->sss,
+                    'philhealth'       => $row->philhealth,
+                    'pag_ibig'         => $row->pag_ibig,
                     'withholding_tax' => $row->withholding_tax,
                     'work_hours_per_day' => $row->work_hours_per_day,
                 ],
@@ -204,13 +204,13 @@ class EmployeesController extends Controller
             ->toArray();
 
         return Inertia::render('employees/create', [
-            'search'          => $search,
-            'filters'         => ['types' => $types, 'statuses' => $statuses, 'roles' => $roles, 'collegeProgram' => $collegeProgram, 'othersRole' => $othersRole],
-            'page'            => $page,
-            'perPage'         => $perPage,
-            'employeeTypes'   => $employeeTypes,
-            'salaryDefaults'  => $salaryDefaults,
-            'employee'        => [
+            'search'            => $search,
+            'filters'           => ['types' => $types, 'statuses' => $statuses, 'roles' => $roles, 'collegeProgram' => $collegeProgram, 'othersRole' => $othersRole],
+            'page'              => $page,
+            'perPage'           => $perPage,
+            'employeeTypes'     => $employeeTypes,
+            'salaryDefaults'    => $salaryDefaults,
+            'employee'          => [
                 'honorarium' => '', // default empty for new employee
                 'work_days' => [], // default empty work_days for new employee
             ],
@@ -224,28 +224,31 @@ class EmployeesController extends Controller
     {
 
         $data = $request->validated();
-        // Always set college_rate from rate_per_hour if present in request
-        if (request()->has('rate_per_hour')) {
-            $data['college_rate'] = request()->input('rate_per_hour');
-        }
-        $rolesArr = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : explode(',', $data['roles'])) : [];
-        $isCollege = in_array('college instructor', $rolesArr);
-        $isAdmin = in_array('administrator', $rolesArr);
-        $isBasicEdu = in_array('basic education instructor', $rolesArr);
-        $isOthersOnly = count($rolesArr) === 1 && !$isCollege && !$isAdmin && !$isBasicEdu && $rolesArr[0] !== '';
-        // Do not force nulls; always save what the frontend sends so backend matches frontend
 
-        // Sanitize numeric fields: convert empty strings to null
+        // FIXED LOGIC: Map rate_per_hour to college_rate if present (even if null).
+        // This ensures the optional rate saves to the correct DB column.
+        if (array_key_exists('rate_per_hour', $data)) {
+            $data['college_rate'] = $data['rate_per_hour'];
+        }
+        
+        // Sanitize numeric fields: convert null or empty string/zero to null
         foreach ([
             'base_salary', 'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
-            'college_rate', 'rate_per_hour',
+            'college_rate', 'rate_per_hour', // Check rate_per_hour before removing it
             'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 'pagibig_calamity_loan',
             'peraa_con', 'tuition', 'china_bank', 'tea', 'honorarium'
         ] as $field) {
-            if (isset($data[$field]) && ($data[$field] === '' || $data[$field] === null)) {
+            // CRITICAL CHECK: Check if the validated field exists and is null, empty string, or 0.0
+            if (isset($data[$field]) && ($data[$field] === '' || $data[$field] === null || $data[$field] === 0.0)) {
                 $data[$field] = null;
             }
         }
+        
+        // Remove 'rate_per_hour' from the data array before saving to Employee model 
+        if (array_key_exists('rate_per_hour', $data)) {
+            unset($data['rate_per_hour']);
+        }
+
 
         $employee = Employees::create($data);
 
@@ -269,13 +272,13 @@ class EmployeesController extends Controller
         // Audit log: employee created
         $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
         \App\Models\AuditLogs::create([
-            'username'    => $username,
-            'action'      => 'created',
-            'name'        => $employee->last_name . ', ' . $employee->first_name,
-            'entity_type' => 'employee',
-            'entity_id'   => $employee->id,
-            'details'     => json_encode($data),
-            'date'        => now('Asia/Manila'),
+            'username'      => $username,
+            'action'        => 'created',
+            'name'          => $employee->last_name . ', ' . $employee->first_name,
+            'entity_type'   => 'employee',
+            'entity_id'     => $employee->id,
+            'details'       => json_encode($data),
+            'date'          => now('Asia/Manila'),
         ]);
 
         // Restore previous filters from referer
@@ -327,10 +330,11 @@ class EmployeesController extends Controller
             ->get()
             ->mapWithKeys(fn($row) => [
                 $row->employee_type => [
-                    'base_salary'     => $row->base_salary,
-                    'sss'             => $row->sss,
-                    'philhealth'      => $row->philhealth,
-                    'pag_ibig'        => $row->pag_ibig,
+                    'base_salary'      => $row->base_salary,
+                    'college_rate'     => $row->college_rate,
+                    'sss'              => $row->sss,
+                    'philhealth'       => $row->philhealth,
+                    'pag_ibig'         => $row->pag_ibig,
                     'withholding_tax' => $row->withholding_tax,
                     'work_hours_per_day' => $row->work_hours_per_day,
                 ],
@@ -394,40 +398,16 @@ class EmployeesController extends Controller
     public function update(UpdateEmployeesRequest $request, Employees $employee)
     {
         $data = $request->validated();
-        // Log the data being saved for debugging
-        Log::info('Employee update data', $data);
-        $data = $request->validated();
-        // Only set college_rate from rate_per_hour if college instructor is selected
-        $rolesArr = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : explode(',', $data['roles'])) : [];
-        $isCollege = in_array('college instructor', $rolesArr);
-        if ($isCollege && request()->has('rate_per_hour')) {
-            $data['college_rate'] = request()->input('rate_per_hour');
-        } else {
-            $data['college_rate'] = null;
+        
+        // Map rate_per_hour to college_rate if present (even if null)
+        if (array_key_exists('rate_per_hour', $data)) {
+            $data['college_rate'] = $data['rate_per_hour'];
         }
-        $rolesArr = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : explode(',', $data['roles'])) : [];
-        $isCollege = in_array('college instructor', $rolesArr);
-        $isAdmin = in_array('administrator', $rolesArr);
-        $isBasicEdu = in_array('basic education instructor', $rolesArr);
-        // Only nullify base_salary if college instructor is the ONLY role (not also admin/basic edu)
-        if ($isCollege && !$isAdmin && !$isBasicEdu) {
-            $data['base_salary'] = null;
-        }
-        // Recalculate PhilHealth using new formula (divide by 2) only if not college instructor (and not mixed roles),
-        // and only if the user did not clear the field (i.e., if philhealth is not empty/null)
-        if (
-            (!$isCollege || ($isAdmin || $isBasicEdu)) &&
-            isset($data['base_salary']) && $data['base_salary'] !== null &&
-            isset($data['philhealth']) && $data['philhealth'] !== '' && $data['philhealth'] !== null
-        ) {
-            $base_salary = (float) $data['base_salary'];
-            $philhealth = max(250, min(2500, ($base_salary * 0.05) / 2));
-            $data['philhealth'] = round($philhealth, 2);
-        }
-        // Sanitize numeric fields: convert empty strings or null to null (for consistency with store)
+
+        // Sanitize numeric fields: convert null or empty string to null (for consistency with store)
         foreach ([
             'base_salary', 'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
-            'college_rate', 'rate_per_hour',
+            'college_rate', 
             'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 'pagibig_calamity_loan',
             'peraa_con', 'tuition', 'china_bank', 'tea', 'honorarium'
         ] as $field) {
@@ -436,34 +416,42 @@ class EmployeesController extends Controller
             }
         }
 
-    $oldData = $employee->toArray();
-    $oldStatus = $employee->employee_status;
-    $employee->update($data);
+        // Remove 'rate_per_hour' from the data array before saving
+        if (array_key_exists('rate_per_hour', $data)) {
+            unset($data['rate_per_hour']);
+        }
+        
+        $oldData = $employee->toArray();
+        $oldStatus = $employee->employee_status;
+        
+        // The old complex logic to nullify base_salary for college instructor only is removed here.
 
-    // Only record leave status in history if under leave limit
-    if (isset($data['employee_status']) && $data['employee_status'] !== $oldStatus) {
-        if (Schema::hasTable('employee_status_histories')) {
-            $leaveStatuses = ['paid leave', 'sick leave', 'vacation leave', 'maternity leave', 'study leave'];
-            $activeStatuses = ['active'];
-            $currentStatus = strtolower(trim($data['employee_status']));
-            $oldStatusNormalized = strtolower(trim($oldStatus));
-            // If changing to a leave status, record leave start only if no open leave exists
-            if (in_array($currentStatus, $leaveStatuses)) {
-                $openLeave = DB::table('employee_status_histories')
-                    ->where('employee_id', $employee->id)
-                    ->whereIn('status', $leaveStatuses)
-                    ->whereNull('leave_end_date')
-                    ->first();
-                if (!$openLeave) {
-                    DB::table('employee_status_histories')->insert([
-                        'employee_id' => $employee->id,
-                        'status' => $data['employee_status'],
-                        'effective_date' => date('Y-m-d'),
-                        'leave_start_date' => date('Y-m-d'),
-                        'leave_end_date' => null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+        $employee->update($data);
+
+        // Only record leave status in history if under leave limit
+        if (isset($data['employee_status']) && $data['employee_status'] !== $oldStatus) {
+            if (Schema::hasTable('employee_status_histories')) {
+                $leaveStatuses = ['paid leave', 'sick leave', 'vacation leave', 'maternity leave', 'study leave'];
+                $activeStatuses = ['active'];
+                $currentStatus = strtolower(trim($data['employee_status']));
+                $oldStatusNormalized = strtolower(trim($oldStatus));
+                // If changing to a leave status, record leave start only if no open leave exists
+                if (in_array($currentStatus, $leaveStatuses)) {
+                    $openLeave = DB::table('employee_status_histories')
+                        ->where('employee_id', $employee->id)
+                        ->whereIn('status', $leaveStatuses)
+                        ->whereNull('leave_end_date')
+                        ->first();
+                    if (!$openLeave) {
+                        DB::table('employee_status_histories')->insert([
+                            'employee_id' => $employee->id,
+                            'status' => $data['employee_status'],
+                            'effective_date' => date('Y-m-d'),
+                            'leave_start_date' => date('Y-m-d'),
+                            'leave_end_date' => null,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
                         // Inject into leaves table as well
                         if (Schema::hasTable('leaves')) {
                             DB::table('leaves')->insert([
@@ -475,20 +463,20 @@ class EmployeesController extends Controller
                                 'updated_at' => now(),
                             ]);
                         }
+                    }
                 }
-            }
-            // If changing from leave to active, record leave end
-            elseif (in_array($currentStatus, $activeStatuses) && in_array($oldStatusNormalized, $leaveStatuses)) {
-                $lastLeave = DB::table('employee_status_histories')
-                    ->where('employee_id', $employee->id)
-                    ->whereIn('status', $leaveStatuses)
-                    ->whereNull('leave_end_date')
-                    ->orderByDesc('leave_start_date')
-                    ->first();
-                if ($lastLeave) {
-                    DB::table('employee_status_histories')
-                        ->where('id', $lastLeave->id)
-                        ->update(['leave_end_date' => date('Y-m-d'), 'updated_at' => now()]);
+                // If changing from leave to active, record leave end
+                elseif (in_array($currentStatus, $activeStatuses) && in_array($oldStatusNormalized, $leaveStatuses)) {
+                    $lastLeave = DB::table('employee_status_histories')
+                        ->where('employee_id', $employee->id)
+                        ->whereIn('status', $leaveStatuses)
+                        ->whereNull('leave_end_date')
+                        ->orderByDesc('leave_start_date')
+                        ->first();
+                    if ($lastLeave) {
+                        DB::table('employee_status_histories')
+                            ->where('id', $lastLeave->id)
+                            ->update(['leave_end_date' => date('Y-m-d'), 'updated_at' => now()]);
                         // Also update the latest open leave record in leaves table
                         if (Schema::hasTable('leaves')) {
                             $openLeaveRow = DB::table('leaves')
@@ -503,23 +491,23 @@ class EmployeesController extends Controller
                                     ->update(['leave_end_day' => date('Y-m-d'), 'updated_at' => now()]);
                             }
                         }
+                    }
+                    // Do NOT insert a new 'active' row here; only update the leave record
                 }
-                // Do NOT insert a new 'active' row here; only update the leave record
-            }
-            // For other status changes, just record the change
-            else {
-                DB::table('employee_status_histories')->insert([
-                    'employee_id' => $employee->id,
-                    'status' => $data['employee_status'],
-                    'effective_date' => date('Y-m-d'),
-                    'leave_start_date' => null,
-                    'leave_end_date' => null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                // For other status changes, just record the change
+                else {
+                    DB::table('employee_status_histories')->insert([
+                        'employee_id' => $employee->id,
+                        'status' => $data['employee_status'],
+                        'effective_date' => date('Y-m-d'),
+                        'leave_start_date' => null,
+                        'leave_end_date' => null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
         }
-    }
 
         // Update per-day work times if provided
         $workDays = $request['work_days'] ?? [];
@@ -545,13 +533,13 @@ class EmployeesController extends Controller
         // Audit log: employee updated
         $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
         \App\Models\AuditLogs::create([
-            'username'    => $username,
-            'action'      => 'updated',
-            'name'        => $employee->last_name . ', ' . $employee->first_name,
+            'username'      => $username,
+            'action'        => 'updated',
+            'name'          => $employee->last_name . ', ' . $employee->first_name,
             'entity_type' => 'employee',
-            'entity_id'   => $employee->id,
-            'details'     => json_encode(['old' => $oldData, 'new' => $data]),
-            'date'        => now('Asia/Manila'),
+            'entity_id'     => $employee->id,
+            'details'       => json_encode(['old' => $oldData, 'new' => $data]),
+            'date'          => now('Asia/Manila'),
         ]);
 
         // Restore previous filters from referer
@@ -590,13 +578,13 @@ class EmployeesController extends Controller
         // Audit log: employee deleted
         $username = (Auth::check() && Auth::user() && Auth::user()->username) ? Auth::user()->username : 'system';
         \App\Models\AuditLogs::create([
-            'username'    => $username,
-            'action'      => 'deleted',
-            'name'        => $oldData['last_name'] . ', ' . $oldData['first_name'],
+            'username'      => $username,
+            'action'        => 'deleted',
+            'name'          => $oldData['last_name'] . ', ' . $oldData['first_name'],
             'entity_type' => 'employee',
-            'entity_id'   => $oldData['id'],
-            'details'     => json_encode($oldData),
-            'date'        => now('Asia/Manila'),
+            'entity_id'     => $oldData['id'],
+            'details'       => json_encode($oldData),
+            'date'          => now('Asia/Manila'),
         ]);
         return redirect()
             ->route('employees.index', [

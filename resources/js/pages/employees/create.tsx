@@ -331,9 +331,13 @@ export default function Create(props: Props) {
             }
         }
 
+        const rawBaseSalaryValue = data.base_salary.replace(/,/g, '').trim();
+        const isBaseSalaryEffectivelyEmpty = rawBaseSalaryValue === '' || Number(rawBaseSalaryValue) === 0;
+
         // This is the core optionality check for the "Others" role
         if (isOthers && rolesArr.length === 1) {
-            if ((!data.honorarium || !data.honorarium.trim()) && (!baseSalaryValue || !baseSalaryValue.trim())) {
+            // Check if Honorarium is empty AND Base Salary is effectively empty
+            if ((!data.honorarium || !data.honorarium.trim()) && isBaseSalaryEffectivelyEmpty) {
                 toast.error('Honorarium or Base Salary is required for the custom role.');
                 return;
             }
@@ -409,8 +413,8 @@ export default function Create(props: Props) {
         const cleanedData = {
             ...data,
             employee_name: employee_name,
-            base_salary: baseSalaryValue === '' ? null : Number(baseSalaryValue.replace(/,/g, '')),
-            rate_per_hour: (isCollege ? data.rate_per_hour : null),
+            base_salary: data.base_salary === '' ? null : Number(data.base_salary.replace(/,/g, '')),
+            rate_per_hour: data.rate_per_hour === '' ? null : Number(data.rate_per_hour.replace(/,/g, '')),
             sss: data.sss === '' ? null : Number(data.sss.replace(/,/g, '')),
             philhealth: data.philhealth === '' ? null : Number(data.philhealth.replace(/,/g, '')),
             pag_ibig: data.pag_ibig === '' ? null : pagIbigValue,

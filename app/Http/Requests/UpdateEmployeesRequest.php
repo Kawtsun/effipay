@@ -22,29 +22,55 @@ class UpdateEmployeesRequest extends FormRequest
      */
     public function rules(): array
     {
-    $roles = request('roles', '');
-    $rolesArr = is_array($roles)
-        ? array_filter(array_map('trim', $roles))
-        : array_filter(array_map('trim', explode(',', $roles)));
-    $isCollege = in_array('college instructor', $rolesArr);
-    $isBasicEdu = in_array('basic education instructor', $rolesArr);
-    // Detect any custom role (others) by checking if any role is not admin, college, or basic edu
-    $isOthers = false;
-    foreach ($rolesArr as $role) {
-        if ($role !== '' && $role !== 'administrator' && $role !== 'college instructor' && $role !== 'basic education instructor') {
-            $isOthers = true;
-            break;
+        $roles = request('roles', '');
+        $rolesArr = is_array($roles)
+            ? array_filter(array_map('trim', $roles))
+            : array_filter(array_map('trim', explode(',', $roles)));
+            
+        $isAdmin = in_array('administrator', $rolesArr);
+        $isCollege = in_array('college instructor', $rolesArr);
+        $isBasicEdu = in_array('basic education instructor', $rolesArr);
+
+        // Detect any custom role (others)
+        $isOthers = false;
+        foreach ($rolesArr as $role) {
+            if ($role !== '' && $role !== 'administrator' && $role !== 'college instructor' && $role !== 'basic education instructor') {
+                $isOthers = true;
+                break;
+            }
         }
-    }
-    $employeeType = request('employee_type', '');
-    $contribOptional = ($isCollege || $isBasicEdu || $isOthers || strtolower($employeeType) === 'retired');
-    return [
+        
+        $employeeType = request('employee_type', '');
+        $contribOptional = ($isCollege || $isBasicEdu || $isOthers || strtolower($employeeType) === 'retired');
+
+        // Logic for Base Salary requirement: Required if Admin or Basic Edu is present, 
+        $requiresBaseSalary = $isAdmin || $isBasicEdu;
+
+        // Logic for Rate Per Hour requirement: Required only if College Instructor is present.
+        $requiresRatePerHour = $isCollege;
+
+        // Base Salary Rule: Required for salaried roles, but must be nullable for the 'Others' scenario.
+        $baseSalaryRule = [
+            'nullable',
+            'numeric',
+            'min:0',
+        ];
+        if ($requiresBaseSalary && !$isOthers) {
+            $baseSalaryRule[] = 'required';
+        }
+
+        return [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'employee_type' => 'required|string|max:255',
             'employee_status' => 'required|string|max:255',
-            'base_salary' => $isOthers ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
+            
+            'base_salary' => $baseSalaryRule, 
+            
+            // FIXED: Rate Per Hour is required if College Instructor, otherwise nullable (for optional Basic Edu rate).
+            'rate_per_hour' => $requiresRatePerHour ? 'required|numeric|min:0' : 'nullable|numeric|min:0',
+            
             'sss' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
             'philhealth' => $contribOptional ? 'nullable' : 'required|numeric|min:250|max:2500',
             'pag_ibig' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:200',
@@ -55,8 +81,7 @@ class UpdateEmployeesRequest extends FormRequest
             'roles' => [
                 'required',
                 'string',
-                function($attribute, $value, $fail) {
-                    $rolesArr = array_filter(array_map('trim', explode(',', $value)));
+                function($attribute, $value, $fail) use ($rolesArr) {
                     if (count($rolesArr) === 0) {
                         $fail('At least one role must be selected.');
                     }
