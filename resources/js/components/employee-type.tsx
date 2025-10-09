@@ -19,15 +19,20 @@ export function EmployeeType({ value, onChange, roles = [], disabled = false, ty
     { value: 'Full Time', label: 'Full Time' },
     { value: 'Part Time', label: 'Part Time' },
     { value: 'Provisionary', label: 'Provisionary' },
+    { value: 'Retired', label: 'Retired' }, // <-- Add Retired here
   ];
   const adminTypes = [
     { value: 'Regular', label: 'Regular' },
     { value: 'Provisionary', label: 'Provisionary' },
-    { value: 'Retired', label: 'Retired'}
+    { value: 'Retired', label: 'Retired' }, // <-- Already present
   ];
+
   let availableTypes = types ?? [...teachingTypes, ...adminTypes.filter(t => t.value === 'Regular')];
   if (!types && roles && roles.length > 0) {
-    if (roles.includes('administrator') && (roles.includes('college instructor') || roles.includes('basic education instructor'))) {
+    if (
+      roles.includes('administrator') &&
+      (roles.includes('college instructor') || roles.includes('basic education instructor'))
+    ) {
       // Merge and deduplicate by value
       const merged = [...teachingTypes, ...adminTypes];
       const seen = new Set();
