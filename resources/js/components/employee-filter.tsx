@@ -281,7 +281,7 @@ export default function EmployeeFilter({
                     transition={{ duration: 0.35, ease: 'easeOut' }}
                     className="pl-4 mt-2"
                   >
-                    <div className="text-xs font-semibold mb-1">Custom Roles</div>
+                    <div className="text-xs font-semibold mb-1">Other Roles</div>
                     <OthersRolesScrollArea>
                       <OthersRolesRadio
                         value={othersRole}
