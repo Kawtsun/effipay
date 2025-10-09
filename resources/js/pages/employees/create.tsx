@@ -215,9 +215,11 @@ export default function Create(props: Props) {
                 pag_ibig: '',
                 withholding_tax: '',
                 rate_per_hour:
-                    salaryDefaults[data.employee_type]?.college_rate !== undefined
+                    // MODIFIED: Only set the default rate if it's currently empty, OR if only College Instructor is checked.
+                    // This allows manual entry for Basic Edu or if the user cleared the field.
+                    (salaryDefaults[data.employee_type]?.college_rate !== undefined && hasCollege && data.rate_per_hour === '')
                         ? salaryDefaults[data.employee_type].college_rate.toString()
-                        : data.rate_per_hour,
+                        : data.rate_per_hour, // Keep the existing value for manual editing/Basic Edu
             }));
         } else if (data.employee_type.toLowerCase() === 'retired') {
             // Do not auto-fill contributions for retired
@@ -275,27 +277,25 @@ export default function Create(props: Props) {
         }
 
         // If both college instructor and (admin or basic edu) are selected, require both fields
-        if (isCollege && (isAdmin || isBasicEdu)) {
-            if (!baseSalaryValue || !baseSalaryValue.trim()) {
-                toast.error('Base Salary is required unless "Others" is checked.');
-                return;
-            }
+        if (isCollege) {
+            // Rate Per Hour is REQUIRED if College Instructor is selected, regardless of other roles
             if (!data.rate_per_hour || !data.rate_per_hour.trim()) {
                 toast.error('Rate Per Hour is required.');
-                return;
-            }
-        } else if (isCollege) {
-            if (!data.rate_per_hour || !data.rate_per_hour.trim()) {
-                toast.error('Rate Per Hour is required.');
-                return;
-            }
-        } else if ((isAdmin || isBasicEdu) && !(isOthers && rolesArr.length === 1)) {
-            // Only require base_salary if not Others-only
-            if (!baseSalaryValue || !baseSalaryValue.trim()) {
-                toast.error('Base Salary is required unless "Others" is checked.');
                 return;
             }
         }
+
+        // Base Salary is required for Admin or Basic Edu, unless "Others" is the only role
+        const requiresBaseSalary = (isAdmin || isBasicEdu) && !(isOthers && rolesArr.length === 1);
+
+        if (requiresBaseSalary) {
+            if (!baseSalaryValue || !baseSalaryValue.trim()) {
+                toast.error('Base Salary is required unless "Others" is the only checked role.');
+                return;
+            }
+        }
+
+        // Original Honorarium check (Keep this right below the Base Salary check)
         // If Others is the only role, require honorarium
         if (isOthers && rolesArr.length === 1) {
             if ((!data.honorarium || !data.honorarium.trim()) && (!baseSalaryValue || !baseSalaryValue.trim())) {
@@ -748,102 +748,132 @@ export default function Create(props: Props) {
                                                 {(() => {
                                                     const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
                                                     const isCollege = rolesArr.includes('college instructor');
-                                                    // Only count other roles that are actually checked (not just custom role value)
-                                                    const validRoles = ['administrator', 'basic education instructor'];
-                                                    const checkedOtherRoles = rolesArr.filter(r => validRoles.includes(r));
-                                                    const showBoth = isCollege && (checkedOtherRoles.length > 0 || isOthersChecked);
+                                                    const isBasicEdu = rolesArr.includes('basic education instructor');
+                                                    const isAdmin = rolesArr.includes('administrator');
+                                                    const isOthers = isOthersChecked && othersRole.trim() !== '';
+
+                                                    // Determines if Rate Per Hour should be displayed (new requirement)
+                                                    const needsRatePerHour = isCollege || isBasicEdu;
+
+                                                    // Determines if Base Salary should be displayed (logic based on existing else block)
+                                                    const needsBaseSalary = isAdmin || isBasicEdu || (!isCollege && rolesArr.length === 0);
+
+                                                    const showBoth = needsBaseSalary && needsRatePerHour;
+                                                    const showOnlyRate = needsRatePerHour && !needsBaseSalary;
+                                                    const showOnlyBase = needsBaseSalary && !needsRatePerHour;
+
+                                                    // Add logic to ensure the default state (no role) shows Base Salary
+                                                    const showDefaultBase = rolesArr.length === 0;
+
                                                     if (showBoth) {
-                                                        return <>
-                                                            <Label htmlFor="base_salary">Base Salary</Label>
-                                                            <div className='relative'>
-                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                                <Input
-                                                                    id="base_salary"
-                                                                    type="text"
-                                                                    inputMode="numeric"
-                                                                    pattern="[0-9.,]*"
-                                                                    placeholder="Salary"
-                                                                    className="pl-8"
-                                                                    min={0}
-                                                                    value={formatWithCommas(data.base_salary ?? '')}
-                                                                    onChange={e => {
-                                                                        const raw = e.target.value.replace(/,/g, '');
-                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                                        setData('base_salary', raw);
-                                                                        const baseSalaryNum = Number(raw) || 0;
-                                                                        const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
-                                                                        setData('philhealth', calculatedPhilHealth.toString());
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <Label htmlFor="rate_per_hour">Rate Per Hour</Label>
-                                                            <div className='relative'>
-                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                                <Input
-                                                                    id="rate_per_hour"
-                                                                    type="text"
-                                                                    inputMode="numeric"
-                                                                    pattern="[0-9.,]*"
-                                                                    placeholder="Rate Per Hour"
-                                                                    className="pl-8"
-                                                                    min={0}
-                                                                    value={formatWithCommas(data.rate_per_hour ?? '')}
-                                                                    onChange={e => {
-                                                                        const raw = e.target.value.replace(/,/g, '');
-                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                                        setData('rate_per_hour', raw);
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </>;
-                                                    } else if (isCollege) {
-                                                        return <>
-                                                            <Label htmlFor="rate_per_hour">Rate Per Hour</Label>
-                                                            <div className='relative'>
-                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                                <Input
-                                                                    id="rate_per_hour"
-                                                                    type="text"
-                                                                    inputMode="numeric"
-                                                                    pattern="[0-9.,]*"
-                                                                    placeholder="Rate Per Hour"
-                                                                    className="pl-8"
-                                                                    min={0}
-                                                                    value={formatWithCommas(data.rate_per_hour ?? '')}
-                                                                    onChange={e => {
-                                                                        const raw = e.target.value.replace(/,/g, '');
-                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                                        setData('rate_per_hour', raw);
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </>;
-                                                    } else {
-                                                        return <>
-                                                            <Label htmlFor="base_salary">Base Salary</Label>
-                                                            <div className='relative'>
-                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
-                                                                <Input
-                                                                    id="base_salary"
-                                                                    type="text"
-                                                                    inputMode="numeric"
-                                                                    pattern="[0-9.,]*"
-                                                                    placeholder="Salary"
-                                                                    className="pl-8"
-                                                                    min={0}
-                                                                    value={formatWithCommas(data.base_salary ?? '')}
-                                                                    onChange={e => {
-                                                                        const raw = e.target.value.replace(/,/g, '');
-                                                                        if (!/^\d*(\.\d*)?$/.test(raw)) return;
-                                                                        setData('base_salary', raw);
-                                                                        const baseSalaryNum = Number(raw) || 0;
-                                                                        const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
-                                                                        setData('philhealth', calculatedPhilHealth.toString());
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </>;
+                                                        return (
+                                                            <>
+                                                                <Label htmlFor="base_salary">Base Salary</Label>
+                                                                <div className='relative'>
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                    <Input
+                                                                        id="base_salary"
+                                                                        type="text"
+                                                                        inputMode="numeric"
+                                                                        pattern="[0-9.,]*"
+                                                                        placeholder="Salary"
+                                                                        className="pl-8"
+                                                                        min={0}
+                                                                        value={formatWithCommas(data.base_salary ?? '')}
+                                                                        onChange={e => {
+                                                                            const raw = e.target.value.replace(/,/g, '');
+                                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                            setData('base_salary', raw);
+                                                                            const baseSalaryNum = Number(raw) || 0;
+                                                                            const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
+                                                                            setData('philhealth', calculatedPhilHealth.toString());
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <Label htmlFor="rate_per_hour">Rate Per Hour {isCollege ? null : <span className="text-xs text-muted-foreground">(optional)</span>}</Label>
+                                                                <div className='relative'>
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                    <Input
+                                                                        id="rate_per_hour"
+                                                                        type="text"
+                                                                        inputMode="numeric"
+                                                                        pattern="[0-9.,]*"
+                                                                        placeholder="Rate Per Hour"
+                                                                        className="pl-8" // <-- Keep it simple
+                                                                        min={0}
+                                                                        value={formatWithCommas(data.rate_per_hour ?? '')}
+                                                                        onChange={e => {
+                                                                            const raw = e.target.value.replace(/,/g, '');
+                                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                            setData('rate_per_hour', raw);
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    } else if (showOnlyRate) {
+                                                        return (
+                                                            <>
+                                                                <Label htmlFor="rate_per_hour">Rate Per Hour {isCollege ? null : <span className="text-xs text-muted-foreground">(optional)</span>}</Label>
+                                                                <div className='relative'>
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                    <Input
+                                                                        id="rate_per_hour"
+                                                                        type="text"
+                                                                        inputMode="numeric"
+                                                                        pattern="[0-9.,]*"
+                                                                        placeholder="Rate Per Hour"
+                                                                        className="pl-8"
+                                                                        min={0}
+                                                                        value={formatWithCommas(data.rate_per_hour ?? '')}
+                                                                        onChange={e => {
+                                                                            const raw = e.target.value.replace(/,/g, '');
+                                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                            setData('rate_per_hour', raw);
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    } else if (showOnlyBase || showDefaultBase) {
+                                                        return (
+                                                            <>
+                                                                <Label htmlFor="base_salary">Base Salary</Label>
+                                                                <div className='relative'>
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">₱</span>
+                                                                    <Input
+                                                                        id="base_salary"
+                                                                        type="text"
+                                                                        inputMode="numeric"
+                                                                        pattern="[0-9.,]*"
+                                                                        placeholder="Salary"
+                                                                        className="pl-8"
+                                                                        min={0}
+                                                                        value={formatWithCommas(data.base_salary ?? '')}
+                                                                        onChange={e => {
+                                                                            const raw = e.target.value.replace(/,/g, '');
+                                                                            if (!/^\d*(\.\d*)?$/.test(raw)) return;
+                                                                            setData('base_salary', raw);
+                                                                            const baseSalaryNum = Number(raw) || 0;
+                                                                            const calculatedPhilHealth = Math.max(250, Math.min(2500, (baseSalaryNum * 0.05) / 2));
+                                                                            setData('philhealth', calculatedPhilHealth.toString());
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            </>
+                                                        );
                                                     }
+                                                    // Handle the 'Others only' case where Base Salary is cleared, but no Rate Per Hour is required
+                                                    // The original logic handles this by showing only Honorarium (next block)
+
+                                                    // Fallback for the 'Others only' role where base salary is cleared
+                                                    if (isOthers && rolesArr.length === 1) {
+                                                        return null; // Only Honorarium (in the next block) will show
+                                                    }
+
+                                                    // In all other non-display cases (e.g., retired only), return null.
+                                                    return null;
+
                                                 })()}
 
                                                 {/* Honorarium (optional) */}
