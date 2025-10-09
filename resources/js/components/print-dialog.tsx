@@ -15,6 +15,7 @@ import BiometricTimeRecordTemplate from './print-templates/BiometricTimeRecordTe
 import { AnimatePresence, motion } from 'framer-motion';
 import { Printer, FileText } from 'lucide-react';
 import { MonthPicker } from './ui/month-picker';
+import { Employees } from '@/types';
 
 interface Payroll {
     payroll_date: string;
@@ -95,24 +96,18 @@ interface BTRRecord {
     timeOut: string;
 }
 
-import { Employees } from '@/types';
-
-// Updated to use Employees type instead of local Employee interface
 interface PrintDialogProps {
   open: boolean;
   onClose: () => void;
   employee: Employees | null;
 }
 
-// Toggle for auto-download vs. view in new tab
-const AUTO_DOWNLOAD = false; // Set to true to enable auto-download, false for view in new tab
-// Utility to sanitize file names (remove spaces, special chars)
+const AUTO_DOWNLOAD = false;
 function sanitizeFile(str?: string) {
     return (str || '').replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
 const fetchPayrollData = async (employeeId: number, month: string): Promise<PayslipData | null> => {
-    // Fetch payroll data from backend
     const response = await fetch(route('payroll.employee.monthly', {
         employee_id: employeeId,
         month,
@@ -121,11 +116,9 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
     if (!result.success || !result.payrolls || result.payrolls.length === 0) {
         return null;
     }
-    // Use the latest payroll for the month
     const payroll: Payroll & { college_rate?: number } = result.payrolls.reduce((latest: Payroll, curr: Payroll) => {
         return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
     }, result.payrolls[0]);
-    // Map backend fields to payslip template props
     return {
         earnings: {
             monthlySalary: payroll.base_salary ?? 0,
@@ -133,7 +126,7 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             undertime: payroll.undertime ?? 0,
             absences: payroll.absences ?? 0,
             overtime_pay_total: payroll.overtime_pay ?? 0,
-            ratePerHour: undefined, // will be injected from timekeeping
+            ratePerHour: undefined,
             collegeRate: payroll.college_rate ?? 0,
         },
         deductions: {
@@ -165,14 +158,13 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
     const [selectedMonth, setSelectedMonth] = useState<string>('');
     const { summary: timekeepingSummary } = useEmployeePayroll(employee.id, selectedMonth);
     const [btrRecords, setBtrRecords] = useState<BTRRecord[]>([]);
+    const [leaveDatesMap, setLeaveDatesMap] = useState<Record<string, string>>({});
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [payrollData, setPayrollData] = useState<PayslipData | null>(null);
     const [showPDF, setShowPDF] = useState<false | 'payslip' | 'btr'>(false);
-    // Loading states for buttons
     const [loadingPayslip, setLoadingPayslip] = useState(false);
     const [loadingBTR, setLoadingBTR] = useState(false);
 
-    // Fetch available months from backend
     const fetchAvailableMonths = async () => {
         try {
             const response = await fetch('/payroll/all-available-months');
@@ -193,10 +185,8 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         if (open) {
             fetchAvailableMonths();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
-    // Print Payslip handler
     const handlePrintPayslip = async () => {
         setLoadingPayslip(true);
         setShowPDF(false);
@@ -206,7 +196,6 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             setLoadingPayslip(false);
             return;
         }
-        // Fetch the raw payroll object for college_rate
         let payrollCollegeRate = 0;
         try {
             const response = await fetch(route('payroll.employee.monthly', {
@@ -222,7 +211,6 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 payrollCollegeRate = payroll.college_rate ?? 0;
             }
         } catch { /* ignore error */ }
-        // Fetch timekeeping records before calculating numHours
         const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
         const result = await response.json();
         let btrRecords: BTRRecord[] = [];
@@ -287,12 +275,10 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         }, 100);
     };
 
-    // Print BTR handler
     const handlePrintBTR = async () => {
         setLoadingBTR(true);
         setShowPDF(false);
         try {
-            // Fetch BTR records for this employee
             const btrRes = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
             const btrJson = await btrRes.json();
             let btrRecords: BTRRecord[] = [];
@@ -303,44 +289,42 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                     timeOut: (rec.clock_out as string) || (rec.time_out as string) || '-',
                 }));
             }
-            // Only proceed if at least one real timeIn or timeOut exists
+            
+            const summaryRes = await fetch(`/api/timekeeping/monthlySummary?employee_id=${employee?.id}&month=${selectedMonth}`);
+            const summaryJson = await summaryRes.json();
+            if (summaryJson.success && summaryJson._debug) {
+                setLeaveDatesMap(summaryJson._debug.leave_dates_map || {});
+            } else {
+                setLeaveDatesMap({});
+            }
+
             const hasRealTime = btrRecords.some(r => (r.timeIn && r.timeIn !== '-') || (r.timeOut && r.timeOut !== '-'));
-            if (!hasRealTime) {
-                toast.error('No biometric time records found for this month.');
+            const hasLeaves = summaryJson.success && summaryJson._debug && Object.keys(summaryJson._debug.leave_dates_map).length > 0;
+
+            if (!hasRealTime && !hasLeaves) {
+                toast.error('No biometric time records or leaves found for this month.');
                 setLoadingBTR(false);
                 return;
             }
-            // Fetch timekeeping summary for this employee/month
-            // Fetch timekeeping summary and calculate total hours (logic retained for future use, but variables removed to fix lint errors)
-            // totalHours is calculated but not used; suppress unused warning by omitting assignment if not needed
-            // const totalHours = totalWorkedHours
-            //     - (Number(summary?.tardiness ?? 0))
-            //     - (Number(summary?.undertime ?? 0))
-            //     - (Number(summary?.absences ?? 0))
-            //     + (Number(summary?.overtime ?? 0));
-            // Set BTR records for rendering (pass all days in month, with mapped records)
-            // Generate all days in the month
+            
             const allDates: string[] = [];
             if (selectedMonth && /^\d{4}-\d{2}$/.test(selectedMonth)) {
                 const [yearStr, monthStr] = selectedMonth.split('-');
                 const year = parseInt(yearStr, 10);
-                const month = parseInt(monthStr, 10); // 1-based
+                const month = parseInt(monthStr, 10);
                 if (!isNaN(year) && !isNaN(month)) {
                     const daysInMonth = new Date(year, month, 0).getDate();
                     for (let d = 1; d <= daysInMonth; d++) {
-                        // Always use YYYY-MM-DD (no time) for consistency with batch logic
                         const mm = String(month).padStart(2, '0');
                         const dd = String(d).padStart(2, '0');
                         allDates.push(`${year}-${mm}-${dd}`);
                     }
                 }
             }
-            // Map records by date for quick lookup
             const recordMap: Record<string, BTRRecord> = {};
             btrRecords.forEach((rec) => {
                 recordMap[rec.date] = rec;
             });
-            // Always generate all days for the month, even if no records exist for that day
             const records: BTRRecord[] = allDates.map(dateStr => {
                 const rec = recordMap[dateStr];
                 const dateObj = new Date(dateStr);
@@ -438,6 +422,8 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 {showPDF === 'btr' && btrRecords.length > 0 && (
                                     <PDFDownloadLink
                                         document={<BiometricTimeRecordTemplate
+                                            employee={employee}
+                                            leaveDatesMap={leaveDatesMap}
                                             employeeName={employee ? (formatFullName(employee.last_name, employee.first_name, employee.middle_name)) : ''}
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
