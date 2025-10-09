@@ -364,11 +364,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             },
                                                             {
                                                                 label: 'Absences',
-                                                                value: records.length === 0
-                                                                    ? '-'
-                                                                    : (typeof summary?.absences === 'number' && employee?.work_hours_per_day
-                                                                        ? `${Number(summary.absences).toFixed(2)} hr(s)`
-                                                                        : '-'),
+                                                                value: records.length === 0 ? '-' : (typeof summary?.absences === 'number' && employee?.work_hours_per_day ? `${Number(summary.absences).toFixed(2)} hr(s)`: '-'),
                                                                 bg: 'bg-gray-50 dark:bg-gray-800',
                                                                 border: 'border-gray-200 dark:border-gray-700',
                                                                 text: 'text-gray-600',

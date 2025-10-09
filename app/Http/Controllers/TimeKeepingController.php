@@ -460,6 +460,7 @@ class TimeKeepingController extends Controller {
             ->get();
 
         // --- Compute summary values ---
+
         $late_count = 0;
         $early_count = 0;
         $overtime_count = 0;
@@ -477,6 +478,7 @@ class TimeKeepingController extends Controller {
 
         $grace_period_minutes = 15;
         $late_threshold = $work_start_time ? date('H:i:s', strtotime($work_start_time) + $grace_period_minutes * 60) : null;
+
 
         foreach ($records as $tk) {
             // Tardiness (decimal hours)
@@ -519,10 +521,40 @@ class TimeKeepingController extends Controller {
             }
         }
 
-        // --- Use employee's workDays schedule for absence and total hours calculation ---
-        $absent_hours = 0;
-        $monthStart = strtotime($month . '-01');
-        $daysInMonth = (int)date('t', $monthStart);
+        // --- NEW LEAVE DATE CALCULATION (Fix for Missing Status Column) ---
+        $monthStart = $month . '-01';
+        $monthEnd = date('Y-m-t', strtotime($monthStart));
+
+        // 1. Fetch ALL leave records that intersect with the current month.
+        // We are skipping the 'status' filter as the column does not yet exist.
+        // All found leaves are currently treated as excused/approved for absence calculation.
+        $approvedLeaves = \App\Models\Leave::where('employee_id', $employeeId)
+            ->where(function($query) use ($monthStart, $monthEnd) {
+                // Ensure the leave period overlaps the month
+                $query->where('leave_start_day', '<=', $monthEnd)
+                      ->where('leave_end_day', '>=', $monthStart);
+            })
+            ->get(['leave_start_day', 'leave_end_day']);
+
+        $leaveDatesSet = []; // This will hold all the individual excused dates
+
+        // 2. Iterate through each leave record to generate the excused dates for the month
+        foreach ($approvedLeaves as $leave) {
+            $startDate = max($leave->leave_start_day, $monthStart);
+            $endDate = min($leave->leave_end_day, $monthEnd);
+
+            $period = new \DatePeriod(
+                new \DateTime($startDate),
+                new \DateInterval('P1D'),
+                (new \DateTime($endDate))->modify('+1 day')
+            );
+
+            foreach ($period as $dateObj) {
+                $leaveDatesSet[$dateObj->format('Y-m-d')] = true; // Store for quick lookup
+            }
+        }
+        // --- END MODIFIED LEAVE DATE CALCULATION ---
+
         // Fetch all observance dates for this month
         $observanceDates = DB::table('observances')
             ->where('date', 'like', "$month%")
@@ -530,34 +562,39 @@ class TimeKeepingController extends Controller {
             ->toArray();
         $observanceSet = array_flip($observanceDates); // for fast lookup
 
-        // Get employee's workDays schedule as associative array: key=day (0=Sun, 6=Sat, or 'mon', etc.), value=workDay model
-        $workDaysModels = $employee->workDays ? $employee->workDays->keyBy(function($wd) {
-            // Accept both int and string day representations
-            // If day is numeric, use as int; else, convert string to lowercase
-            return is_numeric($wd->day) ? intval($wd->day) : strtolower($wd->day);
+        // FIX: Define daysInMonth for the loop to work
+        $daysInMonth = (int)date('t', strtotime($monthStart)); 
+
+        // Get employee's workDays schedule as associative array: key=day ('mon', 'tue', etc.), value=workDay model
+        $workDaysModels = $employee->workDays ? $employee->workDays->keyBy(function ($wd) {
+            return strtolower($wd->day);
         }) : collect();
 
         // Helper to map PHP day number (0=Sun, 6=Sat) to string ('sun', ...)
-        $phpDayToStr = ['sun','mon','tue','wed','thu','fri','sat'];
+        $phpDayToStr = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+        $absent_hours = 0;
 
         for ($i = 1; $i <= $daysInMonth; $i++) {
             $date = date('Y-m-d', strtotime($month . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
             $dayOfWeekNum = date('w', strtotime($date)); // 0=Sun, 6=Sat
             $dayOfWeekStr = $phpDayToStr[$dayOfWeekNum];
-            // Find workDay model for this day (prefer string key, fallback to int key)
-            $workDay = $workDaysModels->get($dayOfWeekStr, $workDaysModels->get($dayOfWeekNum));
+
+            // Find workDay model for this day
+            $workDay = $workDaysModels->get($dayOfWeekStr);
             if (!$workDay) continue; // not a scheduled work day
-            // Skip if date is in observances table
+
+            // Skip if date is in observances table (Holiday/Non-working day)
             if (isset($observanceSet[$date])) continue;
-            // Skip if date is a leave day for this employee
-            $leaveStatuses = ['on leave', 'sick leave', 'vacation leave', 'Paid Leave'];
-            $leaveDates = DB::table('employee_status_histories')
-                ->where('employee_id', $employee->id)
-                ->whereIn('status', $leaveStatuses)
-                ->pluck('effective_date')->toArray();
-            if (in_array($date, $leaveDates)) continue;
+
+            // Skip if date is an existing leave day (assuming approved since no status column)
+            if (isset($leaveDatesSet[$date])) {
+                continue; 
+            }
+
             $tk = $records->where('date', $date);
-            // If no record, or all records for the day have missing/null/whitespace clock_in and clock_out
+
+            // Check for absence
             $allAbsent = true;
             if ($tk->count() > 0) {
                 foreach ($tk as $rec) {
@@ -569,6 +606,7 @@ class TimeKeepingController extends Controller {
                     }
                 }
             }
+
             // Calculate work hours for this day from workDay schedule
             $workHoursPerDay = 8;
             if (!empty($workDay->work_start_time) && !empty($workDay->work_end_time)) {
@@ -578,13 +616,14 @@ class TimeKeepingController extends Controller {
                 if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
                 $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
             }
+
             if ($tk->count() === 0 || $allAbsent) {
+                // Only count as absent if it's a scheduled workday and not excused (leave/holiday)
                 $absent_hours += $workHoursPerDay;
             }
         }
         $absences = $absent_hours;
-
-        // If there is at least one record in the month, always return success and computed values
+        
         $hasData = $records->count() > 0;
         // Calculate total_hours for all roles: sum of actual hours worked from time in/out (only on scheduled work days, minus 1 hour break per day if worked at least 4 hours)
         $actualHoursWorked = 0;
@@ -611,23 +650,45 @@ class TimeKeepingController extends Controller {
                 $actualHoursWorked += max(0, $hours);
             }
         }
+        
+        // --- DEBUG BLOCK ---
+        $isAbsencesValidNumber = is_numeric($absences);
+        $workHoursExists = !empty($employee->work_hours_per_day);
+        
+        $debug = [
+            'has_timekeeping_records' => $hasData,
+            'is_absences_numeric' => $isAbsencesValidNumber,
+            'employee_work_hours_per_day_value' => $employee->work_hours_per_day,
+            'work_hours_per_day_exists' => $workHoursExists,
+            'calculated_absences' => round($absences, 2),
+            'display_absences_condition_2' => $isAbsencesValidNumber && $workHoursExists,
+            'leave_dates_in_month' => array_keys($leaveDatesSet),
+        ];
+        // --- END DEBUG BLOCK ---
+
         $response = [
             'success' => $hasData,
-            'tardiness' => $late_count,
-            'undertime' => $early_count,
-            'overtime' => $overtime_count,
-            'overtime_count_weekdays' => $overtime_count_weekdays,
-            'overtime_count_weekends' => $overtime_count_weekends,
-            'absences' => $absences,
+            'tardiness' => round($late_count, 2),
+            'undertime' => round($early_count, 2),
+            'overtime' => round($overtime_count, 2),
+            'overtime_count_weekdays' => round($overtime_count_weekdays, 2),
+            'overtime_count_weekends' => round($overtime_count_weekends, 2),
+            'absences' => round($absences, 2),
             'base_salary' => $base_salary,
             'rate_per_day' => $rate_per_day,
             'rate_per_hour' => $rate_per_hour,
-            'overtime_pay_total' => $overtime_pay_total,
+            'overtime_pay_total' => round($overtime_pay_total, 2),
             'payroll_gross_pay' => $payroll ? $payroll->gross_pay : null,
             'payroll_total_deductions' => $payroll ? $payroll->total_deductions : null,
             'payroll_net_pay' => $payroll ? $payroll->net_pay : null,
             'total_hours' => round($actualHoursWorked, 2),
+            // Including work_hours_per_day for front-end conditional logic
+            'work_hours_per_day' => $employee->work_hours_per_day, 
+            
+            // DEBUG DATA
+            '_debug' => $debug,
         ];
+        
         // If College Instructor, add college_rate
         if ($employee && is_string($employee->roles) && stripos($employee->roles, 'college instructor') !== false) {
             $response['college_rate'] = $employee->college_rate ?? null;
