@@ -1,5 +1,6 @@
 import React from 'react';
 import { Page, View, Text, StyleSheet, Image } from '@react-pdf/renderer';
+import { Employees } from '@/types';
 
 const styles = StyleSheet.create({
   page: {
@@ -99,6 +100,24 @@ const styles = StyleSheet.create({
   },
 });
 
+const DAY_LABELS: Record<string, string> = {
+    mon: "Monday",
+    tue: "Tuesday",
+    wed: "Wednesday",
+    thu: "Thursday",
+    fri: "Friday",
+    sat: "Saturday",
+    sun: "Sunday",
+};
+
+const LEAVE_COLOR_MAP: Record<string, { bg: string; text: string; }> = {
+    'Paid Leave': { bg: '#dcfce7', text: '#166534' },
+    'Maternity Leave': { bg: '#dbeafe', text: '#1e40af' },
+    'Sick Leave': { bg: '#ffedd5', text: '#9a3412' },
+    'Study Leave': { bg: '#f3e8ff', text: '#6b21a8' },
+    'DEFAULT': { bg: '#f3f4f6', text: '#1f2937' },
+};
+
 interface TimeRecord {
   date: string;
   timeIn?: string | null;
@@ -110,6 +129,8 @@ interface TimeRecord {
 }
 
 interface BTRBoxProps {
+  employee: Employees | null;
+  leaveDatesMap: Record<string, string>;
   employeeName?: string;
   role?: string;
   payPeriod?: string;
@@ -129,7 +150,7 @@ const getPayPeriodString = (period?: string) => {
     const match = period.match(/^(\d{4})-(\d{2})/);
     if (match) {
       year = parseInt(period.substring(0, 4), 10);
-      month = parseInt(match[2], 10);
+      month = parseInt(match[1], 10);
     }
   }
   const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' });
@@ -174,6 +195,8 @@ const getNum = (v: string | number | undefined | null) => {
 };
 
 const BTRBox: React.FC<BTRBoxProps> = ({
+  employee,
+  leaveDatesMap,
   employeeName = '-',
   role = '',
   payPeriod,
@@ -184,7 +207,6 @@ const BTRBox: React.FC<BTRBoxProps> = ({
   overtime = 0,
   absences = 0,
 }) => {
-  // Generate days for the month
   const daysInMonth = payPeriod
     ? new Date(
         parseInt(payPeriod.split("-")[0]),
@@ -194,7 +216,6 @@ const BTRBox: React.FC<BTRBoxProps> = ({
     : 0;
   const year = payPeriod ? payPeriod.split("-")[0] : "";
   const month = payPeriod ? payPeriod.split("-")[1] : "";
-  // Map records by normalized date for quick lookup
   const recordMap: Record<string, TimeRecord> = {};
   records.forEach((rec) => {
     recordMap[normalizeDate(rec.date)] = rec;
@@ -202,7 +223,6 @@ const BTRBox: React.FC<BTRBoxProps> = ({
 
   return (
     <View style={styles.page}>
-      {/* Header Row */}
       <View style={styles.headerRow}>
         <Image style={styles.logo} src="/img/tcc_logo2.jpg" />
         <View style={styles.headerTextCol}>
@@ -212,7 +232,6 @@ const BTRBox: React.FC<BTRBoxProps> = ({
           <Text style={styles.subtitle}>Tel. Nos.: (02) 234-5566</Text>
         </View>
       </View>
-      {/* Employee Name and Period Row */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginTop: 8 }}>
         <View style={{ flex: 1 }}>
           <Text>
@@ -238,7 +257,6 @@ const BTRBox: React.FC<BTRBoxProps> = ({
           </Text>
         </View>
       </View>
-      {/* Timekeeping Table */}
       <View style={styles.tableContainer}>
         <View style={styles.tableHeaderRow}>
           <Text style={[styles.tableHeaderCell, styles.tableHeaderCellLeft, styles.dateCell]}>Date</Text>
@@ -250,21 +268,39 @@ const BTRBox: React.FC<BTRBoxProps> = ({
           const dateStr = `${year}-${month.padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           const rec = recordMap[dateStr];
           const isEven = i % 2 === 0;
+          
+          const leaveType = leaveDatesMap[dateStr];
+          const isLeaveDay = !!leaveType;
+
           const dayName = getDayName(dateStr);
+          const workDays = employee?.work_days || [];
+          const isWorkDay = workDays.some(workDay => DAY_LABELS[workDay.day] === dayName);
+          const isPaidLeaveDay = isLeaveDay && isWorkDay;
+
+          const colors = isLeaveDay ? (LEAVE_COLOR_MAP[leaveType] || LEAVE_COLOR_MAP.DEFAULT) : null;
+
+          const rowStyle = [
+              styles.tableRow,
+              isLeaveDay && colors ? { backgroundColor: colors.bg } : (isEven ? styles.evenRow : styles.oddRow)
+          ];
+          
+          const textStyle = isLeaveDay && colors ? { color: colors.text } : {};
+
           return (
-            <View key={dateStr} style={[styles.tableRow, isEven ? styles.evenRow : styles.oddRow]}> 
-              <Text style={[styles.tableCell, styles.dateCell]}>{dateStr}{dayName ? ` (${dayName})` : ''}</Text>
-              <Text style={styles.tableCell}>{rec?.timeIn || rec?.clock_in || rec?.time_in || "-"}</Text>
-              <Text style={styles.tableCell}>{rec?.timeOut || rec?.clock_out || rec?.time_out || "-"}</Text>
+            <View key={dateStr} style={rowStyle}>
+              <Text style={[styles.tableCell, styles.dateCell, textStyle]}>
+                  {`${dateStr}${dayName ? ` (${dayName})` : ''}`}
+                  {isPaidLeaveDay && <Text style={{fontWeight: 'bold', fontSize: 6, textTransform: 'uppercase'}}>{` - ${leaveType}`}</Text>}
+              </Text>
+              <Text style={[styles.tableCell, textStyle]}>{rec?.timeIn || rec?.clock_in || rec?.time_in || (isPaidLeaveDay ? leaveType : "-")}</Text>
+              <Text style={[styles.tableCell, textStyle]}>{rec?.timeOut || rec?.clock_out || rec?.time_out || (isPaidLeaveDay ? leaveType : "-")}</Text>
             </View>
           );
         })}
       </View>
-      {/* Summary Label */}
       <View style={{marginBottom: 2 }}>
         <Text style={{ fontWeight: 'bold', fontSize: 8 }}>Summary:</Text>
       </View>
-      {/* Summary Row */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 0, marginBottom: 0, fontSize: 8 }}>
         <Text style={{ flex: 1, textAlign: 'left' }}>
           TOTAL HOURS: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(totalHours))}</Text>
@@ -282,7 +318,6 @@ const BTRBox: React.FC<BTRBoxProps> = ({
           ABSENCES: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(absences))}</Text>
         </Text>
       </View>
-      {/* Conforme/Verified Signature Lines and Labels */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 20, marginBottom: 0 }}>
         <View style={{ flex: 1, alignItems: 'flex-start' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>

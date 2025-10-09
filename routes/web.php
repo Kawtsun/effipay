@@ -41,7 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/employees/all', function () {
         return [
             'success' => true,
-            'employees' => \App\Models\Employees::all(),
+            'employees' => \App\Models\Employees::with('workDays')->get(),
         ];
     });
 
