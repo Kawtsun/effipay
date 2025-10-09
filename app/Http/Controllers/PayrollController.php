@@ -28,38 +28,7 @@ class PayrollController extends Controller
         // Extract the month (YYYY-MM) from the selected payroll date
         $payrollMonth = date('Y-m', strtotime($request->payroll_date));
 
-        // Check for employees missing timekeeping data for this month
-        $employees = \App\Models\Employees::all();
-        $missingTK = [];
-        foreach ($employees as $employee) {
-            // Fetch timekeeping summary for this employee and month
-            $summary = app(\App\Http\Controllers\TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
-                'employee_id' => $employee->id,
-                'month' => $payrollMonth
-            ]));
-            $summaryData = $summary->getData(true);
 
-            // Debug: Log summary data and overtime value for this employee
-            \Illuminate\Support\Facades\Log::info('[Payroll Debug] Employee: ' . $employee->id . ' ' . $employee->first_name . ' ' . $employee->last_name, [
-                'summaryData' => $summaryData,
-                'overtime_used' => isset($summaryData['overtime_count']) ? $summaryData['overtime_count'] : null,
-            ]);
-
-            $hasTK = \App\Models\TimeKeeping::where('employee_id', $employee->id)
-                ->where('date', 'like', $payrollMonth . '%')
-                ->exists();
-            if (!$hasTK) {
-                $missingTK[] = $employee->first_name . ' ' . $employee->last_name;
-            }
-        }
-        if (count($missingTK) > 0) {
-            return redirect()->back()->with([
-                'flash' => [
-                    'type' => 'error',
-                    'message' => 'Cannot run payroll. Some employees have no timekeeping data for ' . date('F Y', strtotime($request->payroll_date)) . '.'
-                ]
-            ]);
-        }
 
         // Get all employees
         $employees = \App\Models\Employees::all();
@@ -76,6 +45,15 @@ class PayrollController extends Controller
             // If already run once, only allow for the other day
             $existingDates = $existingPayrolls->pluck('payroll_date')->toArray();
             if (in_array($request->payroll_date, $existingDates)) {
+                continue;
+            }
+
+            // Skip employee if they have no timekeeping data for the month
+            $hasTK = \App\Models\TimeKeeping::where('employee_id', $employee->id)
+                ->where('date', 'like', $payrollMonth . '%')
+                ->exists();
+
+            if (!$hasTK) {
                 continue;
             }
 
