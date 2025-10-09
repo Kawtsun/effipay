@@ -16,6 +16,7 @@ return new class extends Migration
             
             // Columns needed for the query:
             $table->unsignedBigInteger('employee_id')->index(); // Employee who took the leave
+            $table->string('status'); // Employee Leave status or tpye
             $table->date('leave_start_day'); // The first day of the leave
             $table->date('leave_end_day');   // The last day of the leave
 

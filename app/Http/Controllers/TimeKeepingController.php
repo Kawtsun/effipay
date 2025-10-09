@@ -266,11 +266,11 @@ class TimeKeepingController extends Controller
                 );
                 // Get leave dates for this employee
                 $leaveStatuses = ['on leave', 'sick leave', 'vacation leave', 'Paid Leave'];
-                $leaveIntervals = DB::table('employee_status_histories')
+                $leaveIntervals = DB::table('leaves')
                     ->where('employee_id', $emp->id)
                     ->whereIn('status', $leaveStatuses)
-                    ->whereNotNull('leave_start_date')
-                    ->get(['leave_start_date', 'leave_end_date']);
+                    ->whereNotNull('leave_start_day')
+                    ->get(['leave_start_day', 'leave_end_day']);
                 $isInLeaveInterval = function ($date) use ($leaveIntervals) {
                     foreach ($leaveIntervals as $interval) {
                         $start = $interval->leave_start_date;
