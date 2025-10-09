@@ -60,13 +60,13 @@ export default function Create(props: Props) {
 
     // Sync roles field with checkboxes and custom 'Others' role input
     useEffect(() => {
-    // Build rolesArr only from checked roles and custom 'Others' role if checked
-    const rolesArr = [];
-    if (data.roles.split(',').includes('administrator')) rolesArr.push('administrator');
-    if (isCollegeInstructorChecked) rolesArr.push('college instructor');
-    if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
-    if (isOthersChecked && othersRole.trim()) rolesArr.push(othersRole.trim().toLowerCase());
-    setData('roles', rolesArr.join(','));
+        // Build rolesArr only from checked roles and custom 'Others' role if checked
+        const rolesArr = [];
+        if (data.roles.split(',').includes('administrator')) rolesArr.push('administrator');
+        if (isCollegeInstructorChecked) rolesArr.push('college instructor');
+        if (isBasicEduInstructorChecked) rolesArr.push('basic education instructor');
+        if (isOthersChecked && othersRole.trim()) rolesArr.push(othersRole.trim().toLowerCase());
+        setData('roles', rolesArr.join(','));
     }, [isCollegeInstructorChecked, isBasicEduInstructorChecked, isOthersChecked, othersRole]);
     const { search, filters, page, salaryDefaults } = props;
     // Add state for showing/hiding Salary Loan input
@@ -337,10 +337,37 @@ export default function Create(props: Props) {
             const startMinutes = startHour * 60 + startMinute;
             const endMinutes = endHour * 60 + endMinute;
 
-            // Auto-calculate PhilHealth and Withholding Tax
-            let actualWorkMinutes = endMinutes - startMinutes;
-            if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-            workHours = Math.max(1, Math.round(actualWorkMinutes / 60) - 1); // Subtract 1 hour for break
+            // Define fixed break window and deduction
+            const fixedBreakStartMinutes = 12 * 60; // 720 minutes (12:00 PM)
+            const fixedBreakEndMinutes = 13 * 60;   // 780 minutes (1:00 PM)
+            const mandatedDeduction = 60;          // 1 hour
+
+            // 1. Handle overnight shifts
+            let totalScheduledMinutes = endMinutes - startMinutes;
+            if (totalScheduledMinutes <= 0) {
+                totalScheduledMinutes += 24 * 60;
+            }
+
+            // 2. Calculate Overlap (Raw Non-Work Time)
+            const overlapStartMinutes = Math.max(startMinutes, fixedBreakStartMinutes);
+            const overlapEndMinutes = Math.min(endMinutes, fixedBreakEndMinutes);
+            const overlapMinutes = Math.max(0, overlapEndMinutes - overlapStartMinutes);
+
+            // 3. Determine Final Deduction Amount (The Conditional Rule)
+            let finalDeductionMinutes;
+
+            if (endMinutes > fixedBreakEndMinutes) {
+                // Shift ends later than 1:00 PM -> Mandate 1 hour
+                finalDeductionMinutes = mandatedDeduction;
+            } else {
+                // Shift ends at 1:00 PM or earlier -> Deduction is the actual overlap
+                finalDeductionMinutes = overlapMinutes;
+            }
+
+            // 4. Calculate Net Work Hours (as a whole number)
+            const netWorkMinutes = Math.max(0, totalScheduledMinutes - finalDeductionMinutes);
+            workHours = Math.max(1, Math.round(netWorkMinutes / 60)); // Round to nearest whole hour, ensuring minimum 1
+            // --- End New Logic ---
         }
 
         const employee_name = `${data.last_name}, ${data.first_name}, ${data.middle_name}`;
@@ -511,12 +538,37 @@ export default function Create(props: Props) {
             const endMinutes = endHour * 60 + endMinute;
 
             // Handle overnight shifts (end time is next day)
-            let actualWorkMinutes = endMinutes - startMinutes;
-            if (actualWorkMinutes <= 0) {
-                actualWorkMinutes += 24 * 60; // Add 24 hours
+            // Define fixed break window and deduction
+            const fixedBreakStartMinutes = 12 * 60; // 720 minutes (12:00 PM)
+            const fixedBreakEndMinutes = 13 * 60;   // 780 minutes (1:00 PM)
+            const mandatedDeduction = 60;          // 1 hour
+
+            // 1. Handle overnight shifts (this is your existing actualWorkMinutes renamed)
+            let totalScheduledMinutes = endMinutes - startMinutes;
+            if (totalScheduledMinutes <= 0) {
+                totalScheduledMinutes += 24 * 60; // Add 24 hours
             }
 
-            const actualWorkHours = Math.max(1, Math.round(actualWorkMinutes / 60) - 1); // Subtract 1 hour for break
+            // 2. Calculate Overlap (Raw Non-Work Time)
+            const overlapStartMinutes = Math.max(startMinutes, fixedBreakStartMinutes);
+            const overlapEndMinutes = Math.min(endMinutes, fixedBreakEndMinutes);
+            const overlapMinutes = Math.max(0, overlapEndMinutes - overlapStartMinutes);
+
+            // 3. Determine Final Deduction Amount (The Conditional Rule)
+            let finalDeductionMinutes;
+
+            if (endMinutes > fixedBreakEndMinutes) {
+                // Shift ends later than 1:00 PM -> Mandate 1 hour
+                finalDeductionMinutes = mandatedDeduction;
+            } else {
+                // Shift ends at 1:00 PM or earlier -> Deduction is the actual overlap
+                finalDeductionMinutes = overlapMinutes;
+            }
+
+            // 4. Calculate Net Work Hours (as a whole number)
+            const netWorkMinutes = Math.max(0, totalScheduledMinutes - finalDeductionMinutes);
+            const actualWorkHours = Math.max(1, Math.round(netWorkMinutes / 60)); // Round to nearest whole hour, ensuring minimum 1
+            // --- End New Logic ---
 
             // Only update if the calculated hours are reasonable (1-24 hours)
             if (actualWorkHours >= 1 && actualWorkHours <= 24) {
