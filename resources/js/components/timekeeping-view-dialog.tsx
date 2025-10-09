@@ -241,7 +241,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 value={selectedMonth}
                                                 onValueChange={handleMonthChange}
                                                 placeholder="Select month"
-                                                className="w-46 min-w-0 px-2 py-1 text-sm"
+                                                className="w-56 min-w-0 px-2 py-1 text-sm"
                                                 availableMonths={availableMonths}
                                             />
                                         </div>
