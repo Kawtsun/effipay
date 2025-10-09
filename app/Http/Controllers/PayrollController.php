@@ -127,21 +127,9 @@ class PayrollController extends Controller
                 $overtime_pay = isset($summaryData['overtime_pay_total']) ? floatval($summaryData['overtime_pay_total']) : 0;
                 $overtime_hours = isset($summaryData['overtime']) ? floatval($summaryData['overtime']) : 0;
 
-                $sss = $employee->sss;
-                $philhealth = $employee->philhealth;
-                $pag_ibig = $employee->pag_ibig;
-                $withholding_tax = $base_salary > 0 ? (function($base_salary, $sss, $pag_ibig, $philhealth) {
-                    $totalComp = $base_salary - ($sss + $pag_ibig + $philhealth);
-                    if ($totalComp <= 20832) return 0;
-                    if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
-                    if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
-                    if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
-                    if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
-                    return 183541.80 + 0.35 * ($totalComp - 666667);
-                })($base_salary, $sss, $pag_ibig, $philhealth) : 0;
-
                 $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
                 // Gross pay: (base_salary + overtime_pay) - (rate_per_hour * tardiness) - (rate_per_hour * undertime) - (rate_per_hour * absences) + honorarium
+
                 $gross_pay = round(
                     ($base_salary + $overtime_pay)
                     - ($rate_per_hour * $tardiness)
@@ -149,6 +137,19 @@ class PayrollController extends Controller
                     - ($rate_per_hour * $absences)
                     + $honorarium
                 , 2);
+
+                $sss = $employee->sss;
+                $philhealth = $employee->philhealth;
+                $pag_ibig = $employee->pag_ibig;
+                $withholding_tax = $gross_pay > 0 ? (function($gross_pay, $sss, $pag_ibig, $philhealth) {
+                    $totalComp = $gross_pay - ($sss + $pag_ibig + $philhealth);
+                    if ($totalComp <= 20832) return 0;
+                    if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
+                    if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
+                    if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
+                    if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
+                    return 183541.80 + 0.35 * ($totalComp - 666667);
+                })($gross_pay, $sss, $pag_ibig, $philhealth) : 0;
             }
 
                 // Create and save payroll record
