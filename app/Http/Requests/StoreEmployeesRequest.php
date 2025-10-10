@@ -23,7 +23,25 @@ class StoreEmployeesRequest extends FormRequest
     public function rules(): array
     {
         $rolesArr = array_filter(array_map('trim', explode(',', request('roles', ''))));
+        $employeeTypes = request('employee_types', []);
+
+        $isAdmin = in_array('administrator', $rolesArr);
         $isCollege = in_array('college instructor', $rolesArr);
+        $isBasicEdu = in_array('basic education instructor', $rolesArr);
+        
+        $isOthers = false;
+        foreach ($rolesArr as $role) {
+            if (!in_array($role, ['administrator', 'college instructor', 'basic education instructor'])) {
+                $isOthers = true;
+                break;
+            }
+        }
+        
+        // --- RE-ENABLING STRICT VALIDATION ---
+        $isRetired = in_array('Retired', $employeeTypes, true);
+        $contribOptional = $isCollege || $isBasicEdu || $isOthers || $isRetired;
+        $requiresBaseSalary = $isAdmin || $isBasicEdu;
+        $requiresRatePerHour = $isCollege;
 
         return [
             'first_name' => 'required|string|max:255',
@@ -36,15 +54,14 @@ class StoreEmployeesRequest extends FormRequest
             'employee_types' => 'required|array',
             'employee_types.*' => ['required', Rule::in(['Regular', 'Provisionary', 'Retired', 'Full Time', 'Part Time'])],
 
-            // --- TEMPORARILY RELAXED RULES ---
-            // These fields will be made required again once the Earnings form section is built.
-            'base_salary' => 'nullable|numeric|min:0',
-            'rate_per_hour' => 'nullable|numeric|min:0', 
+            // --- RESTORED STRICT RULES ---
+            'base_salary' => $requiresBaseSalary ? 'required_without:honorarium|nullable|numeric|min:0' : 'nullable|numeric|min:0',
+            'rate_per_hour' => $requiresRatePerHour ? 'required|numeric|min:0' : 'nullable|numeric|min:0', 
 
-            'sss' => 'nullable|numeric',
-            'philhealth' => 'nullable|numeric',
-            'pag_ibig' => 'nullable|numeric',
-            'withholding_tax' => 'nullable|numeric',
+            'sss' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
+            'philhealth' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
+            'pag_ibig' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
+            'withholding_tax' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
 
             'college_program' => [
                 Rule::requiredIf($isCollege),

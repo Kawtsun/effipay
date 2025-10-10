@@ -37,74 +37,50 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
     const { data, setData, errors } = form;
 
     // --- REFACTORED STATE LOGIC ---
-    // The checked status of the boxes is now derived directly from the form data.
-    const rolesArr = React.useMemo(() => data.roles.split(',').map(r => r.trim()).filter(Boolean), [data.roles]);
+    // Each checkbox now has its own independent state to avoid circular dependencies.
+    const [isAdmin, setIsAdmin] = React.useState(false);
+    const [isCollege, setIsCollege] = React.useState(false);
+    const [isBasicEdu, setIsBasicEdu] = React.useState(false);
+    const [isOthers, setIsOthers] = React.useState(false);
     
-    const isAdmin = React.useMemo(() => rolesArr.includes('administrator'), [rolesArr]);
-    const isCollege = React.useMemo(() => rolesArr.includes('college instructor'), [rolesArr]);
-    const isBasicEdu = React.useMemo(() => rolesArr.includes('basic education instructor'), [rolesArr]);
-    
-    // For "Others", we check if there's any role that isn't a standard one.
-    const customRole = React.useMemo(() => rolesArr.find(r => !STANDARD_ROLES.includes(r)), [rolesArr]);
-    const isOthers = !!customRole;
-
-    // These states are for UI elements that are not part of the main form data string initially
-    const [othersRoleText, setOthersRoleText] = React.useState(customRole || '');
-    const [collegeProgram, setCollegeProgram] = React.useState(data.college_program || '');
+    const [othersRoleText, setOthersRoleText] = React.useState('');
+    const [collegeProgram, setCollegeProgram] = React.useState('');
     const [currentTypeIndex, setCurrentTypeIndex] = React.useState(0);
 
-    // This handler directly manipulates the `roles` string in the form data.
-    const handleRoleChange = (role: string, isChecked: boolean) => {
-        const currentRoles = new Set(rolesArr);
-        if (isChecked) {
-            currentRoles.add(role);
-        } else {
-            currentRoles.delete(role);
-        }
-        setData('roles', Array.from(currentRoles).join(', '));
-    };
-    
-    // Special handler for the 'Others' checkbox
-    const handleOthersChange = (isChecked: boolean) => {
-        const currentRoles = new Set(rolesArr);
-        // Remove any existing custom role first
-        if (customRole) {
-            currentRoles.delete(customRole);
-        }
-        // If checking 'Others', add the text from the input field
-        if (isChecked && othersRoleText.trim()) {
-            currentRoles.add(othersRoleText.trim().toLowerCase());
-        }
-        // If unchecking, clear the text field
-        if (!isChecked) {
-            setOthersRoleText('');
-        }
-        setData('roles', Array.from(currentRoles).join(', '));
-    };
-
-    // Sync the 'Others' input text with the roles string
+    // This effect syncs the independent checkbox states into the main `form.data.roles` string.
     React.useEffect(() => {
-        // Only run this logic if the 'Others' checkbox is actually checked
-        if (isOthers) {
-            const currentRoles = new Set(rolesArr);
-            // If there was a custom role, remove it before adding the new one
-            if (customRole) {
-                currentRoles.delete(customRole);
-            }
-            if (othersRoleText.trim()) {
-                currentRoles.add(othersRoleText.trim().toLowerCase());
-            }
-            setData('roles', Array.from(currentRoles).join(', '));
+        const newRoles: string[] = [];
+        if (isAdmin) newRoles.push('administrator');
+        if (isCollege) newRoles.push('college instructor');
+        if (isBasicEdu) newRoles.push('basic education instructor');
+        if (isOthers && othersRoleText.trim()) {
+            newRoles.push(othersRoleText.trim().toLowerCase());
         }
-    }, [othersRoleText]); // Only depends on the text input
+        setData('roles', newRoles.join(', '));
+    }, [isAdmin, isCollege, isBasicEdu, isOthers, othersRoleText, setData]);
+
+    // This effect handles the RESET functionality. When the form data is cleared, it unchecks all boxes.
+    React.useEffect(() => {
+        const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
+        setIsAdmin(rolesArr.includes('administrator'));
+        setIsCollege(rolesArr.includes('college instructor'));
+        setIsBasicEdu(rolesArr.includes('basic education instructor'));
+
+        const customRole = rolesArr.find(r => !STANDARD_ROLES.includes(r));
+        setIsOthers(!!customRole);
+        setOthersRoleText(customRole || '');
+        setCollegeProgram(data.college_program || '');
+
+    }, [data.roles, data.college_program]);
     
-    // Sync college program state with form data
+    // Sync college program with form data
     React.useEffect(() => {
         setData('college_program', collegeProgram);
     }, [collegeProgram, setData]);
     
-    // This effect now correctly initializes and cleans up employee_types when roles change
+    // Initialize or clean up employee types when roles change
     React.useEffect(() => {
+        const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
         const newEmployeeTypes: Record<string, string> = {};
         rolesArr.forEach(role => {
             const mappingKey = STANDARD_ROLES.includes(role) ? role : 'others';
@@ -115,16 +91,16 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
         if (currentTypeIndex >= rolesArr.length) {
             setCurrentTypeIndex(Math.max(0, rolesArr.length - 1));
         }
-    }, [data.roles]); // Depends only on the roles string from the form
-
+    }, [data.roles]);
 
     const availableStatuses = ['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave'];
-    const visibleRoleKey = rolesArr[currentTypeIndex] ?? '';
+    const selectedRoles = data.roles.split(',').map(r => r.trim()).filter(Boolean);
+    const visibleRoleKey = selectedRoles[currentTypeIndex] ?? '';
     const visibleRoleLabel = visibleRoleKey;
     let visibleRoleOptions: string[] = [];
     if (STANDARD_ROLES.includes(visibleRoleKey)) {
         visibleRoleOptions = roleTypeMappings[visibleRoleKey as keyof typeof roleTypeMappings];
-    } else if (visibleRoleKey) { // This handles custom roles
+    } else if (visibleRoleKey) {
         visibleRoleOptions = roleTypeMappings.others;
     }
 
@@ -132,9 +108,7 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
         <Card className="w-full border-gray-200 shadow-sm">
             <CardHeader>
                 <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-2 rounded-full">
-                        <Briefcase className="h-6 w-6 text-primary" />
-                    </div>
+                    <div className="bg-primary/10 p-2 rounded-full"><Briefcase className="h-6 w-6 text-primary" /></div>
                     <div>
                         <CardTitle>Employment Details</CardTitle>
                         <CardDescription>Specify roles, types, and status.</CardDescription>
@@ -146,39 +120,29 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
                     <Label className="font-semibold">Employee Roles</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-admin" checked={isAdmin} onCheckedChange={(c) => handleRoleChange('administrator', !!c)} />
+                            <Checkbox id="role-admin" checked={isAdmin} onCheckedChange={(c) => setIsAdmin(!!c)} />
                             <Label htmlFor="role-admin" className="cursor-pointer font-normal">Administrator</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-college" checked={isCollege} onCheckedChange={(c) => handleRoleChange('college instructor', !!c)} />
+                            <Checkbox id="role-college" checked={isCollege} onCheckedChange={(c) => setIsCollege(!!c)} />
                             <Label htmlFor="role-college" className="cursor-pointer font-normal">College Instructor</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-basicedu" checked={isBasicEdu} onCheckedChange={(c) => handleRoleChange('basic education instructor', !!c)} />
+                            <Checkbox id="role-basicedu" checked={isBasicEdu} onCheckedChange={(c) => setIsBasicEdu(!!c)} />
                             <Label htmlFor="role-basicedu" className="cursor-pointer font-normal">Basic Education</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-others" checked={isOthers} onCheckedChange={(c) => handleOthersChange(!!c)} />
+                            <Checkbox id="role-others" checked={isOthers} onCheckedChange={(c) => setIsOthers(!!c)} />
                             <Label htmlFor="role-others" className="cursor-pointer font-normal">Others</Label>
                         </div>
                     </div>
                     <div className="pl-6 space-y-4 pt-2">
-                        {isOthers && (
-                            <Input
-                                type="text"
-                                placeholder="Specify other role"
-                                value={othersRoleText}
-                                onChange={e => setOthersRoleText(e.target.value)}
-                            />
-                        )}
+                        {isOthers && <Input type="text" placeholder="Specify other role" value={othersRoleText} onChange={e => setOthersRoleText(e.target.value)} />}
                         {isCollege && (
                             <div>
                                 <Label className="text-sm font-semibold mb-2 block">College Dept.</Label>
                                 <CollegeProgramScrollArea>
-                                    <EmployeeCollegeRadioDepartment
-                                        value={collegeProgram}
-                                        onChange={setCollegeProgram}
-                                    />
+                                    <EmployeeCollegeRadioDepartment value={collegeProgram} onChange={setCollegeProgram} />
                                 </CollegeProgramScrollArea>
                             </div>
                         )}
@@ -186,11 +150,11 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
                     <div className="flex flex-col gap-2">
-                        {rolesArr.length > 0 ? (
+                        {selectedRoles.length > 0 ? (
                             <>
                                 <Label htmlFor={`type-${visibleRoleKey}`} className="font-semibold capitalize">{visibleRoleLabel} Type</Label>
                                 <div className="flex items-center gap-2">
-                                    {rolesArr.length > 1 && (
+                                    {selectedRoles.length > 1 && (
                                         <Button type="button" variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setCurrentTypeIndex(p => p - 1)} disabled={currentTypeIndex === 0}>
                                             <span className="sr-only">Prev</span>
                                             <ChevronLeft className="h-4 w-4" />
@@ -201,16 +165,16 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
                                         onChange={val => setData('employee_types', { ...data.employee_types, [visibleRoleKey]: val })}
                                         types={visibleRoleOptions.map(opt => ({ value: opt, label: opt }))}
                                     />
-                                    {rolesArr.length > 1 && (
-                                        <Button type="button" variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setCurrentTypeIndex(p => p + 1)} disabled={currentTypeIndex === rolesArr.length - 1}>
+                                    {selectedRoles.length > 1 && (
+                                        <Button type="button" variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setCurrentTypeIndex(p => p + 1)} disabled={currentTypeIndex === selectedRoles.length - 1}>
                                             <span className="sr-only">Next</span>
                                             <ChevronRight className="h-4 w-4" />
                                         </Button>
                                     )}
                                 </div>
-                                {rolesArr.length > 1 && (
+                                {selectedRoles.length > 1 && (
                                     <div className="text-center text-sm text-muted-foreground tabular-nums mt-2">
-                                        Role {currentTypeIndex + 1} of {rolesArr.length}
+                                        Role {currentTypeIndex + 1} of {selectedRoles.length}
                                     </div>
                                 )}
                             </>
@@ -227,7 +191,7 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
                             value={data.employee_status}
                             onChange={val => setData('employee_status', val)}
                             statuses={availableStatuses}
-                            disabled={rolesArr.length === 0}
+                            disabled={selectedRoles.length === 0}
                         />
                         {errors.employee_status && <p className="text-sm text-red-600 mt-1">{errors.employee_status}</p>}
                     </div>

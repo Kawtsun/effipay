@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { EmployeeNameForm } from '@/components/form/EmployeeNameForm';
 import { EmploymentDetailsForm } from '@/components/form/EmploymentDetailsForm';
 import { WorkScheduleForm } from '@/components/form/WorkScheduleForm';
+import { EarningsForm } from '@/components/form/EarningsForm';
 import { type WorkDayTime } from '@/components/work-days-selector';
 
 // --- DATA TYPES ---
@@ -19,6 +20,9 @@ type EmployeeFormData = {
     employee_status: string;
     college_program: string;
     work_days: WorkDayTime[];
+    base_salary: string;
+    rate_per_hour: string;
+    honorarium: string;
 };
 
 type Props = {
@@ -39,6 +43,9 @@ export default function Index(props: Props) {
         employee_status: 'Active',
         college_program: '',
         work_days: [],
+        base_salary: '',
+        rate_per_hour: '',
+        honorarium: '',
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -46,7 +53,7 @@ export default function Index(props: Props) {
         form.post(route('employees.store'), {
             preserveScroll: true,
             onSuccess: () => toast.success('Employee created successfully!'),
-            onError: () => toast.error('There was an error creating the employee. Please review the form for errors.'),
+            onError: () => toast.error('There was an error creating the employee. Please check the form.'),
         });
     };
 
@@ -54,7 +61,6 @@ export default function Index(props: Props) {
         <AppLayout>
             <Head title="Add New Employee" />
             <div className="space-y-8 p-4 md:p-8 max-w-6xl mx-auto">
-                {/* 👇 THIS HEADER SECTION IS NOW RESTORED */}
                 <header className="flex flex-col gap-4">
                     <div>
                         <Button asChild variant="outline" size="sm">
@@ -75,10 +81,13 @@ export default function Index(props: Props) {
                         {/* Left Column */}
                         <div className="space-y-8">
                             <EmployeeNameForm form={form} />
+                            <EmploymentDetailsForm form={form} salaryDefaults={salaryDefaults} />
                             <WorkScheduleForm form={form} />
                         </div>
                         {/* Right Column */}
-                        <EmploymentDetailsForm form={form} salaryDefaults={salaryDefaults} />
+                        <div className="space-y-8">
+                            <EarningsForm form={form} />
+                        </div>
                     </div>
                     
                     <div className="flex justify-end gap-4">
