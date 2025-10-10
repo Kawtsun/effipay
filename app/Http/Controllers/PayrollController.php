@@ -112,7 +112,7 @@ class PayrollController extends Controller
                 // Use all calculated values from timekeeping summary (default logic)
                 $workHoursPerDay = $employee->work_hours_per_day ?? 8;
                 $base_salary = isset($summaryData['base_salary']) ? $summaryData['base_salary'] : $employee->base_salary;
-                $rate_per_hour = isset($summaryData['rate_per_hour']) ? $summaryData['rate_per_hour'] : ($workHoursPerDay > 0 ? ($base_salary * 12 / 288) / $workHoursPerDay : 0);
+                $rate_per_hour = $summaryData['rate_per_hour'] ?? 0;
                 $tardiness = isset($summaryData['tardiness']) ? $summaryData['tardiness'] : 0;
                 if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
                     $start = strtotime($employee->work_start_time);
@@ -234,39 +234,48 @@ class PayrollController extends Controller
      */
     private function calculate13thMonthPay(Employees $employee, int $currentYear, int $monthCount): float
     {
-        // 13th month is calculated from Jan 1 up to the current month being processed.
         $totalAdjustedBasicSalary = 0.0;
+        $work_hours_per_day = $employee->work_hours_per_day ?? 8;
 
-        // We iterate from January (month 1) up to the current month index.
+        // Loop from January to the selected cutoff month
         for ($month = 1; $month <= $monthCount; $month++) {
             $monthString = $currentYear . '-' . str_pad($month, 2, '0', STR_PAD_LEFT);
 
-            // Fetch monthly summary for lates and absences up to the end of the previous month.
-            // NOTE: We rely on the TimeKeepingController's monthlySummary to provide the TARDINESS and ABSENCES 
-            // for the FULL MONTH, even if the payroll date is mid-month.
-            $summary = app(TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
-                'employee_id' => $employee->id,
-                'month' => $monthString
-            ]));
-            $summaryData = $summary->getData(true);
+            $monthlyPayrollRecords = \App\Models\Payroll::where('employee_id', $employee->id)
+                ->where('month', $monthString)
+                ->get();
 
-            // Get monetary values for deductions for this specific month
-            $late_deduction = $summaryData['late_deduction'] ?? 0.0;
-            $absence_deduction = $summaryData['absence_deduction'] ?? 0.0;
+            if ($monthlyPayrollRecords->isEmpty()) {
+                continue;
+            }
 
-            // Use employee's current monthly base salary (which is assumed constant for the year)
-            $monthlyBaseSalary = !is_null($employee->base_salary) ? $employee->base_salary : 0.0;
+            $baseSalaryForMonth = $monthlyPayrollRecords->sum('base_salary');
+            $tardinessHours = $monthlyPayrollRecords->sum('tardiness');
+            $absenceHours = $monthlyPayrollRecords->sum('absences');
 
-            // Apply the formula: (base_salary - (late + absence))
-            $adjustedMonthlyBasicSalary = $monthlyBaseSalary - ($late_deduction + $absence_deduction);
+            // --- UNIFIED HOURLY RATE FORMULA ---
+            // This formula now exactly matches your TimeKeepingController.
+            $rate_per_day = ($baseSalaryForMonth * 12) / 288;
+            $hourlyRate = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
+            // --- END UNIFIED FORMULA ---
 
-            // Ensure the result is non-negative
+            // // --- DEBUG BLOCK ---
+            // dd([
+            //     '--Inputs--' => '---------------------------',
+            //     'Base Salary Used' => $baseSalaryForMonth,
+            //     'Employee Work Hours/Day' => $work_hours_per_day,
+            //     '--Calculation--' => '-------------------------',
+            //     'Formula Step 1 (Rate Per Day)' => "($baseSalaryForMonth * 12) / 288 = $rate_per_day",
+            //     'Formula Step 2 (Hourly Rate)' => "$rate_per_day / $work_hours_per_day = $hourlyRate",
+            //     '--Final Value--' => '--------------------------',
+            //     'FINAL CALCULATED HOURLY RATE' => $hourlyRate,
+            // ]);
+            // // --- END DEBUG BLOCK ---
+
+            $totalDeductionsForMonth = ($tardinessHours + $absenceHours) * $hourlyRate;
+            $adjustedMonthlyBasicSalary = $baseSalaryForMonth - $totalDeductionsForMonth;
+
             $totalAdjustedBasicSalary += max(0, $adjustedMonthlyBasicSalary);
-        }
-
-        // Calculate the 13th Month Pay: (Total Adjusted Basic Salary Earned) / 12
-        if ($totalAdjustedBasicSalary <= 0) {
-            return 0.0;
         }
 
         $thirteenthMonthPay = round($totalAdjustedBasicSalary / 12, 2);
