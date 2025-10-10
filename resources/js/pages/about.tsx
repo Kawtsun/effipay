@@ -1,22 +1,51 @@
-// resources/js/Pages/Credits.tsx
-
-import { Card } from '@/components/ui/card';
-import { Item } from '@/components/ui/item';
+import { Card } from '@/components/ui/card'; 
 import AppLayout from '@/layouts/app-layout';
+import { Head } from '@inertiajs/react';
 import React from 'react';
-// Import your layout component here if you use one
+import { type BreadcrumbItem } from '@/types';
+import { motion } from 'framer-motion'; 
 
-export default function about() {
+import { PageContent } from '@/components/about/page-content'; 
+
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'About',
+        href: '/about',
+    },
+];
+
+// Refined animation variants for a smoother, quicker initial fade
+const containerVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: {
+            duration: 0.6,
+            ease: "easeOut", // Better easing for the main element
+        },
+    },
+};
+
+
+export default function About() { 
     return (
-        // Your page content goes here
-        <AppLayout>
-            <Card className='shadow-none border-none text-center'>
-                <div className='pt-10'>
-                    <h1 className='text-5xl'><b>Credits</b></h1><br />
-                    <p className='text-3xl'>Made by the Kessoku Band</p><br />
-                    <img className='' src="img/Kessoku Band.jpg" alt="Kessoku Band" />
-                </div>
-            </Card>
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="About" />
+            <div className='p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto'> {/* Use max-width for better desktop UX */}
+                {/* Main page motion wrapper */}
+                <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                >
+                    {/* Improved Card styling for a modern look (subtle shadow and better background) */}
+                    <Card className={`shadow-xl border bg-card text-card-foreground rounded-xl text-center overflow-hidden`}>
+                        <PageContent />
+                    </Card>
+                </motion.div>
+            </div>
         </AppLayout>
     );
 }
