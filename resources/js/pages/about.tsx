@@ -1,3 +1,4 @@
+// About page (Minor style adjustment)
 import { Card } from '@/components/ui/card'; 
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
@@ -15,7 +16,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-// Refined animation variants for a smoother, quicker initial fade
 const containerVariants = {
     hidden: { opacity: 0, y: 15 },
     visible: {
@@ -23,7 +23,7 @@ const containerVariants = {
         y: 0,
         transition: {
             duration: 0.6,
-            ease: "easeOut", // Better easing for the main element
+            ease: "easeOut",
         },
     },
 };
@@ -33,15 +33,14 @@ export default function About() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="About" />
-            <div className='p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto'> {/* Use max-width for better desktop UX */}
-                {/* Main page motion wrapper */}
+            <div className='p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto'>
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
                 >
-                    {/* Improved Card styling for a modern look (subtle shadow and better background) */}
-                    <Card className={`shadow-xl border bg-card text-card-foreground rounded-xl text-center overflow-hidden`}>
+                    {/* Simplified Card: Focus on rounded corners and a subtle, single shadow */}
+                    <Card className={`shadow-lg border bg-card rounded-xl overflow-hidden`}>
                         <PageContent />
                     </Card>
                 </motion.div>
