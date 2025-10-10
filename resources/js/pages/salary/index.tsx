@@ -16,9 +16,8 @@ import {
   CardContent,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { PayrollDatePicker } from '@/components/ui/payroll-date-picker'
-// Corrected path for the dialog component
 import ThirteenthMonthPayDialog from '@/components/thirtheen-month-pay-dialog'
+import { PayrollMonthPicker } from '@/components/ui/payroll-month-picker'
 
 type Defaults = {
   employee_type: string
@@ -43,7 +42,7 @@ type PageProps = {
 export default function Index() {
   const { flash, errors, types, selected, defaults } = usePage<PageProps>().props
   const [type, setType] = useState(selected || types[0])
-  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState('')
   const [isRunningPayroll, setIsRunningPayroll] = useState(false)
   // State to control the dialog visibility
   const [isThirteenthMonthDialogOpen, setIsThirteenthMonthDialogOpen] = useState(false);
@@ -96,20 +95,20 @@ export default function Index() {
   }, [types])
 
   const handleRunPayroll = useCallback(async () => {
-    if (!selectedDate) {
+    if (!selectedMonth) {
       toast.error('Please select a date first')
       return
     }
     setIsRunningPayroll(true)
     router.post(
       route('payroll.run'),
-      { payroll_date: selectedDate },
+      { payroll_date: selectedMonth },
       {
         preserveState: false, // reload page to get flash
         onFinish: () => setIsRunningPayroll(false),
       }
     )
-  }, [selectedDate])
+  }, [selectedMonth])
 
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Salary Management', href: route('salary.index') },
@@ -156,14 +155,14 @@ export default function Index() {
             <div className="flex items-center gap-4">
               {/* Run Payroll Group */}
               <div className="flex items-center gap-2">
-                <PayrollDatePicker
-                  value={selectedDate}
-                  onValueChange={setSelectedDate}
-                  placeholder="Select payroll date"
+                <PayrollMonthPicker
+                  value={selectedMonth}
+                  onValueChange={setSelectedMonth}
+                  placeholder="Select payroll month"
                 />
                 <Button
                   onClick={handleRunPayroll}
-                  disabled={!selectedDate || isRunningPayroll}
+                  disabled={!selectedMonth || isRunningPayroll}
                   className="flex items-center gap-2"
                 >
                   <Calculator className="w-4 h-4" />
