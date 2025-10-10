@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Trophy, ClipboardList, Clock, Folder, LayoutDashboard, ScrollText, Users, Wallet } from 'lucide-react';
+import { Trophy, ClipboardList, Clock, Folder, LayoutDashboard, ScrollText, Users, Wallet, Info } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -52,9 +52,9 @@ const footerNavItems: NavItem[] = [
     //     icon: Folder,
     // },
     {
-        title: 'Credits',
-        href: '/credits', // Now an Internal URL
-        icon: Trophy,
+        title: 'About',
+        href: '/about', // Now an Internal URL
+        icon: Info,
     },
 ];
 

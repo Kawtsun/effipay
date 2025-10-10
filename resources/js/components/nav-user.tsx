@@ -13,7 +13,7 @@ export function NavUser() {
     const isMobile = useIsMobile();
 
     return (
-        <SidebarMenu>
+        <SidebarMenu className='p-2'>
             <SidebarMenuItem>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>

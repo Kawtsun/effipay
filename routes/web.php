@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AboutController;
 use App\Http\Controllers\AuditLogsController;
 use App\Http\Controllers\EmployeesController;
 use App\Http\Controllers\DashboardController;
@@ -96,7 +97,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/fetch-holidays', [ObservanceController::class, 'fetchHolidays']);
 
     // Credits
-    Route::get('/credits', [App\Http\Controllers\CreditsController::class, 'index'])->name('credits');
+    Route::get('/about', [AboutController::class, 'index'])->name('about');
 });
 
 

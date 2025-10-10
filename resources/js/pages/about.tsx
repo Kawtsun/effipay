@@ -6,7 +6,7 @@ import AppLayout from '@/layouts/app-layout';
 import React from 'react';
 // Import your layout component here if you use one
 
-export default function Credits() {
+export default function about() {
     return (
         // Your page content goes here
         <AppLayout>
