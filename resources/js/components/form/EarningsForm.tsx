@@ -35,15 +35,17 @@ export function EarningsForm({ form }: EarningsFormProps) {
     const isCollege = React.useMemo(() => rolesArr.includes('college instructor'), [rolesArr]);
     const isBasicEdu = React.useMemo(() => rolesArr.includes('basic education instructor'), [rolesArr]);
     const isAdmin = React.useMemo(() => rolesArr.includes('administrator'), [rolesArr]);
+    const isOthers = React.useMemo(() => rolesArr.includes('others'), [rolesArr]);
     
     // Determine which fields to show based on roles
-    const showBaseSalary = isAdmin || isBasicEdu;
+    const showBaseSalary = isAdmin || isBasicEdu || isOthers;
+    const isBaseSalaryOptional = isOthers;
     const showRatePerHour = isCollege || isBasicEdu;
+    const isRatePerHourOptional = isBasicEdu;
 
     // A generic handler for numeric inputs that manages commas
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {
         const rawValue = value.replace(/,/g, '');
-        // Allow only numbers and a single decimal point
         if (/^\d*\.?\d*$/.test(rawValue)) {
             setData(field, rawValue);
         }
@@ -66,7 +68,9 @@ export function EarningsForm({ form }: EarningsFormProps) {
                 {/* Base Salary */}
                 {showBaseSalary && (
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="base_salary" className="font-semibold">Base Salary</Label>
+                        <Label htmlFor="base_salary" className="font-semibold">
+                            Base Salary {isBaseSalaryOptional && <span className="text-gray-500 font-normal">(Optional)</span>}
+                        </Label>
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
                             <Input
@@ -85,8 +89,10 @@ export function EarningsForm({ form }: EarningsFormProps) {
 
                 {/* Rate Per Hour */}
                 {showRatePerHour && (
-                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="rate_per_hour" className="font-semibold">Rate Per Hour</Label>
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="rate_per_hour" className="font-semibold">
+                            Rate Per Hour {isRatePerHourOptional && <span className="text-gray-500 font-normal">(Optional)</span>}
+                        </Label>
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
                             <Input
@@ -106,7 +112,7 @@ export function EarningsForm({ form }: EarningsFormProps) {
                 {/* Honorarium */}
                 <div className="flex flex-col gap-2">
                     <Label htmlFor="honorarium" className="font-semibold">
-                        Honorarium <span className="text-gray-500 font-normal">(Optional)</span>
+                        Honorarium {!isOthers && <span className="text-gray-500 font-normal">(Optional)</span>}
                     </Label>
                     <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>

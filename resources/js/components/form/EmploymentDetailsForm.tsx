@@ -25,10 +25,10 @@ interface EmploymentDetailsFormProps {
 }
 
 const roleTypeMappings = {
-  administrator: ['Regular', 'Provisionary', 'Retired'],
-  'college instructor': ['Full Time', 'Part Time', 'Provisionary', 'Retired'],
-  'basic education instructor': ['Full Time', 'Part Time', 'Provisionary', 'Retired'],
-  others: ['Part Time'],
+    administrator: ['Regular', 'Provisionary', 'Retired'],
+    'college instructor': ['Full Time', 'Part Time', 'Provisionary', 'Retired'],
+    'basic education instructor': ['Full Time', 'Part Time', 'Provisionary', 'Retired'],
+    others: ['Part Time'],
 };
 
 const STANDARD_ROLES = ['administrator', 'college instructor', 'basic education instructor'];
@@ -36,8 +36,6 @@ const STANDARD_ROLES = ['administrator', 'college instructor', 'basic education 
 export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetailsFormProps) {
     const { data, setData, errors } = form;
 
-    // --- REFACTORED STATE LOGIC ---
-    // Each checkbox now has its own independent state to avoid circular dependencies.
     const [isAdmin, setIsAdmin] = React.useState(false);
     const [isCollege, setIsCollege] = React.useState(false);
     const [isBasicEdu, setIsBasicEdu] = React.useState(false);
@@ -47,38 +45,32 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
     const [collegeProgram, setCollegeProgram] = React.useState('');
     const [currentTypeIndex, setCurrentTypeIndex] = React.useState(0);
 
-    // This effect syncs the independent checkbox states into the main `form.data.roles` string.
     React.useEffect(() => {
         const newRoles: string[] = [];
         if (isAdmin) newRoles.push('administrator');
         if (isCollege) newRoles.push('college instructor');
         if (isBasicEdu) newRoles.push('basic education instructor');
-        if (isOthers && othersRoleText.trim()) {
-            newRoles.push(othersRoleText.trim().toLowerCase());
+        if (isOthers) {
+            newRoles.push('others'); // Now always adds "others" when the checkbox is checked
         }
         setData('roles', newRoles.join(', '));
     }, [isAdmin, isCollege, isBasicEdu, isOthers, othersRoleText, setData]);
 
-    // This effect handles the RESET functionality. When the form data is cleared, it unchecks all boxes.
     React.useEffect(() => {
         const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
         setIsAdmin(rolesArr.includes('administrator'));
         setIsCollege(rolesArr.includes('college instructor'));
         setIsBasicEdu(rolesArr.includes('basic education instructor'));
+        setIsOthers(rolesArr.includes('others'));
 
-        const customRole = rolesArr.find(r => !STANDARD_ROLES.includes(r));
-        setIsOthers(!!customRole);
-        setOthersRoleText(customRole || '');
         setCollegeProgram(data.college_program || '');
 
     }, [data.roles, data.college_program]);
     
-    // Sync college program with form data
     React.useEffect(() => {
         setData('college_program', collegeProgram);
     }, [collegeProgram, setData]);
     
-    // Initialize or clean up employee types when roles change
     React.useEffect(() => {
         const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
         const newEmployeeTypes: Record<string, string> = {};
@@ -132,7 +124,12 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
                             <Label htmlFor="role-basicedu" className="cursor-pointer font-normal">Basic Education</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-others" checked={isOthers} onCheckedChange={(c) => setIsOthers(!!c)} />
+                            <Checkbox id="role-others" checked={isOthers} onCheckedChange={(c) => {
+                                setIsOthers(!!c);
+                                if (!c) {
+                                    setOthersRoleText('');
+                                }
+                            }} />
                             <Label htmlFor="role-others" className="cursor-pointer font-normal">Others</Label>
                         </div>
                     </div>
