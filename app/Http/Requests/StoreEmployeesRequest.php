@@ -56,12 +56,12 @@ class StoreEmployeesRequest extends FormRequest
 
             // --- RESTORED STRICT RULES ---
             'base_salary' => $requiresBaseSalary ? 'required_without:honorarium|nullable|numeric|min:0' : 'nullable|numeric|min:0',
-            'rate_per_hour' => $requiresRatePerHour ? 'required|numeric|min:0' : 'nullable|numeric|min:0', 
+            'college_rate' => 'nullable|numeric|min:0',
 
-            'sss' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
-            'philhealth' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
-            'pag_ibig' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
-            'withholding_tax' => $contribOptional ? 'nullable|numeric' : 'required|numeric|min:0',
+            'sss' => 'nullable|numeric|min:0',
+            'philhealth' => 'nullable|numeric|min:0',
+            'pag_ibig' => 'nullable|numeric|min:0',
+            'withholding_tax' => 'nullable|numeric|min:0',
 
             'college_program' => [
                 Rule::requiredIf($isCollege),

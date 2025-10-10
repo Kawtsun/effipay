@@ -18,7 +18,7 @@ function formatWithCommas(value: string | number): string {
 type EmployeeFormData = {
     roles: string;
     base_salary: string;
-    rate_per_hour: string;
+    college_rate: string; // Changed here
     honorarium: string;
     [key: string]: any; // Allow other properties
 };
@@ -35,16 +35,16 @@ export function EarningsForm({ form }: EarningsFormProps) {
     const isCollege = React.useMemo(() => rolesArr.includes('college instructor'), [rolesArr]);
     const isBasicEdu = React.useMemo(() => rolesArr.includes('basic education instructor'), [rolesArr]);
     const isAdmin = React.useMemo(() => rolesArr.includes('administrator'), [rolesArr]);
-    
+
     // --- FIX: This is the corrected logic ---
     const STANDARD_ROLES = ['administrator', 'college instructor', 'basic education instructor'];
     const isOthers = React.useMemo(() => rolesArr.some(role => !STANDARD_ROLES.includes(role)), [rolesArr]);
-    
+
     // Determine which fields to show based on roles
     const showBaseSalary = isAdmin || isBasicEdu || isOthers;
     const isBaseSalaryOptional = isOthers;
-    const showRatePerHour = isCollege || isBasicEdu;
-    const isRatePerHourOptional = isBasicEdu;
+    const showCollegeRate = isCollege || isBasicEdu; // Changed here
+    const isCollegeRateOptional = isBasicEdu; // Changed here
 
     // A generic handler for numeric inputs that manages commas
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {
@@ -90,25 +90,25 @@ export function EarningsForm({ form }: EarningsFormProps) {
                     </div>
                 )}
 
-                {/* Rate Per Hour */}
-                {showRatePerHour && (
+                {/* College Rate */}
+                {showCollegeRate && (
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="rate_per_hour" className="font-semibold">
-                            Rate Per Hour {isRatePerHourOptional && <span className="text-gray-500 font-normal">(Optional)</span>}
+                        <Label htmlFor="college_rate" className="font-semibold">
+                            College Rate {isCollegeRateOptional && <span className="text-gray-500 font-normal">(Optional)</span>}
                         </Label>
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
                             <Input
-                                id="rate_per_hour"
+                                id="college_rate"
                                 type="text"
                                 inputMode="decimal"
                                 placeholder="0.00"
-                                value={formatWithCommas(data.rate_per_hour)}
-                                onChange={e => handleNumericChange('rate_per_hour', e.target.value)}
-                                className={`pl-8 ${errors.rate_per_hour ? 'border-red-500' : ''}`}
+                                value={formatWithCommas(data.college_rate)}
+                                onChange={e => handleNumericChange('college_rate', e.target.value)}
+                                className={`pl-8 ${errors.college_rate ? 'border-red-500' : ''}`}
                             />
                         </div>
-                        {errors.rate_per_hour && <p className="text-sm text-red-600 mt-1">{errors.rate_per_hour}</p>}
+                        {errors.college_rate && <p className="text-sm text-red-600 mt-1">{errors.college_rate}</p>}
                     </div>
                 )}
 

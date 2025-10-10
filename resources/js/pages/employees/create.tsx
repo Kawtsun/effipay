@@ -50,10 +50,25 @@ export default function Index(props: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // --- DEBUG LOG ---
+        console.log('Form data on submit:', form.data);
+        
         form.post(route('employees.store'), {
             preserveScroll: true,
-            onSuccess: () => toast.success('Employee created successfully!'),
-            onError: () => toast.error('There was an error creating the employee. Please check the form.'),
+            onSuccess: () => {
+                toast.success('Employee created successfully!');
+                form.reset();
+            },
+            // --- FIX: Display specific errors from the server response ---
+            onError: (errors) => {
+                console.error('Validation errors:', errors);
+                toast.error('There was an error creating the employee. Please check the form.');
+                // Optional: You could loop through errors and show them more specifically
+                Object.values(errors).forEach(error => {
+                    toast.error(error);
+                });
+            },
         });
     };
 
