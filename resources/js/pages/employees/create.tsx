@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { EmployeeNameForm } from '@/components/form/EmployeeNameForm';
 import { EmploymentDetailsForm } from '@/components/form/EmploymentDetailsForm';
 
@@ -12,34 +13,48 @@ type EmployeeFormData = {
     middle_name: string;
     last_name: string;
     roles: string;
-    employee_type: string;
+    employee_types: Record<string, string>; // Correct structure for multiple types
     employee_status: string;
     college_program: string;
     // ... more fields will be added later
 };
 
 type Props = {
-    salaryDefaults: any; // Using 'any' for now to match original code
+    salaryDefaults: any;
+    filters: Record<string, any>; // For the 'Back' button
 };
 
-// --- MAIN PAGE COMPONENT ---
-export default function CreateEmployeePage(props: Props) {
-    const { salaryDefaults } = props;
+// --- MAIN PAGE COMPONENT (Renamed to Index) ---
+export default function Index(props: Props) {
+    const { salaryDefaults, filters } = props;
 
     const form = useForm<EmployeeFormData>({
         first_name: '',
         middle_name: '',
         last_name: '',
         roles: '',
-        employee_type: 'Full Time',
+        employee_types: {}, // Initialize as an empty object
         employee_status: 'Active',
         college_program: '',
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Submission logic will go here
-        console.log(form.data);
+        
+        // Use Inertia's post method to submit the form data to your backend
+        form.post(route('employees.store'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Employee created successfully!');
+                // You can optionally reset the form on success if you want the user to add another.
+                // form.reset(); 
+            },
+            onError: (errors) => {
+                // Inertia automatically handles displaying validation errors.
+                // This toast is for general feedback.
+                toast.error('There was an error creating the employee. Please review the form for errors.');
+            },
+        });
     };
 
     return (
@@ -49,7 +64,7 @@ export default function CreateEmployeePage(props: Props) {
                 <header className="flex flex-col gap-4">
                     <div>
                         <Button asChild variant="outline" size="sm">
-                            <Link href={route('employees.index')}>
+                            <Link href={route('employees.index', filters)}>
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back to Employees
                             </Link>
@@ -62,7 +77,6 @@ export default function CreateEmployeePage(props: Props) {
                 </header>
                 
                 <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* The form now uses a responsive two-column grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                         <EmployeeNameForm form={form} />
                         <EmploymentDetailsForm form={form} salaryDefaults={salaryDefaults} />
@@ -71,11 +85,11 @@ export default function CreateEmployeePage(props: Props) {
                     {/* Other form sections will be added here */}
 
                     <div className="flex justify-end gap-4">
-                        <Button type="button" variant="outline">
-                            Cancel
+                        <Button type="button" variant="outline" onClick={() => form.reset()}>
+                            Reset
                         </Button>
-                        <Button type="submit">
-                            Save Employee
+                        <Button type="submit" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : 'Save Employee'}
                         </Button>
                     </div>
                 </form>
