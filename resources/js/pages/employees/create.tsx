@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { EmployeeNameForm } from '@/components/form/EmployeeNameForm';
 import { EmploymentDetailsForm } from '@/components/form/EmploymentDetailsForm';
+import { WorkScheduleForm } from '@/components/form/WorkScheduleForm';
+import { type WorkDayTime } from '@/components/work-days-selector';
 
 // --- DATA TYPES ---
 type EmployeeFormData = {
@@ -13,18 +15,18 @@ type EmployeeFormData = {
     middle_name: string;
     last_name: string;
     roles: string;
-    employee_types: Record<string, string>; // Correct structure for multiple types
+    employee_types: Record<string, string>;
     employee_status: string;
     college_program: string;
-    // ... more fields will be added later
+    work_days: WorkDayTime[];
 };
 
 type Props = {
     salaryDefaults: any;
-    filters: Record<string, any>; // For the 'Back' button
+    filters: Record<string, any>;
 };
 
-// --- MAIN PAGE COMPONENT (Renamed to Index) ---
+// --- MAIN PAGE COMPONENT ---
 export default function Index(props: Props) {
     const { salaryDefaults, filters } = props;
 
@@ -33,27 +35,18 @@ export default function Index(props: Props) {
         middle_name: '',
         last_name: '',
         roles: '',
-        employee_types: {}, // Initialize as an empty object
+        employee_types: {},
         employee_status: 'Active',
         college_program: '',
+        work_days: [],
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
-        // Use Inertia's post method to submit the form data to your backend
         form.post(route('employees.store'), {
             preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Employee created successfully!');
-                // You can optionally reset the form on success if you want the user to add another.
-                // form.reset(); 
-            },
-            onError: (errors) => {
-                // Inertia automatically handles displaying validation errors.
-                // This toast is for general feedback.
-                toast.error('There was an error creating the employee. Please review the form for errors.');
-            },
+            onSuccess: () => toast.success('Employee created successfully!'),
+            onError: () => toast.error('There was an error creating the employee. Please review the form for errors.'),
         });
     };
 
@@ -61,6 +54,7 @@ export default function Index(props: Props) {
         <AppLayout>
             <Head title="Add New Employee" />
             <div className="space-y-8 p-4 md:p-8 max-w-6xl mx-auto">
+                {/* 👇 THIS HEADER SECTION IS NOW RESTORED */}
                 <header className="flex flex-col gap-4">
                     <div>
                         <Button asChild variant="outline" size="sm">
@@ -78,12 +72,15 @@ export default function Index(props: Props) {
                 
                 <form onSubmit={handleSubmit} className="space-y-8">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                        <EmployeeNameForm form={form} />
+                        {/* Left Column */}
+                        <div className="space-y-8">
+                            <EmployeeNameForm form={form} />
+                            <WorkScheduleForm form={form} />
+                        </div>
+                        {/* Right Column */}
                         <EmploymentDetailsForm form={form} salaryDefaults={salaryDefaults} />
                     </div>
                     
-                    {/* Other form sections will be added here */}
-
                     <div className="flex justify-end gap-4">
                         <Button type="button" variant="outline" onClick={() => form.reset()}>
                             Reset

@@ -11,16 +11,12 @@ import { EmployeeStatus } from '@/components/employee-status';
 import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
 import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-department';
 
-// This type should be expanded as we add more fields to the form
 type EmployeeFormData = {
-    first_name: string;
-    middle_name: string;
-    last_name: string;
     roles: string;
-    employee_types: Record<string, string>; // Holds type for each role
+    employee_types: Record<string, string>;
     employee_status: string;
     college_program: string;
-    // ... more fields
+    [key: string]: any;
 };
 
 interface EmploymentDetailsFormProps {
@@ -28,7 +24,6 @@ interface EmploymentDetailsFormProps {
     salaryDefaults: any;
 }
 
-// Defines the available employee types for each role
 const roleTypeMappings = {
   administrator: ['Regular', 'Provisionary', 'Retired'],
   'college instructor': ['Full Time', 'Part Time', 'Provisionary', 'Retired'],
@@ -36,76 +31,100 @@ const roleTypeMappings = {
   others: ['Part Time'],
 };
 
+const STANDARD_ROLES = ['administrator', 'college instructor', 'basic education instructor'];
+
 export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetailsFormProps) {
     const { data, setData, errors } = form;
 
-    // Local UI state for each checkbox
-    const [isAdmin, setIsAdmin] = React.useState(false);
-    const [isCollege, setIsCollege] = React.useState(false);
-    const [isBasicEdu, setIsBasicEdu] = React.useState(false);
-    const [isOthers, setIsOthers] = React.useState(false);
-    const [othersRoleText, setOthersRoleText] = React.useState('');
-    const [collegeProgram, setCollegeProgram] = React.useState('');
+    // --- REFACTORED STATE LOGIC ---
+    // The checked status of the boxes is now derived directly from the form data.
+    const rolesArr = React.useMemo(() => data.roles.split(',').map(r => r.trim()).filter(Boolean), [data.roles]);
     
-    // State to manage which role's type selector is currently visible
+    const isAdmin = React.useMemo(() => rolesArr.includes('administrator'), [rolesArr]);
+    const isCollege = React.useMemo(() => rolesArr.includes('college instructor'), [rolesArr]);
+    const isBasicEdu = React.useMemo(() => rolesArr.includes('basic education instructor'), [rolesArr]);
+    
+    // For "Others", we check if there's any role that isn't a standard one.
+    const customRole = React.useMemo(() => rolesArr.find(r => !STANDARD_ROLES.includes(r)), [rolesArr]);
+    const isOthers = !!customRole;
+
+    // These states are for UI elements that are not part of the main form data string initially
+    const [othersRoleText, setOthersRoleText] = React.useState(customRole || '');
+    const [collegeProgram, setCollegeProgram] = React.useState(data.college_program || '');
     const [currentTypeIndex, setCurrentTypeIndex] = React.useState(0);
 
-    // Effect to sync roles and initialize/cleanup employee_types object
-    React.useEffect(() => {
-        // Use the function form of setData to get the latest state without causing a dependency loop
-        setData(currentData => {
-            const newRoles: string[] = [];
-            const newEmployeeTypes: Record<string, string> = {};
-
-            if (isAdmin) {
-                newRoles.push('administrator');
-                newEmployeeTypes.administrator = currentData.employee_types.administrator || roleTypeMappings.administrator[0];
-            }
-            if (isCollege) {
-                newRoles.push('college instructor');
-                newEmployeeTypes['college instructor'] = currentData.employee_types['college instructor'] || roleTypeMappings['college instructor'][0];
-            }
-            if (isBasicEdu) {
-                newRoles.push('basic education instructor');
-                newEmployeeTypes['basic education instructor'] = currentData.employee_types['basic education instructor'] || roleTypeMappings['basic education instructor'][0];
-            }
-            if (isOthers && othersRoleText.trim()) {
-                const otherRoleKey = othersRoleText.trim().toLowerCase();
-                newRoles.push(otherRoleKey);
-                newEmployeeTypes[otherRoleKey] = currentData.employee_types[otherRoleKey] || roleTypeMappings.others[0];
-            }
-            
-            // Reset index if it goes out of bounds
-            if (currentTypeIndex >= newRoles.length) {
-                setCurrentTypeIndex(Math.max(0, newRoles.length - 1));
-            }
-
-            return {
-                ...currentData,
-                roles: newRoles.join(', '),
-                employee_types: newEmployeeTypes
-            };
-        });
-
-    }, [isAdmin, isCollege, isBasicEdu, isOthers, othersRoleText, setData]);
+    // This handler directly manipulates the `roles` string in the form data.
+    const handleRoleChange = (role: string, isChecked: boolean) => {
+        const currentRoles = new Set(rolesArr);
+        if (isChecked) {
+            currentRoles.add(role);
+        } else {
+            currentRoles.delete(role);
+        }
+        setData('roles', Array.from(currentRoles).join(', '));
+    };
     
-    // Effect to sync college program with the main form data
+    // Special handler for the 'Others' checkbox
+    const handleOthersChange = (isChecked: boolean) => {
+        const currentRoles = new Set(rolesArr);
+        // Remove any existing custom role first
+        if (customRole) {
+            currentRoles.delete(customRole);
+        }
+        // If checking 'Others', add the text from the input field
+        if (isChecked && othersRoleText.trim()) {
+            currentRoles.add(othersRoleText.trim().toLowerCase());
+        }
+        // If unchecking, clear the text field
+        if (!isChecked) {
+            setOthersRoleText('');
+        }
+        setData('roles', Array.from(currentRoles).join(', '));
+    };
+
+    // Sync the 'Others' input text with the roles string
+    React.useEffect(() => {
+        // Only run this logic if the 'Others' checkbox is actually checked
+        if (isOthers) {
+            const currentRoles = new Set(rolesArr);
+            // If there was a custom role, remove it before adding the new one
+            if (customRole) {
+                currentRoles.delete(customRole);
+            }
+            if (othersRoleText.trim()) {
+                currentRoles.add(othersRoleText.trim().toLowerCase());
+            }
+            setData('roles', Array.from(currentRoles).join(', '));
+        }
+    }, [othersRoleText]); // Only depends on the text input
+    
+    // Sync college program state with form data
     React.useEffect(() => {
         setData('college_program', collegeProgram);
     }, [collegeProgram, setData]);
+    
+    // This effect now correctly initializes and cleans up employee_types when roles change
+    React.useEffect(() => {
+        const newEmployeeTypes: Record<string, string> = {};
+        rolesArr.forEach(role => {
+            const mappingKey = STANDARD_ROLES.includes(role) ? role : 'others';
+            newEmployeeTypes[role] = data.employee_types[role] || roleTypeMappings[mappingKey as keyof typeof roleTypeMappings][0];
+        });
+        setData('employee_types', newEmployeeTypes);
+
+        if (currentTypeIndex >= rolesArr.length) {
+            setCurrentTypeIndex(Math.max(0, rolesArr.length - 1));
+        }
+    }, [data.roles]); // Depends only on the roles string from the form
+
 
     const availableStatuses = ['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave'];
-    const selectedRoles = data.roles.split(',').map(r => r.trim()).filter(Boolean);
-    
-    // Get the key and label for the currently visible role
-    const visibleRoleKey = selectedRoles[currentTypeIndex] ?? '';
-    const visibleRoleLabel = visibleRoleKey === othersRoleText.trim().toLowerCase() ? othersRoleText.trim() : visibleRoleKey;
-    
-    // Safely get the options for the current role
+    const visibleRoleKey = rolesArr[currentTypeIndex] ?? '';
+    const visibleRoleLabel = visibleRoleKey;
     let visibleRoleOptions: string[] = [];
-    if (visibleRoleKey in roleTypeMappings) {
+    if (STANDARD_ROLES.includes(visibleRoleKey)) {
         visibleRoleOptions = roleTypeMappings[visibleRoleKey as keyof typeof roleTypeMappings];
-    } else if (isOthers && visibleRoleKey === othersRoleText.trim().toLowerCase()) {
+    } else if (visibleRoleKey) { // This handles custom roles
         visibleRoleOptions = roleTypeMappings.others;
     }
 
@@ -113,54 +132,67 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
         <Card className="w-full border-gray-200 shadow-sm">
             <CardHeader>
                 <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-2 rounded-full"><Briefcase className="h-6 w-6 text-primary" /></div>
+                    <div className="bg-primary/10 p-2 rounded-full">
+                        <Briefcase className="h-6 w-6 text-primary" />
+                    </div>
                     <div>
                         <CardTitle>Employment Details</CardTitle>
-                        <CardDescription>Specify the employee's roles, their employment types, and status.</CardDescription>
+                        <CardDescription>Specify roles, types, and status.</CardDescription>
                     </div>
                 </div>
             </CardHeader>
             <CardContent className="space-y-6">
-                {/* Employee Roles Section */}
                 <div className="space-y-4">
                     <Label className="font-semibold">Employee Roles</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                        <div className="flex items-center gap-2"><Checkbox id="role-admin" checked={isAdmin} onCheckedChange={(c) => setIsAdmin(!!c)} /><Label htmlFor="role-admin" className="cursor-pointer font-normal">Administrator</Label></div>
-                        <div className="flex items-center gap-2"><Checkbox id="role-college" checked={isCollege} onCheckedChange={(c) => setIsCollege(!!c)} /><Label htmlFor="role-college" className="cursor-pointer font-normal">College Instructor</Label></div>
-                        <div className="flex items-center gap-2"><Checkbox id="role-basicedu" checked={isBasicEdu} onCheckedChange={(c) => setIsBasicEdu(!!c)} /><Label htmlFor="role-basicedu" className="cursor-pointer font-normal">Basic Education Instructor</Label></div>
-                        <div className="flex items-center gap-2"><Checkbox id="role-others" checked={isOthers} onCheckedChange={(c) => setIsOthers(!!c)} /><Label htmlFor="role-others" className="cursor-pointer font-normal">Others</Label></div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox id="role-admin" checked={isAdmin} onCheckedChange={(c) => handleRoleChange('administrator', !!c)} />
+                            <Label htmlFor="role-admin" className="cursor-pointer font-normal">Administrator</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox id="role-college" checked={isCollege} onCheckedChange={(c) => handleRoleChange('college instructor', !!c)} />
+                            <Label htmlFor="role-college" className="cursor-pointer font-normal">College Instructor</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox id="role-basicedu" checked={isBasicEdu} onCheckedChange={(c) => handleRoleChange('basic education instructor', !!c)} />
+                            <Label htmlFor="role-basicedu" className="cursor-pointer font-normal">Basic Education</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Checkbox id="role-others" checked={isOthers} onCheckedChange={(c) => handleOthersChange(!!c)} />
+                            <Label htmlFor="role-others" className="cursor-pointer font-normal">Others</Label>
+                        </div>
                     </div>
                     <div className="pl-6 space-y-4 pt-2">
-                        {isOthers && <Input type="text" placeholder="Please specify other role" value={othersRoleText} onChange={e => setOthersRoleText(e.target.value)} />}
+                        {isOthers && (
+                            <Input
+                                type="text"
+                                placeholder="Specify other role"
+                                value={othersRoleText}
+                                onChange={e => setOthersRoleText(e.target.value)}
+                            />
+                        )}
                         {isCollege && (
                             <div>
-                                <Label className="text-sm font-semibold mb-2 block">College Department</Label>
-                                <CollegeProgramScrollArea><EmployeeCollegeRadioDepartment value={collegeProgram} onChange={setCollegeProgram} /></CollegeProgramScrollArea>
+                                <Label className="text-sm font-semibold mb-2 block">College Dept.</Label>
+                                <CollegeProgramScrollArea>
+                                    <EmployeeCollegeRadioDepartment
+                                        value={collegeProgram}
+                                        onChange={setCollegeProgram}
+                                    />
+                                </CollegeProgramScrollArea>
                             </div>
                         )}
                     </div>
                 </div>
-
-                {/* Employee Type and Status */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
-                    {/* Left Column: Employee Type (Cycling) */}
                     <div className="flex flex-col gap-2">
-                        {selectedRoles.length > 0 ? (
+                        {rolesArr.length > 0 ? (
                             <>
-                                <Label htmlFor={`type-${visibleRoleKey}`} className="font-semibold capitalize">
-                                    {visibleRoleLabel} Type
-                                </Label>
+                                <Label htmlFor={`type-${visibleRoleKey}`} className="font-semibold capitalize">{visibleRoleLabel} Type</Label>
                                 <div className="flex items-center gap-2">
-                                    {selectedRoles.length > 1 && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            className="size-8 shrink-0"
-                                            onClick={() => setCurrentTypeIndex(prev => prev - 1)}
-                                            disabled={currentTypeIndex === 0}
-                                        >
-                                            <span className="sr-only">Previous Role</span>
+                                    {rolesArr.length > 1 && (
+                                        <Button type="button" variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setCurrentTypeIndex(p => p - 1)} disabled={currentTypeIndex === 0}>
+                                            <span className="sr-only">Prev</span>
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
                                     )}
@@ -169,42 +201,33 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
                                         onChange={val => setData('employee_types', { ...data.employee_types, [visibleRoleKey]: val })}
                                         types={visibleRoleOptions.map(opt => ({ value: opt, label: opt }))}
                                     />
-                                    {selectedRoles.length > 1 && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            className="size-8 shrink-0"
-                                            onClick={() => setCurrentTypeIndex(prev => prev + 1)}
-                                            disabled={currentTypeIndex === selectedRoles.length - 1}
-                                        >
-                                            <span className="sr-only">Next Role</span>
+                                    {rolesArr.length > 1 && (
+                                        <Button type="button" variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setCurrentTypeIndex(p => p + 1)} disabled={currentTypeIndex === rolesArr.length - 1}>
+                                            <span className="sr-only">Next</span>
                                             <ChevronRight className="h-4 w-4" />
                                         </Button>
                                     )}
                                 </div>
-                                {selectedRoles.length > 1 && (
-                                    <div className="text-center text-sm text-muted-foreground tabular-nums font-medium mt-2">
-                                        Role {currentTypeIndex + 1} of {selectedRoles.length}
+                                {rolesArr.length > 1 && (
+                                    <div className="text-center text-sm text-muted-foreground tabular-nums mt-2">
+                                        Role {currentTypeIndex + 1} of {rolesArr.length}
                                     </div>
                                 )}
                             </>
                         ) : (
-                             <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-2">
                                 <Label className="font-semibold text-muted-foreground">Employee Type</Label>
-                                <Input disabled placeholder="Select a role first" />
+                                <Input disabled placeholder="Select a role" />
                             </div>
                         )}
                     </div>
-                    
-                    {/* Right Column: Employee Status */}
                     <div className="flex flex-col gap-2">
                         <Label htmlFor="employee_status" className="font-semibold">Employee Status</Label>
                         <EmployeeStatus
                             value={data.employee_status}
                             onChange={val => setData('employee_status', val)}
                             statuses={availableStatuses}
-                            disabled={selectedRoles.length === 0}
+                            disabled={rolesArr.length === 0}
                         />
                         {errors.employee_status && <p className="text-sm text-red-600 mt-1">{errors.employee_status}</p>}
                     </div>
@@ -213,4 +236,3 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
         </Card>
     );
 }
-
