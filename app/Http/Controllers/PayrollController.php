@@ -276,40 +276,54 @@ class PayrollController extends Controller
 
     public function run13thMonthPay(Request $request)
     {
-        // 1. Validation now only checks for cutoff_month
         $request->validate([
             'cutoff_month' => 'required|integer|min:1|max:12',
         ]);
 
-        $cutoffMonth = $request->cutoff_month;
-        $currentYear = date('Y'); // Assumes the current year
-        $monthString = $currentYear . '-' . str_pad($cutoffMonth, 2, '0', STR_PAD_LEFT);
+        $cutoffMonth = (int)$request->cutoff_month;
+        $currentYear = date('Y');
 
-        // 2. Automatically find the latest payroll date for the selected month
+        // --- IMPROVED VALIDATION BLOCK START ---
+        // We only need to check for previous months if the selection is after January.
+        if ($cutoffMonth > 1) {
+            // We need to verify the completeness of all months PRIOR to the cutoff month.
+            $lastMonthToVerify = $cutoffMonth - 1;
+
+            // Count how many distinct months have been processed within that range.
+            $processedMonthCount = \App\Models\Payroll::where('month', '>=', $currentYear . '-01')
+                ->where('month', '<=', $currentYear . '-' . str_pad($lastMonthToVerify, 2, '0', STR_PAD_LEFT))
+                ->distinct()
+                ->count('month');
+
+            // If the number of processed months is less than the number we need to verify, then records are missing.
+            if ($processedMonthCount < $lastMonthToVerify) {
+                $lastMonthName = Carbon::create($currentYear, $lastMonthToVerify)->format('F');
+                return redirect()->back()->withErrors(['message' => "Cannot process. Payroll records from January to {$lastMonthName} are incomplete."]);
+            }
+        }
+        // --- IMPROVED VALIDATION BLOCK END ---
+
+        $monthString = $currentYear . '-' . str_pad($cutoffMonth, 2, '0', STR_PAD_LEFT);
         $lastPayrollInMonth = \App\Models\Payroll::where('month', $monthString)
             ->orderBy('payroll_date', 'desc')
             ->first();
 
-        // 3. Handle case where no payroll has been run for that month yet
         if (!$lastPayrollInMonth) {
-            return redirect()->back()->withErrors(['message' => 'Cannot run 13th month pay. No payroll has been processed for ' . Carbon::parse($monthString)->format('F, Y') . ' yet.']);
+            $monthName = Carbon::parse($monthString)->format('F, Y');
+            return redirect()->back()->withErrors(['message' => "Cannot run 13th month pay. No payroll has been processed for {$monthName} yet."]);
         }
 
-        // 4. Use the date we found in the database
         $payrollDate = Carbon::parse($lastPayrollInMonth->payroll_date);
-
         $employees = \App\Models\Employees::all();
         $createdCount = 0;
 
         foreach ($employees as $employee) {
-            // The rest of the logic proceeds as before
             $thirteenthMonthPay = $this->calculate13thMonthPay($employee, $currentYear, $cutoffMonth);
 
             if ($thirteenthMonthPay <= 0) {
                 continue;
             }
 
-            // We will add the 13th month pay to the payroll record of the date we found
             $payrollRecordToUpdate = \App\Models\Payroll::where('employee_id', $employee->id)
                 ->where('payroll_date', $payrollDate->format('Y-m-d'))
                 ->first();

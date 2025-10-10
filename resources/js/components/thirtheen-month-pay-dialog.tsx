@@ -32,7 +32,6 @@ interface Props {
 export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
     const [selectedCutoffMonth, setSelectedCutoffMonth] = useState('');
     const [isCalculating, setIsCalculating] = useState(false);
-    const [lastCalculationResult, setLastCalculationResult] = useState<{ date: string, status: 'success' | 'error' } | null>(null);
 
     // --- THIS IS THE CORRECTED FUNCTION ---
     const handleRun13thMonthPay = () => {
@@ -42,7 +41,6 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
         }
 
         setIsCalculating(true);
-        setLastCalculationResult(null);
 
         router.post(
             route('payroll.run.13th'),
@@ -50,21 +48,14 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
                 cutoff_month: selectedCutoffMonth,
             },
             {
+                // This is the key: force a reload so the Salary Page gets the new props.
                 preserveState: false,
-                onSuccess: (page: any) => {
-                    const flash = page.props.flash as any;
-                    const message = (flash?.message || '13th Month Payroll initiated successfully.');
-                    toast.success(message);
-                    setSelectedCutoffMonth('');
-                    onClose();
-                },
-                onError: (errors: any) => {
-                    const firstError = Object.values(errors)[0] as string | undefined;
-                    toast.error(firstError || 'Failed to initiate 13th Month Payroll.');
-                    setLastCalculationResult({ date: selectedCutoffMonth, status: 'error' });
-                },
                 onFinish: () => {
+                    // We still use onFinish to stop the loading spinner.
                     setIsCalculating(false);
+                    // We close the dialog regardless of success or failure,
+                    // as the main page will show the notification.
+                    onClose();
                 }
             }
         );
@@ -122,13 +113,6 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
                                         <p>The amount is calculated based on the formula: <strong>(Sum of Monthly Adjusted Basic Salary YTD) / 12</strong>. </p>
                                         <p className="font-medium">The 'Monthly Adjusted Basic Salary' uses Base Salary less the monetary value of Lates and Absences recorded up to the **Cutoff Month**.</p>
                                     </div>
-
-                                    {lastCalculationResult && (
-                                        <div className={`p-4 rounded-lg text-sm font-semibold flex items-center gap-3 ${lastCalculationResult.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {lastCalculationResult.status === 'success' ? <CheckCircle className="w-5 h-5" /> : <Calculator className="w-5 h-5" />}
-                                            Last action on: {new Date(lastCalculationResult.date).toLocaleDateString()} resulted in {lastCalculationResult.status === 'success' ? 'SUCCESS.' : 'ERROR.'}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 

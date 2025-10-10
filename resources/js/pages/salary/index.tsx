@@ -41,7 +41,7 @@ type PageProps = {
 }
 
 export default function Index() {
-  const { flash, types, selected, defaults } = usePage<PageProps>().props
+  const { flash, errors, types, selected, defaults } = usePage<PageProps>().props
   const [type, setType] = useState(selected || types[0])
   const [selectedDate, setSelectedDate] = useState('')
   const [isRunningPayroll, setIsRunningPayroll] = useState(false)
@@ -75,6 +75,15 @@ export default function Index() {
       }
     }
   }, [flash])
+
+  useEffect(() => {
+    // Check if the errors object has any messages in it
+    if (errors && Object.keys(errors).length > 0) {
+      // Get the first error message from the object
+      const firstError = Object.values(errors)[0];
+      toast.error(firstError);
+    }
+  }, [errors]); // This effect will run whenever the errors prop changes
 
   const onTypeChange = useCallback((val: string) => {
     setType(val)
