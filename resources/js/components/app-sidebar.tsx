@@ -6,6 +6,7 @@ import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import { Trophy, ClipboardList, Clock, Folder, LayoutDashboard, ScrollText, Users, Wallet, Info } from 'lucide-react';
 import AppLogo from './app-logo';
+import { SidebarCopyrightFooter } from './sidebar-copyright-footer';
 
 const mainNavItems: NavItem[] = [
     {
@@ -80,6 +81,7 @@ export function AppSidebar() {
             <SidebarFooter>
                 <NavFooter items={footerNavItems} />
                 <NavUser />
+                <SidebarCopyrightFooter />
             </SidebarFooter>
         </Sidebar>
     );
