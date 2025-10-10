@@ -1,61 +1,27 @@
-import { formatFullName } from '@/utils/formatFullName';
 import {
     Dialog,
     DialogContent,
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog"
-// Resolved path issues for local components
-import DialogScrollArea from '@/components/dialog-scroll-area'; 
-import { motion, AnimatePresence } from "framer-motion"
-import { Button } from "@/components/ui/button"
-import { useState, useEffect, useRef } from "react"
-import { toast } from "sonner"
-import { Calendar, CheckCircle, Calculator, Loader2, TrendingUp, Lightbulb } from "lucide-react"
-// External package resolved
-import { router } from "@inertiajs/react"; 
-import { PayrollDatePicker } from "@/components/ui/payroll-date-picker"; 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; 
-import { Label } from "@/components/ui/label"; 
+} from "@/components/ui/dialog";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { toast } from "sonner";
+import { CheckCircle, Calculator, Loader2, TrendingUp, Lightbulb } from "lucide-react";
+import { router } from "@inertiajs/react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
-
-// --- Utility Functions ---
-function formatWithCommas(value: string | number): string {
-    let num = 0;
-    if (value === null || value === undefined || value === '') {
-        num = 0;
-    } else {
-        num = typeof value === 'number' ? value : Number(value);
-        if (isNaN(num)) num = 0;
-    }
-    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function Info({ label, value }: { label: string; value: string | number }) {
-    return (
-        <div className="flex justify-between items-center py-2 border-b border-dashed">
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="font-semibold text-lg">{value}</p>
-        </div>
-    )
-}
-// --- End Utility Functions ---
-
-// Array for month selection
+// I'm assuming MONTHS is defined here or imported
 const MONTHS = [
-    { value: '1', label: 'January' },
-    { value: '2', label: 'February' },
-    { value: '3', label: 'March' },
-    { value: '4', label: 'April' },
-    { value: '5', label: 'May' },
-    { value: '6', label: 'June' },
-    { value: '7', label: 'July' },
-    { value: '8', label: 'August' },
-    { value: '9', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' },
+    { value: '1', label: 'January' }, { value: '2', label: 'February' },
+    { value: '3', label: 'March' }, { value: '4', label: 'April' },
+    { value: '5', label: 'May' }, { value: '6', label: 'June' },
+    { value: '7', label: 'July' }, { value: '8', label: 'August' },
+    { value: '9', label: 'September' }, { value: '10', label: 'October' },
+    { value: '11', label: 'November' }, { value: '12', label: 'December' },
 ];
 
 interface Props {
@@ -64,16 +30,12 @@ interface Props {
 }
 
 export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
-    const [selectedDate, setSelectedDate] = useState('');
-    const [selectedCutoffMonth, setSelectedCutoffMonth] = useState(''); // NEW STATE for cutoff month (1-12)
+    const [selectedCutoffMonth, setSelectedCutoffMonth] = useState('');
     const [isCalculating, setIsCalculating] = useState(false);
     const [lastCalculationResult, setLastCalculationResult] = useState<{ date: string, status: 'success' | 'error' } | null>(null);
 
+    // --- THIS IS THE CORRECTED FUNCTION ---
     const handleRun13thMonthPay = () => {
-        if (!selectedDate) {
-            toast.error('Please select the payout date for the 13th Month Pay.');
-            return;
-        }
         if (!selectedCutoffMonth) {
             toast.error('Please select the computation cutoff month.');
             return;
@@ -82,27 +44,24 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
         setIsCalculating(true);
         setLastCalculationResult(null);
 
-        // Uses Inertia POST request to trigger the calculation in the PayrollController
         router.post(
-            route('payroll.run.13th'), 
-            { 
-                payroll_date: selectedDate,
-                cutoff_month: selectedCutoffMonth, // <--- NEW DATA SENT
+            route('payroll.run.13th'),
+            {
+                cutoff_month: selectedCutoffMonth,
             },
             {
-                preserveState: true,
-                onSuccess: (page: any) => { 
+                preserveState: false,
+                onSuccess: (page: any) => {
                     const flash = page.props.flash as any;
-                    const message = (flash?.message || '13th Month Payroll initiated successfully. Check logs for details.');
+                    const message = (flash?.message || '13th Month Payroll initiated successfully.');
                     toast.success(message);
-                    setLastCalculationResult({ date: selectedDate, status: 'success' });
-                    setSelectedDate('');
                     setSelectedCutoffMonth('');
+                    onClose();
                 },
                 onError: (errors: any) => {
                     const firstError = Object.values(errors)[0] as string | undefined;
                     toast.error(firstError || 'Failed to initiate 13th Month Payroll.');
-                    setLastCalculationResult({ date: selectedDate, status: 'error' });
+                    setLastCalculationResult({ date: selectedCutoffMonth, status: 'error' });
                 },
                 onFinish: () => {
                     setIsCalculating(false);
@@ -110,7 +69,6 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
             }
         );
     };
-
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -133,11 +91,9 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
                                 </p>
                             </DialogHeader>
 
-                            <DialogScrollArea>
+                            <div className="flex-grow overflow-y-auto">
                                 <div className="space-y-6 pt-4">
                                     <h4 className="font-semibold text-lg text-gray-700 dark:text-gray-300">Computation Parameters</h4>
-                                    
-                                    {/* Month Cutoff Selection */}
                                     <div className="space-y-2">
                                         <Label htmlFor="cutoff-month">Compute YTD Earnings Up To:</Label>
                                         <Select
@@ -158,19 +114,6 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
                                         </Select>
                                     </div>
 
-                                    {/* Payout Date Selection */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="payout-date">Select Payout Date:</Label>
-                                        <PayrollDatePicker
-                                            value={selectedDate}
-                                            onValueChange={setSelectedDate}
-                                            placeholder="Select 13th Month Payout Date"
-                                            className="w-full"
-                                            disabled={isCalculating}
-                                        />
-                                    </div>
-
-
                                     <div className="p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-700 rounded-lg text-sm space-y-2">
                                         <h5 className="font-semibold text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
                                             <Lightbulb className="w-4 h-4" />
@@ -179,7 +122,7 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
                                         <p>The amount is calculated based on the formula: <strong>(Sum of Monthly Adjusted Basic Salary YTD) / 12</strong>. </p>
                                         <p className="font-medium">The 'Monthly Adjusted Basic Salary' uses Base Salary less the monetary value of Lates and Absences recorded up to the **Cutoff Month**.</p>
                                     </div>
-                                    
+
                                     {lastCalculationResult && (
                                         <div className={`p-4 rounded-lg text-sm font-semibold flex items-center gap-3 ${lastCalculationResult.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                             {lastCalculationResult.status === 'success' ? <CheckCircle className="w-5 h-5" /> : <Calculator className="w-5 h-5" />}
@@ -187,12 +130,12 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
                                         </div>
                                     )}
                                 </div>
-                            </DialogScrollArea>
+                            </div>
 
                             <DialogFooter className="flex-shrink-0 pt-4">
-                                <Button 
+                                <Button
                                     onClick={handleRun13thMonthPay}
-                                    disabled={!selectedDate || !selectedCutoffMonth || isCalculating}
+                                    disabled={!selectedCutoffMonth || isCalculating}
                                 >
                                     {isCalculating ? (
                                         <span className="flex items-center gap-2">

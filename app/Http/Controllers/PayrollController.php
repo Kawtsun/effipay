@@ -61,10 +61,6 @@ class PayrollController extends Controller
                 'month' => $payrollMonth
             ]));
             $summaryData = $summary->getData(true);
-            
-            // --- 13TH MONTH PAY CALCULATION START ---
-            $thirteenth_month_pay = $this->calculate13thMonthPay($employee, $payrollDate);
-            // --- 13TH MONTH PAY CALCULATION END ---
 
             // Check if employee is a College Instructor (case-insensitive, substring match)
             $isCollegeInstructor = false;
@@ -102,12 +98,13 @@ class PayrollController extends Controller
                 // Gross pay: (college_rate * total_hours_worked) - (college_rate * tardiness) - (college_rate * undertime) - (college_rate * absences) + overtime_pay + honorarium
                 $gross_pay = round(
                     ($college_rate * $total_hours_worked)
-                    - ($college_rate * $tardiness)
-                    - ($college_rate * $undertime)
-                    - ($college_rate * $absences)
-                    + $overtime_pay
-                    + $honorarium
-                , 2);
+                        - ($college_rate * $tardiness)
+                        - ($college_rate * $undertime)
+                        - ($college_rate * $absences)
+                        + $overtime_pay
+                        + $honorarium,
+                    2
+                );
 
                 // For record-keeping, set base_salary to employee's base_salary or 0 (not used in calculation)
                 $base_salary = !is_null($employee->base_salary) ? $employee->base_salary : 0;
@@ -134,16 +131,17 @@ class PayrollController extends Controller
 
                 $gross_pay = round(
                     ($base_salary + $overtime_pay)
-                    - ($rate_per_hour * $tardiness)
-                    - ($rate_per_hour * $undertime)
-                    - ($rate_per_hour * $absences)
-                    + $honorarium
-                , 2);
+                        - ($rate_per_hour * $tardiness)
+                        - ($rate_per_hour * $undertime)
+                        - ($rate_per_hour * $absences)
+                        + $honorarium,
+                    2
+                );
 
                 $sss = $employee->sss;
                 $philhealth = $employee->philhealth;
                 $pag_ibig = $employee->pag_ibig;
-                $withholding_tax = $gross_pay > 0 ? (function($gross_pay, $sss, $pag_ibig, $philhealth) {
+                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay, $sss, $pag_ibig, $philhealth) {
                     $totalComp = $gross_pay - ($sss + $pag_ibig + $philhealth);
                     if ($totalComp <= 20832) return 0;
                     if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
@@ -154,73 +152,68 @@ class PayrollController extends Controller
                 })($gross_pay, $sss, $pag_ibig, $philhealth) : 0;
             }
 
-                // Create and save payroll record
-                // Get all loan and deduction fields from employee
-                // Always reference all new fields, fallback to 0 if missing
-                $sss_salary_loan = !is_null($employee->sss_salary_loan) ? $employee->sss_salary_loan : 0;
-                $sss_calamity_loan = !is_null($employee->sss_calamity_loan) ? $employee->sss_calamity_loan : 0;
-                $pagibig_multi_loan = !is_null($employee->pagibig_multi_loan) ? $employee->pagibig_multi_loan : 0;
-                $pagibig_calamity_loan = !is_null($employee->pagibig_calamity_loan) ? $employee->pagibig_calamity_loan : 0;
-                $peraa_con = !is_null($employee->peraa_con) ? $employee->peraa_con : 0;
-                $tuition = !is_null($employee->tuition) ? $employee->tuition : 0;
-                $china_bank = !is_null($employee->china_bank) ? $employee->china_bank : 0;
-                $tea = !is_null($employee->tea) ? $employee->tea : 0;
-                // Note: Honorarium defined above based on role logic
-                
-                $salary_loan = !is_null($employee->salary_loan) ? $employee->salary_loan : 0;
-                $calamity_loan = !is_null($employee->calamity_loan) ? $employee->calamity_loan : 0;
-                $multipurpose_loan = !is_null($employee->multipurpose_loan) ? $employee->multipurpose_loan : 0;
+            // Create and save payroll record
+            // Get all loan and deduction fields from employee
+            // Always reference all new fields, fallback to 0 if missing
+            $sss_salary_loan = !is_null($employee->sss_salary_loan) ? $employee->sss_salary_loan : 0;
+            $sss_calamity_loan = !is_null($employee->sss_calamity_loan) ? $employee->sss_calamity_loan : 0;
+            $pagibig_multi_loan = !is_null($employee->pagibig_multi_loan) ? $employee->pagibig_multi_loan : 0;
+            $pagibig_calamity_loan = !is_null($employee->pagibig_calamity_loan) ? $employee->pagibig_calamity_loan : 0;
+            $peraa_con = !is_null($employee->peraa_con) ? $employee->peraa_con : 0;
+            $tuition = !is_null($employee->tuition) ? $employee->tuition : 0;
+            $china_bank = !is_null($employee->china_bank) ? $employee->china_bank : 0;
+            $tea = !is_null($employee->tea) ? $employee->tea : 0;
+            // Note: Honorarium defined above based on role logic
 
-                // Adjust Gross Pay to include 13th Month Pay (if given mid-month, it's one of the two payrolls)
-                $gross_pay_adjusted = $gross_pay + $thirteenth_month_pay;
+            $salary_loan = !is_null($employee->salary_loan) ? $employee->salary_loan : 0;
+            $calamity_loan = !is_null($employee->calamity_loan) ? $employee->calamity_loan : 0;
+            $multipurpose_loan = !is_null($employee->multipurpose_loan) ? $employee->multipurpose_loan : 0;
 
-                $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax
-                    + $sss_salary_loan + $sss_calamity_loan + $pagibig_multi_loan + $pagibig_calamity_loan
-                    + $peraa_con + $tuition + $china_bank + $tea; // Honorarium is an earning, not deduction
-                    + $salary_loan + $calamity_loan + $multipurpose_loan;
-                $net_pay = $gross_pay_adjusted - $total_deductions;
-                
-                \Illuminate\Support\Facades\Log::info([
-                    'employee_id' => $employee->id,
-                    'thirteenth_month_pay' => $thirteenth_month_pay,
-                    // ... (rest of loan/deduction logging)
-                ]);
-                
-                $payrollData = [
-                    'employee_id' => $employee->id,
-                    'month' => $payrollMonth,
-                    'payroll_date' => $request->payroll_date,
-                    'base_salary' => $base_salary,
-                    'college_rate' => isset($college_rate) ? $college_rate : null,
-                    'honorarium' => $honorarium,
-                    'thirteenth_month_pay' => $thirteenth_month_pay, // ADDED 13th MONTH PAY
-                    'overtime' => $overtime_hours,
-                    'tardiness' => $tardiness,
-                    'undertime' => $undertime,
-                    'absences' => $absences,
-                    'gross_pay' => $gross_pay_adjusted, // Use adjusted gross pay
-                    'sss' => $sss,
-                    'philhealth' => $philhealth,
-                    'pag_ibig' => $pag_ibig,
-                    'withholding_tax' => $withholding_tax,
-                    'sss_salary_loan' => $sss_salary_loan,
-                    'sss_calamity_loan' => $sss_calamity_loan,
-                    'pagibig_multi_loan' => $pagibig_multi_loan,
-                    'pagibig_calamity_loan' => $pagibig_calamity_loan,
-                    'peraa_con' => $peraa_con,
-                    'tuition' => $tuition,
-                    'china_bank' => $china_bank,
-                    'tea' => $tea,
-                    'salary_loan' => $salary_loan,
-                    'calamity_loan' => $calamity_loan,
-                    'multipurpose_loan' => $multipurpose_loan,
-                    'total_deductions' => $total_deductions,
-                    'net_pay' => $net_pay,
-                ];
-                
-                \Illuminate\Support\Facades\Log::info('[Payroll Debug] Payroll::create array', $payrollData);
-                \App\Models\Payroll::create($payrollData);
-                $createdCount++;
+            $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax
+                + $sss_salary_loan + $sss_calamity_loan + $pagibig_multi_loan + $pagibig_calamity_loan
+                + $peraa_con + $tuition + $china_bank + $tea; // Honorarium is an earning, not deduction
+            +$salary_loan + $calamity_loan + $multipurpose_loan;
+            $net_pay = $gross_pay - $total_deductions;
+
+            \Illuminate\Support\Facades\Log::info([
+                'employee_id' => $employee->id,
+                // ... (rest of loan/deduction logging)
+            ]);
+
+            $payrollData = [
+                'employee_id' => $employee->id,
+                'month' => $payrollMonth,
+                'payroll_date' => $request->payroll_date,
+                'base_salary' => $base_salary,
+                'college_rate' => isset($college_rate) ? $college_rate : null,
+                'honorarium' => $honorarium,
+                'overtime' => $overtime_hours,
+                'tardiness' => $tardiness,
+                'undertime' => $undertime,
+                'absences' => $absences,
+                'gross_pay' => $gross_pay,
+                'sss' => $sss,
+                'philhealth' => $philhealth,
+                'pag_ibig' => $pag_ibig,
+                'withholding_tax' => $withholding_tax,
+                'sss_salary_loan' => $sss_salary_loan,
+                'sss_calamity_loan' => $sss_calamity_loan,
+                'pagibig_multi_loan' => $pagibig_multi_loan,
+                'pagibig_calamity_loan' => $pagibig_calamity_loan,
+                'peraa_con' => $peraa_con,
+                'tuition' => $tuition,
+                'china_bank' => $china_bank,
+                'tea' => $tea,
+                'salary_loan' => $salary_loan,
+                'calamity_loan' => $calamity_loan,
+                'multipurpose_loan' => $multipurpose_loan,
+                'total_deductions' => $total_deductions,
+                'net_pay' => $net_pay,
+            ];
+
+            \Illuminate\Support\Facades\Log::info('[Payroll Debug] Payroll::create array', $payrollData);
+            \App\Models\Payroll::create($payrollData);
+            $createdCount++;
         }
 
         if ($createdCount > 0) {
@@ -239,13 +232,11 @@ class PayrollController extends Controller
      * @param \Carbon\Carbon $payrollDate The date of the current payroll run.
      * @return float
      */
-    private function calculate13thMonthPay(Employees $employee, Carbon $payrollDate): float
+    private function calculate13thMonthPay(Employees $employee, int $currentYear, int $monthCount): float
     {
         // 13th month is calculated from Jan 1 up to the current month being processed.
-        $currentYear = $payrollDate->year;
-        $monthCount = $payrollDate->month;
         $totalAdjustedBasicSalary = 0.0;
-        
+
         // We iterate from January (month 1) up to the current month index.
         for ($month = 1; $month <= $monthCount; $month++) {
             $monthString = $currentYear . '-' . str_pad($month, 2, '0', STR_PAD_LEFT);
@@ -258,30 +249,83 @@ class PayrollController extends Controller
                 'month' => $monthString
             ]));
             $summaryData = $summary->getData(true);
-            
+
             // Get monetary values for deductions for this specific month
             $late_deduction = $summaryData['late_deduction'] ?? 0.0;
             $absence_deduction = $summaryData['absence_deduction'] ?? 0.0;
-            
+
             // Use employee's current monthly base salary (which is assumed constant for the year)
             $monthlyBaseSalary = !is_null($employee->base_salary) ? $employee->base_salary : 0.0;
-            
+
             // Apply the formula: (base_salary - (late + absence))
             $adjustedMonthlyBasicSalary = $monthlyBaseSalary - ($late_deduction + $absence_deduction);
-            
+
             // Ensure the result is non-negative
             $totalAdjustedBasicSalary += max(0, $adjustedMonthlyBasicSalary);
         }
-        
+
         // Calculate the 13th Month Pay: (Total Adjusted Basic Salary Earned) / 12
         if ($totalAdjustedBasicSalary <= 0) {
             return 0.0;
         }
-        
+
         $thirteenthMonthPay = round($totalAdjustedBasicSalary / 12, 2);
-        
+
         return $thirteenthMonthPay;
     }
+
+    public function run13thMonthPay(Request $request)
+    {
+        // 1. Validation now only checks for cutoff_month
+        $request->validate([
+            'cutoff_month' => 'required|integer|min:1|max:12',
+        ]);
+
+        $cutoffMonth = $request->cutoff_month;
+        $currentYear = date('Y'); // Assumes the current year
+        $monthString = $currentYear . '-' . str_pad($cutoffMonth, 2, '0', STR_PAD_LEFT);
+
+        // 2. Automatically find the latest payroll date for the selected month
+        $lastPayrollInMonth = \App\Models\Payroll::where('month', $monthString)
+            ->orderBy('payroll_date', 'desc')
+            ->first();
+
+        // 3. Handle case where no payroll has been run for that month yet
+        if (!$lastPayrollInMonth) {
+            return redirect()->back()->withErrors(['message' => 'Cannot run 13th month pay. No payroll has been processed for ' . Carbon::parse($monthString)->format('F, Y') . ' yet.']);
+        }
+
+        // 4. Use the date we found in the database
+        $payrollDate = Carbon::parse($lastPayrollInMonth->payroll_date);
+
+        $employees = \App\Models\Employees::all();
+        $createdCount = 0;
+
+        foreach ($employees as $employee) {
+            // The rest of the logic proceeds as before
+            $thirteenthMonthPay = $this->calculate13thMonthPay($employee, $currentYear, $cutoffMonth);
+
+            if ($thirteenthMonthPay <= 0) {
+                continue;
+            }
+
+            // We will add the 13th month pay to the payroll record of the date we found
+            $payrollRecordToUpdate = \App\Models\Payroll::where('employee_id', $employee->id)
+                ->where('payroll_date', $payrollDate->format('Y-m-d'))
+                ->first();
+
+            if ($payrollRecordToUpdate) {
+                $payrollRecordToUpdate->thirteenth_month_pay = ($payrollRecordToUpdate->thirteenth_month_pay ?? 0) + $thirteenthMonthPay;
+                $payrollRecordToUpdate->gross_pay += $thirteenthMonthPay;
+                $payrollRecordToUpdate->net_pay += $thirteenthMonthPay;
+                $payrollRecordToUpdate->save();
+                $createdCount++;
+            }
+        }
+
+        return redirect()->back()->with('flash', ['message' => '13th Month Pay has been added to the payroll of ' . $payrollDate->format('F d, Y') . ' for ' . $createdCount . ' employees.']);
+    }
+
     /**
      * Get all unique months from both Payroll and TimeKeeping, sorted descending.
      */
@@ -383,7 +427,7 @@ class PayrollController extends Controller
         }
 
         // Only return the actual payroll record fields for that month (do not merge from employee table)
-        $payrollsArray = $payrolls->map(function($payroll) {
+        $payrollsArray = $payrolls->map(function ($payroll) {
             return $payroll->toArray();
         });
 
@@ -438,7 +482,7 @@ class PayrollController extends Controller
                     // Add the 2 months before the earliest using Carbon's subMonths method
                     $prevMonth1 = $date->copy()->subMonths(1)->format('Y-m');
                     $prevMonth2 = $date->copy()->subMonths(2)->format('Y-m');
-                    
+
                     $monthsToAdd[] = $prevMonth1;
                     $monthsToAdd[] = $prevMonth2;
                 }
@@ -456,5 +500,4 @@ class PayrollController extends Controller
             'months' => isset($finalMonths) ? $finalMonths : [],
         ]);
     }
-
 }
