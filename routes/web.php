@@ -94,6 +94,9 @@ Route::middleware('auth')->group(function () {
 
     // Trigger artisan fetch-holidays 
     Route::post('/fetch-holidays', [ObservanceController::class, 'fetchHolidays']);
+
+    // Credits
+    Route::get('/credits', [App\Http\Controllers\CreditsController::class, 'index'])->name('credits');
 });
 
 

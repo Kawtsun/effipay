@@ -1,34 +1,44 @@
-import { Icon } from '@/components/icon';
-import { SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { type NavItem } from '@/types';
-import { type ComponentPropsWithoutRef } from 'react';
+import { NavItem } from '@/types';
+import { SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
+import * as React from 'react';
+import { Link } from '@inertiajs/react';
+// Import LucideIcon type for accurate type assertion
+import { type LucideIcon } from 'lucide-react'; 
 
-export function NavFooter({
-    items,
-    className,
-    ...props
-}: ComponentPropsWithoutRef<typeof SidebarGroup> & {
+interface NavFooterProps extends React.HTMLAttributes<HTMLDivElement> {
     items: NavItem[];
-}) {
+}
+
+export function NavFooter({ items, className, ...props }: NavFooterProps) {
     return (
-        <SidebarGroup {...props} className={`group-data-[collapsible=icon]:p-0 ${className || ''}`}>
-            <SidebarGroupContent>
-                <SidebarMenu>
-                    {items.map((item) => (
-                        <SidebarMenuItem key={item.title}>
-                            <SidebarMenuButton
-                                asChild
-                                className="text-neutral-600 hover:text-neutral-800 dark:text-neutral-300 dark:hover:text-neutral-100"
+        <div className={cn("flex flex-col space-y-1", className)} {...props}>
+            {items.map((item) => {
+                const isExternal = item.href.startsWith('http');
+                const Component = isExternal ? 'a' : Link;
+
+                // --- FIX APPLIED HERE ---
+                // Assert item.icon as a valid component type (LucideIcon).
+                // TypeScript now trusts that if it exists, it can be rendered.
+                const IconComponent = item.icon as LucideIcon;
+                // --- END FIX ---
+
+                return (
+                    <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton size="lg" asChild>
+                            <Component 
+                                href={item.href} 
+                                target={isExternal ? '_blank' : undefined} 
+                                rel={isExternal ? 'noopener noreferrer' : undefined}
                             >
-                                <a href={item.href} target="_blank" rel="noopener noreferrer">
-                                    {item.icon && <Icon iconNode={item.icon} className="h-5 w-5" />}
-                                    <span>{item.title}</span>
-                                </a>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    ))}
-                </SidebarMenu>
-            </SidebarGroupContent>
-        </SidebarGroup>
+                                {/* Use the asserted IconComponent variable */}
+                                {IconComponent && <IconComponent className="size-5 shrink-0" />} 
+                                <span>{item.title}</span>
+                            </Component>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                );
+            })}
+        </div>
     );
 }
