@@ -35,7 +35,10 @@ export function EarningsForm({ form }: EarningsFormProps) {
     const isCollege = React.useMemo(() => rolesArr.includes('college instructor'), [rolesArr]);
     const isBasicEdu = React.useMemo(() => rolesArr.includes('basic education instructor'), [rolesArr]);
     const isAdmin = React.useMemo(() => rolesArr.includes('administrator'), [rolesArr]);
-    const isOthers = React.useMemo(() => rolesArr.includes('others'), [rolesArr]);
+    
+    // --- FIX: This is the corrected logic ---
+    const STANDARD_ROLES = ['administrator', 'college instructor', 'basic education instructor'];
+    const isOthers = React.useMemo(() => rolesArr.some(role => !STANDARD_ROLES.includes(role)), [rolesArr]);
     
     // Determine which fields to show based on roles
     const showBaseSalary = isAdmin || isBasicEdu || isOthers;
