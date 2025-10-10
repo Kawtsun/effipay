@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Employees;
-use App\Models\EmployeeType; // Import the new model
+use App\Models\EmployeeType;
 use App\Http\Requests\StoreEmployeesRequest;
 use App\Http\Requests\UpdateEmployeesRequest;
 use App\Models\Salary;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Schema;
 
 class EmployeesController extends Controller
 {
-    public const LEAVE_LIMIT = 2; // Change this value as needed
+    public const LEAVE_LIMIT = 2;
 
     /**
      * Display a listing of the resource.
@@ -33,7 +33,6 @@ class EmployeesController extends Controller
             });
         }
 
-        // MODIFIED: Filter by employee type using the new relationship
         if ($request->filled('types')) {
             $query->whereHas('employeeTypes', function ($q) use ($request) {
                 $q->whereIn('type', $request->types);
@@ -44,7 +43,6 @@ class EmployeesController extends Controller
             $query->whereIn('employee_status', $request->statuses);
         }
 
-        // Your original role filtering logic
         $standardRoles = ['administrator', 'college instructor', 'basic education instructor'];
         if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
             $query->where(function($q) use ($request, $standardRoles) {
@@ -67,7 +65,6 @@ class EmployeesController extends Controller
             $query->where('college_program', $request->collegeProgram);
         }
         
-        // Your original logic to get available custom roles
         $allRolesRaw = Employees::pluck('roles')->filter()->map(function ($roles) {
             return explode(',', $roles);
         })->flatten()->map(fn($role) => trim($role))->filter()->unique()->values();
@@ -76,18 +73,15 @@ class EmployeesController extends Controller
             return !in_array(strtolower($role), $standardRoles);
         })->map(fn($role) => ['value' => $role, 'label' => ucwords($role)])->values()->toArray();
 
-
         $perPage = (int) ($request->input('perPage', 10));
 
-        // Eager load the new 'employeeTypes' relationship
         $employees = $query->with(['workDays', 'employeeTypes'])->paginate($perPage)->withQueryString();
 
-        // Map the data to include the new employee_types structure
         $employeesArray = array_map(function ($emp) {
             $employeeTypesMap = $emp->employeeTypes->pluck('type', 'role')->toArray();
             $empData = $emp->toArray();
-            unset($empData['employee_type']); // Remove old field
-            $empData['employee_types'] = $employeeTypesMap; // Add new structure
+            unset($empData['employee_type']);
+            $empData['employee_types'] = $employeeTypesMap;
             return $empData;
         }, $employees->items());
 
@@ -128,30 +122,30 @@ class EmployeesController extends Controller
     public function store(StoreEmployeesRequest $request)
     {
         $validatedData = $request->validated();
-
+        
         $employeeTypesData = $validatedData['employee_types'] ?? [];
         unset($validatedData['employee_types']);
-        
-        $employeeData = $validatedData;
 
-        // Your original sanitization logic
-        if (array_key_exists('rate_per_hour', $employeeData)) {
+        $employeeData = $validatedData;
+        
+        // Correctly handle the rate_per_hour field before sanitation
+        if (isset($employeeData['rate_per_hour'])) {
             $employeeData['college_rate'] = $employeeData['rate_per_hour'];
+            unset($employeeData['rate_per_hour']);
         }
+        
+        // Sanitize numeric fields to null if they are empty
         foreach ([
-            'base_salary', 'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
-            'college_rate', 'rate_per_hour',
-            'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 'pagibig_calamity_loan',
-            'peraa_con', 'tuition', 'china_bank', 'tea', 'honorarium'
+            'base_salary', 'honorarium', 'college_rate',
+            'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
+            'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 
+            'pagibig_calamity_loan', 'peraa_con', 'tuition', 'china_bank', 'tea'
         ] as $field) {
-            if (isset($employeeData[$field]) && ($employeeData[$field] === '' || $employeeData[$field] === null || $employeeData[$field] === 0.0)) {
+            if (isset($employeeData[$field]) && ($employeeData[$field] === '' || $employeeData[$field] === null)) {
                 $employeeData[$field] = null;
             }
         }
-        if (array_key_exists('rate_per_hour', $employeeData)) {
-            unset($employeeData['rate_per_hour']);
-        }
-
+        
         DB::transaction(function () use ($employeeData, $employeeTypesData, $request) {
             $employee = Employees::create($employeeData);
 
@@ -162,7 +156,7 @@ class EmployeesController extends Controller
             }
 
             $workDays = $request->input('work_days', []);
-            if (is_array($workDays)) {
+            if (is_array($workDays) && count($workDays) > 0) {
                 foreach ($workDays as $workDay) {
                     if (isset($workDay['day'], $workDay['work_start_time'], $workDay['work_end_time'])) {
                         $employee->workDays()->create($workDay);
@@ -170,9 +164,9 @@ class EmployeesController extends Controller
                 }
             }
             
-            // Your audit log logic
+            // --- RESTORED AUDIT LOGIC FOR STORE ---
             $username = Auth::user()->username ?? 'system';
-             \App\Models\AuditLogs::create([
+            \App\Models\AuditLogs::create([
                 'username'    => $username,
                 'action'      => 'created',
                 'name'        => $employee->last_name . ', ' . $employee->first_name,
@@ -183,7 +177,6 @@ class EmployeesController extends Controller
             ]);
         });
 
-        // Your original redirect logic
         return redirect()->route('employees.index')->with('success', 'Employee created successfully!');
     }
 
@@ -220,9 +213,9 @@ class EmployeesController extends Controller
 
         $employeeData = $validatedData;
         
-        // Your original sanitization logic
         if (array_key_exists('rate_per_hour', $employeeData)) {
             $employeeData['college_rate'] = $employeeData['rate_per_hour'];
+            unset($employeeData['rate_per_hour']);
         }
         foreach ([
             'base_salary', 'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
@@ -231,20 +224,19 @@ class EmployeesController extends Controller
             'peraa_con', 'tuition', 'china_bank', 'tea', 'honorarium'
         ] as $field) {
              if (isset($employeeData[$field]) && ($employeeData[$field] === '' || $employeeData[$field] === null || $employeeData[$field] === 0.0)) {
-                $employeeData[$field] = null;
-            }
+                 $employeeData[$field] = null;
+             }
         }
         if (array_key_exists('rate_per_hour', $employeeData)) {
-            unset($employeeData['rate_per_hour']);
+             unset($employeeData['rate_per_hour']);
         }
-
+        
         $oldData = $employee->load('employeeTypes', 'workDays')->toArray();
         $oldStatus = $employee->employee_status;
         
-        DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $request) {
+        DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $request, $oldData) {
             $employee->update($employeeData);
 
-            // Sync the employee types
             $employee->employeeTypes()->delete();
             if (is_array($employeeTypesData)) {
                 foreach ($employeeTypesData as $role => $type) {
@@ -252,23 +244,105 @@ class EmployeesController extends Controller
                 }
             }
             
-            // Sync work days
             $employee->workDays()->delete();
             $workDays = $request->input('work_days', []);
             if (is_array($workDays)) {
                 foreach ($workDays as $workDay) {
                      if (isset($workDay['day'], $workDay['work_start_time'], $workDay['work_end_time'])) {
-                        $employee->workDays()->create($workDay);
-                    }
+                         $employee->workDays()->create($workDay);
+                     }
                 }
             }
 
-            // Your audit log logic...
+            // --- RESTORED AUDIT LOGIC FOR UPDATE ---
+            $username = Auth::user()->username ?? 'system';
+            \App\Models\AuditLogs::create([
+                'username'    => $username,
+                'action'      => 'updated',
+                'name'        => $employee->last_name . ', ' . $employee->first_name,
+                'entity_type' => 'employee',
+                'entity_id'   => $employee->id,
+                'details'     => json_encode(['old' => $oldData, 'new' => $employeeData]),
+                'date'        => now('Asia/Manila'),
+            ]);
         });
 
-        // Your original leave status logic
         if (isset($employeeData['employee_status']) && $employeeData['employee_status'] !== $oldStatus) {
-            // ... (place your full leave status/history logic here)
+             // --- RESTORED LEAVE STATUS LOGIC ---
+             if (Schema::hasTable('employee_status_histories')) {
+                 $leaveStatuses = ['paid leave', 'sick leave', 'vacation leave', 'maternity leave', 'study leave'];
+                 $activeStatuses = ['active'];
+                 $currentStatus = strtolower(trim($employeeData['employee_status']));
+                 $oldStatusNormalized = strtolower(trim($oldStatus));
+                 
+                 // If changing to a leave status, record leave start only if no open leave exists
+                 if (in_array($currentStatus, $leaveStatuses)) {
+                     $openLeave = DB::table('employee_status_histories')
+                         ->where('employee_id', $employee->id)
+                         ->whereIn('status', $leaveStatuses)
+                         ->whereNull('leave_end_date')
+                         ->first();
+                     if (!$openLeave) {
+                         DB::table('employee_status_histories')->insert([
+                             'employee_id' => $employee->id,
+                             'status' => $employeeData['employee_status'],
+                             'effective_date' => date('Y-m-d'),
+                             'leave_start_date' => date('Y-m-d'),
+                             'leave_end_date' => null,
+                             'created_at' => now(),
+                             'updated_at' => now(),
+                         ]);
+                         if (Schema::hasTable('leaves')) {
+                             DB::table('leaves')->insert([
+                                 'employee_id' => $employee->id,
+                                 'status' => $employeeData['employee_status'],
+                                 'leave_start_day' => date('Y-m-d'),
+                                 'leave_end_day' => null,
+                                 'created_at' => now(),
+                                 'updated_at' => now(),
+                             ]);
+                         }
+                     }
+                 }
+                 // If changing from leave to active, record leave end
+                 elseif (in_array($currentStatus, $activeStatuses) && in_array($oldStatusNormalized, $leaveStatuses)) {
+                     $lastLeave = DB::table('employee_status_histories')
+                         ->where('employee_id', $employee->id)
+                         ->whereIn('status', $leaveStatuses)
+                         ->whereNull('leave_end_date')
+                         ->orderByDesc('leave_start_date')
+                         ->first();
+                     if ($lastLeave) {
+                         DB::table('employee_status_histories')
+                             ->where('id', $lastLeave->id)
+                             ->update(['leave_end_date' => date('Y-m-d'), 'updated_at' => now()]);
+                         if (Schema::hasTable('leaves')) {
+                             $openLeaveRow = DB::table('leaves')
+                                 ->where('employee_id', $employee->id)
+                                 ->whereIn('status', $leaveStatuses)
+                                 ->whereNull('leave_end_day')
+                                 ->orderByDesc('leave_start_day')
+                                 ->first();
+                             if ($openLeaveRow) {
+                                 DB::table('leaves')
+                                     ->where('id', $openLeaveRow->id)
+                                     ->update(['leave_end_day' => date('Y-m-d'), 'updated_at' => now()]);
+                             }
+                         }
+                     }
+                 }
+                 else {
+                     DB::table('employee_status_histories')->insert([
+                         'employee_id' => $employee->id,
+                         'status' => $employeeData['employee_status'],
+                         'effective_date' => date('Y-m-d'),
+                         'leave_start_date' => null,
+                         'leave_end_date' => null,
+                         'created_at' => now(),
+                         'updated_at' => now(),
+                     ]);
+                 }
+             }
         }
 
         return redirect()->route('employees.index')->with('success', 'Employee updated successfully!');
@@ -279,9 +353,8 @@ class EmployeesController extends Controller
      */
     public function destroy(Request $request, Employees $employee)
     {
-        // Your original destroy and audit log logic
         $oldData = $employee->toArray();
-        $employee->delete(); // The database cascade will handle related employee_types
+        $employee->delete();
 
         $username = Auth::user()->username ?? 'system';
         \App\Models\AuditLogs::create([
