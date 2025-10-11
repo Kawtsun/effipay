@@ -109,7 +109,7 @@ export default function Index(props: Props) {
         // Pass the breadcrumbs to your main AppLayout
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Add New Employee" />
-            <div className="space-y-6 p-4 md:p-8 max-w-7xl mx-auto">
+            <div className="space-y-6 p-4 md:p-8 max-w-8xl mx-auto">
                 <header className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="bg-primary/10 p-3 rounded-full border border-primary/20">

@@ -132,7 +132,7 @@ export default function Edit(props: Props) {
             href: route('employees.index', filters),
         },
         {
-            title: `Edit: ${formatFullName(employee.last_name, employee.first_name, employee.middle_name)}`,
+            title: `Edit: #${employee.id} - ${formatFullName(employee.last_name, employee.first_name, employee.middle_name)}`,
             href: route('employees.edit', employee.id),
             isCurrent: true,
         },
@@ -141,7 +141,7 @@ export default function Edit(props: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Edit Employee: ${formatFullName(employee.last_name, employee.first_name, employee.middle_name)}`} />
-            <div className="space-y-6 p-4 md:p-8 max-w-7xl mx-auto">
+            <div className="space-y-6 p-4 md:p-8 max-w-8xl mx-auto">
                 <header className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
