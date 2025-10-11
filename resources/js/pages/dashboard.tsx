@@ -91,13 +91,15 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
-                {/* Intro like other pages */}
-                <div className="flex-none">
-                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
+                {/* Header */}
+                <div className="flex items-center gap-4">
+                    <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
                         <LayoutDashboard className="h-6 w-6 text-primary" />
-                        Dashboard
-                    </h1>
-                    <p className="text-sm text-muted-foreground">Quick glance at employees and payroll totals.</p>
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+                        <p className="text-muted-foreground">Quick glance at employees and payroll totals.</p>
+                    </div>
                 </div>
 
                 {/* Month selector aligned above cards, like reports */}

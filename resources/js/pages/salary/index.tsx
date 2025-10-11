@@ -58,12 +58,12 @@ export default function Index() {
     } else if (typeof flash === 'object' && flash !== null) {
       // If backend sends { type, message }
       if (flash.type === 'error') {
-          // Show specific toast if missing time keeping data
-          if (flash.message && flash.message.toLowerCase().includes('no time keeping data')) {
-            toast.error('Some employees have no time keeping data. Please check time keeping records before running payroll.');
-          } else {
-            toast.error(flash.message || 'An error occurred');
-          }
+        // Show specific toast if missing time keeping data
+        if (flash.message && flash.message.toLowerCase().includes('no time keeping data')) {
+          toast.error('Some employees have no time keeping data. Please check time keeping records before running payroll.');
+        } else {
+          toast.error(flash.message || 'An error occurred');
+        }
       } else if (flash.type === 'success') {
         toast.success(flash.message || 'Success');
       } else if (flash.message === 'Payroll already run twice for this month.') {
@@ -134,14 +134,14 @@ export default function Index() {
         <div className="py-6 px-8 space-y-6">
           {/* HEADER */}
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <div className="flex items-center gap-4">
+              <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
                 <Wallet className="w-6 h-6 text-primary" />
-                Salary Management
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Set default salary values by employee type and run payroll.
-              </p>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Salary Management</h1>
+                <p className="text-muted-foreground">Set default salary values by employee type and run payroll.</p>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ export default function Index() {
                   {isRunningPayroll ? 'Running...' : 'Run Payroll'}
                 </Button>
               </div>
-              
+
             </div>
           </div>
           <EmployeeType value={type} onChange={onTypeChange} types={allTypes} />

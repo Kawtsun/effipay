@@ -12,7 +12,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react'
 import { Loader2, Users, UserPlus2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
- 
+
 
 type FlashObject = { type: string; message: string };
 type Flash = { success?: string } | string | FlashObject;
@@ -35,22 +35,22 @@ const PAGE_SIZE_STORAGE_KEY = 'employees.table.pageSize'
 
 // Add this mapping at the top of the file (or near the badge logic)
 const COLLEGE_PROGRAMS = [
-  { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-  { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-  { value: 'COELA', label: 'College of Education and Liberal Arts' },
-  { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-  { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-  { value: 'JD', label: 'Juris Doctor' },
-  { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-  { value: 'RLE', label: 'Related Learning Experience' },
-  { value: 'CG', label: 'Career Guidance' },
-  { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
+    { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
+    { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
+    { value: 'COELA', label: 'College of Education and Liberal Arts' },
+    { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
+    { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
+    { value: 'JD', label: 'Juris Doctor' },
+    { value: 'BSN', label: 'Bachelor of Science in Nursing' },
+    { value: 'RLE', label: 'Related Learning Experience' },
+    { value: 'CG', label: 'Career Guidance' },
+    { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
     { value: 'GSP', label: 'Graduate Studies Programs' },
-  { value: 'MBA', label: 'Master of Business Administration' },
+    { value: 'MBA', label: 'Master of Business Administration' },
 ];
 function getCollegeProgramLabel(acronym: string) {
-  const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
-  return found ? found.label : acronym;
+    const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
+    return found ? found.label : acronym;
 }
 
 export default function Index({
@@ -149,42 +149,42 @@ export default function Index({
 
     // Filter apply
     const handleFilterChange = useCallback(
-    (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
-        // The local `filters` state should immediately reflect the UI controls
-        setFilters(newFilters);
+        (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
+            // The local `filters` state should immediately reflect the UI controls
+            setFilters(newFilters);
 
-        // Now, construct the filters that will actually be APPLIED and sent to the backend
-        let applied = { ...newFilters };
-        let rolesToSend = [...applied.roles];
+            // Now, construct the filters that will actually be APPLIED and sent to the backend
+            let applied = { ...newFilters };
+            let rolesToSend = [...applied.roles];
 
-        // If 'others' is selected and a specific 'othersRole' is chosen,
-        // we replace 'others' with the specific role for the backend query.
-        if (applied.roles.includes('others') && applied.othersRole) {
-            rolesToSend = rolesToSend.filter(r => r !== 'others');
-            rolesToSend.push(applied.othersRole);
-        }
+            // If 'others' is selected and a specific 'othersRole' is chosen,
+            // we replace 'others' with the specific role for the backend query.
+            if (applied.roles.includes('others') && applied.othersRole) {
+                rolesToSend = rolesToSend.filter(r => r !== 'others');
+                rolesToSend.push(applied.othersRole);
+            }
 
-        // Update the applied filters state. We create a version for the UI display
-        // that keeps the specific role for the badge, but doesn't include 'others'.
-        const appliedForUI = { ...applied, roles: rolesToSend };
-        setAppliedFilters(appliedForUI);
+            // Update the applied filters state. We create a version for the UI display
+            // that keeps the specific role for the badge, but doesn't include 'others'.
+            const appliedForUI = { ...applied, roles: rolesToSend };
+            setAppliedFilters(appliedForUI);
 
-        visit(
-            {
-                search: searchTerm || undefined,
-                page: 1,
-                types: applied.types.length ? applied.types : undefined,
-                statuses: applied.statuses.length ? applied.statuses : undefined,
-                roles: rolesToSend.length ? rolesToSend : undefined,
-                collegeProgram: applied.collegeProgram || undefined,
-                perPage: pageSize,
-                per_page: pageSize,
-            },
-            { preserve: true }
-        );
-    },
-    [visit, searchTerm, pageSize]
-);
+            visit(
+                {
+                    search: searchTerm || undefined,
+                    page: 1,
+                    types: applied.types.length ? applied.types : undefined,
+                    statuses: applied.statuses.length ? applied.statuses : undefined,
+                    roles: rolesToSend.length ? rolesToSend : undefined,
+                    collegeProgram: applied.collegeProgram || undefined,
+                    perPage: pageSize,
+                    per_page: pageSize,
+                },
+                { preserve: true }
+            );
+        },
+        [visit, searchTerm, pageSize]
+    );
 
     // Reset filters
     const resetFilters = useCallback(() => {
@@ -252,14 +252,14 @@ export default function Index({
 
             <div className="flex h-full flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
                 {/* HEADER */}
-                <div className="flex-none">
-                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
+                <div className="flex items-center gap-4">
+                    <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
                         <Users className="h-6 w-6 text-primary" />
-                        Employees
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Manage employee information, status, and salaries.
-                    </p>
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Employees</h1>
+                        <p className="text-muted-foreground">Manage employee information, status, and salaries.</p>
+                    </div>
                 </div>
 
                 {/* SEARCH & CONTROLS */}
@@ -359,17 +359,17 @@ export default function Index({
                         onView={(emp) => setViewing(emp)}
                         onDelete={(emp) => handleDelete(emp)}
                         editHrefFor={(emp) => route('employees.edit', {
-                                                                employee: emp.id,
-                                                                search: searchTerm || undefined,
-                                                                types: appliedFilters.types.length ? appliedFilters.types : undefined,
-                                                                statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
-                                                                roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
-                                                                page: currentPage,
-                                                                // othersRole is now part of the 'roles' array, no need to send separately
-                                                                collegeProgram: appliedFilters.collegeProgram || undefined,
+                            employee: emp.id,
+                            search: searchTerm || undefined,
+                            types: appliedFilters.types.length ? appliedFilters.types : undefined,
+                            statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
+                            roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
+                            page: currentPage,
+                            // othersRole is now part of the 'roles' array, no need to send separately
+                            collegeProgram: appliedFilters.collegeProgram || undefined,
                             perPage: pageSize,
                             per_page: pageSize,
-                                                            })}
+                        })}
                         activeRoles={appliedFilters.roles}
                     />
                     <EmployeeViewDialog

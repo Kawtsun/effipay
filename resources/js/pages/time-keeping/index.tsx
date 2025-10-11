@@ -9,14 +9,14 @@ import EmployeeSearch from '@/components/employee-search';
 import TimeKeepingViewDialog from '@/components/timekeeping-view-dialog';
 import BTRDialog from '@/components/btr-dialog';
 import { Button } from '@/components/ui/button';
- 
+
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { BreadcrumbItem, Employees } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Users, Import, Loader2, Calendar } from 'lucide-react';
+import { Users, Import, Loader2, Calendar, Clock } from 'lucide-react';
 import { CalendarViewDialog } from '@/components/calendar-view-dialog';
- 
+
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
@@ -52,52 +52,52 @@ export default function TimeKeeping() {
             return;
         }
 
-    let rows: Record<string, unknown>[] = [];
-    const importToast = toast.loading('Importing file...');
-    // Show loading toast for at least 1.5s before verifying file
-    setTimeout(() => {
-        if (ext === '.csv') {
-            file.arrayBuffer().then(buffer => {
-                // Use encoding.js to auto-detect and convert encoding to UTF-8
-                const uint8Array = new Uint8Array(buffer);
-                const detected = Encoding.detect(uint8Array);
-                const text = Encoding.convert(uint8Array, {
-                    to: 'UNICODE',
-                    from: detected,
-                    type: 'string'
-                });
-                // Strip BOM if present
-                let cleanText = text;
-                if (cleanText.charCodeAt(0) === 0xFEFF) {
-                    cleanText = cleanText.slice(1);
-                }
-                console.log('Raw CSV text:', cleanText);
-                const result = Papa.parse(cleanText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    transform: (value: string) => value ? value.normalize('NFC') : value,
-                    error: (err: Error) => {
-                        console.error('PapaParse error:', err);
+        let rows: Record<string, unknown>[] = [];
+        const importToast = toast.loading('Importing file...');
+        // Show loading toast for at least 1.5s before verifying file
+        setTimeout(() => {
+            if (ext === '.csv') {
+                file.arrayBuffer().then(buffer => {
+                    // Use encoding.js to auto-detect and convert encoding to UTF-8
+                    const uint8Array = new Uint8Array(buffer);
+                    const detected = Encoding.detect(uint8Array);
+                    const text = Encoding.convert(uint8Array, {
+                        to: 'UNICODE',
+                        from: detected,
+                        type: 'string'
+                    });
+                    // Strip BOM if present
+                    let cleanText = text;
+                    if (cleanText.charCodeAt(0) === 0xFEFF) {
+                        cleanText = cleanText.slice(1);
                     }
+                    console.log('Raw CSV text:', cleanText);
+                    const result = Papa.parse(cleanText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        transform: (value: string) => value ? value.normalize('NFC') : value,
+                        error: (err: Error) => {
+                            console.error('PapaParse error:', err);
+                        }
+                    });
+                    console.log('Parsed rows:', result.data);
+                    // Log and filter out empty/malformed rows
+                    const validRows = (result.data as Record<string, unknown>[]).filter((row) => row && Object.values(row).some(v => v !== null && v !== undefined && v !== ''));
+                    if (validRows.length !== (result.data as Record<string, unknown>[]).length) {
+                        toast.dismiss(importToast);
+                        toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${(result.data as Record<string, unknown>[]).length} rows.`, { duration: 3000, id: `skipped-${Date.now()}` });
+                    }
+                    rows = validRows;
+                    // Add another delay before removing loading toast and showing result
+                    setTimeout(() => {
+                        sendImport(rows, file.name, importToast);
+                    }, 1000);
                 });
-                console.log('Parsed rows:', result.data);
-                // Log and filter out empty/malformed rows
-                const validRows = (result.data as Record<string, unknown>[]).filter((row) => row && Object.values(row).some(v => v !== null && v !== undefined && v !== ''));
-                if (validRows.length !== (result.data as Record<string, unknown>[]).length) {
-                    toast.dismiss(importToast);
-                    toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${(result.data as Record<string, unknown>[]).length} rows.`, { duration: 3000, id: `skipped-${Date.now()}` });
-                }
-                rows = validRows;
-                // Add another delay before removing loading toast and showing result
-                setTimeout(() => {
-                    sendImport(rows, file.name, importToast);
-                }, 1000);
-            });
-        } else {
-            file.arrayBuffer().then(data => {
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
+            } else {
+                file.arrayBuffer().then(data => {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
                     rows = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
                     // Convert Excel serial date numbers to YYYY-MM-DD strings
                     function excelSerialToDate(serial: number) {
@@ -133,12 +133,12 @@ export default function TimeKeeping() {
                         }
                         return row;
                     });
-                setTimeout(() => {
-                    sendImport(rows, file.name, importToast);
-                }, 1000);
-            });
-        }
-    }, 1500);
+                    setTimeout(() => {
+                        sendImport(rows, file.name, importToast);
+                    }, 1000);
+                });
+            }
+        }, 1500);
         function sendImport(rows: Record<string, unknown>[], fileName: string, toastId: string | number) {
             fetch('/time-keeping/import', {
                 method: 'POST',
@@ -268,42 +268,42 @@ export default function TimeKeeping() {
 
     // Filter apply
     const handleFilterChange = useCallback(
-    (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
-        // The local `filters` state should immediately reflect the UI controls
-        setFilters(newFilters);
+        (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
+            // The local `filters` state should immediately reflect the UI controls
+            setFilters(newFilters);
 
-        // Now, construct the filters that will actually be APPLIED and sent to the backend
-        let applied = { ...newFilters };
-        let rolesToSend = [...applied.roles];
+            // Now, construct the filters that will actually be APPLIED and sent to the backend
+            let applied = { ...newFilters };
+            let rolesToSend = [...applied.roles];
 
-        // If 'others' is selected and a specific 'othersRole' is chosen,
-        // we replace 'others' with the specific role for the backend query.
-        if (applied.roles.includes('others') && applied.othersRole) {
-            rolesToSend = rolesToSend.filter(r => r !== 'others');
-            rolesToSend.push(applied.othersRole);
-        }
+            // If 'others' is selected and a specific 'othersRole' is chosen,
+            // we replace 'others' with the specific role for the backend query.
+            if (applied.roles.includes('others') && applied.othersRole) {
+                rolesToSend = rolesToSend.filter(r => r !== 'others');
+                rolesToSend.push(applied.othersRole);
+            }
 
-        // Update the applied filters state. We create a version for the UI display
-        // that keeps the specific role for the badge, but doesn't include 'others'.
-        const appliedForUI = { ...applied, roles: rolesToSend };
-        setAppliedFilters(appliedForUI);
+            // Update the applied filters state. We create a version for the UI display
+            // that keeps the specific role for the badge, but doesn't include 'others'.
+            const appliedForUI = { ...applied, roles: rolesToSend };
+            setAppliedFilters(appliedForUI);
 
-        visit(
-            {
-                search: searchTerm || undefined,
-                page: 1,
-                types: applied.types.length ? applied.types : undefined,
-                statuses: applied.statuses.length ? applied.statuses : undefined,
-                roles: rolesToSend.length ? rolesToSend : undefined,
-                collegeProgram: applied.collegeProgram || undefined,
-                perPage: pageSize,
-                per_page: pageSize,
-            },
-            { preserve: true }
-        );
-    },
-    [visit, searchTerm, pageSize]
-);
+            visit(
+                {
+                    search: searchTerm || undefined,
+                    page: 1,
+                    types: applied.types.length ? applied.types : undefined,
+                    statuses: applied.statuses.length ? applied.statuses : undefined,
+                    roles: rolesToSend.length ? rolesToSend : undefined,
+                    collegeProgram: applied.collegeProgram || undefined,
+                    perPage: pageSize,
+                    per_page: pageSize,
+                },
+                { preserve: true }
+            );
+        },
+        [visit, searchTerm, pageSize]
+    );
 
     // Reset filters
     const resetFilters = useCallback(() => {
@@ -357,12 +357,14 @@ export default function TimeKeeping() {
             <Head title="Time Keeping" />
             <div className="flex h-full flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
                 {/* HEADER */}
-                <div className="flex-none">
-                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
-                        <Users className="h-6 w-6 text-primary" />
-                        Time Keeping
-                    </h1>
-                    <p className="text-sm text-muted-foreground">View employee time keeping records.</p>
+                <div className="flex items-center gap-4">
+                    <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
+                        <Clock className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Time Keeping</h1>
+                        <p className="text-muted-foreground">View employee time keeping records.</p>
+                    </div>
                 </div>
 
                 {/* SEARCH & CONTROLS */}
@@ -469,7 +471,7 @@ export default function TimeKeeping() {
                     onClose={() => setSelectedBtrEmployee(null)}
                 />
             )}
-    <CalendarViewDialog open={calendarOpen} onClose={() => setCalendarOpen(false)} />
-    </AppLayout>
+            <CalendarViewDialog open={calendarOpen} onClose={() => setCalendarOpen(false)} />
+        </AppLayout>
     );
 }

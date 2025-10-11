@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/app-layout'
 import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, router, usePage } from '@inertiajs/react'
-import { Printer, Users } from 'lucide-react'
+import { ClipboardList, Printer, Users } from 'lucide-react'
 import PrintDialog from '@/components/print-dialog';
 import PrintAllDialog from '@/components/print-all-dialog';
 import { Loader2 } from 'lucide-react'
@@ -238,12 +238,14 @@ export default function ReportsIndex() {
             <Head title="Reports" />
             <div className="flex h-full flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
                 {/* HEADER */}
-                <div className="flex-none">
-                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
-                        <Users className="h-6 w-6 text-primary" />
-                        Reports
-                    </h1>
-                    <p className="text-sm text-muted-foreground">View and print employee payroll reports.</p>
+                <div className="flex items-center gap-4">
+                    <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
+                        <ClipboardList className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
+                        <p className="text-muted-foreground">View and print employee payroll reports.</p>
+                    </div>
                 </div>
 
                 {/* SEARCH & CONTROLS */}

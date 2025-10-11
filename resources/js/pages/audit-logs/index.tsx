@@ -48,14 +48,14 @@ export default function AuditLogs() {
             <Head title="Audit Logs" />
             <div className="flex h-full flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
                 {/* HEADER */}
-                <div className="flex-none">
-                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
+                <div className="flex items-center gap-4">
+                    <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
                         <ScrollText className='h-6 w-6 text-primary'/>
-                        Audit Logs
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        View system audit logs and track user actions for security and compliance.
-                    </p>
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Audit Logs</h1>
+                        <p className="text-muted-foreground">View system audit logs and track user actions for security and compliance.</p>
+                    </div>
                 </div>
 
                 {/* AUDIT LOG ROWS */}
