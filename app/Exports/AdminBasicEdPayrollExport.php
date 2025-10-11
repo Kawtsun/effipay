@@ -66,19 +66,13 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
 
                 // --- CUSTOM HEADERS (ROWS 1-3) ---
                 $highestColumn = 'T'; // Manually define highest column based on new layout
-                $sheet->mergeCells('A1:' . $highestColumn . '1');
                 $sheet->setCellValue('A1', 'TOMAS CLAUDIO COLLEGES');
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(12);
-                $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A2:' . $highestColumn . '2');
                 $sheet->setCellValue('A2', 'PAYROLL OF ADMIN AND BASIC EDUCATION');
                 $sheet->getStyle('A2')->getFont()->setBold(true);
-                $sheet->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
-                $sheet->mergeCells('A3:' . $highestColumn . '3');
                 $sheet->setCellValue('A3', 'For the Period Covered: October 1-31, 2025');
-                $sheet->getStyle('A3')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
                 // --- CREATE MULTI-ROW TABLE HEADERS (ROW 5-6) ---
                 $headersRow5 = [
@@ -105,7 +99,7 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                 $sheet->getParent()->getDefaultStyle()->getFont()->setName('Arial')->setSize(10);
                 $headerStyle = [
                     'font' => ['bold' => true, 'color' => ['rgb' => '000000']],
-                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '92D050']],
+                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FDE9D9']],
                     'alignment' => [
                         'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
                         'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
@@ -113,17 +107,37 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                     ],
                 ];
                 $sheet->getStyle('A5:' . $highestColumn . '6')->applyFromArray($headerStyle);
+                // Set font color for deduction header columns to red
+                $sheet->getStyle('E5:E6')->getFont()->getColor()->setRGB('FF0000');
+                $sheet->getStyle('G5:S6')->getFont()->getColor()->setRGB('FF0000');
 
 
                 // --- COLUMN WIDTHS ---
-                $sheet->getColumnDimension('A')->setWidth(40);
+                $sheet->getColumnDimension('A')->setWidth(40.71);
                 foreach (range('B', $highestColumn) as $col) {
-                    $sheet->getColumnDimension($col)->setWidth(13);
+                    if ($col === 'I') {
+                        $sheet->getColumnDimension($col)->setWidth(14.71);
+                    } else {
+                        $sheet->getColumnDimension($col)->setWidth(13.71);
+                    }
                 }
+
+                // --- ROW HEIGHTS ---
+                $sheet->getRowDimension('5')->setRowHeight(15);
+                $sheet->getRowDimension('6')->setRowHeight(15);
 
                 // --- BORDERS ---
                 $lastRow = $sheet->getHighestRow();
                 $sheet->getStyle('A5:' . $highestColumn . $lastRow)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+                
+                // --- DATA CELL ALIGNMENT ---
+                // Align all data cells (except column A) to the right.
+                if ($lastRow >= 7) {
+                    $dataRange = 'B7:' . $highestColumn . $lastRow;
+                    $sheet->getStyle($dataRange)
+                          ->getAlignment()
+                          ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                }
             },
         ];
     }
