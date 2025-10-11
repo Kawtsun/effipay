@@ -13,8 +13,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class CollegeGspSheet implements FromCollection, WithTitle, WithHeadings, WithStyles
 {
     /**
-    * @return \Illuminate\Support\Collection
-    */
+     * @return \Illuminate\Support\Collection
+     */
     public function collection()
     {
         // This query is built to fetch data for College instructors
@@ -64,6 +64,16 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithHeadings, WithSt
 
     public function styles(Worksheet $sheet)
     {
+        // Set the default font style and size for the entire sheet
+        $sheet->getParent()->getDefaultStyle()->getFont()->setName('Arial');
+        $sheet->getParent()->getDefaultStyle()->getFont()->setSize(10);
+
+        // Loop through all columns from A to the highest used column and set them to auto-size
+        foreach (range('A', $sheet->getHighestColumn()) as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // Return the styles for the header row
         return [
             1 => [
                 'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
@@ -77,3 +87,4 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithHeadings, WithSt
         return 'College and GSP';
     }
 }
+

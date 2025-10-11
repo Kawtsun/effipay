@@ -5,19 +5,19 @@ namespace App\Exports;
 use App\Models\Payroll;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Maatwebsite\Excel\Events\AfterSheet;
 
-class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithHeadings, WithStyles
+class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents, WithCustomStartCell
 {
     /**
-    * @return \Illuminate\Support\Collection
-    */
+     * @return \Illuminate\Support\Collection
+     */
     public function collection()
     {
-        // This query is now updated to match your exact database columns.
+        // This query is now updated to match the column order in your screenshot.
         return Payroll::query()
             ->join('employees', 'payrolls.employee_id', '=', 'employees.id')
             ->where('employees.roles', 'not like', '%college instructor%') // Filter out college instructors
@@ -32,44 +32,99 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithHeadin
                 'payrolls.sss as sss_premium',
                 'payrolls.sss_salary_loan',
                 'payrolls.sss_calamity_loan',
-                'payrolls.pag_ibig as pag_ibig_contr',
                 'payrolls.pagibig_multi_loan as pagibig_salary_loan',
                 'payrolls.pagibig_calamity_loan',
                 'payrolls.philhealth as philhealth_premium',
                 'payrolls.withholding_tax',
-                
-                // --- NOTE: These columns are not in your tables and will appear as 0 ---
                 DB::raw("'0.00' as cash_advance"),
-                'payrolls.tuition as air_tuition',
+                'payrolls.tuition as ar_tuition',
                 'payrolls.china_bank as chinabank_loan',
-                'payrolls.tea',
-                DB::raw("'0.00' as fees"),
-
+                'payrolls.multipurpose_loan as loan', // Corresponds to TEA -> LOAN
+                DB::raw("'0.00' as fees"),             // Corresponds to TEA -> FEES
                 'payrolls.total_deductions',
                 'payrolls.net_pay'
             )
             ->get();
     }
 
-    public function headings(): array
+    public function startCell(): string
     {
-        // These headers match your ledger image
-        return [
-            "NAME", "HONORARIUM", "RATE PER MONTH", "RATE PER DAY", "TOTAL LATE & ABSENCES", "GROSS",
-            "SSS PREMIUM", "SSS SALARY LOAN", "SSS CALAMITY LOAN", "Pag-ibig CONTR", "Pag-ibig SALARY LOAN",
-            "Pag-ibig CALAMITY", "PHILHEALTH PREMIUM", "W/HOLDING TAX", "CASH ADVANCE", "AIR TUITION",
-            "CHINABANK LOAN", "TEA", "FEES", "TOTAL DEDUCTIONS", "NET PAY"
-        ];
+        // The table data will now start at cell A7 to accommodate the two-row header.
+        return 'A7';
     }
 
-    public function styles(Worksheet $sheet)
+    public function registerEvents(): array
     {
-        // Style the first row (headings) to be bold with a green background
         return [
-            1 => [
-                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '028102']]
-            ],
+            AfterSheet::class => function (AfterSheet $event) {
+                $sheet = $event->sheet->getDelegate();
+
+                // --- PAGE SETUP ---
+                $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
+                $sheet->getPageSetup()->setPaperSize(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_A4);
+                $sheet->getPageMargins()->setTop(0.75)->setRight(0.25)->setLeft(0.25)->setBottom(0.75);
+
+                // --- CUSTOM HEADERS (ROWS 1-3) ---
+                $highestColumn = 'T'; // Manually define highest column based on new layout
+                $sheet->mergeCells('A1:' . $highestColumn . '1');
+                $sheet->setCellValue('A1', 'TOMAS CLAUDIO COLLEGES');
+                $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+                $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+                $sheet->mergeCells('A2:' . $highestColumn . '2');
+                $sheet->setCellValue('A2', 'PAYROLL OF ADMIN AND BASIC EDUCATION');
+                $sheet->getStyle('A2')->getFont()->setBold(true);
+                $sheet->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+                $sheet->mergeCells('A3:' . $highestColumn . '3');
+                $sheet->setCellValue('A3', 'For the Period Covered: October 1-31, 2025');
+                $sheet->getStyle('A3')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+                // --- CREATE MULTI-ROW TABLE HEADERS (ROW 5-6) ---
+                $headersRow5 = [
+                    'A' => 'NAME', 'B' => 'HONORARIUM', 'C' => 'RATE PER MONTH', 'D' => 'RATE PER DAY', 'E' => 'TOTAL LATE & ABSENCES',
+                    'F' => 'GROSS', 'G' => 'SSS PREMIUM', 'H' => 'SSS SALARY LOAN', 'I' => 'SSS CALAMITY LOAN', 'J' => 'PAG-IBIG SALARY LOAN',
+                    'K' => 'PAG-IBIG CALAMITY', 'L' => 'PHILHEALTH PREMIUM', 'M' => 'WITHOLDING TAX', 'N' => 'CASH ADVANCE', 'O' => 'A/R-Tuition',
+                    'P' => 'CHINABANK LOAN', 'Q' => 'TEA', 'S' => 'TOTAL DEDUCTIONS', 'T' => 'NET PAY'
+                ];
+                foreach ($headersRow5 as $col => $text) {
+                    $sheet->setCellValue($col . '5', $text);
+                }
+                $sheet->setCellValue('Q6', 'LOAN');
+                $sheet->setCellValue('R6', 'FEES');
+                
+                // Merge cells for single headers (spanning rows 5 and 6)
+                $singleHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'S', 'T'];
+                foreach ($singleHeaders as $col) {
+                    $sheet->mergeCells("{$col}5:{$col}6");
+                }
+                // Merge cell for the "TEA" parent header
+                $sheet->mergeCells('Q5:R5');
+
+                // --- GLOBAL & HEADER STYLES ---
+                $sheet->getParent()->getDefaultStyle()->getFont()->setName('Arial')->setSize(10);
+                $headerStyle = [
+                    'font' => ['bold' => true, 'color' => ['rgb' => '000000']],
+                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '92D050']],
+                    'alignment' => [
+                        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                        'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                        'wrapText' => true,
+                    ],
+                ];
+                $sheet->getStyle('A5:' . $highestColumn . '6')->applyFromArray($headerStyle);
+
+
+                // --- COLUMN WIDTHS ---
+                $sheet->getColumnDimension('A')->setWidth(40);
+                foreach (range('B', $highestColumn) as $col) {
+                    $sheet->getColumnDimension($col)->setWidth(13);
+                }
+
+                // --- BORDERS ---
+                $lastRow = $sheet->getHighestRow();
+                $sheet->getStyle('A5:' . $highestColumn . $lastRow)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+            },
         ];
     }
 
