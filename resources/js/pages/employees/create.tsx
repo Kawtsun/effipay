@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import { EmployeeNameForm } from '@/components/form/EmployeeNameForm';
 import { EmploymentDetailsForm } from '@/components/form/EmploymentDetailsForm';
 import { WorkScheduleForm } from '@/components/form/WorkScheduleForm';
@@ -13,8 +14,9 @@ import { ContributionsForm } from '@/components/form/ContributionsForm';
 import { LoansForm } from '@/components/form/LoansForm';
 import { OtherDeductionsForm } from '@/components/form/OtherDeductionsForm';
 import { type WorkDayTime } from '@/components/work-days-selector';
+import { type BreadcrumbItem } from '@/types'; // 👈 ADDED IMPORT
 
-// --- DATA TYPES ---
+// --- DATA TYPES (unchanged) ---
 type EmployeeFormData = {
     first_name: string;
     middle_name: string;
@@ -89,9 +91,23 @@ export default function Index(props: Props) {
             },
         });
     };
+    
+    // --- BREADCRUMBS DEFINITION ---
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: 'Employees',
+            href: route('employees.index', filters), // Link back to the employees list with filters
+        },
+        {
+            title: 'Add New Employee',
+            href: route('employees.create'),
+            isCurrent: true, // Mark the current page
+        },
+    ];
 
     return (
-        <AppLayout>
+        // Pass the breadcrumbs to your main AppLayout
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Add New Employee" />
             <div className="space-y-6 p-4 md:p-8 max-w-7xl mx-auto">
                 <header className="flex items-center justify-between">
@@ -129,15 +145,19 @@ export default function Index(props: Props) {
                                 </div>
                             </div>
                         </CardContent>
-                        {/* --- IMPROVED STICKY FOOTER --- */}
-                        <CardFooter className="border-t p-6 sticky bottom-0 bg-card/95 backdrop-blur-sm">
+                        <CardFooter className="bg-card/95 border-t p-6 sticky bottom-0 backdrop-blur-sm">
                             <div className="flex justify-end gap-4 w-full">
                                 <Button type="button" variant="outline" onClick={() => form.reset()}>
                                     <RotateCcw className="mr-2 h-4 w-4" />
                                     Reset
                                 </Button>
                                 <Button type="submit" disabled={form.processing}>
-                                    {form.processing ? 'Saving...' : (
+                                    {form.processing ? (
+                                        <>
+                                            <Spinner className="mr-2" />
+                                            Saving...
+                                        </>
+                                    ) : (
                                         <>
                                             <Check className="mr-2 h-4 w-4" />
                                             Save Employee
