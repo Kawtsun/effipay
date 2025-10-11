@@ -36,7 +36,7 @@ export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
 
         return (
             <div className="mt-2 flex items-center rounded-lg border border-destructive/50 bg-destructive/10 p-2 text-destructive">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <AlertTriangle className="ml-1 h-4 w-4 shrink-0" />
                 <p className="ml-2 text-xs font-medium">
                     {errors[field]}
                 </p>

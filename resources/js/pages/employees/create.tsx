@@ -8,6 +8,7 @@ import { EmployeeNameForm } from '@/components/form/EmployeeNameForm';
 import { EmploymentDetailsForm } from '@/components/form/EmploymentDetailsForm';
 import { WorkScheduleForm } from '@/components/form/WorkScheduleForm';
 import { EarningsForm } from '@/components/form/EarningsForm';
+import { ContributionsForm } from '@/components/form/ContributionsForm';
 import { type WorkDayTime } from '@/components/work-days-selector';
 
 // --- DATA TYPES ---
@@ -23,6 +24,9 @@ type EmployeeFormData = {
     base_salary: string;
     rate_per_hour: string;
     honorarium: string;
+    sss: string;
+    philhealth: string;
+    pag_ibig: string;
 };
 
 type Props = {
@@ -46,22 +50,17 @@ export default function Index(props: Props) {
         base_salary: '',
         rate_per_hour: '',
         honorarium: '',
+        sss: '',
+        philhealth: '',
+        pag_ibig: '',
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         form.post(route('employees.store'), {
             preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Employee created successfully!');
-                form.reset();
-            },
-            onError: (errors) => {
-                // Show a single, helpful toast instead of one for each error
-                toast.error('Validation Failed', {
-                    description: 'Please review the form for errors highlighted in red.',
-                });
-            },
+            onSuccess: () => toast.success('Employee created successfully!'),
+            onError: () => toast.error('There was an error creating the employee. Please review the form for errors.'),
         });
     };
 
@@ -69,6 +68,7 @@ export default function Index(props: Props) {
         <AppLayout>
             <Head title="Add New Employee" />
             <div className="space-y-8 p-4 md:p-8 max-w-6xl mx-auto">
+                {/* 👇 THIS HEADER SECTION IS NOW RESTORED */}
                 <header className="flex flex-col gap-4">
                     <div>
                         <Button asChild variant="outline" size="sm">
@@ -95,6 +95,7 @@ export default function Index(props: Props) {
                         {/* Right Column */}
                         <div className="space-y-8">
                             <EarningsForm form={form} />
+                            <ContributionsForm form={form} />
                         </div>
                     </div>
                     
