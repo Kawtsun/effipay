@@ -258,7 +258,7 @@ export default function Index({
                         Employees
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Manager employee information, status, and salaries.
+                        Manage employee information, status, and salaries.
                     </p>
                 </div>
 
