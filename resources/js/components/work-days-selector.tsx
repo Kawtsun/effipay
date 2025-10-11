@@ -1,8 +1,10 @@
 import { Button } from '@/components/ui/button';
-import { Check, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Check, CheckCircle, Coffee, XCircle } from 'lucide-react';
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { TimePicker } from '@/components/ui/time-picker';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 const WEEKDAYS = [
     { key: 'mon', label: 'Mon' },
@@ -118,211 +120,230 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
     };
 
     return (
-        <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 mb-2">
-                <span className="font-semibold text-sm">Work Days</span>
-                <Button type='button' size="icon" variant="ghost" onClick={handleAll} title="Select all" className='rounded-full w-8 h-8'>
-                    <CheckCircle className='w-5 h-5 text-green-600' />
-                </Button>
-                <Button type="button" size="icon" variant="ghost" onClick={clearAll} title="Clear all" className='rounded-full w-8 h-8'>
-                    <XCircle className="w-5 h-5 text-red-500" />
-                </Button>
-            </div>
-            <div className="flex gap-4">
-                <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1 mb-1">
-                        <span className="text-xs font-medium">Weekdays</span>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant={areAllWeekdays ? 'default' : 'outline'}
-                            onClick={handleWeekdays}
-                            className="px-2 py-0 text-xs ml-1"
-                        >
-                            All
+        <div className="flex flex-col gap-6">
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <Label className="font-semibold">Work Days</Label>
+                    <div className="flex items-center gap-2">
+                        <Button type='button' size="sm" variant="ghost" onClick={handleAll} className="text-primary hover:text-primary h-8 px-2">
+                            <CheckCircle className='w-4 h-4 mr-2' />
+                            Select All
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={clearAll} className="text-destructive hover:text-destructive h-8 px-2">
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Clear All
                         </Button>
                     </div>
-                    <div className="flex gap-1">
-                        {WEEKDAYS.map(day => {
-                            const selected = value.some(d => d.day === day.key);
-                            return (
-                                <Button
-                                    key={day.key}
-                                    type="button"
-                                    size="icon"
-                                    variant={selected ? 'default' : 'outline'}
-                                    onClick={() => toggleDay(day.key)}
-                                    title={day.label}
-                                >
-                                    <span className="text-xs">{day.label}</span>
-                                </Button>
-                            );
-                        })}
-                    </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1 mb-1">
-                        <span className="text-xs font-medium">Weekends</span>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant={areAllWeekends ? 'default' : 'outline'}
-                            onClick={handleWeekends}
-                            className="px-2 py-0 text-xs ml-1"
-                        >
-                            All
-                        </Button>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-medium">Weekdays</span>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={areAllWeekdays ? 'default' : 'outline'}
+                                onClick={handleWeekdays}
+                                className="px-3 py-1 text-xs h-auto"
+                            >
+                                Select All
+                            </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {WEEKDAYS.map(day => {
+                                const selected = value.some(d => d.day === day.key);
+                                return (
+                                    <Button
+                                        key={day.key}
+                                        type="button"
+                                        size="icon"
+                                        variant={selected ? 'default' : 'outline'}
+                                        onClick={() => toggleDay(day.key)}
+                                        title={day.label}
+                                        className="w-10 h-10"
+                                    >
+                                        <span className="text-xs">{day.label}</span>
+                                    </Button>
+                                );
+                            })}
+                        </div>
                     </div>
-                    <div className="flex gap-1">
-                        {WEEKENDS.map(day => {
-                            const selected = value.some(d => d.day === day.key);
-                            return (
-                                <Button
-                                    key={day.key}
-                                    type="button"
-                                    size="icon"
-                                    variant={selected ? 'default' : 'outline'}
-                                    onClick={() => toggleDay(day.key)}
-                                    title={day.label}
-                                >
-                                    <span className="text-xs">{day.label}</span>
-                                </Button>
-                            );
-                        })}
+                    <div className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-medium">Weekends</span>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={areAllWeekends ? 'default' : 'outline'}
+                                onClick={handleWeekends}
+                                className="px-3 py-1 text-xs h-auto"
+                            >
+                                Select All
+                            </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {WEEKENDS.map(day => {
+                                const selected = value.some(d => d.day === day.key);
+                                return (
+                                    <Button
+                                        key={day.key}
+                                        type="button"
+                                        size="icon"
+                                        variant={selected ? 'default' : 'outline'}
+                                        onClick={() => toggleDay(day.key)}
+                                        title={day.label}
+                                        className="w-10 h-10"
+                                    >
+                                        <span className="text-xs">{day.label}</span>
+                                    </Button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
-            {/* Single time picker for selected day */}
-            <div className="flex flex-col gap-2 mt-4">
-                <AnimatePresence initial={false}>
-                    {hasDays && (
-                        <motion.div
-                            key="workdays-nav"
-                            initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 16 }}
-                            transition={{ duration: 0.25, ease: 'easeInOut' }}
-                        >
+
+            <AnimatePresence initial={false}>
+                {hasDays && (
+                    <motion.div
+                        key="workdays-time-picker"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-4"
+                    >
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                            <Label className="font-semibold">Work Hours</Label>
                             <div className="flex items-center gap-2">
                                 <Button type="button" size="sm" variant="outline" onClick={goPrev}>&lt;</Button>
-                                <span className="text-xs font-semibold w-16 text-center">{currentDay ? currentDay.day.toUpperCase() : ''}</span>
+                                <span className="text-sm font-semibold w-20 text-center">{currentDay ? currentDay.day.toUpperCase() : ''}</span>
                                 <Button type="button" size="sm" variant="outline" onClick={goNext}>&gt;</Button>
-                                <span className="ml-4 text-xs">Start</span>
-                                <div className="w-36">
-                                    <TimePicker
-                                        value={currentDay && currentDay.work_start_time ? currentDay.work_start_time : ''}
-                                        onChange={val => setTime('work_start_time', val)}
-                                        label={undefined}
-                                        placeholder="Select start time"
-                                    />
-                                </div>
-                                <span className="ml-2 text-xs">End</span>
-                                <div className="w-36">
-                                    <TimePicker
-                                        value={currentDay && currentDay.work_end_time ? currentDay.work_end_time : ''}
-                                        onChange={val => setTime('work_end_time', val)}
-                                        label={undefined}
-                                        placeholder="Select end time"
-                                    />
-                                </div>
                             </div>
-                            {/* Work hours hint for current day */}
-                            <AnimatePresence initial={false}>
-                                {currentDay && currentDay.work_start_time && currentDay.work_end_time && (
-                                    <motion.div
-                                        key="workdays-hint"
-                                        initial={{ opacity: 0, y: 8 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 8 }}
-                                        transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                        className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mt-2"
-                                    >
-                                        <p className="text-sm text-blue-700 dark:text-blue-300">
-                                            {(() => {
-                                                const [startHour, startMinute] = currentDay.work_start_time.split(':').map(Number);
-                                                const [endHour, endMinute] = currentDay.work_end_time.split(':').map(Number);
-                                                const startMinutes = startHour * 60 + startMinute;
-                                                const endMinutes = endHour * 60 + endMinute;
-                                                let actualWorkMinutes = endMinutes - startMinutes;
-                                                if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                // --- NEW DEFINITIVE BREAK LOGIC (Overlap and Cap) ---
-                                                const totalScheduledMinutes = actualWorkMinutes; // Rename for clarity
+                        </div>
 
-                                                // FIXED BREAK WINDOW
-                                                const fixedBreakStartMinutes = 12 * 60; // 720 minutes (12:00 PM)
-                                                const fixedBreakEndMinutes = 13 * 60;   // 780 minutes (1:00 PM)
-                                                const mandatedDeduction = 60;          // 1 hour
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="work-start-time">Start Time</Label>
+                                <TimePicker
+                                    id="work-start-time"
+                                    value={currentDay?.work_start_time || ''}
+                                    onChange={val => setTime('work_start_time', val)}
+                                    placeholder="Select start time" label={undefined}                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="work-end-time">End Time</Label>
+                                <TimePicker
+                                    id="work-end-time"
+                                    value={currentDay?.work_end_time || ''}
+                                    onChange={val => setTime('work_end_time', val)}
+                                    placeholder="Select end time" label={undefined}                                />
+                            </div>
+                        </div>
 
-                                                // --- STEP 1: Calculate Overlap (Non-Work Time) ---
-                                                // This calculates the duration the employee is actually scheduled *during* the fixed 12 PM - 1 PM window.
-                                                const overlapStartMinutes = Math.max(startMinutes, fixedBreakStartMinutes);
-                                                const overlapEndMinutes = Math.min(endMinutes, fixedBreakEndMinutes);
-                                                const overlapMinutes = Math.max(0, overlapEndMinutes - overlapStartMinutes); // This time is never counted as work.
+                        <AnimatePresence initial={false}>
+                            {currentDay && currentDay.work_start_time && currentDay.work_end_time && (
+                                <motion.div
+                                    key="workdays-hint"
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 8 }}
+                                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                    className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+                                >
+                                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                                        {(() => {
+                                            const [startHour, startMinute] = currentDay.work_start_time.split(':').map(Number);
+                                            const [endHour, endMinute] = currentDay.work_end_time.split(':').map(Number);
+                                            const startMinutes = startHour * 60 + startMinute;
+                                            const endMinutes = endHour * 60 + endMinute;
+                                            let actualWorkMinutes = endMinutes - startMinutes;
+                                            if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                            // --- NEW DEFINITIVE BREAK LOGIC (Overlap and Cap) ---
+                                            const totalScheduledMinutes = actualWorkMinutes; // Rename for clarity
 
-                                                // --- STEP 2: Determine Final Deduction Amount (The Break Rule) ---
-                                                let finalDeductionMinutes;
-                                                let messageMinutes; // The minutes to show in the span message
+                                            // FIXED BREAK WINDOW
+                                            const fixedBreakStartMinutes = 12 * 60; // 720 minutes (12:00 PM)
+                                            const fixedBreakEndMinutes = 13 * 60;   // 780 minutes (1:00 PM)
+                                            const mandatedDeduction = 60;          // 1 hour
 
-                                                if (endMinutes > fixedBreakEndMinutes) {
-                                                    // Rule Triggered: Full 1-hour break is mandated for net hours calculation.
-                                                    finalDeductionMinutes = mandatedDeduction;
-                                                    messageMinutes = mandatedDeduction; // Report 1 hour deduction in the message
-                                                } else {
-                                                    // Rule Not Triggered: Deduction equals the scheduled overlap.
-                                                    finalDeductionMinutes = overlapMinutes;
-                                                    messageMinutes = overlapMinutes; // Report the exact overlap time in the message
-                                                }
+                                            // --- STEP 1: Calculate Overlap (Non-Work Time) ---
+                                            // This calculates the duration the employee is actually scheduled *during* the fixed 12 PM - 1 PM window.
+                                            const overlapStartMinutes = Math.max(startMinutes, fixedBreakStartMinutes);
+                                            const overlapEndMinutes = Math.min(endMinutes, fixedBreakEndMinutes);
+                                            const overlapMinutes = Math.max(0, overlapEndMinutes - overlapStartMinutes); // This time is never counted as work.
 
-                                                // --- STEP 3: Calculate Net Working Minutes (Payroll) ---
-                                                const totalMinutes = Math.max(0, totalScheduledMinutes - finalDeductionMinutes);
+                                            // --- STEP 2: Determine Final Deduction Amount (The Break Rule) ---
+                                            let finalDeductionMinutes;
+                                            let messageMinutes; // The minutes to show in the span message
 
-                                                // --- Step 4: Prepare Reactive Output Strings (Using messageMinutes) ---
-                                                const hours = Math.floor(totalMinutes / 60);
-                                                const minutes = totalMinutes % 60;
-                                                const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+                                            if (endMinutes > fixedBreakEndMinutes) {
+                                                // Rule Triggered: Full 1-hour break is mandated for net hours calculation.
+                                                finalDeductionMinutes = mandatedDeduction;
+                                                messageMinutes = mandatedDeduction; // Report 1 hour deduction in the message
+                                            } else {
+                                                // Rule Not Triggered: Deduction equals the scheduled overlap.
+                                                finalDeductionMinutes = overlapMinutes;
+                                                messageMinutes = overlapMinutes; // Report the exact overlap time in the message
+                                            }
 
-                                                const breakHours = Math.floor(messageMinutes / 60);
-                                                const breakMins = messageMinutes % 60;
+                                            // --- STEP 3: Calculate Net Working Minutes (Payroll) ---
+                                            const totalMinutes = Math.max(0, totalScheduledMinutes - finalDeductionMinutes);
 
-                                                // Build the readable time string (e.g., "1 hour" or "45 minutes")
-                                                let deductionAmount = '';
-                                                const hPart = breakHours > 0 ? `${breakHours} hour${breakHours > 1 ? 's' : ''}` : '';
-                                                const mPart = breakMins > 0 ? `${breakMins} minute${breakMins > 1 ? 's' : ''}` : '';
-                                                const separator = hPart && mPart ? ' and ' : '';
-                                                deductionAmount = `${hPart}${separator}${mPart}`;
+                                            // --- Step 4: Prepare Reactive Output Strings (Using messageMinutes) ---
+                                            const hours = Math.floor(totalMinutes / 60);
+                                            const minutes = totalMinutes % 60;
+                                            const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
 
-                                                // --- UPDATED SPAN MESSAGE GENERATION LOGIC ---
-                                                let breakText;
+                                            const breakHours = Math.floor(messageMinutes / 60);
+                                            const breakMins = messageMinutes % 60;
 
-                                                if (messageMinutes === 0) {
-                                                    breakText = 'No break time deduction.';
-                                                }
-                                                // Condition 1: If the reported time is less than 60 minutes (1-59 min), it's overlap.
-                                                else if (messageMinutes < mandatedDeduction) {
-                                                    breakText = `Your schedule is overlapping with the break time for ${deductionAmount}.`;
-                                                }
-                                                // Condition 2: If the reported time is 60 minutes or more (the full mandate).
-                                                else {
-                                                    // This handles 60 minutes, 1 hour 15 minutes, etc. (though 60 min is the practical max here).
-                                                    breakText = `A mandatory break of ${deductionAmount} is deducted from your total work hours.`;
-                                                }
+                                            // Build the readable time string (e.g., "1 hour" or "45 minutes")
+                                            let deductionAmount = '';
+                                            const hPart = breakHours > 0 ? `${breakHours} hour${breakHours > 1 ? 's' : ''}` : '';
+                                            const mPart = breakMins > 0 ? `${breakMins} minute${breakMins > 1 ? 's' : ''}` : '';
+                                            const separator = hPart && mPart ? ' and ' : '';
+                                            deductionAmount = `${hPart}${separator}${mPart}`;
 
-                                                return (
-                                                    <>
-                                                        📅 Schedule: {formatTime12Hour(currentDay.work_start_time)} - {formatTime12Hour(currentDay.work_end_time)} (Total Work Hours: {durationText})<br />
-                                                        Break Time: 12:00PM - 1:00PM<br />
-                                                        <span className="text-xs text-blue-600 dark:text-blue-400">*{breakText}</span>
-                                                    </>
-                                                );
-                                            })()}
-                                        </p>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
+                                            // --- UPDATED SPAN MESSAGE GENERATION LOGIC ---
+                                            let breakText;
+
+                                            if (messageMinutes === 0) {
+                                                breakText = 'No break time deduction.';
+                                            }
+                                            // Condition 1: If the reported time is less than 60 minutes (1-59 min), it's overlap.
+                                            else if (messageMinutes < mandatedDeduction) {
+                                                breakText = `Your schedule is overlapping with the break time for ${deductionAmount}.`;
+                                            }
+                                            // Condition 2: If the reported time is 60 minutes or more (the full mandate).
+                                            else {
+                                                // This handles 60 minutes, 1 hour 15 minutes, etc. (though 60 min is the practical max here).
+                                                breakText = `A mandatory break of ${deductionAmount} is deducted from your total work hours.`;
+                                            }
+
+                                            return (
+                                                <>
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-4 w-4" />
+                                                        <span>Schedule: <strong>{formatTime12Hour(currentDay.work_start_time)} - {formatTime12Hour(currentDay.work_end_time)}</strong> (Total Work Hours:<strong> {durationText} </strong>)</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <Coffee className="h-4 w-4" />
+                                                        <span>Break Time: <strong>12:00PM - 1:00PM</strong></span>
+                                                    </div>
+                                                    <span className="text-xs text-blue-600 dark:text-blue-400 mt-2 block">*{breakText}</span>
+                                                </>
+                                            );
+                                        })()}
+                                    </p>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
