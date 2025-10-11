@@ -1,15 +1,15 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { UserCircle } from 'lucide-react';
+import { AlertTriangle, UserCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-// Define a type for the form data this component will handle.
 type EmployeeFormData = {
     first_name: string;
     middle_name: string;
     last_name: string;
+    [key: string]: any;
 };
 
 interface EmployeeNameFormProps {
@@ -17,7 +17,32 @@ interface EmployeeNameFormProps {
 }
 
 export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
-    const { data, setData, errors } = form;
+    // THE FIX: Destructure clearErrors from the form hook
+    const { data, setData, errors, clearErrors } = form;
+
+    // A generic handler that updates the data and clears the error for that specific field
+    const handleChange = (field: keyof EmployeeFormData, value: string) => {
+        setData(field, value);
+        // If an error exists for this field, clear it
+        if (errors[field]) {
+            clearErrors(field);
+        }
+    };
+
+    const ErrorDisplay = ({ field }: { field: keyof typeof errors }) => {
+        if (!errors[field]) {
+            return null;
+        }
+
+        return (
+            <div className="mt-2 flex items-center rounded-lg border border-destructive/50 bg-destructive/10 p-2 text-destructive">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <p className="ml-2 text-xs font-medium">
+                    {errors[field]}
+                </p>
+            </div>
+        );
+    };
 
     return (
         <Card className="w-full border-gray-200 shadow-sm">
@@ -33,7 +58,7 @@ export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                     {/* Last Name */}
                     <div className="flex flex-col gap-2">
                         <Label htmlFor="last_name" className="font-semibold">Last Name</Label>
@@ -42,11 +67,10 @@ export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
                             type="text"
                             placeholder="e.g., Manzano"
                             value={data.last_name}
-                            onChange={e => setData('last_name', e.target.value)}
-                            required
-                            className={errors.last_name ? 'border-red-500' : ''}
+                            onChange={e => handleChange('last_name', e.target.value)}
+                            className={errors.last_name ? 'border-destructive' : ''}
                         />
-                        {errors.last_name && <p className="text-sm text-red-600 mt-1">{errors.last_name}</p>}
+                        <ErrorDisplay field="last_name" />
                     </div>
 
                     {/* First Name */}
@@ -57,11 +81,10 @@ export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
                             type="text"
                             placeholder="e.g., Isaac Rossdale"
                             value={data.first_name}
-                            onChange={e => setData('first_name', e.target.value)}
-                            required
-                            className={errors.first_name ? 'border-red-500' : ''}
+                            onChange={e => handleChange('first_name', e.target.value)}
+                            className={errors.first_name ? 'border-destructive' : ''}
                         />
-                        {errors.first_name && <p className="text-sm text-red-600 mt-1">{errors.first_name}</p>}
+                        <ErrorDisplay field="first_name" />
                     </div>
 
                     {/* Middle Name */}
@@ -74,10 +97,10 @@ export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
                             type="text"
                             placeholder="e.g., Dizon"
                             value={data.middle_name}
-                            onChange={e => setData('middle_name', e.target.value)}
-                            className={errors.middle_name ? 'border-red-500' : ''}
+                            onChange={e => handleChange('middle_name', e.target.value)}
+                            className={errors.middle_name ? 'border-destructive' : ''}
                         />
-                        {errors.middle_name && <p className="text-sm text-red-600 mt-1">{errors.middle_name}</p>}
+                        <ErrorDisplay field="middle_name" />
                     </div>
                 </div>
             </CardContent>

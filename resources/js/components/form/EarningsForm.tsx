@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { Landmark } from 'lucide-react';
+import { Landmark, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,7 @@ function formatWithCommas(value: string | number): string {
 type EmployeeFormData = {
     roles: string;
     base_salary: string;
-    college_rate: string; // Changed here
+    rate_per_hour: string; // The form sends this, controller maps to college_rate
     honorarium: string;
     [key: string]: any; // Allow other properties
 };
@@ -28,30 +28,42 @@ interface EarningsFormProps {
 }
 
 export function EarningsForm({ form }: EarningsFormProps) {
-    const { data, setData, errors } = form;
+    // THE FIX: Destructure clearErrors from the form hook
+    const { data, setData, errors, clearErrors } = form;
 
-    // Memoize role checks for performance
+    // Your original logic (unchanged)
     const rolesArr = React.useMemo(() => data.roles.split(',').map(r => r.trim()).filter(Boolean), [data.roles]);
     const isCollege = React.useMemo(() => rolesArr.includes('college instructor'), [rolesArr]);
     const isBasicEdu = React.useMemo(() => rolesArr.includes('basic education instructor'), [rolesArr]);
     const isAdmin = React.useMemo(() => rolesArr.includes('administrator'), [rolesArr]);
-
-    // --- FIX: This is the corrected logic ---
     const STANDARD_ROLES = ['administrator', 'college instructor', 'basic education instructor'];
     const isOthers = React.useMemo(() => rolesArr.some(role => !STANDARD_ROLES.includes(role)), [rolesArr]);
-
-    // Determine which fields to show based on roles
     const showBaseSalary = isAdmin || isBasicEdu || isOthers;
     const isBaseSalaryOptional = isOthers;
-    const showCollegeRate = isCollege || isBasicEdu; // Changed here
-    const isCollegeRateOptional = isBasicEdu; // Changed here
+    // Renamed to rate_per_hour to match your form state
+    const showRatePerHour = isCollege || isBasicEdu; 
+    const isRatePerHourOptional = isBasicEdu; 
 
-    // A generic handler for numeric inputs that manages commas
+    // THE FIX: Updated handler to clear errors on change
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {
         const rawValue = value.replace(/,/g, '');
         if (/^\d*\.?\d*$/.test(rawValue)) {
             setData(field, rawValue);
+            if (errors[field]) {
+                clearErrors(field);
+            }
         }
+    };
+    
+    // Custom Error Display Component
+    const ErrorDisplay = ({ field }: { field: keyof typeof errors }) => {
+        if (!errors[field]) return null;
+        return (
+            <div className="mt-2 flex items-center rounded-lg border border-destructive/50 bg-destructive/10 p-2 text-destructive">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <p className="ml-2 text-xs font-medium">{errors[field]}</p>
+            </div>
+        );
     };
 
     return (
@@ -83,32 +95,32 @@ export function EarningsForm({ form }: EarningsFormProps) {
                                 placeholder="0.00"
                                 value={formatWithCommas(data.base_salary)}
                                 onChange={e => handleNumericChange('base_salary', e.target.value)}
-                                className={`pl-8 ${errors.base_salary ? 'border-red-500' : ''}`}
+                                className={`pl-8 ${errors.base_salary ? 'border-destructive' : ''}`}
                             />
                         </div>
-                        {errors.base_salary && <p className="text-sm text-red-600 mt-1">{errors.base_salary}</p>}
+                        <ErrorDisplay field="base_salary" />
                     </div>
                 )}
 
-                {/* College Rate */}
-                {showCollegeRate && (
+                {/* Rate Per Hour */}
+                {showRatePerHour && (
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="college_rate" className="font-semibold">
-                            College Rate {isCollegeRateOptional && <span className="text-gray-500 font-normal">(Optional)</span>}
+                        <Label htmlFor="rate_per_hour" className="font-semibold">
+                           Rate Per Hour {isRatePerHourOptional && <span className="text-gray-500 font-normal">(Optional)</span>}
                         </Label>
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
                             <Input
-                                id="college_rate"
+                                id="rate_per_hour"
                                 type="text"
                                 inputMode="decimal"
                                 placeholder="0.00"
-                                value={formatWithCommas(data.college_rate)}
-                                onChange={e => handleNumericChange('college_rate', e.target.value)}
-                                className={`pl-8 ${errors.college_rate ? 'border-red-500' : ''}`}
+                                value={formatWithCommas(data.rate_per_hour)}
+                                onChange={e => handleNumericChange('rate_per_hour', e.target.value)}
+                                className={`pl-8 ${errors.rate_per_hour ? 'border-destructive' : ''}`}
                             />
                         </div>
-                        {errors.college_rate && <p className="text-sm text-red-600 mt-1">{errors.college_rate}</p>}
+                        <ErrorDisplay field="rate_per_hour" />
                     </div>
                 )}
 
@@ -126,10 +138,10 @@ export function EarningsForm({ form }: EarningsFormProps) {
                             placeholder="0.00"
                             value={formatWithCommas(data.honorarium)}
                             onChange={e => handleNumericChange('honorarium', e.target.value)}
-                            className={`pl-8 ${errors.honorarium ? 'border-red-500' : ''}`}
+                            className={`pl-8 ${errors.honorarium ? 'border-destructive' : ''}`}
                         />
                     </div>
-                    {errors.honorarium && <p className="text-sm text-red-600 mt-1">{errors.honorarium}</p>}
+                    <ErrorDisplay field="honorarium" />
                 </div>
             </CardContent>
         </Card>
