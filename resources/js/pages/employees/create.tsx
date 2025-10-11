@@ -9,7 +9,8 @@ import { EmploymentDetailsForm } from '@/components/form/EmploymentDetailsForm';
 import { WorkScheduleForm } from '@/components/form/WorkScheduleForm';
 import { EarningsForm } from '@/components/form/EarningsForm';
 import { ContributionsForm } from '@/components/form/ContributionsForm';
-import { LoansForm } from '@/components/form/LoansForm'; // 👈 ADDED IMPORT
+import { LoansForm } from '@/components/form/LoansForm';
+import { OtherDeductionsForm } from '@/components/form/OtherDeductionsForm'; // 👈 ADDED IMPORT
 import { type WorkDayTime } from '@/components/work-days-selector';
 
 // --- DATA TYPES ---
@@ -28,10 +29,13 @@ type EmployeeFormData = {
     sss: string;
     philhealth: string;
     pag_ibig: string;
-    sss_salary_loan: string;         // 👈 ADDED
-    sss_calamity_loan: string;       // 👈 ADDED
-    pagibig_multi_loan: string;      // 👈 ADDED
-    pagibig_calamity_loan: string;   // 👈 ADDED
+    sss_salary_loan: string;
+    sss_calamity_loan: string;
+    pagibig_multi_loan: string;
+    pagibig_calamity_loan: string;
+    tuition: string;          // 👈 ADDED
+    china_bank: string;       // 👈 ADDED
+    tea: string;              // 👈 ADDED
 };
 
 type Props = {
@@ -58,10 +62,13 @@ export default function Index(props: Props) {
         sss: '',
         philhealth: '',
         pag_ibig: '',
-        sss_salary_loan: '',         // 👈 ADDED
-        sss_calamity_loan: '',       // 👈 ADDED
-        pagibig_multi_loan: '',      // 👈 ADDED
-        pagibig_calamity_loan: '',   // 👈 ADDED
+        sss_salary_loan: '',
+        sss_calamity_loan: '',
+        pagibig_multi_loan: '',
+        pagibig_calamity_loan: '',
+        tuition: '',          // 👈 ADDED
+        china_bank: '',       // 👈 ADDED
+        tea: '',              // 👈 ADDED
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -110,6 +117,8 @@ export default function Index(props: Props) {
                             <EarningsForm form={form} />
                             <ContributionsForm form={form} />
                             <LoansForm form={form} />
+                            {/* 👇 ADDED THE NEW DEDUCTIONS FORM */}
+                            <OtherDeductionsForm form={form} />
                         </div>
                     </div>
                     
