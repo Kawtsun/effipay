@@ -135,8 +135,8 @@ export default function Index() {
           {/* HEADER */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
-                <Wallet className="w-6 h-6 text-primary" />
+              <div className="bg-primary/10 dark:bg-primary p-3 rounded-full border border-primary/20 dark:border-primary">
+                <Wallet className="h-6 w-6 text-primary dark:text-primary-foreground" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">Salary Management</h1>

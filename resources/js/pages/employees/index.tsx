@@ -253,8 +253,8 @@ export default function Index({
             <div className="flex h-full flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
                 {/* HEADER */}
                 <div className="flex items-center gap-4">
-                    <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
-                        <Users className="h-6 w-6 text-primary" />
+                    <div className="bg-primary/10 dark:bg-primary p-3 rounded-full border border-primary/20 dark:border-primary">
+                        <Users className="h-6 w-6 text-primary dark:text-primary-foreground" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Employees</h1>
