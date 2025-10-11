@@ -12,6 +12,7 @@ import { Printer, Users } from 'lucide-react'
 import PrintDialog from '@/components/print-dialog';
 import PrintAllDialog from '@/components/print-all-dialog';
 import { Loader2 } from 'lucide-react'
+import AdminBasicEduPrintButton from '@/components/admin-basic-edu-print';
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export default function ReportsIndex() {
@@ -273,6 +274,7 @@ export default function ReportsIndex() {
                                 <Printer />
                                 Print All
                             </Button>
+                            <AdminBasicEduPrintButton />
                         </div>
                     </div>
                     {/* Category filter and Active Filters Preview in one line */}

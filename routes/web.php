@@ -92,6 +92,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/payroll/employee/months', [PayrollController::class, 'getEmployeePayrollMonths'])->name('payroll.employee.months');
     Route::get('/timekeeping/employee/monthly-summary', [TimeKeepingController::class, 'monthlySummary'])->name('timekeeping.employee.monthly-summary');
     Route::post('/payroll/run-13th-month', [PayrollController::class, 'run13thMonthPay'])->name('payroll.run.13th');
+    Route::get('/payroll/export', [PayrollController::class, 'export'])->name('payroll.export');
 
     // Trigger artisan fetch-holidays 
     Route::post('/fetch-holidays', [ObservanceController::class, 'fetchHolidays']);

@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Carbon\Carbon;
+use App\Exports\AdminBasicEdPayrollExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Inertia\Inertia;
 
 class PayrollController extends Controller
@@ -522,5 +524,14 @@ class PayrollController extends Controller
             'success' => true,
             'months' => isset($finalMonths) ? $finalMonths : [],
         ]);
+    }
+
+    public function export()
+    {
+        // The filename for the downloaded file
+        $fileName = 'Admin_BasicEd_Ledger_' . now()->format('Y-m-d') . '.xlsx';
+
+        // Trigger the download using the new export class
+        return Excel::download(new AdminBasicEdPayrollExport(), $fileName);
     }
 }
