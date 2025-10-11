@@ -107,7 +107,9 @@ export function LoansForm({ form }: LoansFormProps) {
         <Card className="w-full shadow-sm">
             <CardHeader>
                 <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-2 rounded-full"><Wallet className="h-6 w-6 text-primary" /></div>
+                    <div className="bg-primary/10 dark:bg-primary p-2 rounded-full">
+                        <Wallet className="h-6 w-6 text-primary dark:text-primary-foreground" />
+                    </div>
                     <div>
                         <CardTitle>Loan Deductions</CardTitle>
                         <CardDescription>Optionally add loan amortization details.</CardDescription>

@@ -1,12 +1,16 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { Clock, AlertTriangle } from 'lucide-react';
+import { Clock, AlertTriangle, Hourglass } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selector';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 // Define a type for the form data this component will handle
 type EmployeeFormData = {
     work_days: WorkDayTime[];
+    roles: string;
+    college_work_hours?: string;
     [key: string]: any;
 };
 
@@ -31,12 +35,15 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
         );
     };
 
+    // Check if the 'college instructor' role is selected
+    const isCollegeInstructor = data.roles.includes('college instructor');
+
     return (
         <Card className="w-full shadow-sm">
             <CardHeader>
                 <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-2 rounded-full">
-                        <Clock className="h-6 w-6 text-primary" />
+                    <div className="bg-primary/10 dark:bg-primary p-2 rounded-full">
+                        <Clock className="h-6 w-6 text-primary dark:text-primary-foreground" />
                     </div>
                     <div>
                         <CardTitle>Work Schedule</CardTitle>
@@ -45,6 +52,25 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                 </div>
             </CardHeader>
             <CardContent>
+                {isCollegeInstructor && (
+                    <div className="mb-6">
+                        <Label htmlFor="college_work_hours" className="font-semibold">
+                            College Work Hours
+                        </Label>
+                        <div className="relative mt-2">
+                            <Hourglass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                id="college_work_hours"
+                                type="number"
+                                className="pl-10"
+                                placeholder="e.g., 40"
+                                value={data.college_work_hours || ''}
+                                onChange={(e) => setData('college_work_hours', e.target.value)}
+                            />
+                        </div>
+                        <ErrorDisplay field="college_work_hours" />
+                    </div>
+                )}
                 <WorkDaysSelector
                     value={data.work_days || []}
                     // THE FIX: When days are changed, also clear the validation error.

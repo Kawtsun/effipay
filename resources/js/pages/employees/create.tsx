@@ -26,6 +26,7 @@ type EmployeeFormData = {
     employee_status: string;
     college_program: string;
     work_days: WorkDayTime[];
+    college_work_hours: string;
     base_salary: string;
     rate_per_hour: string;
     honorarium: string;
@@ -60,6 +61,7 @@ export default function Index(props: Props) {
         employee_status: 'Active',
         college_program: '',
         work_days: [],
+        college_work_hours: '',
         base_salary: '',
         rate_per_hour: '',
         honorarium: '',
@@ -91,7 +93,7 @@ export default function Index(props: Props) {
             },
         });
     };
-    
+
     // --- BREADCRUMBS DEFINITION ---
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -112,8 +114,8 @@ export default function Index(props: Props) {
             <div className="space-y-6 p-4 md:p-8 max-w-8xl mx-auto">
                 <header className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
-                            <UserPlus className="h-6 w-6 text-primary" />
+                        <div className="bg-primary/10 dark:bg-primary p-3 rounded-full border border-primary/20">
+                            <UserPlus className="h-6 w-6 text-primary dark:text-primary-foreground" />
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold tracking-tight">Add New Employee</h1>
@@ -127,7 +129,7 @@ export default function Index(props: Props) {
                         </Link>
                     </Button>
                 </header>
-                
+
                 <form onSubmit={handleSubmit}>
                     <Card className="shadow-lg">
                         <CardContent className="p-6">

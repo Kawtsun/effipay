@@ -70,8 +70,8 @@ export function EarningsForm({ form }: EarningsFormProps) {
         <Card className="w-full shadow-sm">
             <CardHeader>
                 <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-2 rounded-full">
-                        <Landmark className="h-6 w-6 text-primary" />
+                    <div className="bg-primary/10 dark:bg-primary p-2 rounded-full">
+                        <Landmark className="h-6 w-6 text-primary dark:text-primary-foreground" />
                     </div>
                     <div>
                         <CardTitle>Salary & Earnings</CardTitle>

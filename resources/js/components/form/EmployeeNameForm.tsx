@@ -48,8 +48,8 @@ export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
         <Card className="w-full shadow-sm">
             <CardHeader>
                 <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-2 rounded-full">
-                        <UserCircle className="h-6 w-6 text-primary" />
+                    <div className="bg-primary/10 dark:bg-primary p-2 rounded-full">
+                        <UserCircle className="h-6 w-6 text-primary dark:text-primary-foreground" />
                     </div>
                     <div className="flex-1">
                         <CardTitle>Employee Name</CardTitle>

@@ -19,6 +19,7 @@ type EmployeeFormData = {
     rate_per_hour?: string;
     base_salary?: string;
     honorarium?: string;
+    college_work_hours?: string; // Added this line
     [key: string]: any;
 };
 
@@ -45,7 +46,7 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
     const [isOthers, setIsOthers] = React.useState(false);
     const [othersRoleText, setOthersRoleText] = React.useState('');
     const [collegeProgram, setCollegeProgram] = React.useState('');
-    
+
     // We only need to compute this once per render, so useMemo is fine
     const rolesArr = React.useMemo(() => data.roles.split(',').map(r => r.trim()).filter(Boolean), [data.roles]);
 
@@ -55,7 +56,7 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
         setIsAdmin(currentRoles.includes('administrator'));
         setIsCollege(currentRoles.includes('college instructor'));
         setIsBasicEdu(currentRoles.includes('basic education instructor'));
-        
+
         // Find the custom role and set others state
         const customRole = currentRoles.find(r => !STANDARD_ROLES.includes(r));
         setIsOthers(!!customRole);
@@ -117,7 +118,7 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
     }, [rolesArr, data.employee_types, setData]);
 
     const availableStatuses = ['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave'];
-    
+
     const ErrorDisplay = ({ field }: { field: keyof typeof errors }) => {
         if (!errors[field]) return null;
         return (
@@ -132,7 +133,7 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
         <Card className="w-full shadow-sm">
             <CardHeader>
                 <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-2 rounded-full"><Briefcase className="h-6 w-6 text-primary" /></div>
+                    <div className="bg-primary/10 dark:bg-primary p-2 rounded-full"><Briefcase className="h-6 w-6 text-primary dark:text-primary-foreground" /></div>
                     <div>
                         <CardTitle>Employment Details</CardTitle>
                         <CardDescription>Specify roles, types, and status.</CardDescription>
@@ -148,7 +149,13 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                             <Label htmlFor="role-admin" className="cursor-pointer font-normal">Administrator</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-college" checked={isCollege} onCheckedChange={(c) => setIsCollege(!!c)} />
+                            <Checkbox id="role-college" checked={isCollege} onCheckedChange={(c) => {
+                                const isChecked = !!c;
+                                setIsCollege(isChecked);
+                                if (!isChecked) {
+                                    setData('college_work_hours', ''); // Clear the work hours
+                                }
+                            }} />
                             <Label htmlFor="role-college" className="cursor-pointer font-normal">College Instructor</Label>
                         </div>
                         <div className="flex items-center gap-2">
