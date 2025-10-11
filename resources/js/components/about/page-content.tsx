@@ -138,8 +138,8 @@ export function PageContent() {
                             <AspectRatio ratio={16 / 9}>
                                 <img 
                                     className='h-full w-full object-cover' 
-                                    src="img/kessoku-band.jpg" 
-                                    alt="System Architecture Diagram or Team Photo" 
+                                    src="img/kessoku-band3.png" 
+                                    alt="Kessoku Band" 
                                 />
                             </AspectRatio>
                         </motion.div>
