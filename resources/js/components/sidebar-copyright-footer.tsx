@@ -1,13 +1,15 @@
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Copyright } from 'lucide-react'; 
+import { useSidebar } from '@/components/ui/sidebar'; // Assuming this import is correct
 
-// The component is simplified and no longer needs the isCollapsed prop or its interface.
-
-import { useSidebar } from '@/components/ui/sidebar';
+// Import the custom Tooltip components you provided
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'; 
 
 export function SidebarCopyrightFooter() {
+    // Correctly get the collapsed state from the sidebar context
     const { state } = useSidebar();
     const isCollapsed = state === 'collapsed';
+
     const currentYear = useMemo(() => {
         const now = new Date();
         const options: Intl.DateTimeFormatOptions = {
@@ -20,66 +22,53 @@ export function SidebarCopyrightFooter() {
             return now.getFullYear().toString();
         }
     }, []);
+    
+    // The final text for the tooltip
     const fullCopyrightText = `${currentYear} Kessoku Band. All Rights Reserved.`;
 
-    // For collapsed: show tooltip on hover
-    const [showTooltip, setShowTooltip] = useState(false);
-    const iconRef = useRef<HTMLSpanElement>(null);
-    const [tooltipPos, setTooltipPos] = useState({ left: 0, top: 0 });
+    // The content for the expanded state (icon + text)
+    const expandedContent = (
+        <div 
+            // Ensures icon and text are on a single line with small font
+            className="flex items-center justify-start text-[10px] text-muted-foreground whitespace-nowrap" 
+        >
+            <Copyright className="h-3 w-3 mr-1.5" /> 
+            <span>{fullCopyrightText}</span>
+        </div>
+    );
 
-    useEffect(() => {
-        if (!isCollapsed) return;
-        const icon = iconRef.current;
-        if (!icon) return;
-        const handleEnter = () => {
-            const rect = icon.getBoundingClientRect();
-            setTooltipPos({ left: rect.right + 8, top: rect.top + rect.height / 2 });
-            setShowTooltip(true);
-        };
-        const handleLeave = () => setShowTooltip(false);
-        icon.addEventListener('mouseenter', handleEnter);
-        icon.addEventListener('mouseleave', handleLeave);
-        return () => {
-            icon.removeEventListener('mouseenter', handleEnter);
-            icon.removeEventListener('mouseleave', handleLeave);
-        };
-    }, [isCollapsed]);
+    // The content for the collapsed state (just the icon with tooltip)
+    const collapsedContent = (
+        <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+                {/* Icon is the trigger for the tooltip */}
+                <div className="flex justify-center w-full cursor-pointer">
+                    <Copyright className="h-4 w-4 text-muted-foreground/80" />
+                </div>
+            </TooltipTrigger>
+            
+            <TooltipContent 
+                side="right" 
+                align="center"
+            >
+                {/* Tooltip content: Icon and text combined on one line */}
+                <span className="flex items-center whitespace-nowrap">
+                    <Copyright className="h-3 w-3 mr-1" />
+                    {fullCopyrightText}
+                </span>
+            </TooltipContent>
+        </Tooltip>
+    );
 
     return (
         <div className="mt-auto px-2 py-3 border-t border-gray-200 dark:border-gray-800">
-            <div
-                className={`flex items-center justify-center text-[10px] text-muted-foreground whitespace-nowrap transition-all duration-200 ${isCollapsed ? 'justify-center' : 'justify-start'}`}
-            >
-                <span ref={iconRef} className={isCollapsed ? 'cursor-pointer relative' : ''}>
-                    <Copyright className="h-4 w-4" />
-                </span>
-                {!isCollapsed && (
-                    <span className="ml-1">{fullCopyrightText}</span>
-                )}
-                {/* Tooltip for collapsed state, absolutely positioned */}
-                {isCollapsed && showTooltip && (
-                    <div
-                        style={{
-                            position: 'fixed',
-                            left: tooltipPos.left,
-                            top: tooltipPos.top,
-                            transform: 'translateY(-50%)',
-                            zIndex: 99999,
-                            background: 'var(--background, #fff)',
-                            color: 'var(--muted-foreground, #888)',
-                            borderRadius: 6,
-                            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)',
-                            border: '1px solid #e5e7eb',
-                            padding: '4px 10px',
-                            fontSize: 10,
-                            pointerEvents: 'none',
-                            minWidth: 'max-content',
-                        }}
-                    >
-                        {fullCopyrightText}
-                    </div>
-                )}
-            </div>
+            {isCollapsed ? (
+                // Collapsed state: Show icon with Tooltip
+                collapsedContent
+            ) : (
+                // Expanded state: Show full text inline
+                expandedContent
+            )}
         </div>
     );
 }
