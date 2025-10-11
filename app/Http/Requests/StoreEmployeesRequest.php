@@ -55,11 +55,11 @@ class StoreEmployeesRequest extends FormRequest
             'work_days.*.work_end_time' => 'required|date_format:H:i',
             
             // Your original optional fields (unchanged)
-            'sss_salary_loan' => 'nullable|numeric|min:0',
-            'sss_calamity_loan' => 'nullable|numeric|min:0',
-            'pagibig_multi_loan' => 'nullable|numeric|min:0',
-            'pagibig_calamity_loan' => 'nullable|numeric|min:0',
-            'peraa_con' => 'nullable|numeric|min:0',
+            'sss_salary_loan' => 'nullable|numeric',
+            'sss_calamity_loan' => 'nullable|numeric',
+            'pagibig_multi_loan' => 'nullable|numeric',
+            'pagibig_calamity_loan' => 'nullable|numeric',
+            'peraa_con' => 'nullable|numeric',
             'tuition' => 'nullable|numeric|min:0',
             'china_bank' => 'nullable|numeric|min:0',
             'tea' => 'nullable|numeric|min:0',

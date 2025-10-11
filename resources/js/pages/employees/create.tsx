@@ -9,6 +9,7 @@ import { EmploymentDetailsForm } from '@/components/form/EmploymentDetailsForm';
 import { WorkScheduleForm } from '@/components/form/WorkScheduleForm';
 import { EarningsForm } from '@/components/form/EarningsForm';
 import { ContributionsForm } from '@/components/form/ContributionsForm';
+import { LoansForm } from '@/components/form/LoansForm'; // 👈 ADDED IMPORT
 import { type WorkDayTime } from '@/components/work-days-selector';
 
 // --- DATA TYPES ---
@@ -27,6 +28,10 @@ type EmployeeFormData = {
     sss: string;
     philhealth: string;
     pag_ibig: string;
+    sss_salary_loan: string;         // 👈 ADDED
+    sss_calamity_loan: string;       // 👈 ADDED
+    pagibig_multi_loan: string;      // 👈 ADDED
+    pagibig_calamity_loan: string;   // 👈 ADDED
 };
 
 type Props = {
@@ -53,14 +58,23 @@ export default function Index(props: Props) {
         sss: '',
         philhealth: '',
         pag_ibig: '',
+        sss_salary_loan: '',         // 👈 ADDED
+        sss_calamity_loan: '',       // 👈 ADDED
+        pagibig_multi_loan: '',      // 👈 ADDED
+        pagibig_calamity_loan: '',   // 👈 ADDED
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         form.post(route('employees.store'), {
             preserveScroll: true,
-            onSuccess: () => toast.success('Employee created successfully!'),
-            onError: () => toast.error('There was an error creating the employee. Please review the form for errors.'),
+            onSuccess: () => {
+                toast.success('Employee created successfully!');
+                form.reset();
+            },
+            onError: (errors) => {
+                toast.error('There was an error creating the employee. Please review the form for errors.');
+            },
         });
     };
 
@@ -68,7 +82,6 @@ export default function Index(props: Props) {
         <AppLayout>
             <Head title="Add New Employee" />
             <div className="space-y-8 p-4 md:p-8 max-w-6xl mx-auto">
-                {/* 👇 THIS HEADER SECTION IS NOW RESTORED */}
                 <header className="flex flex-col gap-4">
                     <div>
                         <Button asChild variant="outline" size="sm">
@@ -96,6 +109,7 @@ export default function Index(props: Props) {
                         <div className="space-y-8">
                             <EarningsForm form={form} />
                             <ContributionsForm form={form} />
+                            <LoansForm form={form} />
                         </div>
                     </div>
                     
