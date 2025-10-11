@@ -97,7 +97,7 @@ export function OtherDeductionsForm({ form }: OtherDeductionsFormProps) {
     );
 
     return (
-        <Card className="w-full border-gray-200 shadow-sm">
+        <Card className="w-full shadow-sm">
             <CardHeader>
                 <div className="flex items-start gap-4">
                     <div className="bg-primary/10 p-2 rounded-full"><Receipt className="h-6 w-6 text-primary" /></div>

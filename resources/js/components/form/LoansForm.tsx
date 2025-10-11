@@ -104,7 +104,7 @@ export function LoansForm({ form }: LoansFormProps) {
     );
 
     return (
-        <Card className="w-full border-gray-200 shadow-sm">
+        <Card className="w-full shadow-sm">
             <CardHeader>
                 <div className="flex items-start gap-4">
                     <div className="bg-primary/10 p-2 rounded-full"><Wallet className="h-6 w-6 text-primary" /></div>
