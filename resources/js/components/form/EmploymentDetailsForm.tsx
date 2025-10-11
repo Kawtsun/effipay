@@ -1,11 +1,11 @@
+// Employment details form
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { Briefcase, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Briefcase, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { EmployeeType } from '@/components/employee-type';
 import { EmployeeStatus } from '@/components/employee-status';
 import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
@@ -16,7 +16,7 @@ type EmployeeFormData = {
     employee_types: Record<string, string>;
     employee_status: string;
     college_program: string;
-    rate_per_hour?: string; // Add optional fields to type for clearErrors
+    rate_per_hour?: string;
     base_salary?: string;
     honorarium?: string;
     [key: string]: any;
@@ -28,43 +28,43 @@ interface EmploymentDetailsFormProps {
 }
 
 const roleTypeMappings = {
-  administrator: ['Regular', 'Provisionary', 'Retired'],
-  'college instructor': ['Full Time', 'Part Time', 'Provisionary', 'Retired'],
-  'basic education instructor': ['Full Time', 'Part Time', 'Provisionary', 'Retired'],
-  others: ['Part Time'],
+    administrator: ['Regular', 'Provisionary', 'Retired'],
+    'college instructor': ['Full Time', 'Part Time', 'Provisionary', 'Retired'],
+    'basic education instructor': ['Full Time', 'Part Time', 'Provisionary', 'Retired'],
+    others: ['Part Time'],
 };
 
 const STANDARD_ROLES = ['administrator', 'college instructor', 'basic education instructor'];
 
-export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetailsFormProps) {
+export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
     const { data, setData, errors, clearErrors } = form;
 
-    // Your original state logic (unchanged)
     const [isAdmin, setIsAdmin] = React.useState(false);
     const [isCollege, setIsCollege] = React.useState(false);
     const [isBasicEdu, setIsBasicEdu] = React.useState(false);
     const [isOthers, setIsOthers] = React.useState(false);
     const [othersRoleText, setOthersRoleText] = React.useState('');
     const [collegeProgram, setCollegeProgram] = React.useState('');
-    const [currentTypeIndex, setCurrentTypeIndex] = React.useState(0);
-
+    
+    // We only need to compute this once per render, so useMemo is fine
     const rolesArr = React.useMemo(() => data.roles.split(',').map(r => r.trim()).filter(Boolean), [data.roles]);
 
-    // Your original useEffect hooks (unchanged, with error clearing added)
+    // This effect initializes local state from form data and should only run on mount
     React.useEffect(() => {
-        const rolesArr = data.roles.split(',').map(r => r.trim()).filter(Boolean);
-        setIsAdmin(rolesArr.includes('administrator'));
-        setIsCollege(rolesArr.includes('college instructor'));
-        setIsBasicEdu(rolesArr.includes('basic education instructor'));
-        const customRole = rolesArr.find(r => !STANDARD_ROLES.includes(r));
+        const currentRoles = data.roles.split(',').map(r => r.trim()).filter(Boolean);
+        setIsAdmin(currentRoles.includes('administrator'));
+        setIsCollege(currentRoles.includes('college instructor'));
+        setIsBasicEdu(currentRoles.includes('basic education instructor'));
+        
+        // Find the custom role and set others state
+        const customRole = currentRoles.find(r => !STANDARD_ROLES.includes(r));
         setIsOthers(!!customRole);
-        if (customRole && customRole !== 'others') {
-            setOthersRoleText(customRole);
-        } else if (!customRole) {
-            setOthersRoleText('');
-        }
-    }, [data.roles]);
+        setOthersRoleText(customRole || '');
+        setCollegeProgram(data.college_program);
 
+    }, []); // Empty dependency array ensures this only runs on mount
+
+    // This effect updates form data based on local state (user interaction)
     React.useEffect(() => {
         const newRoles: string[] = [];
         if (isAdmin) newRoles.push('administrator');
@@ -72,59 +72,51 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
         if (isBasicEdu) newRoles.push('basic education instructor');
         if (isOthers && othersRoleText.trim()) {
             newRoles.push(othersRoleText.trim().toLowerCase());
-        } else if (isOthers) {
-            newRoles.push('others');
         }
-        setData('roles', newRoles.join(', '));
 
-        const requiresBaseSalary = newRoles.includes('administrator') || newRoles.includes('basic education instructor');
-        if (!requiresBaseSalary && errors.base_salary) {
-            clearErrors('base_salary');
+        const newRolesString = newRoles.join(', ');
+        // Prevent infinite loop by only updating if the value has changed
+        if (data.roles !== newRolesString) {
+            setData('roles', newRolesString);
         }
-        
-        const requiresRatePerHour = newRoles.includes('college instructor');
-        if (!requiresRatePerHour && errors.rate_per_hour) {
-            clearErrors('rate_per_hour');
-        }
-        
-        // --- THE FIX IS HERE ---
-        // If the "Others" role is not present, clear any errors for 'honorarium'.
-        const requiresHonorarium = newRoles.some(r => !STANDARD_ROLES.includes(r) && r !== 'others');
-        if (!isOthers && errors.honorarium) {
-            clearErrors('honorarium');
-        }
-        
-    }, [isAdmin, isCollege, isBasicEdu, isOthers, othersRoleText, setData, errors, clearErrors]);
+    }, [isAdmin, isCollege, isBasicEdu, isOthers, othersRoleText, setData, data.roles]);
 
+    // Update form data for college program
     React.useEffect(() => {
-        setData('college_program', collegeProgram);
-        if (collegeProgram && errors.college_program) {
-            clearErrors('college_program');
+        if (data.college_program !== collegeProgram) {
+            setData('college_program', collegeProgram);
         }
-    }, [collegeProgram, setData, errors.college_program, clearErrors]);
+    }, [collegeProgram, data.college_program, setData]);
 
+    // Update employee types when roles change
     React.useEffect(() => {
         const newEmployeeTypes: Record<string, string> = {};
+        let shouldUpdate = false;
         rolesArr.forEach(role => {
             const mappingKey = STANDARD_ROLES.includes(role) ? role : 'others';
-            newEmployeeTypes[role] = data.employee_types[role] || roleTypeMappings[mappingKey as keyof typeof roleTypeMappings][0];
+            // Use existing value if available, otherwise use default
+            const defaultValue = roleTypeMappings[mappingKey as keyof typeof roleTypeMappings][0];
+            newEmployeeTypes[role] = data.employee_types[role] || defaultValue;
+
+            // Check if we need to update to a new default
+            if (!data.employee_types[role]) {
+                shouldUpdate = true;
+            }
         });
-        setData('employee_types', newEmployeeTypes);
-        if (currentTypeIndex >= rolesArr.length) {
-            setCurrentTypeIndex(Math.max(0, rolesArr.length - 1));
+
+        // Remove types for roles that no longer exist
+        Object.keys(data.employee_types).forEach(oldRole => {
+            if (!rolesArr.includes(oldRole)) {
+                shouldUpdate = true;
+            }
+        });
+
+        if (shouldUpdate || Object.keys(data.employee_types).length !== rolesArr.length) {
+            setData('employee_types', newEmployeeTypes);
         }
-    }, [data.roles]);
+    }, [rolesArr, data.employee_types, setData]);
 
     const availableStatuses = ['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave'];
-    const selectedRoles = data.roles.split(',').map(r => r.trim()).filter(Boolean);
-    const visibleRoleKey = selectedRoles[currentTypeIndex] ?? '';
-    const visibleRoleLabel = visibleRoleKey === othersRoleText.trim().toLowerCase() ? othersRoleText.trim() : visibleRoleKey;
-    let visibleRoleOptions: string[] = [];
-    if (STANDARD_ROLES.includes(visibleRoleKey)) {
-        visibleRoleOptions = roleTypeMappings[visibleRoleKey as keyof typeof roleTypeMappings];
-    } else if (visibleRoleKey) {
-        visibleRoleOptions = roleTypeMappings.others;
-    }
     
     const ErrorDisplay = ({ field }: { field: keyof typeof errors }) => {
         if (!errors[field]) return null;
@@ -164,7 +156,7 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
                             <Label htmlFor="role-basicedu" className="cursor-pointer font-normal">Basic Education</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-others" checked={isOthers} onCheckedChange={(c) => setIsOthers(!!c)} />
+                            <Checkbox id="role-others" checked={isOthers} onCheckedChange={(c) => { setIsOthers(!!c); setOthersRoleText(''); }} />
                             <Label htmlFor="role-others" className="cursor-pointer font-normal">Others</Label>
                         </div>
                     </div>
@@ -182,13 +174,12 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
                     <div className="flex flex-col gap-2">
-                        {selectedRoles.length > 0 ? (
+                        {rolesArr.length > 0 ? (
                             <div className="space-y-4">
-                                {selectedRoles.map((role) => {
+                                {rolesArr.map((role) => {
                                     const roleLabel = STANDARD_ROLES.includes(role) ? role : othersRoleText || 'Others';
                                     const mappingKey = STANDARD_ROLES.includes(role) ? role : 'others';
                                     const options = roleTypeMappings[mappingKey as keyof typeof roleTypeMappings];
-
                                     return (
                                         <div key={role} className="flex flex-col gap-2">
                                             <Label htmlFor={`type-${role}`} className="font-semibold capitalize">{roleLabel} Type</Label>
@@ -215,7 +206,7 @@ export function EmploymentDetailsForm({ form, salaryDefaults }: EmploymentDetail
                             value={data.employee_status}
                             onChange={val => setData('employee_status', val)}
                             statuses={availableStatuses}
-                            disabled={selectedRoles.length === 0}
+                            disabled={rolesArr.length === 0}
                         />
                         <ErrorDisplay field="employee_status" />
                     </div>
