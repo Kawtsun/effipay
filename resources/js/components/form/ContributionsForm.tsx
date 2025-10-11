@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { HandCoins, AlertTriangle, Lightbulb, PlusCircle, MinusCircle } from 'lucide-react';
+import { HandCoins, AlertTriangle, PlusCircle, MinusCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,11 +8,14 @@ import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
 import { calculateSSS, calculatePhilHealth } from '@/utils/salaryFormulas';
 
-// Helper to format numbers for display
-function formatWithCommas(value: string | number): string {
-    if (value === null || value === undefined) return '';
-    const stringValue = String(value);
-    const parts = stringValue.split('.');
+// Helper to format numbers with commas and specific decimal places
+function formatNumber(value: string | number, decimals: number): string {
+    if (value === null || value === undefined || value === '') return '';
+    const num = Number(value);
+    if (isNaN(num)) return '';
+
+    const fixedValue = num.toFixed(decimals);
+    const parts = fixedValue.split('.');
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return parts.join('.');
 }
@@ -33,10 +36,7 @@ interface ContributionsFormProps {
 export function ContributionsForm({ form }: ContributionsFormProps) {
     const { data, setData, errors, clearErrors } = form;
 
-    // State for client-side validation of Pag-IBIG
     const [pagIbigError, setPagIbigError] = React.useState<string | null>(null);
-
-    // Your original state logic (unchanged)
     const isAdmin = React.useMemo(() => 
         data.roles.split(',').map(r => r.trim()).includes('administrator'),
         [data.roles]
@@ -45,38 +45,63 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
     const [showPhilhealth, setShowPhilhealth] = React.useState(false);
     const [showPagibig, setShowPagibig] = React.useState(false);
 
-    // Your original useEffects (unchanged)
+    // This effect handles the calculation and clearing of SSS and PhilHealth
     React.useEffect(() => {
-        const baseSalaryNum = parseFloat(data.base_salary.replace(/,/g, '')) || 0;
-        if (baseSalaryNum > 0) {
+        const baseSalaryNum = parseFloat(data.base_salary.replace(/,/g, ''));
+        
+        // If the base salary is not a valid number, clear the fields
+        if (isNaN(baseSalaryNum) || baseSalaryNum <= 0) {
+            if (data.sss !== '' || data.philhealth !== '') {
+                setData(currentData => ({
+                    ...currentData,
+                    sss: '',
+                    philhealth: '',
+                }));
+            }
+            return; // Exit the effect early
+        }
+
+        // If base salary is a valid number, perform the calculation
+        const calculatedSss = calculateSSS(baseSalaryNum);
+        const calculatedPhilhealth = calculatePhilHealth(baseSalaryNum);
+        
+        const formattedSss = calculatedSss.toFixed(2);
+        const formattedPhilhealth = calculatedPhilhealth.toFixed(2);
+        
+        if (data.sss !== formattedSss || data.philhealth !== formattedPhilhealth) {
             setData(currentData => ({
                 ...currentData,
-                sss: String(calculateSSS(baseSalaryNum)),
-                philhealth: String(calculatePhilHealth(baseSalaryNum)),
+                sss: formattedSss,
+                philhealth: formattedPhilhealth,
             }));
         }
-    }, [data.base_salary, setData]);
-    
+    }, [data.base_salary, setData, data.sss, data.philhealth]);
+
+    // Effects to clear fields when they are hidden
     React.useEffect(() => {
-        if (!isAdmin && !showSSS) setData('sss', '');
-    }, [isAdmin, showSSS, setData]);
+        if (!isAdmin && !showSSS && data.sss !== '') {
+            setData('sss', '');
+        }
+    }, [isAdmin, showSSS, setData, data.sss]);
 
     React.useEffect(() => {
-        if (!isAdmin && !showPhilhealth) setData('philhealth', '');
-    }, [isAdmin, showPhilhealth, setData]);
+        if (!isAdmin && !showPhilhealth && data.philhealth !== '') {
+            setData('philhealth', '');
+        }
+    }, [isAdmin, showPhilhealth, setData, data.philhealth]);
 
     React.useEffect(() => {
-        if (!isAdmin && !showPagibig) setData('pag_ibig', '');
-    }, [isAdmin, showPagibig, setData]);
+        if (!isAdmin && !showPagibig && data.pag_ibig !== '') {
+            setData('pag_ibig', '');
+        }
+    }, [isAdmin, showPagibig, setData, data.pag_ibig]);
 
-    // Updated handler to include client-side Pag-IBIG validation
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {
         const rawValue = value.replace(/,/g, '');
         if (/^\d*\.?\d*$/.test(rawValue)) {
             setData(field, rawValue);
             if (errors[field]) clearErrors(field);
 
-            // Client-side validation logic for Pag-IBIG
             if (field === 'pag_ibig') {
                 const numValue = parseFloat(rawValue);
                 if (rawValue.trim() !== '' && (numValue < 200 || numValue > 2500)) {
@@ -88,7 +113,6 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
         }
     };
     
-    // Updated ErrorDisplay to accept a direct message string
     const ErrorDisplay = ({ message }: { message: string | null | undefined }) => {
         if (!message) return null;
         return (
@@ -99,7 +123,6 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
         );
     };
 
-    // Your original renderToggleButton function (unchanged)
     const renderToggleButton = (label: string, isShown: boolean, setter: React.Dispatch<React.SetStateAction<boolean>>) => (
         <div className="flex items-center justify-between">
             <Label className="font-semibold">{label}</Label>
@@ -130,18 +153,17 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
-                {/* Your original render logic (unchanged) */}
                 {isAdmin ? (
                     <div className="space-y-6">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="flex flex-col gap-2">
                                 <Label htmlFor="sss_admin" className="font-semibold">SSS Contribution</Label>
-                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input id="sss_admin" value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input id="sss_admin" value={formatNumber(data.sss, 2)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                 <ErrorDisplay message={errors.sss} />
                             </div>
                             <div className="flex flex-col gap-2">
                                 <Label htmlFor="philhealth_admin" className="font-semibold">PhilHealth Contribution</Label>
-                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input id="philhealth_admin" value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input id="philhealth_admin" value={formatNumber(data.philhealth, 2)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                 <ErrorDisplay message={errors.philhealth} />
                             </div>
                         </div>
@@ -153,7 +175,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                                     id="pag_ibig_admin" 
                                     type="text" 
                                     placeholder="Min 200.00" 
-                                    value={formatWithCommas(data.pag_ibig)} 
+                                    value={formatNumber(data.pag_ibig, 2)} 
                                     onChange={e => handleNumericChange('pag_ibig', e.target.value)} 
                                     className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`} 
                                 />
@@ -169,7 +191,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                             <AnimatePresence>
                                 {showSSS && (
                                     <motion.div key="sss-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
-                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input value={formatNumber(data.sss, 2)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                         <ErrorDisplay message={errors.sss} />
                                     </motion.div>
                                 )}
@@ -181,7 +203,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                             <AnimatePresence>
                                 {showPhilhealth && (
                                      <motion.div key="philhealth-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
-                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input value={formatNumber(data.philhealth, 2)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                         <ErrorDisplay message={errors.philhealth} />
                                     </motion.div>
                                 )}
@@ -198,7 +220,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                                             <Input 
                                                 type="text" 
                                                 placeholder="Min 200.00" 
-                                                value={formatWithCommas(data.pag_ibig)} 
+                                                value={formatNumber(data.pag_ibig, 2)} 
                                                 onChange={e => handleNumericChange('pag_ibig', e.target.value)} 
                                                 className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`} 
                                             />
