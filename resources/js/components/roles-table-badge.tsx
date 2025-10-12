@@ -129,7 +129,7 @@ export function RolesTableBadge({ roles, college_program }: RolesTableBadgeProps
                                 return (
                                     <div key={role} className="flex items-center gap-2">
                                         <RoleBadge role={role} program={programForRole} />
-                                        {programLabel && <span className="text-xs text-muted-foreground ">{programLabel}</span>}
+                                        {programLabel && <span className="text-xs text-muted-foreground">{programLabel}</span>}
                                     </div>
                                 )
                             })}

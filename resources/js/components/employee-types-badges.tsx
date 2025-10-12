@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { Briefcase, Clock, ClipboardUser, User } from 'lucide-react'
+import { Briefcase, Clock, ClipboardList, User } from 'lucide-react'
 
 interface EmployeeType {
     role: string
@@ -26,7 +26,7 @@ const typeStyles: { [key: string]: { icon: React.ReactNode; className: string } 
         className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300',
     },
     provisionary: {
-        icon: <ClipboardUser size={12} />,
+        icon: <ClipboardList size={12} />,
         className: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
     },
     default: {
@@ -45,7 +45,7 @@ const EmployeeTypeBadge: React.FC<{ employeeType: EmployeeType; className?: stri
     return (
         <div
             className={cn(
-                'inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
+                'inline-flex items-center gap-x-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold',
                 style.className,
                 className
             )}
@@ -90,17 +90,13 @@ export function EmployeeTypesBadges({ employeeTypes }: EmployeeTypesBadgesProps)
                         side="top"
                         className="max-w-md rounded-xl border bg-card/80 p-3 text-card-foreground shadow-lg backdrop-blur-lg"
                     >
-                        <div className="flex flex-col items-start gap-2.5">
+                        <div className="flex flex-col items-start gap-2">
                             <p className="mb-1 text-sm font-semibold">All Employee Types</p>
                             {employeeTypes.map((type, index) => {
-                                const style = getTypeStyle(type.type)
                                 return (
-                                    <div key={index} className="flex items-start gap-x-2.5">
-                                        <div className="mt-0.5">{style.icon}</div>
-                                        <div className="flex flex-col">
-                                            <span className="font-medium capitalize text-card-foreground">{type.type}</span>
-                                            <span className="text-xs capitalize text-muted-foreground">({type.role})</span>
-                                        </div>
+                                    <div key={index} className="flex items-center gap-2">
+                                        <EmployeeTypeBadge employeeType={type} />
+                                        <span className="text-xs capitalize text-muted-foreground">{type.role}</span>
                                     </div>
                                 )
                             })}
