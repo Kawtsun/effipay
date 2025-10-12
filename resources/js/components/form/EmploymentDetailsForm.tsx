@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
 import { Briefcase, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,7 @@ type EmployeeFormData = {
     rate_per_hour?: string;
     base_salary?: string;
     honorarium?: string;
-    college_work_hours?: string; // Added this line
+    college_work_hours?: string;
     [key: string]: any;
 };
 
@@ -149,13 +150,19 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                             <Label htmlFor="role-admin" className="cursor-pointer font-normal">Administrator</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-college" checked={isCollege} onCheckedChange={(c) => {
-                                const isChecked = !!c;
-                                setIsCollege(isChecked);
-                                if (!isChecked) {
-                                    setData('college_work_hours', ''); // Clear the work hours
-                                }
-                            }} />
+                            <Checkbox
+                                id="role-college"
+                                checked={isCollege}
+                                onCheckedChange={(c) => {
+                                    const isChecked = !!c;
+                                    setIsCollege(isChecked);
+                                    if (!isChecked) {
+                                        setData('college_work_hours', '');
+                                        setData('college_program', '');
+                                        setCollegeProgram('');
+                                    }
+                                }}
+                            />
                             <Label htmlFor="role-college" className="cursor-pointer font-normal">College Instructor</Label>
                         </div>
                         <div className="flex items-center gap-2">
@@ -170,34 +177,57 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                     <ErrorDisplay field="roles" />
                     <div className="pl-6 space-y-4 pt-2">
                         {isOthers && <Input type="text" placeholder="Specify other role" value={othersRoleText} onChange={e => setOthersRoleText(e.target.value)} />}
-                        {isCollege && (
-                            <div>
-                                <Label className="text-sm font-semibold mb-2 block">College Dept.</Label>
-                                <CollegeProgramScrollArea><EmployeeCollegeRadioDepartment value={collegeProgram} onChange={setCollegeProgram} /></CollegeProgramScrollArea>
-                                <ErrorDisplay field="college_program" />
-                            </div>
-                        )}
+                        <AnimatePresence>
+                            {isCollege && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="pt-2">
+                                        <Label className="text-sm font-semibold mb-2 block">College Dept.</Label>
+                                        <CollegeProgramScrollArea>
+                                            <EmployeeCollegeRadioDepartment value={collegeProgram} onChange={setCollegeProgram} />
+                                        </CollegeProgramScrollArea>
+                                        <ErrorDisplay field="college_program" />
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
                     <div className="flex flex-col gap-2">
                         {rolesArr.length > 0 ? (
                             <div className="space-y-4">
-                                {rolesArr.map((role) => {
-                                    const roleLabel = STANDARD_ROLES.includes(role) ? role : othersRoleText || 'Others';
-                                    const mappingKey = STANDARD_ROLES.includes(role) ? role : 'others';
-                                    const options = roleTypeMappings[mappingKey as keyof typeof roleTypeMappings];
-                                    return (
-                                        <div key={role} className="flex flex-col gap-2">
-                                            <Label htmlFor={`type-${role}`} className="font-semibold capitalize">{roleLabel} Type</Label>
-                                            <EmployeeType
-                                                value={data.employee_types[role] || ''}
-                                                onChange={val => setData('employee_types', { ...data.employee_types, [role]: val })}
-                                                types={options.map(opt => ({ value: opt, label: opt }))}
-                                            />
-                                        </div>
-                                    );
-                                })}
+                                <AnimatePresence>
+                                    {rolesArr.map((role) => {
+                                        const roleLabel = STANDARD_ROLES.includes(role) ? role : othersRoleText || 'Others';
+                                        const mappingKey = STANDARD_ROLES.includes(role) ? role : 'others';
+                                        const options = roleTypeMappings[mappingKey as keyof typeof roleTypeMappings];
+                                        return (
+                                            <motion.div
+                                                key={role}
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="flex flex-col gap-2">
+                                                    <Label htmlFor={`type-${role}`} className="font-semibold capitalize">{roleLabel} Type</Label>
+                                                    <EmployeeType
+                                                        value={data.employee_types[role] || ''}
+                                                        onChange={val => setData('employee_types', { ...data.employee_types, [role]: val })}
+                                                        types={options.map(opt => ({ value: opt, label: opt }))}
+                                                    />
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })}
+                                </AnimatePresence>
                                 <ErrorDisplay field="employee_types" />
                             </div>
                         ) : (
