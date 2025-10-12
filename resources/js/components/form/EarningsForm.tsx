@@ -67,7 +67,7 @@ export function EarningsForm({ form }: EarningsFormProps) {
 
     const motionProps = {
         initial: { opacity: 0, height: 0, marginTop: 0 },
-        animate: { opacity: 1, height: 'auto', marginTop: '1.5rem' },
+        animate: { opacity: 1, height: 'auto', marginTop: 0 },
         exit: { opacity: 0, height: 0, marginTop: 0 },
         transition: { duration: 0.3, ease: 'easeInOut' },
         className: 'overflow-hidden',
