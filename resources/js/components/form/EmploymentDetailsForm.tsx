@@ -1,7 +1,7 @@
 // Employment details form
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { Briefcase, AlertTriangle } from 'lucide-react';
+import { Briefcase, AlertTriangle, Asterisk } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -161,7 +161,9 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="space-y-4">
-                    <Label className="font-semibold">Employee Roles</Label>
+                    <Label className="font-semibold flex items-center">
+                        Employee Roles <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                    </Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                         <div className="flex items-center gap-2">
                             <Checkbox id="role-admin" checked={isAdmin} onCheckedChange={(c) => setIsAdmin(!!c)} />
@@ -203,8 +205,11 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                                     transition={{ duration: 0.3, ease: 'easeInOut' }}
                                     className="overflow-hidden"
                                 >
-                                    <div className="p-1">
-                                        <Input type="text" placeholder="Specify other role" value={othersRoleText} onChange={e => setOthersRoleText(e.target.value)} />
+                                    <div className="p-1 space-y-2">
+                                        <Label htmlFor="other-role-input" className="font-semibold flex items-center">
+                                            Specify Other Role <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                        </Label>
+                                        <Input id="other-role-input" type="text" placeholder="Specify other role" value={othersRoleText} onChange={e => setOthersRoleText(e.target.value)} />
                                     </div>
                                 </motion.div>
                             )}
@@ -219,7 +224,9 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                                     className="overflow-hidden"
                                 >
                                     <div className="pt-2">
-                                        <Label className="text-sm font-semibold mb-2 block">College Dept.</Label>
+                                        <Label className="text-sm font-semibold mb-2 block flex items-center">
+                                            College Dept. <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                        </Label>
                                         <CollegeProgramScrollArea>
                                             <EmployeeCollegeRadioDepartment value={collegeProgram} onChange={setCollegeProgram} />
                                         </CollegeProgramScrollArea>
@@ -252,7 +259,9 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                                                 className="overflow-hidden"
                                             >
                                                 <div className="flex flex-col gap-2 p-1">
-                                                    <Label htmlFor={`type-${role}`} className="font-semibold capitalize">{roleLabel} Type</Label>
+                                                    <Label htmlFor={`type-${role}`} className="font-semibold capitalize flex items-center">
+                                                        {roleLabel} Type <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                                    </Label>
                                                     <EmployeeType
                                                         value={data.employee_types[role] || ''}
                                                         onChange={val => setData('employee_types', { ...data.employee_types, [role]: val })}
@@ -267,13 +276,17 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                             </div>
                         ) : (
                             <div className="flex flex-col gap-2">
-                                <Label className="font-semibold text-muted-foreground">Employee Type</Label>
+                                <Label className="font-semibold text-muted-foreground flex items-center">
+                                    Employee Type <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                </Label>
                                 <Input disabled placeholder="Select a role first" />
                             </div>
                         )}
                     </div>
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="employee_status" className="font-semibold">Employee Status</Label>
+                        <Label htmlFor="employee_status" className="font-semibold flex items-center">
+                            Employee Status <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                        </Label>
                         <EmployeeStatus
                             value={data.employee_status}
                             onChange={val => setData('employee_status', val)}
