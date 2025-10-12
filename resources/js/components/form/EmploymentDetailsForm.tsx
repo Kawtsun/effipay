@@ -90,6 +90,24 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
         }
     }, [collegeProgram, data.college_program, setData]);
 
+    // This effect handles renaming the custom role in employee_types to preserve the selection
+    const customRole = React.useMemo(() => rolesArr.find(r => !STANDARD_ROLES.includes(r)), [rolesArr]);
+    const prevCustomRoleRef = React.useRef<string | undefined>();
+
+    React.useEffect(() => {
+        const prevCustomRole = prevCustomRoleRef.current;
+        if (customRole && prevCustomRole && customRole !== prevCustomRole) {
+            if (data.employee_types[prevCustomRole]) {
+                const newEmployeeTypes = { ...data.employee_types };
+                newEmployeeTypes[customRole] = newEmployeeTypes[prevCustomRole];
+                delete newEmployeeTypes[prevCustomRole];
+                setData('employee_types', newEmployeeTypes);
+            }
+        }
+        prevCustomRoleRef.current = customRole;
+    }, [customRole, data.employee_types, setData]);
+
+
     // Update employee types when roles change
     React.useEffect(() => {
         const newEmployeeTypes: Record<string, string> = {};
@@ -218,19 +236,22 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                             <div className="space-y-4">
                                 <AnimatePresence>
                                     {rolesArr.map((role) => {
-                                        const roleLabel = STANDARD_ROLES.includes(role) ? role : othersRoleText || 'Others';
-                                        const mappingKey = STANDARD_ROLES.includes(role) ? role : 'others';
+                                        const isStandardRole = STANDARD_ROLES.includes(role);
+                                        const roleLabel = isStandardRole ? role : othersRoleText || 'Others';
+                                        const mappingKey = isStandardRole ? role : 'others';
                                         const options = roleTypeMappings[mappingKey as keyof typeof roleTypeMappings];
+                                        const motionKey = isStandardRole ? role : 'others-role';
+
                                         return (
                                             <motion.div
-                                                key={role}
+                                                key={motionKey}
                                                 initial={{ opacity: 0, height: 0 }}
                                                 animate={{ opacity: 1, height: 'auto' }}
                                                 exit={{ opacity: 0, height: 0 }}
                                                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                                                 className="overflow-hidden"
                                             >
-                                                <div className="flex flex-col gap-2">
+                                                <div className="flex flex-col gap-2 p-1">
                                                     <Label htmlFor={`type-${role}`} className="font-semibold capitalize">{roleLabel} Type</Label>
                                                     <EmployeeType
                                                         value={data.employee_types[role] || ''}
