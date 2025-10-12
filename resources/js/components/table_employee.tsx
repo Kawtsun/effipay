@@ -151,16 +151,16 @@ export default function TableEmployee({
                 return (
                     <div className="px-4 py-2 whitespace-nowrap text-right">
                         <div className="hidden md:flex justify-end items-center gap-2">
-                            <Button variant="secondary" size="sm" onClick={() => onView(emp)}>
-                                <Eye className="w-4 h-4 mr-2" />
+                            <Button variant="secondary" onClick={() => onView(emp)}>
+                                <Eye />
                                 View
                             </Button>
-                            <Link href={editHrefFor(emp)} className={buttonVariants({ variant: 'default', size: 'sm' })}>
-                                <Pencil className="w-4 h-4 mr-2" />
+                            <Link href={editHrefFor(emp)} className={buttonVariants({ variant: 'default'})}>
+                                <Pencil />
                                 Edit
                             </Link>
-                            <Button variant="destructive" size="sm" onClick={() => onDelete(emp)}>
-                                <Trash className="w-4 h-4 mr-2" />
+                            <Button variant="destructive" onClick={() => onDelete(emp)}>
+                                <Trash />
                                 Delete
                             </Button>
                         </div>

@@ -142,7 +142,9 @@ class TimeKeepingController extends Controller
         }
 
         if ($request->filled('types')) {
-            $query->whereIn('employee_type', $request->types);
+            $query->whereHas('employeeTypes', function ($q) use ($request) {
+                $q->whereIn('type', $request->types);
+            });
         }
 
         if ($request->filled('statuses')) {
@@ -213,6 +215,24 @@ class TimeKeepingController extends Controller
             $perPage = 10;
         }
         $employees = $query->with('workDays')->paginate($perPage)->withQueryString();
+
+        $employees->getCollection()->transform(function ($emp) {
+            // ** THE FIX IS HERE **
+            // We now map the collection to the correct array structure
+            $employeeTypesArray = $emp->employeeTypes->map(function ($type) {
+                return [
+                    'role' => $type->role,
+                    'type' => $type->type,
+                ];
+            });
+
+            // Unset the original relationship to avoid sending redundant data
+            unset($emp->employeeTypes);
+            // Assign the newly formatted array
+            $emp->employee_types = $employeeTypesArray;
+
+            return $emp;
+        });
 
         $employeesArray = array_map(function ($emp) {
             // Overtime pay calculation function (matches frontend)
@@ -359,7 +379,7 @@ class TimeKeepingController extends Controller
                 'last_name' => $emp->last_name,
                 'first_name' => $emp->first_name,
                 'middle_name' => $emp->middle_name,
-                'employee_type' => $emp->employee_type,
+                'employee_types' => $emp->employee_types,
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
                 'college_program' => $emp->college_program,
