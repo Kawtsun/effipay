@@ -128,7 +128,7 @@ export default function TableReport({
                                 <Eye />
                                 View
                             </Button>
-                            <Button className="ml-2" size="sm" onClick={() => onPrint(emp)}>
+                            <Button className="ml-2" onClick={() => onPrint(emp)}>
                                 <Printer />
                                 Print
                             </Button>
@@ -245,44 +245,56 @@ export default function TableReport({
             </div>
 
             <div className="mt-4 flex min-h-[56px] items-center justify-between rounded-md border bg-card px-3 py-2 text-sm">
-                <div className="flex items-center gap-3 text-muted-foreground">
-                    <span className='font-medium text-foreground'>Rows per page</span>
-                    <Select
-                        value={`${pagination.pageSize}`}
-                        onValueChange={(value) => {
-                            const size = Number(value)
-                            setPagination((p) => ({ ...p, pageIndex: 0, pageSize: size }))
-                            if (onPageSizeChange) onPageSizeChange(size)
-                        }}
-                    >
-                        <SelectTrigger className="h-8 w-[80px]">
-                            <SelectValue placeholder={pagination.pageSize} />
-                        </SelectTrigger>
-                        <SelectContent side="top">
-                            {[10, 20, 25, 30, 40, 50].map((size) => (
-                                <SelectItem key={size} value={`${size}`}>
-                                    {size}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <span className="font-medium text-foreground hidden sm:inline">
-                        Page {currentPage} of {totalPages}
-                    </span>
+                <div className="flex-1 text-sm text-muted-foreground">
+                    {data.length} row(s) loaded.
                 </div>
-                <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="icon" className="hidden size-8 lg:flex" onClick={() => onPageChange(1)} disabled={currentPage <= 1 || loading}>
-                        <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" className="size-8" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1 || loading}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" className="size-8" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage >= totalPages || loading}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" className="hidden size-8 lg:flex" onClick={() => onPageChange(totalPages)} disabled={currentPage >= totalPages || loading}>
-                        <ChevronsRight className="h-4 w-4" />
-                    </Button>
+
+                <div className="flex items-center space-x-6 lg:space-x-8">
+                    <div className="flex items-center space-x-2">
+                        <p className="text-sm font-medium">Rows per page</p>
+                        <Select
+                            value={`${pagination.pageSize}`}
+                            onValueChange={(value) => {
+                                const size = Number(value)
+                                setPagination((p) => ({ ...p, pageIndex: 0, pageSize: size }))
+                                if (onPageSizeChange) onPageSizeChange(size)
+                            }}
+                        >
+                            <SelectTrigger className="h-8 w-[70px]">
+                                <SelectValue placeholder={pagination.pageSize} />
+                            </SelectTrigger>
+                            <SelectContent side="top">
+                                {[10, 20, 25, 30, 40, 50].map((size) => (
+                                    <SelectItem key={size} value={`${size}`}>
+                                        {size}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                        Page {currentPage} of {totalPages}
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                        <Button variant="outline" size="icon" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => onPageChange(1)} disabled={currentPage <= 1 || loading}>
+                            <span className="sr-only">Go to first page</span>
+                            <ChevronsLeft className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" className="h-8 w-8 p-0" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1 || loading}>
+                            <span className="sr-only">Go to previous page</span>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" className="h-8 w-8 p-0" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage >= totalPages || loading}>
+                            <span className="sr-only">Go to next page</span>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" className="hidden h-8 w-8 p-0 lg:flex" onClick={() => onPageChange(totalPages)} disabled={currentPage >= totalPages || loading}>
+                            <span className="sr-only">Go to last page</span>
+                            <ChevronsRight className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
