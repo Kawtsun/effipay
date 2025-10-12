@@ -141,11 +141,11 @@ export default function Edit(props: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Edit Employee: ${formatFullName(employee.last_name, employee.first_name, employee.middle_name)}`} />
-            <div className="space-y-6 p-4 md:p-8 max-w-8xl mx-auto">
+            <div className="flex h-full flex-col gap-4 py-6 px-2 sm:px-4 md:px-8 space-y-6 p-4 max-w-8xl mx-auto">
                 <header className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-full border border-primary/20">
-                            <UserPen className="h-6 w-6 text-primary" />
+                        <div className="bg-primary/10 dark:bg-primary p-3 rounded-full border border-primary/20">
+                            <UserPen className="h-6 w-6 text-primary dark:text-primary-foreground" />
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold tracking-tight">Edit Employee</h1>

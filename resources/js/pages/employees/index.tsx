@@ -9,7 +9,7 @@ import AppLayout from '@/layouts/app-layout'
 import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, Link, router, usePage } from '@inertiajs/react'
-import { Loader2, Users, UserPlus2 } from 'lucide-react'
+import { Loader2, Users, UserPlus } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -298,7 +298,7 @@ export default function Index({
                                 })}
                             >
                                 <Button className="flex items-center gap-2 whitespace-nowrap">
-                                    <UserPlus2 className="w-4 h-4" />
+                                    <UserPlus className="w-4 h-4" />
                                     Add
                                 </Button>
                             </Link>
