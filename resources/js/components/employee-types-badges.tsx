@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { Briefcase, Clock, ClipboardUser, User } from 'lucide-react'
 
 interface EmployeeType {
     role: string
@@ -11,30 +12,49 @@ interface EmployeeTypesBadgesProps {
     employeeTypes: EmployeeType[]
 }
 
-const typeStyles: { [key: string]: string } = {
-    regular: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
-    'full time': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
-    'part time': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300',
-    provisionary: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
-    default: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
+const typeStyles: { [key: string]: { icon: React.ReactNode; className: string } } = {
+    regular: {
+        icon: <Briefcase size={12} />,
+        className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
+    },
+    'full time': {
+        icon: <Briefcase size={12} />,
+        className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
+    },
+    'part time': {
+        icon: <Clock size={12} />,
+        className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300',
+    },
+    provisionary: {
+        icon: <ClipboardUser size={12} />,
+        className: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
+    },
+    default: {
+        icon: <User size={12} />,
+        className: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
+    },
 }
 
-const getTypeStyle = (type: string): string => {
+const getTypeStyle = (type: string) => {
     const lowerType = type.toLowerCase()
     return typeStyles[lowerType] || typeStyles.default
 }
 
-const EmployeeTypeBadge: React.FC<{ employeeType: EmployeeType; className?: string }> = ({ employeeType, className }) => (
-    <div
-        className={cn(
-            'inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
-            getTypeStyle(employeeType.type),
-            className
-        )}
-    >
-        <span className="capitalize">{employeeType.type}</span>
-    </div>
-)
+const EmployeeTypeBadge: React.FC<{ employeeType: EmployeeType; className?: string }> = ({ employeeType, className }) => {
+    const style = getTypeStyle(employeeType.type)
+    return (
+        <div
+            className={cn(
+                'inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
+                style.className,
+                className
+            )}
+        >
+            {style.icon}
+            <span className="capitalize">{employeeType.type}</span>
+        </div>
+    )
+}
 
 export function EmployeeTypesBadges({ employeeTypes }: EmployeeTypesBadgesProps) {
     if (!Array.isArray(employeeTypes) || employeeTypes.length === 0) {
@@ -56,11 +76,11 @@ export function EmployeeTypesBadges({ employeeTypes }: EmployeeTypesBadgesProps)
     )
 
     if (employeeTypes.length <= 1) {
-        return <div className="px-4 py-2 min-w-[160px]">{badgeContent}</div>
+        return <div className="min-w-[160px] px-4 py-2">{badgeContent}</div>
     }
 
     return (
-        <div className="px-4 py-2 min-w-[160px]">
+        <div className="min-w-[160px] px-4 py-2">
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
@@ -70,14 +90,20 @@ export function EmployeeTypesBadges({ employeeTypes }: EmployeeTypesBadgesProps)
                         side="top"
                         className="max-w-md rounded-xl border bg-card/80 p-3 text-card-foreground shadow-lg backdrop-blur-lg"
                     >
-                        <div className="flex flex-col items-start gap-2">
+                        <div className="flex flex-col items-start gap-2.5">
                             <p className="mb-1 text-sm font-semibold">All Employee Types</p>
-                            {employeeTypes.map((type, index) => (
-                                <div key={index} className="flex items-center gap-2">
-                                    <EmployeeTypeBadge employeeType={type} />
-                                    <span className="text-xs text-muted-foreground capitalize">({type.role})</span>
-                                </div>
-                            ))}
+                            {employeeTypes.map((type, index) => {
+                                const style = getTypeStyle(type.type)
+                                return (
+                                    <div key={index} className="flex items-start gap-x-2.5">
+                                        <div className="mt-0.5">{style.icon}</div>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium capitalize text-card-foreground">{type.type}</span>
+                                            <span className="text-xs capitalize text-muted-foreground">({type.role})</span>
+                                        </div>
+                                    </div>
+                                )
+                            })}
                         </div>
                     </TooltipContent>
                 </Tooltip>

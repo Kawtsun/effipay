@@ -115,7 +115,7 @@ export default function TableEmployee({
                 header: () => <div className="px-4 text-xs font-semibold uppercase tracking-wide">Roles</div>,
                 cell: ({ row }) => {
                     const roles = row.original.roles ? row.original.roles.split(',').map((r) => r.trim()).filter(Boolean) : []
-                    return <RolesTableBadge roles={roles} />
+                    return <RolesTableBadge roles={roles} college_program={row.original.college_program} />
                 },
                 size: 250,
                 enableSorting: false,
