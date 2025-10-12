@@ -2,26 +2,31 @@
 
 namespace App\Exports;
 
-use Maatwebsite\Excel\Concerns\Exportable;
-use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use App\Models\Payroll; // Or your relevant model
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Carbon\Carbon;
 
-class PayrollExport implements WithMultipleSheets
+class PayrollExport implements FromCollection
 {
-    use Exportable;
+    protected $month;
+
+    // Use the constructor to accept the month
+    public function __construct(Carbon $month)
+    {
+        $this->month = $month;
+    }
 
     /**
-     * @return array
-     */
-    public function sheets(): array
+    * @return \Illuminate\Support\Collection
+    */
+    public function collection()
     {
-        // This array defines which sheets will be included in the Excel file
-        // and in what order they will appear.
-        $sheets = [
-            new AdminBasicEdPayrollExport(), // The first sheet
-            new CollegeGspSheet(),           // The second sheet
-            // new SeniorHighSchoolPayrollExport(), // The third sheet
-        ];
+        // Use the month to filter the payroll data
+        return Payroll::whereYear('created_at', $this->month->year)
+                      ->whereMonth('created_at', $this->month->month)
+                      ->get();
 
-        return $sheets;
+        // NOTE: Adjust the 'created_at' column and the query to match
+        // your database schema and logic for how payroll periods are stored.
     }
 }

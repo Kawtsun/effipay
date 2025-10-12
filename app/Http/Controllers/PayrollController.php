@@ -526,12 +526,20 @@ class PayrollController extends Controller
         ]);
     }
 
-    public function export()
+    public function export(Request $request)
     {
-        // The filename for the downloaded file
-        $fileName = 'payroll-summary-' . now()->format('Y-m-d') . '.xlsx';
+        // Validate that the month parameter is present and is a valid date format
+        $request->validate([
+            'month' => 'required|date_format:Y-m',
+        ]);
 
-        // Trigger the download using the new export class
-        return Excel::download(new PayrollExport(), $fileName);
+        // Parse the month from the request
+        $month = Carbon::createFromFormat('Y-m', $request->input('month'));
+
+        // Generate a filename based on the selected month
+        $fileName = 'payroll-ledger-' . $month->format('Y-m') . '.xlsx';
+
+        // Pass the selected month to your Excel export class
+        return Excel::download(new PayrollExport($month), $fileName);
     }
 }
