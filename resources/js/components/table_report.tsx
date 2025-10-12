@@ -246,7 +246,7 @@ export default function TableReport({
 
             <div className="mt-4 flex min-h-[56px] items-center justify-between rounded-md border bg-card px-3 py-2 text-sm">
                 <div className="flex items-center gap-3 text-muted-foreground">
-                    <span>Rows per page</span>
+                    <span className='font-medium text-foreground'>Rows per page</span>
                     <Select
                         value={`${pagination.pageSize}`}
                         onValueChange={(value) => {
@@ -266,7 +266,7 @@ export default function TableReport({
                             ))}
                         </SelectContent>
                     </Select>
-                    <span className="hidden sm:inline">
+                    <span className="font-medium text-foreground hidden sm:inline">
                         Page {currentPage} of {totalPages}
                     </span>
                 </div>
