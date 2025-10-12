@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selector';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Define a type for the form data this component will handle
 type EmployeeFormData = {
@@ -52,25 +53,35 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                 </div>
             </CardHeader>
             <CardContent>
-                {isCollegeInstructor && (
-                    <div className="mb-6">
-                        <Label htmlFor="college_work_hours" className="font-semibold">
-                            College Work Hours
-                        </Label>
-                        <div className="relative mt-2">
-                            <Hourglass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                id="college_work_hours"
-                                type="number"
-                                className="pl-10"
-                                placeholder="e.g., 40"
-                                value={data.college_work_hours || ''}
-                                onChange={(e) => setData('college_work_hours', e.target.value)}
-                            />
-                        </div>
-                        <ErrorDisplay field="college_work_hours" />
-                    </div>
-                )}
+                <AnimatePresence>
+                    {isCollegeInstructor && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                        >
+                            <div className="mb-6">
+                                <Label htmlFor="college_work_hours" className="font-semibold">
+                                    College Work Hours
+                                </Label>
+                                <div className="relative mt-2">
+                                    <Hourglass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="college_work_hours"
+                                        type="number"
+                                        className="pl-10"
+                                        placeholder="e.g., 40"
+                                        value={data.college_work_hours || ''}
+                                        onChange={(e) => setData('college_work_hours', e.target.value)}
+                                    />
+                                </div>
+                                <ErrorDisplay field="college_work_hours" />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
                 <WorkDaysSelector
                     value={data.work_days || []}
                     // THE FIX: When days are changed, also clear the validation error.
