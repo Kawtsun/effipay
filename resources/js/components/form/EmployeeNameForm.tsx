@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { AlertTriangle, UserCircle } from 'lucide-react';
+import { AlertTriangle, UserCircle, Asterisk } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,7 +61,9 @@ export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                     {/* Last Name */}
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="last_name" className="font-semibold">Last Name</Label>
+                        <Label htmlFor="last_name" className="font-semibold flex items-center">
+                            Last Name <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                        </Label>
                         <Input
                             id="last_name"
                             type="text"
@@ -75,7 +77,9 @@ export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
 
                     {/* First Name */}
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="first_name" className="font-semibold">First Name</Label>
+                        <Label htmlFor="first_name" className="font-semibold flex items-center">
+                            First Name <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                        </Label>
                         <Input
                             id="first_name"
                             type="text"
@@ -90,7 +94,7 @@ export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
                     {/* Middle Name */}
                     <div className="flex flex-col gap-2 md:col-span-2">
                         <Label htmlFor="middle_name" className="font-semibold">
-                            Middle Name <span className="text-gray-500 font-normal">(Optional)</span>
+                            Middle Name
                         </Label>
                         <Input
                             id="middle_name"
