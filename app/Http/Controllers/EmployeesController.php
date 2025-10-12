@@ -28,8 +28,8 @@ class EmployeesController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('last_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('first_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('middle_name', 'like', '%' . $request->search . '%');
+                    ->orWhere('first_name', 'like', '%' . $request->search . '%')
+                    ->orWhere('middle_name', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -45,11 +45,11 @@ class EmployeesController extends Controller
 
         $standardRoles = ['administrator', 'college instructor', 'basic education instructor'];
         if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
-            $query->where(function($q) use ($request, $standardRoles) {
+            $query->where(function ($q) use ($request, $standardRoles) {
                 $rolesToFilter = $request->roles;
                 if (in_array('others', $rolesToFilter)) {
                     $rolesToFilter = array_diff($rolesToFilter, ['others']);
-                    $q->orWhere(function($subQuery) use ($standardRoles) {
+                    $q->orWhere(function ($subQuery) use ($standardRoles) {
                         foreach ($standardRoles as $stdRole) {
                             $subQuery->where('roles', 'not like', '%' . $stdRole . '%');
                         }
@@ -64,38 +64,51 @@ class EmployeesController extends Controller
         if ($request->filled('collegeProgram')) {
             $query->where('college_program', $request->collegeProgram);
         }
-        
+
         $allRolesRaw = Employees::pluck('roles')->filter()->map(function ($roles) {
             return explode(',', $roles);
-        })->flatten()->map(fn($role) => trim($role))->filter()->unique()->values();
+        })->flatten()->map(fn ($role) => trim($role))->filter()->unique()->values();
 
         $customRoles = $allRolesRaw->filter(function ($role) use ($standardRoles) {
             return !in_array(strtolower($role), $standardRoles);
-        })->map(fn($role) => ['value' => $role, 'label' => ucwords($role)])->values()->toArray();
+        })->map(fn ($role) => ['value' => $role, 'label' => ucwords($role)])->values()->toArray();
 
         $perPage = (int) ($request->input('perPage', 10));
 
+        // Eager load the relationships
         $employees = $query->with(['workDays', 'employeeTypes'])->paginate($perPage)->withQueryString();
 
-        $employeesArray = array_map(function ($emp) {
-            $employeeTypesMap = $emp->employeeTypes->pluck('type', 'role')->toArray();
-            $empData = $emp->toArray();
-            unset($empData['employee_type']);
-            $empData['employee_types'] = $employeeTypesMap;
-            return $empData;
-        }, $employees->items());
+        // Transform the paginated items
+        $employees->getCollection()->transform(function ($emp) {
+            // ** THE FIX IS HERE **
+            // We now map the collection to the correct array structure
+            $employeeTypesArray = $emp->employeeTypes->map(function ($type) {
+                return [
+                    'role' => $type->role,
+                    'type' => $type->type,
+                ];
+            });
+
+            // Unset the original relationship to avoid sending redundant data
+            unset($emp->employeeTypes);
+            // Assign the newly formatted array
+            $emp->employee_types = $employeeTypesArray;
+
+            return $emp;
+        });
 
         return Inertia::render('employees/index', [
-            'employees'   => $employeesArray,
+            // No need to map over the items again, the collection is already transformed
+            'employees'   => $employees->items(),
             'currentPage' => $employees->currentPage(),
             'totalPages'  => $employees->lastPage(),
             'perPage'     => $perPage,
             'search'      => $request->input('search', ''),
             'othersRoles' => $customRoles,
             'filters'     => [
-                'types'    => (array) $request->input('types', []),
-                'statuses' => (array) $request->input('statuses', []),
-                'roles'    => array_values((array) $request->input('roles', [])),
+                'types'        => (array) $request->input('types', []),
+                'statuses'     => (array) $request->input('statuses', []),
+                'roles'        => array_values((array) $request->input('roles', [])),
                 'collegeProgram' => $request->input('collegeProgram', ''),
             ],
         ]);
