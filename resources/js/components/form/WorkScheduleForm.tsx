@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { Clock, AlertTriangle, Hourglass } from 'lucide-react';
+import { Clock, AlertTriangle, Hourglass, Asterisk } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selector';
 import { Label } from '@/components/ui/label';
@@ -63,8 +63,8 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                             className="overflow-hidden"
                         >
                             <div className="mb-6">
-                                <Label htmlFor="college_work_hours" className="font-semibold">
-                                    College Work Hours
+                                <Label htmlFor="college_work_hours" className="font-semibold flex items-center">
+                                    College Work Hours <Asterisk className="h-4 w-4 text-destructive ml-1" />
                                 </Label>
                                 <div className="relative mt-2">
                                     <Hourglass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Calendar, Check, CheckCircle, Coffee, XCircle } from 'lucide-react';
+import { Calendar, Check, CheckCircle, Coffee, XCircle, Asterisk } from 'lucide-react';
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { TimePicker } from '@/components/ui/time-picker';
@@ -123,7 +123,9 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
         <div className="flex flex-col gap-6">
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                    <Label className="font-semibold">Work Days</Label>
+                    <Label className="font-semibold flex items-center">
+                        Work Days <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                    </Label>
                     <div className="flex items-center gap-2">
                         <Button type='button' size="sm" variant="ghost" onClick={handleAll} className="text-primary hover:text-primary h-8 px-2">
                             <CheckCircle className='w-4 h-4 mr-2' />
@@ -226,7 +228,9 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="work-start-time">Start Time</Label>
+                                <div className='flex items-center'>
+                                    <Label htmlFor="work-start-time">Start Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                </div>
                                 <TimePicker
                                     id="work-start-time"
                                     value={currentDay?.work_start_time || ''}
@@ -234,7 +238,9 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
                                     placeholder="Select start time" label={undefined}                                />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="work-end-time">End Time</Label>
+                                <div className='flex items-center'>
+                                    <Label htmlFor="work-start-time">End Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                </div>
                                 <TimePicker
                                     id="work-end-time"
                                     value={currentDay?.work_end_time || ''}
