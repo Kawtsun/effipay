@@ -25,7 +25,9 @@ class ReportsController extends Controller
         }
 
         if ($request->filled('types')) {
-            $query->whereIn('employee_type', $request->types);
+            $query->whereHas('employeeTypes', function ($q) use ($request) {
+                $q->whereIn('type', $request->types);
+            });
         }
 
         if ($request->filled('statuses')) {
@@ -94,6 +96,25 @@ class ReportsController extends Controller
         $perPage = max(1, min(100, (int) $perPage)); // Ensure it's between 1 and 100
         
         $employees = $query->with('workDays')->paginate($perPage)->withQueryString();
+
+        $employees->getCollection()->transform(function ($emp) {
+            // ** THE FIX IS HERE **
+            // We now map the collection to the correct array structure
+            $employeeTypesArray = $emp->employeeTypes->map(function ($type) {
+                return [
+                    'role' => $type->role,
+                    'type' => $type->type,
+                ];
+            });
+
+            // Unset the original relationship to avoid sending redundant data
+            unset($emp->employeeTypes);
+            // Assign the newly formatted array
+            $emp->employee_types = $employeeTypesArray;
+
+            return $emp;
+        });
+
         $month = $request->input('month'); // Optionally filter by month
         $employeesArray = array_map(function ($emp) use ($month) {
             // Fetch payroll for this employee and month (if month provided)
@@ -119,7 +140,7 @@ class ReportsController extends Controller
                 'last_name' => $emp->last_name,
                 'first_name' => $emp->first_name,
                 'middle_name' => $emp->middle_name,
-                'employee_type' => $emp->employee_type,
+                'employee_types' => $emp->employee_types,
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
                 'base_salary' => $base_salary,
