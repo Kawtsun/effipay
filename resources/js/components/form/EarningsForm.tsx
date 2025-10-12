@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { Landmark, AlertTriangle, Info } from 'lucide-react';
+import { Landmark, AlertTriangle, Info, Asterisk } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -75,8 +75,8 @@ export function EarningsForm({ form }: EarningsFormProps) {
 
     const honorariumField = (
         <div className="flex flex-col gap-2">
-            <Label htmlFor="honorarium" className="font-semibold">
-                Honorarium {showHonorariumOptional && <span className="text-gray-500 font-normal">(Optional)</span>}
+            <Label htmlFor="honorarium" className="font-semibold flex items-center">
+                Honorarium {!showHonorariumOptional && <Asterisk className="h-4 w-4 text-destructive ml-1" />}
             </Label>
             <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
@@ -96,8 +96,8 @@ export function EarningsForm({ form }: EarningsFormProps) {
 
     const baseSalaryField = (
         <div className="flex flex-col gap-2">
-            <Label htmlFor="base_salary" className="font-semibold">
-                Base Salary {isBaseSalaryOptional && <span className="text-gray-500 font-normal">(Optional)</span>}
+            <Label htmlFor="base_salary" className="font-semibold flex items-center">
+                Base Salary {!isBaseSalaryOptional && <Asterisk className="h-4 w-4 text-destructive ml-1" />}
             </Label>
             <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
@@ -151,8 +151,8 @@ export function EarningsForm({ form }: EarningsFormProps) {
                                     {showBaseSalary && baseSalaryField}
                                     {showRatePerHour && (
                                         <div className="flex flex-col gap-2">
-                                            <Label htmlFor="rate_per_hour" className="font-semibold">
-                                                Rate Per Hour {isRatePerHourOptional && <span className="text-gray-500 font-normal">(Optional)</span>}
+                                            <Label htmlFor="rate_per_hour" className="font-semibold flex items-center">
+                                                Rate Per Hour {!isRatePerHourOptional && <Asterisk className="h-4 w-4 text-destructive ml-1" />}
                                             </Label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
