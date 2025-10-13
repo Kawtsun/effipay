@@ -8,14 +8,11 @@ import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
 import { calculateSSS, calculatePhilHealth } from '@/utils/salaryFormulas';
 
-// Helper to format numbers with commas and specific decimal places
-function formatNumber(value: string | number, decimals: number): string {
-    if (value === null || value === undefined || value === '') return '';
-    const num = Number(value);
-    if (isNaN(num)) return '';
-
-    const fixedValue = num.toFixed(decimals);
-    const parts = fixedValue.split('.');
+// Helper to format numbers with commas for display
+function formatWithCommas(value: string | number): string {
+    if (value === null || value === undefined) return '';
+    const stringValue = String(value);
+    const parts = stringValue.split('.');
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return parts.join('.');
 }
@@ -37,7 +34,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
     const { data, setData, errors, clearErrors } = form;
 
     const [pagIbigError, setPagIbigError] = React.useState<string | null>(null);
-    const isAdmin = React.useMemo(() => 
+    const isAdmin = React.useMemo(() =>
         data.roles.split(',').map(r => r.trim()).includes('administrator'),
         [data.roles]
     );
@@ -48,7 +45,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
     // This effect handles the calculation and clearing of SSS and PhilHealth
     React.useEffect(() => {
         const baseSalaryNum = parseFloat(data.base_salary.replace(/,/g, ''));
-        
+
         // If the base salary is not a valid number, clear the fields
         if (isNaN(baseSalaryNum) || baseSalaryNum <= 0) {
             if (data.sss !== '' || data.philhealth !== '') {
@@ -64,10 +61,10 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
         // If base salary is a valid number, perform the calculation
         const calculatedSss = calculateSSS(baseSalaryNum);
         const calculatedPhilhealth = calculatePhilHealth(baseSalaryNum);
-        
+
         const formattedSss = calculatedSss.toFixed(2);
         const formattedPhilhealth = calculatedPhilhealth.toFixed(2);
-        
+
         if (data.sss !== formattedSss || data.philhealth !== formattedPhilhealth) {
             setData(currentData => ({
                 ...currentData,
@@ -112,7 +109,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
             }
         }
     };
-    
+
     const ErrorDisplay = ({ message }: { message: string | null | undefined }) => {
         if (!message) return null;
         return (
@@ -160,12 +157,12 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="flex flex-col gap-2">
                                 <Label htmlFor="sss_admin" className="font-semibold">SSS Contribution</Label>
-                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input id="sss_admin" value={formatNumber(data.sss, 2)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input id="sss_admin" value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                 <ErrorDisplay message={errors.sss} />
                             </div>
                             <div className="flex flex-col gap-2">
                                 <Label htmlFor="philhealth_admin" className="font-semibold">PhilHealth Contribution</Label>
-                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input id="philhealth_admin" value={formatNumber(data.philhealth, 2)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input id="philhealth_admin" value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                 <ErrorDisplay message={errors.philhealth} />
                             </div>
                         </div>
@@ -173,13 +170,13 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                             <Label htmlFor="pag_ibig_admin" className="font-semibold">Pag-IBIG Contribution</Label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
-                                <Input 
-                                    id="pag_ibig_admin" 
-                                    type="text" 
-                                    placeholder="Min 200.00" 
-                                    value={formatNumber(data.pag_ibig, 2)} 
-                                    onChange={e => handleNumericChange('pag_ibig', e.target.value)} 
-                                    className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`} 
+                                <Input
+                                    id="pag_ibig_admin"
+                                    type="text"
+                                    placeholder="Min 200.00"
+                                    value={formatWithCommas(data.pag_ibig)}
+                                    onChange={e => handleNumericChange('pag_ibig', e.target.value)}
+                                    className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
                                 />
                             </div>
                             <ErrorDisplay message={errors.pag_ibig || pagIbigError} />
@@ -193,7 +190,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                             <AnimatePresence>
                                 {showSSS && (
                                     <motion.div key="sss-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
-                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input value={formatNumber(data.sss, 2)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                         <ErrorDisplay message={errors.sss} />
                                     </motion.div>
                                 )}
@@ -205,7 +202,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                             <AnimatePresence>
                                 {showPhilhealth && (
                                      <motion.div key="philhealth-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
-                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input value={formatNumber(data.philhealth, 2)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                         <ErrorDisplay message={errors.philhealth} />
                                     </motion.div>
                                 )}
@@ -219,12 +216,12 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                                      <motion.div key="pagibig-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
                                         <div className="relative">
                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
-                                            <Input 
-                                                type="text" 
-                                                placeholder="Min 200.00" 
-                                                value={formatNumber(data.pag_ibig, 2)} 
-                                                onChange={e => handleNumericChange('pag_ibig', e.target.value)} 
-                                                className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`} 
+                                            <Input
+                                                type="text"
+                                                placeholder="Min 200.00"
+                                                value={formatWithCommas(data.pag_ibig)}
+                                                onChange={e => handleNumericChange('pag_ibig', e.target.value)}
+                                                className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
                                             />
                                         </div>
                                         <ErrorDisplay message={errors.pag_ibig || pagIbigError} />
