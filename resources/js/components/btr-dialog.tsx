@@ -55,6 +55,18 @@ const DAY_LABELS: Record<string, string> = {
   sun: "Sunday",
 };
 
+import { OBSERVANCE_COLOR_MAP, OBSERVANCE_PRETTY } from './observance-colors';
+
+// Map some normalized leave strings to observance keys when possible
+const LEAVE_TO_OBSERVANCE: Record<string, string> = {
+  'Rainy Day': 'rainy-day',
+  'Rainy-day': 'rainy-day',
+  'Half-day': 'half-day',
+  'Half Day': 'half-day',
+  'Whole-day': 'whole-day',
+  'Whole Day': 'whole-day',
+};
+
 const LEAVE_COLOR_MAP: Record<string, { bg: string; text: string; badge: string }> = {
   'Paid Leave': {
     bg: 'bg-green-100 dark:bg-green-900/30',
@@ -95,6 +107,7 @@ export default function BTRDialog({ employee, onClose }: Props) {
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [records, setRecords] = useState<TimeRecord[]>([]);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
+  const [observanceMap, setObservanceMap] = useState<Record<string, { type?: string; label?: string; start_time?: string; is_automated?: boolean }>>({});
 
   // Loading state for skeleton and minimum loading time
   const [loading, setLoading] = useState(false);
@@ -117,6 +130,31 @@ export default function BTRDialog({ employee, onClose }: Props) {
         }
       });
   }, [employee, selectedMonth]);
+
+  // Fetch observances for the selected month to drive row highlighting
+  useEffect(() => {
+    if (!selectedMonth) {
+      setObservanceMap({});
+      return;
+    }
+    const [y, m] = selectedMonth.split('-');
+    const monthPrefix = `${y}-${m.padStart(2, '0')}`;
+    fetch('/observances')
+      .then(res => res.json())
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        const map: Record<string, any> = {};
+        for (const o of data) {
+          const d = (o?.date || '').slice(0, 10);
+          if (!d.startsWith(monthPrefix)) continue;
+          map[d] = { type: o?.type, label: o?.label, start_time: o?.start_time, is_automated: o?.is_automated };
+        }
+        setObservanceMap(map);
+        // Expose for quick debugging if needed
+        (window as any).__BTR_DEBUG__ = { ...(window as any).__BTR_DEBUG__, observanceMap: map };
+      })
+      .catch(() => {});
+  }, [selectedMonth]);
 
   // Fetch Timekeeping Records AND Monthly Summary (Absence/Leave Data)
   useEffect(() => {
@@ -349,20 +387,30 @@ export default function BTRDialog({ employee, onClose }: Props) {
                           const isEven = i % 2 === 0;
 
                           // --- UPDATED LOGIC FOR LEAVE & STYLING ---
-                          const leaveType = leaveDatesMap[dateStr]; // Get the leave type string or undefined
-                          const isLeaveDay = !!leaveType; // True if leaveType exists
-
-                          // Get the color set for the leave type, default if not found
-                          const colors = isLeaveDay
-                            ? LEAVE_COLOR_MAP[leaveType] || LEAVE_COLOR_MAP.DEFAULT
-                            : LEAVE_COLOR_MAP.DEFAULT;
+                          const leaveType = leaveDatesMap[dateStr];
+                          const isLeaveDay = !!leaveType;
+                          // Observance for this date takes priority
+                          const obs = observanceMap[dateStr];
+                          const obsType = obs?.type as (keyof typeof OBSERVANCE_COLOR_MAP) | undefined;
+                          let colors = LEAVE_COLOR_MAP.DEFAULT;
+                          if (obsType && OBSERVANCE_COLOR_MAP[obsType]) {
+                            colors = OBSERVANCE_COLOR_MAP[obsType];
+                          } else if (isLeaveDay) {
+                            const mapped = LEAVE_TO_OBSERVANCE[leaveType];
+                            if (mapped && OBSERVANCE_COLOR_MAP[mapped]) {
+                              colors = OBSERVANCE_COLOR_MAP[mapped];
+                            } else {
+                              colors = LEAVE_COLOR_MAP[leaveType] || LEAVE_COLOR_MAP.DEFAULT;
+                            }
+                          }
 
                           let rowClassName = isEven
                             ? "bg-gray-50 dark:bg-gray-900/40"
                             : "bg-white dark:bg-gray-800/60";
                           let textClassName = "";
 
-                          if (isLeaveDay) {
+                          const isHighlight = !!obsType || isLeaveDay;
+                          if (isHighlight) {
                             rowClassName = colors.bg; // Use specific background color
                             textClassName = colors.text; // Use specific text color
                           }
@@ -371,7 +419,8 @@ export default function BTRDialog({ employee, onClose }: Props) {
                           const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
                           const workDays = employee?.work_days || [];
                           const isWorkDay = workDays.some(workDay => DAY_LABELS[workDay.day] === dayName);
-                          const isPaidLeaveDay = isLeaveDay && isWorkDay;
+                          const isPaidLeaveDay = isLeaveDay && isWorkDay; // leave-based tag (fallback)
+                          const showObservanceTag = !!obsType; // primary tag control
                           // --- END UPDATED LOGIC ---
 
 
@@ -388,9 +437,13 @@ export default function BTRDialog({ employee, onClose }: Props) {
                                   return (
                                     <>
                                       {displayText}
-                                      {isPaidLeaveDay && (
+                                      {(showObservanceTag || isPaidLeaveDay) && (
                                         <span className={`ml-2 px-2 py-0.5 text-[10px] font-bold rounded-full ${colors.badge}`}>
-                                          {leaveType.toUpperCase()}
+                                          {(
+                                            showObservanceTag
+                                              ? (OBSERVANCE_PRETTY[obsType as string] || (obsType as string || '').replace('-', ' '))
+                                              : leaveType
+                                          ).toUpperCase()}
                                         </span>
                                       )}
                                     </>

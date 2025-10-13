@@ -11,7 +11,11 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
-export function CalendarCarousel({ observances = [] }: { observances: { date: string, label?: string, is_automated?: boolean }[] }) {
+import { OBSERVANCE_COLOR_MAP, OBSERVANCE_PRETTY } from './observance-colors';
+
+type ObservanceItem = { date: string, label?: string, is_automated?: boolean, type?: string, start_time?: string };
+
+export function CalendarCarousel({ observances = [], onEdit }: { observances: ObservanceItem[]; onEdit?: (obs: ObservanceItem) => void }) {
   function formatManilaDate(dateStr: string) {
     if (!dateStr) return '';
     let d;
@@ -103,22 +107,38 @@ export function CalendarCarousel({ observances = [] }: { observances: { date: st
                 </div>
               </CarouselItem>
             ) : (
-              sortedObservances.map((obs) => (
-                <CarouselItem key={obs.date + (obs.label || '')} className="basis-1/3">
-                  <div className="flex justify-center w-full">
-                    <Card className="w-[320px]">
-                      <CardContent className="flex flex-col items-center justify-center h-[160px] px-2 py-4 w-full">
-                        <span className="text-base font-bold mb-2 text-primary text-center tracking-wide break-words max-w-[280px] whitespace-pre-line" style={{ wordBreak: 'break-word' }}>
-                          {formatManilaDate(obs.date)}
-                        </span>
-                        <span className="text-sm text-center text-muted-foreground font-medium break-words max-w-[260px] whitespace-pre-line" style={{ wordBreak: 'break-word' }}>
-                          {obs.label || 'Suspension/Holiday'}
-                        </span>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </CarouselItem>
-              ))
+              sortedObservances.map((obs) => {
+                const type = obs.type || 'DEFAULT';
+                const colors = OBSERVANCE_COLOR_MAP[type] || OBSERVANCE_COLOR_MAP.DEFAULT;
+                return (
+                  <CarouselItem key={obs.date + (obs.label || '')} className="basis-1/3">
+                    <div className="flex justify-center w-full">
+                      <Card
+                        role={onEdit ? 'button' : undefined}
+                        tabIndex={onEdit ? 0 : -1}
+                        title={onEdit ? 'Edit observance' : undefined}
+                        onClick={(e) => { if (onEdit) { e.stopPropagation(); onEdit(obs); } }}
+                        onKeyDown={(e) => { if (onEdit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onEdit(obs); } }}
+                        className={`w-[320px] rounded-2xl overflow-hidden ${colors.bg} ${colors.border || ''} ${colors.ring || ''} shadow-[0_0_0_1px_rgba(0,0,0,0.05)] ${onEdit ? 'cursor-pointer hover:shadow-lg hover:scale-[1.01] transition-all' : ''} hover:${colors.hoverRing || ''} hover:${colors.hoverBorder || ''}`}
+                      >
+                        <CardContent className={`relative flex flex-col items-center justify-center h-[160px] px-2 py-4 w-full ${colors.text}`}>
+                          <div className={`absolute inset-0 pointer-events-none ${colors.grad || ''}`} />
+                          <span className="text-base font-bold mb-2 text-center tracking-wide break-words max-w-[280px] whitespace-pre-line" style={{ wordBreak: 'break-word' }}>
+                            {formatManilaDate(obs.date)}
+                          </span>
+                          <span className="text-sm text-center text-muted-foreground font-medium break-words max-w-[260px] whitespace-pre-line" style={{ wordBreak: 'break-word' }}>
+                            {obs.label || (obs.type ? (OBSERVANCE_PRETTY[obs.type] || obs.type.replace('-', ' ')) : 'Suspension/Holiday')}
+                          </span>
+                          {obs.start_time ? (
+                            <span className="text-xs text-center text-muted-foreground mt-1">Starts at: {new Date(`1970-01-01T${obs.start_time}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                          ) : null}
+                          {/* Badge removed to avoid redundancy */}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CarouselItem>
+                );
+              })
             )}
           </CarouselContent>
           <CarouselPrevious />
