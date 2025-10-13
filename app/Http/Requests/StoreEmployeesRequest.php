@@ -51,8 +51,9 @@ class StoreEmployeesRequest extends FormRequest
             'college_program' => [Rule::requiredIf($isCollege), 'nullable', 'string', 'max:255'],
             'work_days' => 'required|array|min:1',
             'work_days.*.day' => 'required|string',
-            'work_days.*.work_start_time' => 'required|date_format:H:i',
-            'work_days.*.work_end_time' => 'required|date_format:H:i',
+            // Accept both HH:MM and HH:MM:SS to handle edit forms seeded from DB
+            'work_days.*.work_start_time' => ['required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
+            'work_days.*.work_end_time' => ['required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
             
             // Your original optional fields (unchanged)
             'sss_salary_loan' => 'nullable|numeric',

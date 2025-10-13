@@ -159,7 +159,10 @@ class EmployeesController extends Controller
             }
         }
         
-        DB::transaction(function () use ($employeeData, $employeeTypesData, $request) {
+        // Use validated work_days to avoid relying on Request accessor inside closure
+        $workDays = $validatedData['work_days'] ?? [];
+
+        DB::transaction(function () use ($employeeData, $employeeTypesData, $workDays) {
             $employee = Employees::create($employeeData);
 
             if (is_array($employeeTypesData)) {
@@ -168,7 +171,6 @@ class EmployeesController extends Controller
                 }
             }
 
-            $workDays = $request->input('work_days', []);
             if (is_array($workDays) && count($workDays) > 0) {
                 foreach ($workDays as $workDay) {
                     if (isset($workDay['day'], $workDay['work_start_time'], $workDay['work_end_time'])) {
@@ -226,28 +228,31 @@ class EmployeesController extends Controller
 
         $employeeData = $validatedData;
         
+        // Map rate_per_hour to college_rate then remove it (use array_key_exists so null clears the value)
         if (array_key_exists('rate_per_hour', $employeeData)) {
             $employeeData['college_rate'] = $employeeData['rate_per_hour'];
             unset($employeeData['rate_per_hour']);
         }
+
+        // Sanitize numeric fields to null if they are empty ('' or null) — same list and behavior as store()
         foreach ([
-            'base_salary', 'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
-            'college_rate', 'rate_per_hour',
-            'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 'pagibig_calamity_loan',
-            'peraa_con', 'tuition', 'china_bank', 'tea', 'honorarium'
+            'base_salary', 'honorarium', 'college_rate',
+            'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
+            'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 
+            'pagibig_calamity_loan', 'peraa_con', 'tuition', 'china_bank', 'tea'
         ] as $field) {
-             if (isset($employeeData[$field]) && ($employeeData[$field] === '' || $employeeData[$field] === null || $employeeData[$field] === 0.0)) {
-                 $employeeData[$field] = null;
-             }
-        }
-        if (array_key_exists('rate_per_hour', $employeeData)) {
-             unset($employeeData['rate_per_hour']);
+            if (isset($employeeData[$field]) && ($employeeData[$field] === '' || $employeeData[$field] === null)) {
+                $employeeData[$field] = null;
+            }
         }
         
         $oldData = $employee->load('employeeTypes', 'workDays')->toArray();
         $oldStatus = $employee->employee_status;
         
-        DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $request, $oldData) {
+        // Use validated work_days to avoid relying on Request accessor inside closure
+        $workDays = $validatedData['work_days'] ?? [];
+
+        DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $workDays, $oldData) {
             $employee->update($employeeData);
 
             $employee->employeeTypes()->delete();
@@ -258,12 +263,11 @@ class EmployeesController extends Controller
             }
             
             $employee->workDays()->delete();
-            $workDays = $request->input('work_days', []);
             if (is_array($workDays)) {
                 foreach ($workDays as $workDay) {
-                     if (isset($workDay['day'], $workDay['work_start_time'], $workDay['work_end_time'])) {
-                         $employee->workDays()->create($workDay);
-                     }
+                    if (isset($workDay['day'], $workDay['work_start_time'], $workDay['work_end_time'])) {
+                        $employee->workDays()->create($workDay);
+                    }
                 }
             }
 
