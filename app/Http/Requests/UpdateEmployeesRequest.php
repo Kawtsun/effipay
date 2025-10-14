@@ -83,6 +83,7 @@ class UpdateEmployeesRequest extends FormRequest
         // Rate per hour rule matching StoreEmployeesRequest
         $rules['rate_per_hour'] = [
             Rule::excludeIf($isAdmin),
+            Rule::requiredIf($isCollege),
             'nullable',
             'numeric',
             'min:0',

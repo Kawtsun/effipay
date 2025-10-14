@@ -84,6 +84,7 @@ class StoreEmployeesRequest extends FormRequest
         // This rule now correctly validates 'rate_per_hour' only when the college instructor role is selected.
         $rules['rate_per_hour'] = [
             Rule::excludeIf($isAdmin),
+            Rule::requiredIf($isCollege),
             'nullable',
             'numeric',
             'min:0',
