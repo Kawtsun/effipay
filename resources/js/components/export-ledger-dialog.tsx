@@ -20,9 +20,10 @@ declare function route(name: string, params?: object): string;
 
 const ExportLedgerDialog: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
-    const [selectedMonth, setSelectedMonth] = useState<Date | undefined>(
-        new Date(),
-    );
+    const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    });
     const [isDialogOpen, setDialogOpen] = useState<boolean>(false);
 
     const handleExport = async () => {
@@ -33,8 +34,8 @@ const ExportLedgerDialog: React.FC = () => {
 
         setLoading(true);
         try {
-            // Format the month to YYYY-MM for the backend
-            const monthParam = selectedMonth.toISOString().slice(0, 7);
+            // Month value is already YYYY-MM
+            const monthParam = selectedMonth;
 
             // This calls the route with the selected month as a query parameter
             const response = await axios.get(
@@ -94,8 +95,8 @@ const ExportLedgerDialog: React.FC = () => {
                         </Label>
                         <div className='col-span-3'>
                             <MonthPicker
-                                date={selectedMonth}
-                                setDate={setSelectedMonth}
+                                value={selectedMonth}
+                                onValueChange={setSelectedMonth}
                             />
                         </div>
                     </div>

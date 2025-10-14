@@ -103,7 +103,20 @@ interface LeaveTypeData {
 }
 
 export default function BTRDialog({ employee, onClose }: Props) {
-  const [selectedMonth, setSelectedMonth] = useState("");
+  // Use YYYY-MM strings consistently
+  const normalizeYm = (ym: string) => {
+    const base = ym?.slice(0, 7) || "";
+    const [y, m] = base.split("-");
+    const yi = parseInt(y || "", 10);
+    const mi = parseInt(m || "", 10);
+    if (Number.isNaN(yi) || Number.isNaN(mi)) return base;
+    return `${yi}-${String(mi).padStart(2, '0')}`;
+  };
+
+  const now = new Date();
+  const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const [selectedMonth, setSelectedMonth] = useState(normalizeYm(currentYm));
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [records, setRecords] = useState<TimeRecord[]>([]);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
@@ -120,16 +133,26 @@ export default function BTRDialog({ employee, onClose }: Props) {
     fetch("/payroll/all-available-months")
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && Array.isArray(data.months)) {
-          setAvailableMonths(data.months);
-          if (!selectedMonth && data.months.length > 0) {
-            setSelectedMonth(data.months[0]);
-          } else if (data.months.length === 0) {
-            toast.error('No available months to display.');
+        if (data?.success && Array.isArray(data.months)) {
+          const normalized = (data.months as string[])
+            .map((m) => normalizeYm(m))
+            .filter(Boolean) as string[];
+          setAvailableMonths(normalized);
+          if (!selectedMonth) {
+            if (normalized.length > 0) {
+              setSelectedMonth(normalized[0]);
+            } else {
+              // Fallback to current month when API returns nothing
+              setSelectedMonth(normalizeYm(currentYm));
+            }
           }
         }
+      })
+      .catch(() => {
+        // On failure, still allow user to pick current/recent months
+        if (!selectedMonth) setSelectedMonth(normalizeYm(currentYm));
       });
-  }, [employee, selectedMonth]);
+  }, [employee]);
 
   // Fetch observances for the selected month to drive row highlighting
   useEffect(() => {
