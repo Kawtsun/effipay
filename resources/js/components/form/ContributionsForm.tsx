@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { HandCoins, AlertTriangle, PlusCircle, MinusCircle } from 'lucide-react';
+import { HandCoins, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -157,19 +157,19 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="flex flex-col gap-2">
                                 <Label htmlFor="sss_admin" className="font-semibold">SSS Contribution</Label>
-                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input id="sss_admin" value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input id="sss_admin" value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                 <ErrorDisplay message={errors.sss} />
                             </div>
                             <div className="flex flex-col gap-2">
                                 <Label htmlFor="philhealth_admin" className="font-semibold">PhilHealth Contribution</Label>
-                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input id="philhealth_admin" value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input id="philhealth_admin" value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                 <ErrorDisplay message={errors.philhealth} />
                             </div>
                         </div>
                         <div className="flex flex-col gap-2">
                             <Label htmlFor="pag_ibig_admin" className="font-semibold">Pag-IBIG Contribution</Label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                                <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                                 <Input
                                     id="pag_ibig_admin"
                                     type="text"
@@ -190,7 +190,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                             <AnimatePresence>
                                 {showSSS && (
                                     <motion.div key="sss-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
-                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                        <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                         <ErrorDisplay message={errors.sss} />
                                     </motion.div>
                                 )}
@@ -202,7 +202,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                             <AnimatePresence>
                                 {showPhilhealth && (
                                      <motion.div key="philhealth-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
-                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span><Input value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                        <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                         <ErrorDisplay message={errors.philhealth} />
                                     </motion.div>
                                 )}
@@ -215,7 +215,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                                 {showPagibig && (
                                      <motion.div key="pagibig-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
                                         <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                                            <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                                             <Input
                                                 type="text"
                                                 placeholder="Min 200.00"

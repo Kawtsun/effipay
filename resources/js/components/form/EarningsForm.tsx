@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { Landmark, AlertTriangle, Info, Asterisk } from 'lucide-react';
+import { Landmark, AlertTriangle, Info, Asterisk, PhilippinePeso } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -79,7 +79,7 @@ export function EarningsForm({ form }: EarningsFormProps) {
                 Honorarium {!showHonorariumOptional && <Asterisk className="h-4 w-4 text-destructive ml-1" />}
             </Label>
             <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input
                     id="honorarium"
                     type="text"
@@ -100,7 +100,7 @@ export function EarningsForm({ form }: EarningsFormProps) {
                 Base Salary {!isBaseSalaryOptional && <Asterisk className="h-4 w-4 text-destructive ml-1" />}
             </Label>
             <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input
                     id="base_salary"
                     type="text"
@@ -155,7 +155,7 @@ export function EarningsForm({ form }: EarningsFormProps) {
                                                 Rate Per Hour {!isRatePerHourOptional && <Asterisk className="h-4 w-4 text-destructive ml-1" />}
                                             </Label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                                                <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                                                 <Input
                                                     id="rate_per_hour"
                                                     type="text"

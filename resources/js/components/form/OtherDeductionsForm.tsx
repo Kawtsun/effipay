@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { Receipt, AlertTriangle, PlusCircle, MinusCircle } from 'lucide-react';
+import { Receipt, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -80,7 +80,7 @@ export function OtherDeductionsForm({ form }: OtherDeductionsFormProps) {
             {isShown && (
                 <motion.div key={key} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
                     <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                        <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                         <Input 
                             type="text" 
                             placeholder="0.00" 
