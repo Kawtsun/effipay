@@ -72,26 +72,26 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
                 philhealth: formattedPhilhealth,
             }));
         }
-    }, [data.base_salary, setData, data.sss, data.philhealth]);
+    }, [data.base_salary, setData]);
 
     // Effects to clear fields when they are hidden
     React.useEffect(() => {
         if (!isAdmin && !showSSS && data.sss !== '') {
             setData('sss', '');
         }
-    }, [isAdmin, showSSS, setData, data.sss]);
+    }, [isAdmin, showSSS, setData]);
 
     React.useEffect(() => {
         if (!isAdmin && !showPhilhealth && data.philhealth !== '') {
             setData('philhealth', '');
         }
-    }, [isAdmin, showPhilhealth, setData, data.philhealth]);
+    }, [isAdmin, showPhilhealth, setData]);
 
     React.useEffect(() => {
         if (!isAdmin && !showPagibig && data.pag_ibig !== '') {
             setData('pag_ibig', '');
         }
-    }, [isAdmin, showPagibig, setData, data.pag_ibig]);
+    }, [isAdmin, showPagibig, setData]);
 
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {
         const rawValue = value.replace(/,/g, '');
