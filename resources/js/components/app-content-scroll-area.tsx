@@ -13,7 +13,7 @@ export default function AppContentScrollArea({ children, className = '', style }
     <ScrollArea
       // 👇 REPLACE the classes with an explicit height calculation.
       // This will force it to the correct size.
-      className={`h-[calc(100vh-158px)] w-full overflow-auto bg-transparent ${className}`}
+      className={`h-[calc(100vh-158px)] w-full bg-transparent ${className}`}
       style={style}
       type="auto"
     >
