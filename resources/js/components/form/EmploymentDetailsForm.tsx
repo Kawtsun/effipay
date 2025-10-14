@@ -228,7 +228,13 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                                             College Dept. <Asterisk className="h-4 w-4 text-destructive ml-1" />
                                         </Label>
                                         <CollegeProgramScrollArea>
-                                            <EmployeeCollegeRadioDepartment value={collegeProgram} onChange={setCollegeProgram} />
+                                            <EmployeeCollegeRadioDepartment
+                                                value={collegeProgram}
+                                                onChange={(value) => {
+                                                    setCollegeProgram(value);
+                                                    clearErrors('college_program');
+                                                }}
+                                            />
                                         </CollegeProgramScrollArea>
                                         <ErrorDisplay field="college_program" />
                                     </div>
