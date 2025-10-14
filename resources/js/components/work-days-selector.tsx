@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Calendar, Check, CheckCircle, Coffee, XCircle, Asterisk } from 'lucide-react';
+import { Calendar, CheckCircle, Coffee, XCircle, Asterisk } from 'lucide-react';
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { TimePicker } from '@/components/ui/time-picker';
@@ -259,7 +259,7 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
                                     transition={{ duration: 0.2, ease: 'easeInOut' }}
                                     className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
                                 >
-                                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                                    <div className="text-sm text-blue-700 dark:text-blue-300">
                                         {(() => {
                                             const [startHour, startMinute] = currentDay.work_start_time.split(':').map(Number);
                                             const [endHour, endMinute] = currentDay.work_end_time.split(':').map(Number);
@@ -343,7 +343,7 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
                                                 </>
                                             );
                                         })()}
-                                    </p>
+                                    </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
