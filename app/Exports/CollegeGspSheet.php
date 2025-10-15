@@ -20,8 +20,8 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
      * Keep in sync with resources/js/components/employee-college-radio-department.tsx
      */
     protected static $COLLEGE_PROGRAMS = [
-        'BSBA' => 'Bachelor of Science in Business Administration',
-        'BSA' => 'Bachelor of Science in Accountancy',
+        // Combined BSBA and BSA into one department key
+        'BSBA/BSA' => 'Bachelor of Science in Business Administration / Bachelor of Science in Accountancy',
         'COELA' => 'College of Education and Liberal Arts',
         'BSCRIM' => 'Bachelor of Science in Criminology',
         'BSCS' => 'Bachelor of Science in Computer Science',
@@ -32,6 +32,15 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
         'BSPT' => 'Bachelor of Science in Physical Therapy',
         'GSP' => 'Graduate Studies Programs',
         'MBA' => 'Master of Business Administration',
+    ];
+
+    /**
+     * Map specific program codes to grouped department keys.
+     * For example, both 'BSBA' and 'BSA' map to 'BSBA/BSA'.
+     */
+    protected static $PROGRAM_MAP = [
+        'BSBA' => 'BSBA/BSA',
+        'BSA' => 'BSBA/BSA',
     ];
 
     public function __construct($month = null)
@@ -83,8 +92,17 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
             ->orderBy('employee_name')
             ->get();
 
+        // Apply PROGRAM_MAP to results so mapped programs are grouped together
+        $mapped = $results->map(function ($item) {
+            $prog = $item->college_program ?? 'Unassigned';
+            if (isset(self::$PROGRAM_MAP[$prog])) {
+                $item->college_program = self::$PROGRAM_MAP[$prog];
+            }
+            return $item;
+        });
+
         // Organize results by program for quick lookup
-        $grouped = $results->groupBy('college_program');
+        $grouped = $mapped->groupBy('college_program');
 
         $rows = collect();
 
