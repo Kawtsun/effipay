@@ -108,13 +108,14 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
 
         // Iterate canonical program list to ensure all departments appear
         foreach (self::$COLLEGE_PROGRAMS as $progValue => $progLabel) {
-            $subtotalNet = 0.0;
-            $subtotalDeductions = 0.0;
+            // prepare subtotal accumulator for Honorarium..NetPay (indices 5..23)
+            $subtotals = array_fill(0, 24, 0.0);
+            $numericIndexes = range(5, 23); // F (index 5) through X (index 23)
 
             $programKey = $progValue;
             $items = $grouped->get($programKey, collect());
 
-            // Append employee rows if any
+            // Append employee rows if any and accumulate only F..X
             foreach ($items as $item) {
                 $employeeRow = [
                     $item->employee_name,
@@ -145,20 +146,34 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
 
                 $rows->push($employeeRow);
 
-                $subtotalNet += (float) $item->net_pay;
-                $subtotalDeductions += (float) $item->total_deductions;
+                // accumulate only Honorarium..NetPay columns
+                foreach ($numericIndexes as $idx) {
+                    $value = isset($employeeRow[$idx]) ? (float) $employeeRow[$idx] : 0.0;
+                    $subtotals[$idx] += $value;
+                }
             }
 
             // If there were no employee rows for this department, add one blank row above the subtotal
-            if ($items->isEmpty()) {
+            $isEmpty = $items->isEmpty();
+            if ($isEmpty) {
                 $rows->push(array_fill(0, 24, ''));
             }
 
-            // Push subtotal row (even if zero)
+            // Push subtotal row (even if zero) — only populate F..X
             $subRow = array_fill(0, 24, '');
             $subRow[0] = 'SUBTOTAL FOR ' . $progValue;
-            $subRow[22] = round($subtotalDeductions, 2);
-            $subRow[23] = round($subtotalNet, 2);
+
+            if ($isEmpty) {
+                // For empty departments, set only Honorarium..NetPay columns (indices 5..23) to the string '0.00'
+                foreach ($numericIndexes as $i) {
+                    $subRow[$i] = '0.00';
+                }
+            } else {
+                foreach ($numericIndexes as $idx) {
+                    $subRow[$idx] = round($subtotals[$idx], 2);
+                }
+            }
+
             $rows->push($subRow);
         }
 
@@ -334,9 +349,19 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                         'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF2CC']],
                     ]);
 
-                    // Ensure subtotal numeric cells (W and X) are right aligned and formatted
-                    $sheet->getStyle('W' . $row . ':X' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
-                    $sheet->getStyle('W' . $row . ':X' . $row)->getNumberFormat()->setFormatCode('#,##0.00');
+                    // Ensure subtotal numeric cells (F..X) are right aligned and formatted
+                    $sheet->getStyle('F' . $row . ':' . $highestColumn . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                    $sheet->getStyle('F' . $row . ':' . $highestColumn . $row)->getNumberFormat()->setFormatCode('#,##0.00');
+
+                    // Ensure all numeric columns F..X are populated with 0 if empty so zeros are visible
+                    foreach (range('F', $highestColumn) as $col) {
+                        $cellCoord = $col . $row;
+                        $val = $sheet->getCell($cellCoord)->getValue();
+                        if ($val === null || $val === '') {
+                            // set numeric zero
+                            $sheet->setCellValue($cellCoord, 0);
+                        }
+                    }
                 }
             }
             },
