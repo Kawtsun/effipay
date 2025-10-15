@@ -36,36 +36,36 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
         return $query->select(
                 DB::raw("CONCAT(employees.first_name, ' ', employees.last_name) as employee_name"), // NAME
                 DB::raw("'' as total"), // TOTAL (empty instead of 'N/A')
-                'payrolls.absences', // ABSENTS
+                DB::raw('ROUND(payrolls.absences, 2) as absences'), // ABSENTS
                 DB::raw("'' as total_hours"), // TOTAL HOURS (empty instead of 'N/A')
-                'employees.college_rate as rate_per_hour', // RATE PER HOUR
-                'payrolls.honorarium', // HONORARIUM
-                'payrolls.base_salary as monthly_base', // MONTHLY
-                DB::raw('(payrolls.absences * employees.college_rate) as absence_deduction'), // ABSENCES
+                DB::raw('ROUND(employees.college_rate, 2) as rate_per_hour'), // RATE PER HOUR
+                DB::raw('ROUND(payrolls.honorarium, 2) as honorarium'), // HONORARIUM
+                DB::raw('ROUND(payrolls.base_salary, 2) as monthly_base'), // MONTHLY
+                DB::raw('ROUND((payrolls.absences * employees.college_rate), 2) as absence_deduction'), // ABSENCES
                 DB::raw("'' as total_amount"), // TOTAL AMOUNT (empty instead of 'N/A')
-                'payrolls.sss as sss_premium', // SSS PREMIUM
-                'payrolls.sss_salary_loan', // SSS Loan
-                'payrolls.sss_calamity_loan', // SSS Calamity
-                'payrolls.pag_ibig as pag_ibig_contr', // Pag-ibig Contr.
-                'payrolls.pagibig_multi_loan', // Pag-ibig Loan
-                'payrolls.pagibig_calamity_loan', // Pag-ibig Calamity
-                'payrolls.philhealth as philhealth_premium', // Philhealth Premium
-                'payrolls.withholding_tax', // Witholding Tax
-                'payrolls.tuition as ar_tuition', // AR-Tuition
-                'payrolls.china_bank as chinabank', // Chinabank
-                'payrolls.multipurpose_loan as loan', // Loan
-                'payrolls.tea', // TEA
-                DB::raw("'0.00' as fees"), // FEES
-                'payrolls.total_deductions', // TOTAL Deductions
-                'payrolls.net_pay' // NET PAY
+                DB::raw('ROUND(payrolls.sss, 2) as sss_premium'), // SSS PREMIUM
+                DB::raw('ROUND(payrolls.sss_salary_loan, 2) as sss_salary_loan'), // SSS Loan
+                DB::raw('ROUND(payrolls.sss_calamity_loan, 2) as sss_calamity_loan'), // SSS Calamity
+                DB::raw('ROUND(payrolls.pag_ibig, 2) as pag_ibig_contr'), // Pag-ibig Contr.
+                DB::raw('ROUND(payrolls.pagibig_multi_loan, 2) as pagibig_multi_loan'), // Pag-ibig Loan
+                DB::raw('ROUND(payrolls.pagibig_calamity_loan, 2) as pagibig_calamity_loan'), // Pag-ibig Calamity
+                DB::raw('ROUND(payrolls.philhealth, 2) as philhealth_premium'), // Philhealth Premium
+                DB::raw('ROUND(payrolls.withholding_tax, 2) as withholding_tax'), // Witholding Tax
+                DB::raw('ROUND(payrolls.tuition, 2) as ar_tuition'), // AR-Tuition
+                DB::raw('ROUND(payrolls.china_bank, 2) as chinabank'), // Chinabank
+                DB::raw('ROUND(payrolls.multipurpose_loan, 2) as loan'), // Loan
+                DB::raw('ROUND(payrolls.tea, 2) as tea'), // TEA
+                DB::raw('0.00 as fees'), // FEES
+                DB::raw('ROUND(payrolls.total_deductions, 2) as total_deductions'), // TOTAL Deductions
+                DB::raw('ROUND(payrolls.net_pay, 2) as net_pay') // NET PAY
             )
             ->get();
     }
 
     public function startCell(): string
     {
-        // The table data will now start at cell A7 to accommodate the two-row header.
-        return 'A7';
+        // The table data will now start at cell A8 to accommodate the two-row header plus inserted blank row.
+        return 'A8';
     }
 
     public function registerEvents(): array
@@ -84,8 +84,11 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                 $sheet->setCellValue('A1', 'TOMAS CLAUDIO COLLEGES');
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(12);
 
-                $sheet->setCellValue('A2', 'PAYROLL OF COLLEGE AND GSP');
-                $sheet->getStyle('A2')->getFont()->setBold(true);
+                // Insert blank row after title
+                $sheet->setCellValue('A2', '');
+
+                $sheet->setCellValue('A3', 'PAYROLL OF COLLEGE AND GSP');
+                $sheet->getStyle('A3')->getFont()->setBold(true);
 
                 // Compute period covered from the provided month or default to current month
                 try {
@@ -100,7 +103,7 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                     $periodText = 'For the Period Covered: ' . Carbon::now()->startOfMonth()->format('F j') . '-' . Carbon::now()->endOfMonth()->format('j, Y');
                 }
 
-                $sheet->setCellValue('A3', $periodText);
+                $sheet->setCellValue('A4', $periodText);
 
                 // --- CREATE MULTI-ROW TABLE HEADERS (ROW 5-6) ---
                 $headers = [
@@ -109,11 +112,11 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                     "Philhealth Premium", "Witholding Tax", "AR-Tuition", "Chinabank", "Loan",
                     "TEA", "FEES", "TOTAL Deductions", "NET PAY"
                 ];
-                $sheet->fromArray($headers, null, 'A5');
+                $sheet->fromArray($headers, null, 'A6');
 
-                // Merge all header cells to span two rows
+                // Merge all header cells to span two rows (now rows 6-7)
                 foreach (range('A', $highestColumn) as $col) {
-                    $sheet->mergeCells("{$col}5:{$col}6");
+                    $sheet->mergeCells("{$col}6:{$col}7");
                 }
 
                 // --- GLOBAL & HEADER STYLES ---
@@ -127,9 +130,9 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                         'wrapText' => true,
                     ],
                 ];
-                $sheet->getStyle('A5:' . $highestColumn . '6')->applyFromArray($headerStyle);
+                $sheet->getStyle('A6:' . $highestColumn . '7')->applyFromArray($headerStyle);
                 // Set font color for specific header columns to red
-                $sheet->getStyle('J5:W6')->getFont()->getColor()->setRGB('FF0000');
+                $sheet->getStyle('J6:W7')->getFont()->getColor()->setRGB('FF0000');
 
 
                 // --- COLUMN WIDTHS ---
@@ -139,21 +142,26 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                 }
 
                 // --- ROW HEIGHTS ---
-                $sheet->getRowDimension('5')->setRowHeight(15);
                 $sheet->getRowDimension('6')->setRowHeight(15);
+                $sheet->getRowDimension('7')->setRowHeight(15);
 
                 // --- BORDERS ---
                 $lastRow = $sheet->getHighestRow();
-                $sheet->getStyle('A5:' . $highestColumn . $lastRow)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+                $sheet->getStyle('A6:' . $highestColumn . $lastRow)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
                 
                 // --- DATA CELL ALIGNMENT ---
                 // Align all data cells (except column A) to the right.
-                if ($lastRow >= 7) {
-                    $dataRange = 'B7:' . $highestColumn . $lastRow;
-                    $sheet->getStyle($dataRange)
-                          ->getAlignment()
-                          ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
-                }
+        if ($lastRow >= 8) {
+            $dataRange = 'B8:' . $highestColumn . $lastRow;
+              $sheet->getStyle($dataRange)
+                  ->getAlignment()
+                  ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+
+              // Format numeric cells to two decimal places
+              $sheet->getStyle($dataRange)
+                  ->getNumberFormat()
+                  ->setFormatCode('#,##0.00');
+            }
             },
         ];
     }
