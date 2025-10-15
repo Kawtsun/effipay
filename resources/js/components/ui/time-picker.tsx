@@ -35,6 +35,7 @@ export function TimePicker({
   const [draftHour, setDraftHour] = React.useState<number>(0)
   const [draftMinute, setDraftMinute] = React.useState<number>(0)
   const [draftIsAM, setDraftIsAM] = React.useState<boolean>(true)
+  const justConfirmedRef = React.useRef(false);
 
   // Parse initial value
   React.useEffect(() => {
@@ -75,6 +76,9 @@ export function TimePicker({
   }
 
   const handleConfirm = () => {
+    // Mark that we're intentionally confirming so the onOpenChange handler
+    // does not treat this as a cancel.
+    justConfirmedRef.current = true;
     setSelectedHour(draftHour)
     setSelectedMinute(draftMinute)
     setIsAM(draftIsAM)
@@ -97,10 +101,25 @@ export function TimePicker({
   return (
     <div className={cn("grid gap-2", className)}>
       {label && <Label>{label}</Label>}
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
+      <Popover open={isOpen} onOpenChange={(v) => {
+        // When popover is closed (v === false) without confirming, revert drafts.
+        if (!v) {
+          // If we just confirmed, skip reverting. Clear the flag and return.
+          if (justConfirmedRef.current) {
+            justConfirmedRef.current = false;
+            setIsOpen(false);
+            return;
+          }
+          handleCancel();
+          return;
+        }
+        // Opening
+        setIsOpen(true);
+      }}>
+          <PopoverTrigger asChild>
           <Button
             variant="outline"
+            type="button"
             className={cn(
               "w-full justify-start text-left font-normal",
               !value && "text-muted-foreground"
@@ -121,6 +140,7 @@ export function TimePicker({
                     {hours.map((hour) => (
                       <Button
                         key={hour}
+                        type="button"
                         variant={draftHour === hour ? "default" : "outline"}
                         size="sm"
                         onClick={() => handleTimeSelect(hour, draftMinute, draftIsAM)}
@@ -141,6 +161,7 @@ export function TimePicker({
                     {minutes.map((minute) => (
                       <Button
                         key={minute}
+                        type="button"
                         variant={draftMinute === minute ? "default" : "outline"}
                         size="sm"
                         onClick={() => handleTimeSelect(draftHour, minute, draftIsAM)}
@@ -158,6 +179,7 @@ export function TimePicker({
                 <Label className="text-xs font-medium">Period</Label>
                   <div className="space-y-1">
                   <Button
+                    type="button"
                     variant={draftIsAM ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleTimeSelect(draftHour, draftMinute, true)}
@@ -166,6 +188,7 @@ export function TimePicker({
                     AM
                   </Button>
                   <Button
+                    type="button"
                     variant={!draftIsAM ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleTimeSelect(draftHour, draftMinute, false)}
@@ -178,10 +201,10 @@ export function TimePicker({
             </div>
           </div>
           <div className="border-t px-3 py-2 flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={handleCancel}>
+            <Button type="button" variant="ghost" size="sm" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleConfirm}>
+            <Button type="button" size="sm" onClick={handleConfirm}>
               OK
             </Button>
           </div>
