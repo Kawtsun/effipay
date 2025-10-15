@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from './ui/select';
 import { TimePicker } from './ui/time-picker';
+import { toast } from 'sonner';
 
 interface AddEventModalProps {
   open: boolean;
@@ -15,14 +16,15 @@ interface AddEventModalProps {
 }
 
 export default function AddEventModal({ open, date, dates, onClose, onConfirm, initial }: AddEventModalProps) {
-  const [type, setType] = useState('whole-day');
+  // No default selection; user must explicitly pick a type
+  const [type, setType] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
   const [startTime, setStartTime] = useState('09:00');
 
   useEffect(() => {
     if (open) {
       // Prefill with initial values when provided (editing)
-      const initType = initial?.type ?? 'whole-day';
+      const initType = initial?.type; // undefined when adding new
       setType(initType);
       setLabel(initial?.label ?? '');
       if (initial?.start_time) {
@@ -76,19 +78,35 @@ export default function AddEventModal({ open, date, dates, onClose, onConfirm, i
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => {
-            const targetDates = dates && dates.length > 0 ? dates : (date ? [date] : []);
-            if (targetDates.length === 0) return;
-            const computedLabel = type === 'other' ? (label || 'Other') : (
-              type === 'whole-day' ? 'Whole-day suspension' : type === 'half-day' ? 'Half-day suspension' : 'Rainy day'
-            );
-            for (const d of targetDates) {
-              const payload = { date: d, type, label: computedLabel } as { date: string; type: string; label?: string; start_time?: string };
-              if (type === 'half-day') payload.start_time = startTime;
-              onConfirm(payload);
+          <Button
+            disabled={
+              !type || (type === 'other' && label.trim().length === 0)
             }
-            onClose();
-          }}>Confirm</Button>
+            onClick={() => {
+              // Guard: require explicit selection
+              if (!type) {
+                toast.info('Please select a type before confirming.');
+                return;
+              }
+              if (type === 'other' && label.trim().length === 0) {
+                toast.info('Please provide a label for Other.');
+                return;
+              }
+              const targetDates = dates && dates.length > 0 ? dates : (date ? [date] : []);
+              if (targetDates.length === 0) return;
+              const computedLabel = type === 'other' ? (label || 'Other') : (
+                type === 'whole-day' ? 'Whole-day suspension' : type === 'half-day' ? 'Half-day suspension' : 'Rainy day'
+              );
+              for (const d of targetDates) {
+                const payload = { date: d, type, label: computedLabel } as { date: string; type: string; label?: string; start_time?: string };
+                if (type === 'half-day') payload.start_time = startTime;
+                onConfirm(payload);
+              }
+              onClose();
+            }}
+          >
+            Confirm
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

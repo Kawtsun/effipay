@@ -36,6 +36,9 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
   const [userSelectedDate, setUserSelectedDate] = useState<string | undefined>(undefined);
   const [userSelectedDates, setUserSelectedDates] = useState<string[]>([]);
 
+  // Normalize helper to compare dates reliably (YYYY-MM-DD)
+  const norm = (s?: string) => (s || '').slice(0, 10);
+
   // Refetch observances when markedDates changes and dialog is open
   useEffect(() => {
     if (!open) return;
@@ -245,7 +248,7 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
             </div>
             <div className="mb-20">
               <p className="text-sm text-muted-foreground font-normal leading-relaxed">
-                Select or unselect dates to mark <span className="font-semibold">official holidays</span> or <span className="font-semibold">class/work suspensions</span>. <span className="font-medium">Click <span className="underline">Save</span> to apply your changes.</span>
+                Select or unselect dates to mark <span className="font-semibold">official holidays</span> or <span className="font-semibold">class/work suspensions</span>. <span className="font-medium">Always click on <span className="underline">Save</span> to apply your changes.</span>
               </p>
             </div>
             <div
@@ -315,8 +318,14 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
                       />
                     </div>
                   </motion.div>
-                  {/* Add Event button: visible when a date is selected */}
-                      {selectedDate && markedDates.includes(selectedDate) && !automatedDates.includes(selectedDate) && !originalDates.includes(selectedDate) ? (
+                  {/* Add Event button: visible when there is at least one newly selected (non-automated) date */}
+                  {(() => {
+                    const markedSet = new Set(markedDates.map(norm));
+                    const originalSet = new Set(originalDates.map(norm));
+                    const automatedSet = new Set(automatedDates.map(norm));
+                    const newly = Array.from(markedSet).filter(d => !originalSet.has(d) && !automatedSet.has(d));
+                    return newly.length > 0;
+                  })() ? (
                     <motion.div
                       key="add-event-button"
                       initial={{ opacity: 0, y: 8 }}
@@ -325,14 +334,20 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
                       style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 8 }}
                     >
                       <Button onClick={() => {
-                        // compute newly selected dates (those not in originalDates and not automated)
-                        const newly = markedDates.filter(d => !originalDates.includes(d) && !automatedDates.includes(d));
-                        setUserSelectedDates(newly.map(d => (d || '').slice(0,10)));
-                        // open the add event modal for the selected date(s)
-                        setUserSelectedDate(selectedDate);
+                        // Collect all newly selected dates (not previously saved and not automated)
+                        const markedSet = new Set(markedDates.map(norm));
+                        const originalSet = new Set(originalDates.map(norm));
+                        const automatedSet = new Set(automatedDates.map(norm));
+                        const newly = Array.from(markedSet).filter(d => !originalSet.has(d) && !automatedSet.has(d));
+                        setUserSelectedDates(newly);
+                        // Use the currently highlighted date if available, else default to first newly selected
+                        const currentNorm = norm(selectedDate);
+                        const current = currentNorm && newly.includes(currentNorm)
+                          ? currentNorm
+                          : (newly[0] || undefined);
+                        setUserSelectedDate(current);
                         setShowAddModal(true);
-                        // debug toast to confirm click registered
-                        toast.success(`Opening Add Event for ${selectedDate}`);
+                        toast.success(`Opening Add Event for ${newly.length} date${newly.length > 1 ? 's' : ''}`);
                       }}>
                         Add Event
                       </Button>
@@ -351,6 +366,8 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
                       observances={observances}
                       onEdit={(obs) => {
                         const dateOnly = obs.date?.slice(0, 10) || obs.date;
+                        // Clear any previously staged bulk dates to ensure single-edit mode
+                        setUserSelectedDates([]);
                         setUserSelectedDate(dateOnly);
                         setShowAddModal(true);
                         // Prefill initial values for editing
@@ -369,7 +386,7 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
     open={showAddModal}
     date={userSelectedDate}
     dates={userSelectedDates}
-    onClose={() => setShowAddModal(false)}
+    onClose={() => { setShowAddModal(false); setUserSelectedDates([]); }}
     onConfirm={handleAddEventConfirm}
     initial={(() => {
       const d = userSelectedDate;
