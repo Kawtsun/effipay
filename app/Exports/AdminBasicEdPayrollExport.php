@@ -295,11 +295,11 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                             $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->getBorders()->getTop()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
                         }
                             if ($cellA === 'GRAND TOTAL') {
-                                // Grey fill for grand total
+                                // Bright yellow fill for grand total (#EDFC2C)
                                 $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
                                     'fill' => [
                                         'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                                        'startColor' => ['rgb' => 'D9D9D9'],
+                                        'startColor' => ['rgb' => 'EDFC2C'],
                                     ],
                                     'font' => ['bold' => true],
                                 ]);
@@ -308,6 +308,15 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                                 $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getNumberFormat()->setFormatCode('#,##0.00');
                                 // Thicker top border for grand total
                                 $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->getBorders()->getTop()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM);
+
+                                // Ensure numeric columns B..T are populated with 0 if empty
+                                foreach (range('B', $highestColumn) as $col) {
+                                    $coord = $col . $r;
+                                    $val = $sheet->getCell($coord)->getValue();
+                                    if ($val === null || $val === '') {
+                                        $sheet->setCellValue($coord, 0);
+                                    }
+                                }
                             }
                     }
                 }

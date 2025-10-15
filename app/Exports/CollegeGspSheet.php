@@ -365,14 +365,37 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                     $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
                 }
 
-                if (is_string($cellA) && (str_starts_with($cellA, 'SUBTOTAL FOR') || $cellA === 'GRAND TOTAL')) {
-                    // Subtotal style: bold and light yellow background
+                // Apply styles separately for SUBTOTAL rows and GRAND TOTAL row
+                if (is_string($cellA) && str_starts_with($cellA, 'SUBTOTAL FOR')) {
+                    // Subtotal style: bold and green background (#B5FDB1)
                     $sheet->getStyle('A' . $row . ':' . $highestColumn . $row)->applyFromArray([
                         'font' => ['bold' => true],
-                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF2CC']],
+                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'B5FDB1']],
                     ]);
 
                     // Ensure subtotal numeric cells (F..X) are right aligned and formatted
+                    $sheet->getStyle('F' . $row . ':' . $highestColumn . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                    $sheet->getStyle('F' . $row . ':' . $highestColumn . $row)->getNumberFormat()->setFormatCode('#,##0.00');
+
+                    // Ensure all numeric columns F..X are populated with 0 if empty so zeros are visible
+                    foreach (range('F', $highestColumn) as $col) {
+                        $cellCoord = $col . $row;
+                        $val = $sheet->getCell($cellCoord)->getValue();
+                        if ($val === null || $val === '') {
+                            // set numeric zero
+                            $sheet->setCellValue($cellCoord, 0);
+                        }
+                    }
+                }
+
+                if (is_string($cellA) && $cellA === 'GRAND TOTAL') {
+                    // Grand total style: bold and bright yellow background (#EDFC2C)
+                    $sheet->getStyle('A' . $row . ':' . $highestColumn . $row)->applyFromArray([
+                        'font' => ['bold' => true],
+                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EDFC2C']],
+                    ]);
+
+                    // Ensure grand total numeric cells (F..X) are right aligned and formatted
                     $sheet->getStyle('F' . $row . ':' . $highestColumn . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
                     $sheet->getStyle('F' . $row . ':' . $highestColumn . $row)->getNumberFormat()->setFormatCode('#,##0.00');
 
