@@ -15,6 +15,25 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
 {
     protected $month;
 
+    /**
+     * Canonical list of college programs (value => label).
+     * Keep in sync with resources/js/components/employee-college-radio-department.tsx
+     */
+    protected static $COLLEGE_PROGRAMS = [
+        'BSBA' => 'Bachelor of Science in Business Administration',
+        'BSA' => 'Bachelor of Science in Accountancy',
+        'COELA' => 'College of Education and Liberal Arts',
+        'BSCRIM' => 'Bachelor of Science in Criminology',
+        'BSCS' => 'Bachelor of Science in Computer Science',
+        'JD' => 'Juris Doctor',
+        'BSN' => 'Bachelor of Science in Nursing',
+        'RLE' => 'Related Learning Experience',
+        'CG' => 'Career Guidance',
+        'BSPT' => 'Bachelor of Science in Physical Therapy',
+        'GSP' => 'Graduate Studies Programs',
+        'MBA' => 'Master of Business Administration',
+    ];
+
     public function __construct($month = null)
     {
         $this->month = $month;
@@ -64,81 +83,111 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
             ->orderBy('employee_name')
             ->get();
 
-        // Build rows grouped by college_program with subtotal rows
+        // Organize results by program for quick lookup
+        $grouped = $results->groupBy('college_program');
+
         $rows = collect();
-        $currentProgram = null;
-        $subtotalNet = 0.0;
-        $subtotalDeductions = 0.0;
 
-        foreach ($results as $item) {
-            $program = $item->college_program ?? 'Unassigned';
+        // Iterate canonical program list to ensure all departments appear
+        foreach (self::$COLLEGE_PROGRAMS as $progValue => $progLabel) {
+            // Department header
+            $deptRow = array_fill(0, 24, '');
+            $deptRow[0] = 'Department: ' . $progValue . ' - ' . $progLabel;
+            $rows->push($deptRow);
 
-            if ($currentProgram === null) {
-                $currentProgram = $program;
-                // Insert department header row
-                $deptRow = array_fill(0, 24, '');
-                $deptRow[0] = 'Department: ' . $currentProgram;
-                $rows->push($deptRow);
+            $subtotalNet = 0.0;
+            $subtotalDeductions = 0.0;
+
+            $programKey = $progValue;
+            $items = $grouped->get($programKey, collect());
+
+            // Append employee rows if any
+            foreach ($items as $item) {
+                $employeeRow = [
+                    $item->employee_name,
+                    '', // TOTAL
+                    (float) $item->absences,
+                    '', // total_hours
+                    (float) $item->rate_per_hour,
+                    (float) $item->honorarium,
+                    (float) $item->monthly_base,
+                    (float) $item->absence_deduction,
+                    '', // total_amount
+                    (float) $item->sss_premium,
+                    (float) $item->sss_salary_loan,
+                    (float) $item->sss_calamity_loan,
+                    (float) $item->pag_ibig_contr,
+                    (float) $item->pagibig_multi_loan,
+                    (float) $item->pagibig_calamity_loan,
+                    (float) $item->philhealth_premium,
+                    (float) $item->withholding_tax,
+                    (float) $item->ar_tuition,
+                    (float) $item->chinabank,
+                    (float) $item->loan,
+                    (float) $item->tea,
+                    0.00, // fees
+                    (float) $item->total_deductions,
+                    (float) $item->net_pay,
+                ];
+
+                $rows->push($employeeRow);
+
+                $subtotalNet += (float) $item->net_pay;
+                $subtotalDeductions += (float) $item->total_deductions;
             }
 
-            if ($program !== $currentProgram) {
-                // push subtotal row for previous program
-                $subRow = array_fill(0, 24, '');
-                $subRow[0] = 'SUBTOTAL FOR ' . $currentProgram;
-                // TOTAL Deductions -> column W (index 22)
-                $subRow[22] = round($subtotalDeductions, 2);
-                // NET PAY -> column X (index 23)
-                $subRow[23] = round($subtotalNet, 2);
-                $rows->push($subRow);
-
-                // reset counters and add new department header
-                $currentProgram = $program;
-                $subtotalNet = 0.0;
-                $subtotalDeductions = 0.0;
-                $deptRow = array_fill(0, 24, '');
-                $deptRow[0] = 'Department: ' . $currentProgram;
-                $rows->push($deptRow);
-            }
-
-            // Push employee row matching header columns (A..X)
-            $employeeRow = [
-                $item->employee_name,
-                '', // TOTAL
-                (float) $item->absences,
-                '', // total_hours
-                (float) $item->rate_per_hour,
-                (float) $item->honorarium,
-                (float) $item->monthly_base,
-                (float) $item->absence_deduction,
-                '', // total_amount
-                (float) $item->sss_premium,
-                (float) $item->sss_salary_loan,
-                (float) $item->sss_calamity_loan,
-                (float) $item->pag_ibig_contr,
-                (float) $item->pagibig_multi_loan,
-                (float) $item->pagibig_calamity_loan,
-                (float) $item->philhealth_premium,
-                (float) $item->withholding_tax,
-                (float) $item->ar_tuition,
-                (float) $item->chinabank,
-                (float) $item->loan,
-                (float) $item->tea,
-                0.00, // fees
-                (float) $item->total_deductions,
-                (float) $item->net_pay,
-            ];
-
-            $rows->push($employeeRow);
-
-            // accumulate subtotals
-            $subtotalNet += (float) $item->net_pay;
-            $subtotalDeductions += (float) $item->total_deductions;
+            // Push subtotal row (even if zero)
+            $subRow = array_fill(0, 24, '');
+            $subRow[0] = 'SUBTOTAL FOR ' . $progValue;
+            $subRow[22] = round($subtotalDeductions, 2);
+            $subRow[23] = round($subtotalNet, 2);
+            $rows->push($subRow);
         }
 
-        // push final subtotal if there were results
-        if ($currentProgram !== null) {
+        // Optionally include 'Unassigned' employees (employees without college_program)
+        $unassigned = $grouped->get('Unassigned', collect());
+        if ($unassigned->isNotEmpty()) {
+            $deptRow = array_fill(0, 24, '');
+            $deptRow[0] = 'Department: Unassigned';
+            $rows->push($deptRow);
+
+            $subtotalNet = 0.0;
+            $subtotalDeductions = 0.0;
+            foreach ($unassigned as $item) {
+                $employeeRow = [
+                    $item->employee_name,
+                    '', // TOTAL
+                    (float) $item->absences,
+                    '', // total_hours
+                    (float) $item->rate_per_hour,
+                    (float) $item->honorarium,
+                    (float) $item->monthly_base,
+                    (float) $item->absence_deduction,
+                    '', // total_amount
+                    (float) $item->sss_premium,
+                    (float) $item->sss_salary_loan,
+                    (float) $item->sss_calamity_loan,
+                    (float) $item->pag_ibig_contr,
+                    (float) $item->pagibig_multi_loan,
+                    (float) $item->pagibig_calamity_loan,
+                    (float) $item->philhealth_premium,
+                    (float) $item->withholding_tax,
+                    (float) $item->ar_tuition,
+                    (float) $item->chinabank,
+                    (float) $item->loan,
+                    (float) $item->tea,
+                    0.00, // fees
+                    (float) $item->total_deductions,
+                    (float) $item->net_pay,
+                ];
+
+                $rows->push($employeeRow);
+                $subtotalNet += (float) $item->net_pay;
+                $subtotalDeductions += (float) $item->total_deductions;
+            }
+
             $subRow = array_fill(0, 24, '');
-            $subRow[0] = 'SUBTOTAL FOR ' . $currentProgram;
+            $subRow[0] = 'SUBTOTAL FOR Unassigned';
             $subRow[22] = round($subtotalDeductions, 2);
             $subRow[23] = round($subtotalNet, 2);
             $rows->push($subRow);
