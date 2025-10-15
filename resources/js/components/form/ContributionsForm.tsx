@@ -1,12 +1,12 @@
 import * as React from 'react';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { HandCoins, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso } from 'lucide-react';
+import { HandCoins, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
-import { calculateSSS, calculatePhilHealth } from '@/utils/salaryFormulas';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Helper to format numbers with commas for display
 function formatWithCommas(value: string | number): string {
@@ -52,60 +52,33 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
         setPagIbigError(null);
     }, [resetToken]);
 
-    // This effect handles the calculation and clearing of SSS and PhilHealth
-    React.useEffect(() => {
-        const baseSalaryNum = parseFloat(data.base_salary.replace(/,/g, ''));
-
-        // If the base salary is not a valid number, clear the fields
-        if (isNaN(baseSalaryNum) || baseSalaryNum <= 0) {
-            if (data.sss !== '' || data.philhealth !== '') {
-                setData((currentData: EmployeeFormData) => ({
-                    ...currentData,
-                    sss: '',
-                    philhealth: '',
-                }));
-            }
-            return; // Exit the effect early
-        }
-
-        // If base salary is a valid number, perform the calculation
-        const calculatedSss = calculateSSS(baseSalaryNum);
-        const calculatedPhilhealth = calculatePhilHealth(baseSalaryNum);
-
-        const formattedSss = calculatedSss.toFixed(2);
-        const formattedPhilhealth = calculatedPhilhealth.toFixed(2);
-
-        if (data.sss !== formattedSss || data.philhealth !== formattedPhilhealth) {
-            setData((currentData: EmployeeFormData) => ({
-                ...currentData,
-                sss: formattedSss,
-                philhealth: formattedPhilhealth,
-            }));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data.base_salary, setData]);
-
     // Effects to clear fields when they are hidden
     React.useEffect(() => {
-        if (!isAdmin && !showSSS && data.sss !== '') {
+        if (!isAdmin && !showSSS) {
             setData('sss', '');
+        } else if (!isAdmin && showSSS) {
+            setData('sss', '0'); // Set to a placeholder value when added
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAdmin, showSSS, setData]);
+    }, [isAdmin, showSSS]);
 
     React.useEffect(() => {
-        if (!isAdmin && !showPhilhealth && data.philhealth !== '') {
+        if (!isAdmin && !showPhilhealth) {
             setData('philhealth', '');
+        } else if (!isAdmin && showPhilhealth) {
+            setData('philhealth', '0'); // Set to a placeholder value when added
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAdmin, showPhilhealth, setData]);
+    }, [isAdmin, showPhilhealth]);
 
     React.useEffect(() => {
-        if (!isAdmin && !showPagibig && data.pag_ibig !== '') {
+        if (!isAdmin && !showPagibig) {
             setData('pag_ibig', '');
+        } else if (!isAdmin && showPagibig) {
+            setData('pag_ibig', '200.00'); // Default to min value
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAdmin, showPagibig, setData]);
+    }, [isAdmin, showPagibig]);
 
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {
         const rawValue = value.replace(/,/g, '');
@@ -124,25 +97,15 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
         }
     };
 
-    const ErrorDisplay = ({ message }: { message: string | null | undefined }) => {
-        if (!message) return null;
-        return (
-            <div className="mt-2 flex items-center rounded-lg border border-destructive/50 bg-destructive/10 p-2 text-destructive">
-                <AlertTriangle className="ml-1 h-4 w-4 shrink-0" />
-                <p className="ml-2 text-xs font-medium">{message}</p>
-            </div>
-        );
-    };
-
     const renderToggleButton = (label: string, isShown: boolean, setter: React.Dispatch<React.SetStateAction<boolean>>) => (
         <div className="flex items-center justify-between">
             <Label className="font-semibold">{label}</Label>
             <Button
                 type="button"
-                variant="ghost"
+                variant={isShown ? 'secondary' : 'ghost'}
                 size="sm"
                 onClick={() => setter(prev => !prev)}
-                className="text-primary hover:text-primary h-8 px-2"
+                className={`h-8 px-2 ${isShown ? 'text-primary hover:text-primary' : 'text-primary hover:text-primary'}`}
             >
                 {isShown ? <MinusCircle className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
                 <span className="ml-2">{isShown ? 'Remove' : 'Add'}</span>
@@ -175,7 +138,6 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                             </div>
                             <div className="mt-2">
                                 <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
-                                <ErrorDisplay message={errors.sss} />
                             </div>
                         </div>
                         {/* PhilHealth Section */}
@@ -185,7 +147,6 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                             </div>
                             <div className="mt-2">
                                 <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
-                                <ErrorDisplay message={errors.philhealth} />
                             </div>
                         </div>
                         {/* Pag-IBIG Section */}
@@ -204,7 +165,12 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                                         className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
                                     />
                                 </div>
-                                <ErrorDisplay message={errors.pag_ibig || pagIbigError} />
+                                {pagIbigError && (
+                                    <Alert variant="destructive" className="mt-2">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <AlertDescription>{pagIbigError}</AlertDescription>
+                                    </Alert>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -215,9 +181,19 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                             {renderToggleButton('SSS Contribution', showSSS, setShowSSS)}
                             <AnimatePresence>
                                 {showSSS && (
-                                    <motion.div key="sss-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
-                                        <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
-                                        <ErrorDisplay message={errors.sss} />
+                                    <motion.div
+                                        key="sss-info"
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="mt-2"
+                                    >
+                                        <Alert>
+                                            <Info className="h-4 w-4" />
+                                            <AlertDescription>
+                                                SSS contribution will be calculated based on the base salary.
+                                            </AlertDescription>
+                                        </Alert>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -227,9 +203,19 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                             {renderToggleButton('PhilHealth Contribution', showPhilhealth, setShowPhilhealth)}
                             <AnimatePresence>
                                 {showPhilhealth && (
-                                     <motion.div key="philhealth-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
-                                        <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
-                                        <ErrorDisplay message={errors.philhealth} />
+                                    <motion.div
+                                        key="philhealth-info"
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="mt-2"
+                                    >
+                                        <Alert>
+                                            <Info className="h-4 w-4" />
+                                            <AlertDescription>
+                                                PhilHealth contribution will be calculated based on the base salary.
+                                            </AlertDescription>
+                                        </Alert>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -250,7 +236,12 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                                                 className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
                                             />
                                         </div>
-                                        <ErrorDisplay message={errors.pag_ibig || pagIbigError} />
+                                        {pagIbigError && (
+                                            <Alert variant="destructive" className="mt-2">
+                                                <AlertTriangle className="h-4 w-4" />
+                                                <AlertDescription>{pagIbigError}</AlertDescription>
+                                            </Alert>
+                                        )}
                                     </motion.div>
                                 )}
                             </AnimatePresence>
