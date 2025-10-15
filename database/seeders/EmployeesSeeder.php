@@ -337,7 +337,6 @@ class EmployeesSeeder extends Seeder
                 'last_name' => $last_name,
                 'first_name' => $first_name,
                 'middle_name' => $middle_name,
-                'employee_type' => $type,
                 'employee_status' => fake()->randomElement(['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave']),
                 'roles' => $roles,
                 'college_program' => $collegeProgram,
@@ -350,6 +349,13 @@ class EmployeesSeeder extends Seeder
                 'work_hours_per_day' => $workHoursPerDay,
                 'work_start_time' => $workStartTime,
                 'work_end_time' => $workEndTime,
+            ]);
+
+            // Create corresponding employee_types record to support multiple employee types
+            // Each record maps a role to a specific type (e.g., 'college instructor' => 'Part Time')
+            $employee->employeeTypes()->create([
+                'role' => $roles,
+                'type' => $type,
             ]);
 
             // Randomize work days for each employee
