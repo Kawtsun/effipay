@@ -24,7 +24,7 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
      */
     public function collection()
     {
-        // This query has been updated to match your new header structure.
+        // Query payrolls joined with employees and include college_program for grouping
         $query = Payroll::query()
             ->join('employees', 'payrolls.employee_id', '=', 'employees.id')
             ->where('employees.roles', 'like', '%college instructor%'); // Filter for college instructors
@@ -33,7 +33,7 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
             $query->where('payrolls.month', $this->month);
         }
 
-        return $query->select(
+        $results = $query->select(
                 DB::raw("CONCAT(employees.first_name, ' ', employees.last_name) as employee_name"), // NAME
                 DB::raw("'' as total"), // TOTAL (empty instead of 'N/A')
                 DB::raw('ROUND(payrolls.absences, 2) as absences'), // ABSENTS
@@ -57,9 +57,94 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                 DB::raw('ROUND(payrolls.tea, 2) as tea'), // TEA
                 DB::raw('0.00 as fees'), // FEES
                 DB::raw('ROUND(payrolls.total_deductions, 2) as total_deductions'), // TOTAL Deductions
-                DB::raw('ROUND(payrolls.net_pay, 2) as net_pay') // NET PAY
+                DB::raw('ROUND(payrolls.net_pay, 2) as net_pay'), // NET PAY
+                DB::raw('COALESCE(employees.college_program, "Unassigned") as college_program')
             )
+            ->orderBy('college_program')
+            ->orderBy('employee_name')
             ->get();
+
+        // Build rows grouped by college_program with subtotal rows
+        $rows = collect();
+        $currentProgram = null;
+        $subtotalNet = 0.0;
+        $subtotalDeductions = 0.0;
+
+        foreach ($results as $item) {
+            $program = $item->college_program ?? 'Unassigned';
+
+            if ($currentProgram === null) {
+                $currentProgram = $program;
+                // Insert department header row
+                $deptRow = array_fill(0, 24, '');
+                $deptRow[0] = 'Department: ' . $currentProgram;
+                $rows->push($deptRow);
+            }
+
+            if ($program !== $currentProgram) {
+                // push subtotal row for previous program
+                $subRow = array_fill(0, 24, '');
+                $subRow[0] = 'SUBTOTAL FOR ' . $currentProgram;
+                // TOTAL Deductions -> column W (index 22)
+                $subRow[22] = round($subtotalDeductions, 2);
+                // NET PAY -> column X (index 23)
+                $subRow[23] = round($subtotalNet, 2);
+                $rows->push($subRow);
+
+                // reset counters and add new department header
+                $currentProgram = $program;
+                $subtotalNet = 0.0;
+                $subtotalDeductions = 0.0;
+                $deptRow = array_fill(0, 24, '');
+                $deptRow[0] = 'Department: ' . $currentProgram;
+                $rows->push($deptRow);
+            }
+
+            // Push employee row matching header columns (A..X)
+            $employeeRow = [
+                $item->employee_name,
+                '', // TOTAL
+                (float) $item->absences,
+                '', // total_hours
+                (float) $item->rate_per_hour,
+                (float) $item->honorarium,
+                (float) $item->monthly_base,
+                (float) $item->absence_deduction,
+                '', // total_amount
+                (float) $item->sss_premium,
+                (float) $item->sss_salary_loan,
+                (float) $item->sss_calamity_loan,
+                (float) $item->pag_ibig_contr,
+                (float) $item->pagibig_multi_loan,
+                (float) $item->pagibig_calamity_loan,
+                (float) $item->philhealth_premium,
+                (float) $item->withholding_tax,
+                (float) $item->ar_tuition,
+                (float) $item->chinabank,
+                (float) $item->loan,
+                (float) $item->tea,
+                0.00, // fees
+                (float) $item->total_deductions,
+                (float) $item->net_pay,
+            ];
+
+            $rows->push($employeeRow);
+
+            // accumulate subtotals
+            $subtotalNet += (float) $item->net_pay;
+            $subtotalDeductions += (float) $item->total_deductions;
+        }
+
+        // push final subtotal if there were results
+        if ($currentProgram !== null) {
+            $subRow = array_fill(0, 24, '');
+            $subRow[0] = 'SUBTOTAL FOR ' . $currentProgram;
+            $subRow[22] = round($subtotalDeductions, 2);
+            $subRow[23] = round($subtotalNet, 2);
+            $rows->push($subRow);
+        }
+
+        return $rows;
     }
 
     public function startCell(): string
@@ -161,6 +246,34 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
               $sheet->getStyle($dataRange)
                   ->getNumberFormat()
                   ->setFormatCode('#,##0.00');
+            }
+            
+            // --- DEPARTMENT HEADER & SUBTOTAL STYLES ---
+            // Department header rows start with "Department:" in column A. Subtotal rows start with "SUBTOTAL FOR".
+            $highestRow = $sheet->getHighestRow();
+            for ($row = 8; $row <= $highestRow; $row++) {
+                $cellA = $sheet->getCell('A' . $row)->getValue();
+                if (is_string($cellA) && str_starts_with($cellA, 'Department:')) {
+                    // Department header style
+                    $sheet->getStyle('A' . $row . ':' . $highestColumn . $row)->applyFromArray([
+                        'font' => ['bold' => true],
+                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D9E1F2']],
+                    ]);
+                    // Align department name to left across the row
+                    $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+                }
+
+                if (is_string($cellA) && str_starts_with($cellA, 'SUBTOTAL FOR')) {
+                    // Subtotal style: bold and light yellow background
+                    $sheet->getStyle('A' . $row . ':' . $highestColumn . $row)->applyFromArray([
+                        'font' => ['bold' => true],
+                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF2CC']],
+                    ]);
+
+                    // Ensure subtotal numeric cells (W and X) are right aligned and formatted
+                    $sheet->getStyle('W' . $row . ':X' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                    $sheet->getStyle('W' . $row . ':X' . $row)->getNumberFormat()->setFormatCode('#,##0.00');
+                }
             }
             },
         ];
