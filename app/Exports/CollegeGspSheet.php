@@ -223,6 +223,29 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
             $rows->push($subRow);
         }
 
+        // --- GRAND TOTAL ROW ---
+        // Calculate grand totals for Honorarium..NetPay (indices 5..23) across all data rows
+        $grandTotals = array_fill(0, 24, 0.0);
+        $numericIndexes = range(5, 23);
+        foreach ($rows as $r) {
+            // only consider rows that have numeric values in those positions
+            foreach ($numericIndexes as $idx) {
+                if (isset($r[$idx]) && is_numeric($r[$idx])) {
+                    $grandTotals[$idx] += (float) $r[$idx];
+                }
+            }
+        }
+
+        // Build grand total row: Column A label, other non-numeric columns blank, numeric columns populated
+        $grandRow = array_fill(0, 24, '');
+        $grandRow[0] = 'GRAND TOTAL';
+        foreach ($numericIndexes as $idx) {
+            // round to 2 decimals to match formatting used elsewhere
+            $grandRow[$idx] = round($grandTotals[$idx], 2);
+        }
+
+        $rows->push($grandRow);
+
         return $rows;
     }
 
@@ -342,7 +365,7 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                     $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
                 }
 
-                if (is_string($cellA) && str_starts_with($cellA, 'SUBTOTAL FOR')) {
+                if (is_string($cellA) && (str_starts_with($cellA, 'SUBTOTAL FOR') || $cellA === 'GRAND TOTAL')) {
                     // Subtotal style: bold and light yellow background
                     $sheet->getStyle('A' . $row . ':' . $highestColumn . $row)->applyFromArray([
                         'font' => ['bold' => true],
