@@ -149,6 +149,11 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                 $subtotalDeductions += (float) $item->total_deductions;
             }
 
+            // If there were no employee rows for this department, add one blank row above the subtotal
+            if ($items->isEmpty()) {
+                $rows->push(array_fill(0, 24, ''));
+            }
+
             // Push subtotal row (even if zero)
             $subRow = array_fill(0, 24, '');
             $subRow[0] = 'SUBTOTAL FOR ' . $progValue;
