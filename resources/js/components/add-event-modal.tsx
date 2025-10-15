@@ -8,12 +8,13 @@ import { TimePicker } from './ui/time-picker';
 interface AddEventModalProps {
   open: boolean;
   date?: string;
+  dates?: string[];
   onClose: () => void;
   onConfirm: (payload: { date: string; type: string; label?: string; start_time?: string }) => void;
   initial?: { type?: string; label?: string; start_time?: string };
 }
 
-export default function AddEventModal({ open, date, onClose, onConfirm, initial }: AddEventModalProps) {
+export default function AddEventModal({ open, date, dates, onClose, onConfirm, initial }: AddEventModalProps) {
   const [type, setType] = useState('whole-day');
   const [label, setLabel] = useState('');
   const [startTime, setStartTime] = useState('09:00');
@@ -42,7 +43,7 @@ export default function AddEventModal({ open, date, onClose, onConfirm, initial 
         <div className="space-y-4 py-2">
           <div>
             <label className="block text-sm font-medium text-muted-foreground">Date</label>
-            <div className="mt-1 text-sm">{date ?? '—'}</div>
+            <div className="mt-1 text-sm">{dates && dates.length > 1 ? `${dates.length} selected dates` : (date ?? '—')}</div>
           </div>
           <div>
             <label className="block text-sm font-medium text-muted-foreground">Type</label>
@@ -61,7 +62,7 @@ export default function AddEventModal({ open, date, onClose, onConfirm, initial 
           {type === 'other' ? (
             <div>
               <label className="block text-sm font-medium text-muted-foreground">Label</label>
-              <Input value={label} onChange={(e: any) => setLabel(e.target.value)} className="mt-1" />
+              <Input value={label} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLabel(e.target.value)} className="mt-1" />
             </div>
           ) : null}
           {type === 'half-day' ? (
@@ -76,13 +77,16 @@ export default function AddEventModal({ open, date, onClose, onConfirm, initial 
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => {
-            if (!date) return;
+            const targetDates = dates && dates.length > 0 ? dates : (date ? [date] : []);
+            if (targetDates.length === 0) return;
             const computedLabel = type === 'other' ? (label || 'Other') : (
               type === 'whole-day' ? 'Whole-day suspension' : type === 'half-day' ? 'Half-day suspension' : 'Rainy day'
             );
-            const payload: any = { date, type, label: computedLabel };
-            if (type === 'half-day') payload.start_time = startTime;
-            onConfirm(payload);
+            for (const d of targetDates) {
+              const payload = { date: d, type, label: computedLabel } as { date: string; type: string; label?: string; start_time?: string };
+              if (type === 'half-day') payload.start_time = startTime;
+              onConfirm(payload);
+            }
             onClose();
           }}>Confirm</Button>
         </DialogFooter>
