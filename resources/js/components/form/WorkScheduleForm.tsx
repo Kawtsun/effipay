@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
 import { Clock, AlertTriangle, Hourglass, Asterisk } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selector';
 import { Label } from '@/components/ui/label';
@@ -29,10 +30,12 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
     const ErrorDisplay = ({ field }: { field: keyof typeof errors }) => {
         if (!errors[field]) return null;
         return (
-            <div className="mt-2 flex items-center rounded-lg border border-destructive/50 bg-destructive/10 p-2 text-destructive">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                <p className="ml-2 text-xs font-medium">{errors[field]}</p>
-            </div>
+            <Alert variant="destructive" className="mt-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                    {errors[field]}
+                </AlertDescription>
+            </Alert>
         );
     };
 

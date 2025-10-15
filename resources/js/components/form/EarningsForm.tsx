@@ -58,10 +58,12 @@ export function EarningsForm({ form }: EarningsFormProps) {
     const ErrorDisplay = ({ field }: { field: keyof typeof errors }) => {
         if (!errors[field]) return null;
         return (
-            <div className="mt-2 flex items-center rounded-lg border border-destructive/50 bg-destructive/10 p-2 text-destructive">
-                <AlertTriangle className="ml-1 h-4 w-4 shrink-0" />
-                <p className="ml-2 text-xs font-medium">{errors[field]}</p>
-            </div>
+            <Alert variant="destructive" className="mt-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                    {errors[field]}
+                </AlertDescription>
+            </Alert>
         );
     };
 
@@ -69,7 +71,7 @@ export function EarningsForm({ form }: EarningsFormProps) {
         initial: { opacity: 0, height: 0, marginTop: 0 },
         animate: { opacity: 1, height: 'auto', marginTop: 0 },
         exit: { opacity: 0, height: 0, marginTop: 0 },
-        transition: { duration: 0.3, ease: 'easeInOut' },
+        transition: { duration: 0.3, ease: 'easeInOut' as const },
         className: 'overflow-hidden',
     };
 

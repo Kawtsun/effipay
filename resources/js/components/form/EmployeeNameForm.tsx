@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
 import { AlertTriangle, UserCircle, Asterisk } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,12 +36,12 @@ export function EmployeeNameForm({ form }: EmployeeNameFormProps) {
         }
 
         return (
-            <div className="mt-2 flex items-center rounded-lg border border-destructive/50 bg-destructive/10 p-2 text-destructive">
-                <AlertTriangle className="ml-1 h-4 w-4 shrink-0" />
-                <p className="ml-2 text-xs font-medium">
+            <Alert variant="destructive" className="mt-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
                     {errors[field]}
-                </p>
-            </div>
+                </AlertDescription>
+            </Alert>
         );
     };
 
