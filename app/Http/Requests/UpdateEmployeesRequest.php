@@ -40,6 +40,8 @@ class UpdateEmployeesRequest extends FormRequest
         $isRetired = in_array('Retired', $employeeTypes, true);
         $contribOptional = $isCollege || $isBasicEdu || $isOthers || $isRetired;
 
+        $without_college = $isAdmin || $isBasicEdu || $isOthers;
+
         $rules = [
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
@@ -82,7 +84,7 @@ class UpdateEmployeesRequest extends FormRequest
 
         // Rate per hour rule matching StoreEmployeesRequest
         $rules['rate_per_hour'] = [
-            Rule::excludeIf($isAdmin),
+            Rule::excludeIf($without_college),
             Rule::requiredIf($isCollege),
             'nullable',
             'numeric',

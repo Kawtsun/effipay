@@ -28,7 +28,7 @@ class StoreEmployeesRequest extends FormRequest
         $isAdmin = in_array('administrator', $rolesArr);
         $isCollege = in_array('college instructor', $rolesArr);
         $isBasicEdu = in_array('basic education instructor', $rolesArr);
-        
+
         $isOthers = false;
         foreach ($rolesArr as $role) {
             if (!in_array($role, ['administrator', 'college instructor', 'basic education instructor'])) {
@@ -39,6 +39,8 @@ class StoreEmployeesRequest extends FormRequest
         
         $isRetired = in_array('Retired', $employeeTypes, true);
         $contribOptional = $isCollege || $isBasicEdu || $isOthers || $isRetired;
+
+        $without_college = $isAdmin || $isBasicEdu || $isOthers;
         
         $rules = [
             'first_name' => 'required|string|max:255',
@@ -83,7 +85,7 @@ class StoreEmployeesRequest extends FormRequest
         // --- THE FIX IS HERE ---
         // This rule now correctly validates 'rate_per_hour' only when the college instructor role is selected.
         $rules['rate_per_hour'] = [
-            Rule::excludeIf($isAdmin),
+            Rule::excludeIf($without_college),
             Rule::requiredIf($isCollege),
             'nullable',
             'numeric',
