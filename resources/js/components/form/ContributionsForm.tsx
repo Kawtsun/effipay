@@ -137,7 +137,12 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                                 <Label className="font-semibold">SSS Contribution</Label>
                             </div>
                             <div className="mt-2">
-                                <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                <Alert>
+                                    <Info className="h-4 w-4" />
+                                    <AlertDescription>
+                                        SSS contribution will be calculated based on the base salary.
+                                    </AlertDescription>
+                                </Alert>
                             </div>
                         </div>
                         {/* PhilHealth Section */}
@@ -146,7 +151,12 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                                 <Label className="font-semibold">PhilHealth Contribution</Label>
                             </div>
                             <div className="mt-2">
-                                <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                                <Alert>
+                                    <Info className="h-4 w-4" />
+                                    <AlertDescription>
+                                        PhilHealth contribution will be calculated based on the base salary.
+                                    </AlertDescription>
+                                </Alert>
                             </div>
                         </div>
                         {/* Pag-IBIG Section */}
