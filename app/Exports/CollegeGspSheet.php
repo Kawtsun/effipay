@@ -108,11 +108,6 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
 
         // Iterate canonical program list to ensure all departments appear
         foreach (self::$COLLEGE_PROGRAMS as $progValue => $progLabel) {
-            // Department header
-            $deptRow = array_fill(0, 24, '');
-            $deptRow[0] = 'Department: ' . $progValue . ' - ' . $progLabel;
-            $rows->push($deptRow);
-
             $subtotalNet = 0.0;
             $subtotalDeductions = 0.0;
 
@@ -165,10 +160,7 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
         // Optionally include 'Unassigned' employees (employees without college_program)
         $unassigned = $grouped->get('Unassigned', collect());
         if ($unassigned->isNotEmpty()) {
-            $deptRow = array_fill(0, 24, '');
-            $deptRow[0] = 'Department: Unassigned';
-            $rows->push($deptRow);
-
+            // no department header for unassigned; directly list employees and subtotal
             $subtotalNet = 0.0;
             $subtotalDeductions = 0.0;
             foreach ($unassigned as $item) {
