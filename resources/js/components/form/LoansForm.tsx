@@ -1,6 +1,6 @@
 import * as React from 'react';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Wallet, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso } from 'lucide-react';
+import { Wallet, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -80,7 +80,10 @@ export function LoansForm({ form, resetToken }: LoansFormProps) {
     // Your original renderToggleButton function (unchanged)
     const renderToggleButton = (label: string, isShown: boolean, setter: React.Dispatch<React.SetStateAction<boolean>>) => (
         <div className="flex items-center justify-between">
-            <Label className="font-semibold">{label}</Label>
+            <Label className={`font-semibold flex items-center transition-colors ${isShown ? 'text-green-600' : ''}`}>
+                {isShown && <CheckCircle className="h-4 w-4 mr-2" />}
+                {label}
+            </Label>
             <Button
                 type="button"
                 variant="ghost"
