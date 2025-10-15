@@ -3,30 +3,30 @@
 namespace App\Exports;
 
 use App\Models\Payroll; // Or your relevant model
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Carbon\Carbon;
+use App\Exports\AdminBasicEdPayrollExport;
+use App\Exports\CollegeGspSheet;
 
-class PayrollExport implements FromCollection
+class PayrollExport implements WithMultipleSheets
 {
     protected $month;
 
-    // Use the constructor to accept the month
-    public function __construct(Carbon $month)
+    // Accept either a Carbon or a YYYY-MM string
+    public function __construct($month)
     {
-        $this->month = $month;
+        $this->month = $month instanceof Carbon ? $month->format('Y-m') : (string) $month;
     }
 
     /**
-    * @return \Illuminate\Support\Collection
-    */
-    public function collection()
+     * @return array
+     */
+    public function sheets(): array
     {
-        // Use the month to filter the payroll data
-        return Payroll::whereYear('created_at', $this->month->year)
-                      ->whereMonth('created_at', $this->month->month)
-                      ->get();
-
-        // NOTE: Adjust the 'created_at' column and the query to match
-        // your database schema and logic for how payroll periods are stored.
+        // Return sheet instances which carry their own styling and data.
+        return [
+            new AdminBasicEdPayrollExport($this->month),
+            new CollegeGspSheet($this->month),
+        ];
     }
 }

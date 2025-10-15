@@ -12,17 +12,27 @@ use Maatwebsite\Excel\Events\AfterSheet;
 
 class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCustomStartCell
 {
+    protected $month;
+
+    public function __construct($month = null)
+    {
+        $this->month = $month;
+    }
     /**
      * @return \Illuminate\Support\Collection
      */
     public function collection()
     {
         // This query has been updated to match your new header structure.
-        return Payroll::query()
+        $query = Payroll::query()
             ->join('employees', 'payrolls.employee_id', '=', 'employees.id')
-            ->where('employees.roles', 'like', '%college instructor%') // Filter for college instructors
-            // You can uncomment and set a specific month to filter the report, e.g., ->where('payrolls.month', '2025-09')
-            ->select(
+            ->where('employees.roles', 'like', '%college instructor%'); // Filter for college instructors
+
+        if ($this->month) {
+            $query->where('payrolls.month', $this->month);
+        }
+
+        return $query->select(
                 DB::raw("CONCAT(employees.first_name, ' ', employees.last_name) as employee_name"), // NAME
                 DB::raw("'N/A' as total"), // TOTAL
                 'payrolls.absences', // ABSENTS

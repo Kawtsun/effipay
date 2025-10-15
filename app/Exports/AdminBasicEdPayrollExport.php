@@ -12,17 +12,27 @@ use Maatwebsite\Excel\Events\AfterSheet;
 
 class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents, WithCustomStartCell
 {
+    protected $month;
+
+    public function __construct($month = null)
+    {
+        $this->month = $month;
+    }
     /**
      * @return \Illuminate\Support\Collection
      */
     public function collection()
     {
         // This query is now updated to match the column order in your screenshot.
-        return Payroll::query()
+        $query = Payroll::query()
             ->join('employees', 'payrolls.employee_id', '=', 'employees.id')
-            ->where('employees.roles', 'not like', '%college instructor%') // Filter out college instructors
-            // You can uncomment and set a specific month to filter the report, e.g., ->where('payrolls.month', '2025-10')
-            ->select(
+            ->where('employees.roles', 'not like', '%college instructor%'); // Filter out college instructors
+
+        if ($this->month) {
+            $query->where('payrolls.month', $this->month);
+        }
+
+        return $query->select(
                 DB::raw("CONCAT(employees.first_name, ' ', employees.last_name) as employee_name"),
                 'payrolls.honorarium',
                 'employees.base_salary as rate_per_month',
