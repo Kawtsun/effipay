@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Helper to format numbers with commas for display
 function formatWithCommas(value: string | number): string {
@@ -97,12 +98,29 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
         }
     };
 
-    const renderToggleButton = (label: string, isShown: boolean, setter: React.Dispatch<React.SetStateAction<boolean>>) => (
+    const renderToggleButton = (
+        label: string,
+        isShown: boolean,
+        setter: React.Dispatch<React.SetStateAction<boolean>>,
+        tooltipText?: string
+    ) => (
         <div className="flex items-center justify-between">
-            <Label className={`font-semibold flex items-center transition-colors ${isShown ? 'text-green-600' : ''}`}>
-                {isShown && <CheckCircle className="h-4 w-4 mr-2" />}
-                {label}
-            </Label>
+            <div className="flex items-center gap-2">
+                <Label className={`font-semibold flex items-center transition-colors ${isShown ? 'text-green-600' : ''}`}>
+                    {isShown && <CheckCircle className="h-4 w-4 mr-2" />}
+                    {label}
+                </Label>
+                {tooltipText && (
+                    <Tooltip>
+                        <TooltipTrigger>
+                            <Info className="h-4 w-4 text-gray-500" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{tooltipText}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+            </div>
             <Button
                 type="button"
                 variant={isShown ? 'secondary' : 'ghost'}
@@ -132,144 +150,114 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
-                {isAdmin ? (
-                    <div className="space-y-4">
-                        {/* SSS Section */}
-                        <div>
-                            <div className="flex items-center justify-between">
-                                <Label className="font-semibold flex items-center text-green-600">
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    SSS Contribution
-                                </Label>
-                            </div>
-                            <div className="mt-2">
-                                <Alert>
-                                    <Info className="h-4 w-4" />
-                                    <AlertDescription>
-                                        SSS contribution will be calculated based on the base salary.
-                                    </AlertDescription>
-                                </Alert>
-                            </div>
-                        </div>
-                        {/* PhilHealth Section */}
-                        <div>
-                            <div className="flex items-center justify-between">
-                                <Label className="font-semibold flex items-center text-green-600">
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    PhilHealth Contribution
-                                </Label>
-                            </div>
-                            <div className="mt-2">
-                                <Alert>
-                                    <Info className="h-4 w-4" />
-                                    <AlertDescription>
-                                        PhilHealth contribution will be calculated based on the base salary.
-                                    </AlertDescription>
-                                </Alert>
-                            </div>
-                        </div>
-                        {/* Pag-IBIG Section */}
-                        <div>
-                            <div className="flex items-center justify-between">
-                                <Label className="font-semibold flex items-center text-green-600">
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Pag-IBIG Contribution
-                                </Label>
-                            </div>
-                            <div className="mt-2">
-                                <div className="relative">
-                                    <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                                    <Input
-                                        type="text"
-                                        placeholder="Min 200.00"
-                                        value={formatWithCommas(data.pag_ibig)}
-                                        onChange={e => handleNumericChange('pag_ibig', e.target.value)}
-                                        className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
-                                    />
+                <TooltipProvider>
+                    {isAdmin ? (
+                        <div className="space-y-4">
+                            {/* SSS Section */}
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Label className="font-semibold flex items-center text-green-600">
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            SSS Contribution
+                                        </Label>
+                                        <Tooltip>
+                                            <TooltipTrigger>
+                                                <Info className="h-4 w-4 text-gray-500" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>SSS contribution will be calculated based on the base salary.</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
                                 </div>
-                                {pagIbigError && (
-                                    <Alert variant="destructive" className="mt-2">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        <AlertDescription>{pagIbigError}</AlertDescription>
-                                    </Alert>
-                                )}
+                            </div>
+                            {/* PhilHealth Section */}
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Label className="font-semibold flex items-center text-green-600">
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            PhilHealth Contribution
+                                        </Label>
+                                        <Tooltip>
+                                            <TooltipTrigger>
+                                                <Info className="h-4 w-4 text-gray-500" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>PhilHealth contribution will be calculated based on the base salary.</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Pag-IBIG Section */}
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <Label className="font-semibold flex items-center text-green-600">
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Pag-IBIG Contribution
+                                    </Label>
+                                </div>
+                                <div className="mt-2">
+                                    <div className="relative">
+                                        <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                                        <Input
+                                            type="text"
+                                            placeholder="Min 200.00"
+                                            value={formatWithCommas(data.pag_ibig)}
+                                            onChange={e => handleNumericChange('pag_ibig', e.target.value)}
+                                            className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
+                                        />
+                                    </div>
+                                    {pagIbigError && (
+                                        <Alert variant="destructive" className="mt-2">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <AlertDescription>{pagIbigError}</AlertDescription>
+                                        </Alert>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {/* SSS Section */}
-                        <div>
-                            {renderToggleButton('SSS Contribution', showSSS, setShowSSS)}
-                            <AnimatePresence>
-                                {showSSS && (
-                                    <motion.div
-                                        key="sss-info"
-                                        initial={{ opacity: 0, y: -10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        className="mt-2"
-                                    >
-                                        <Alert>
-                                            <Info className="h-4 w-4" />
-                                            <AlertDescription>
-                                                SSS contribution will be calculated based on the base salary.
-                                            </AlertDescription>
-                                        </Alert>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                    ) : (
+                        <div className="space-y-4">
+                            {/* SSS Section */}
+                            <div>
+                                {renderToggleButton('SSS Contribution', showSSS, setShowSSS, 'SSS contribution will be calculated based on the base salary.')}
+                            </div>
+                            {/* PhilHealth Section */}
+                            <div>
+                                {renderToggleButton('PhilHealth Contribution', showPhilhealth, setShowPhilhealth, 'PhilHealth contribution will be calculated based on the base salary.')}
+                            </div>
+                            {/* Pag-IBIG Section */}
+                            <div>
+                                {renderToggleButton('Pag-IBIG Contribution', showPagibig, setShowPagibig)}
+                                <AnimatePresence>
+                                    {showPagibig && (
+                                        <motion.div key="pagibig-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
+                                            <div className="relative">
+                                                <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    type="text"
+                                                    placeholder="Min 200.00"
+                                                    value={formatWithCommas(data.pag_ibig)}
+                                                    onChange={e => handleNumericChange('pag_ibig', e.target.value)}
+                                                    className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
+                                                />
+                                            </div>
+                                            {pagIbigError && (
+                                                <Alert variant="destructive" className="mt-2">
+                                                    <AlertTriangle className="h-4 w-4" />
+                                                    <AlertDescription>{pagIbigError}</AlertDescription>
+                                                </Alert>
+                                            )}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                         </div>
-                        {/* PhilHealth Section */}
-                        <div>
-                            {renderToggleButton('PhilHealth Contribution', showPhilhealth, setShowPhilhealth)}
-                            <AnimatePresence>
-                                {showPhilhealth && (
-                                    <motion.div
-                                        key="philhealth-info"
-                                        initial={{ opacity: 0, y: -10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        className="mt-2"
-                                    >
-                                        <Alert>
-                                            <Info className="h-4 w-4" />
-                                            <AlertDescription>
-                                                PhilHealth contribution will be calculated based on the base salary.
-                                            </AlertDescription>
-                                        </Alert>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                        {/* Pag-IBIG Section */}
-                        <div>
-                            {renderToggleButton('Pag-IBIG Contribution', showPagibig, setShowPagibig)}
-                             <AnimatePresence>
-                                {showPagibig && (
-                                     <motion.div key="pagibig-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
-                                        <div className="relative">
-                                            <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                                            <Input
-                                                type="text"
-                                                placeholder="Min 200.00"
-                                                value={formatWithCommas(data.pag_ibig)}
-                                                onChange={e => handleNumericChange('pag_ibig', e.target.value)}
-                                                className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
-                                            />
-                                        </div>
-                                        {pagIbigError && (
-                                            <Alert variant="destructive" className="mt-2">
-                                                <AlertTriangle className="h-4 w-4" />
-                                                <AlertDescription>{pagIbigError}</AlertDescription>
-                                            </Alert>
-                                        )}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    </div>
-                )}
+                    )}
+                </TooltipProvider>
             </CardContent>
         </Card>
     );
