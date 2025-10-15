@@ -167,33 +167,45 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
             </CardHeader>
             <CardContent className="space-y-4">
                 {isAdmin ? (
-                    <div className="space-y-6">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="sss_admin" className="font-semibold">SSS Contribution</Label>
-                                <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input id="sss_admin" value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                    <div className="space-y-4">
+                        {/* SSS Section */}
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <Label className="font-semibold">SSS Contribution</Label>
+                            </div>
+                            <div className="mt-2">
+                                <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input value={formatWithCommas(data.sss)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                 <ErrorDisplay message={errors.sss} />
                             </div>
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="philhealth_admin" className="font-semibold">PhilHealth Contribution</Label>
-                                <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input id="philhealth_admin" value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
+                        </div>
+                        {/* PhilHealth Section */}
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <Label className="font-semibold">PhilHealth Contribution</Label>
+                            </div>
+                            <div className="mt-2">
+                                <div className="relative"><PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" /><Input value={formatWithCommas(data.philhealth)} readOnly disabled className="pl-8 bg-gray-100 cursor-not-allowed" /></div>
                                 <ErrorDisplay message={errors.philhealth} />
                             </div>
                         </div>
-                        <div className="flex flex-col gap-2">
-                            <Label htmlFor="pag_ibig_admin" className="font-semibold">Pag-IBIG Contribution</Label>
-                            <div className="relative">
-                                <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                                <Input
-                                    id="pag_ibig_admin"
-                                    type="text"
-                                    placeholder="Min 200.00"
-                                    value={formatWithCommas(data.pag_ibig)}
-                                    onChange={e => handleNumericChange('pag_ibig', e.target.value)}
-                                    className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
-                                />
+                        {/* Pag-IBIG Section */}
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <Label className="font-semibold">Pag-IBIG Contribution</Label>
                             </div>
-                            <ErrorDisplay message={errors.pag_ibig || pagIbigError} />
+                            <div className="mt-2">
+                                <div className="relative">
+                                    <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Min 200.00"
+                                        value={formatWithCommas(data.pag_ibig)}
+                                        onChange={e => handleNumericChange('pag_ibig', e.target.value)}
+                                        className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
+                                    />
+                                </div>
+                                <ErrorDisplay message={errors.pag_ibig || pagIbigError} />
+                            </div>
                         </div>
                     </div>
                 ) : (
