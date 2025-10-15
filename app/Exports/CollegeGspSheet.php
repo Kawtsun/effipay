@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
+use Carbon\Carbon;
 
 class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCustomStartCell
 {
@@ -34,14 +35,14 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
 
         return $query->select(
                 DB::raw("CONCAT(employees.first_name, ' ', employees.last_name) as employee_name"), // NAME
-                DB::raw("'N/A' as total"), // TOTAL
+                DB::raw("'' as total"), // TOTAL (empty instead of 'N/A')
                 'payrolls.absences', // ABSENTS
-                DB::raw("'N/A' as total_hours"), // TOTAL HOURS
+                DB::raw("'' as total_hours"), // TOTAL HOURS (empty instead of 'N/A')
                 'employees.college_rate as rate_per_hour', // RATE PER HOUR
                 'payrolls.honorarium', // HONORARIUM
                 'payrolls.base_salary as monthly_base', // MONTHLY
                 DB::raw('(payrolls.absences * employees.college_rate) as absence_deduction'), // ABSENCES
-                DB::raw("'N/A' as total_amount"), // TOTAL AMOUNT
+                DB::raw("'' as total_amount"), // TOTAL AMOUNT (empty instead of 'N/A')
                 'payrolls.sss as sss_premium', // SSS PREMIUM
                 'payrolls.sss_salary_loan', // SSS Loan
                 'payrolls.sss_calamity_loan', // SSS Calamity
@@ -86,7 +87,20 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                 $sheet->setCellValue('A2', 'PAYROLL OF COLLEGE AND GSP');
                 $sheet->getStyle('A2')->getFont()->setBold(true);
 
-                $sheet->setCellValue('A3', 'For the Period Covered: October 1-31, 2025');
+                // Compute period covered from the provided month or default to current month
+                try {
+                    if ($this->month) {
+                        $periodStart = Carbon::createFromFormat('Y-m', $this->month)->startOfMonth();
+                    } else {
+                        $periodStart = Carbon::now()->startOfMonth();
+                    }
+                    $periodEnd = $periodStart->copy()->endOfMonth();
+                    $periodText = 'For the Period Covered: ' . $periodStart->format('F j') . '-' . $periodEnd->format('j, Y');
+                } catch (\Exception $e) {
+                    $periodText = 'For the Period Covered: ' . Carbon::now()->startOfMonth()->format('F j') . '-' . Carbon::now()->endOfMonth()->format('j, Y');
+                }
+
+                $sheet->setCellValue('A3', $periodText);
 
                 // --- CREATE MULTI-ROW TABLE HEADERS (ROW 5-6) ---
                 $headers = [

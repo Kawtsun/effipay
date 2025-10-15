@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
+use Carbon\Carbon;
 
 class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents, WithCustomStartCell
 {
@@ -82,7 +83,20 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                 $sheet->setCellValue('A2', 'PAYROLL OF ADMIN AND BASIC EDUCATION');
                 $sheet->getStyle('A2')->getFont()->setBold(true);
 
-                $sheet->setCellValue('A3', 'For the Period Covered: October 1-31, 2025');
+                // Compute period covered from the provided month or default to current month
+                try {
+                    if ($this->month) {
+                        $periodStart = Carbon::createFromFormat('Y-m', $this->month)->startOfMonth();
+                    } else {
+                        $periodStart = Carbon::now()->startOfMonth();
+                    }
+                    $periodEnd = $periodStart->copy()->endOfMonth();
+                    $periodText = 'For the Period Covered: ' . $periodStart->format('F j') . '-' . $periodEnd->format('j, Y');
+                } catch (\Exception $e) {
+                    $periodText = 'For the Period Covered: ' . Carbon::now()->startOfMonth()->format('F j') . '-' . Carbon::now()->endOfMonth()->format('j, Y');
+                }
+
+                $sheet->setCellValue('A3', $periodText);
 
                 // --- CREATE MULTI-ROW TABLE HEADERS (ROW 5-6) ---
                 $headersRow5 = [
