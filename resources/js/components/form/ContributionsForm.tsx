@@ -1,6 +1,6 @@
 import * as React from 'react';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { HandCoins, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso, Info } from 'lucide-react';
+import { HandCoins, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso, Info, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -99,7 +99,10 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
 
     const renderToggleButton = (label: string, isShown: boolean, setter: React.Dispatch<React.SetStateAction<boolean>>) => (
         <div className="flex items-center justify-between">
-            <Label className="font-semibold">{label}</Label>
+            <Label className={`font-semibold flex items-center transition-colors ${isShown ? 'text-green-600' : ''}`}>
+                {isShown && <CheckCircle className="h-4 w-4 mr-2" />}
+                {label}
+            </Label>
             <Button
                 type="button"
                 variant={isShown ? 'secondary' : 'ghost'}
@@ -134,7 +137,10 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                         {/* SSS Section */}
                         <div>
                             <div className="flex items-center justify-between">
-                                <Label className="font-semibold">SSS Contribution</Label>
+                                <Label className="font-semibold flex items-center text-green-600">
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    SSS Contribution
+                                </Label>
                             </div>
                             <div className="mt-2">
                                 <Alert>
@@ -148,7 +154,10 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                         {/* PhilHealth Section */}
                         <div>
                             <div className="flex items-center justify-between">
-                                <Label className="font-semibold">PhilHealth Contribution</Label>
+                                <Label className="font-semibold flex items-center text-green-600">
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    PhilHealth Contribution
+                                </Label>
                             </div>
                             <div className="mt-2">
                                 <Alert>
@@ -162,7 +171,10 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                         {/* Pag-IBIG Section */}
                         <div>
                             <div className="flex items-center justify-between">
-                                <Label className="font-semibold">Pag-IBIG Contribution</Label>
+                                <Label className="font-semibold flex items-center text-green-600">
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Pag-IBIG Contribution
+                                </Label>
                             </div>
                             <div className="mt-2">
                                 <div className="relative">
