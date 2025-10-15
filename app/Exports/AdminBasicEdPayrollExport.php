@@ -14,6 +14,7 @@ use Carbon\Carbon;
 class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents, WithCustomStartCell
 {
     protected $month;
+    protected $rows;
 
     public function __construct($month = null)
     {
@@ -35,7 +36,7 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
             $query->where('payrolls.month', $this->month);
         }
 
-        return $query->select(
+        $all = $query->select(
                 DB::raw("CONCAT(employees.first_name, ' ', employees.last_name) as employee_name"),
                 DB::raw('ROUND(payrolls.honorarium, 2) as honorarium'),
                 DB::raw('ROUND(employees.base_salary, 2) as rate_per_month'),
@@ -57,7 +58,95 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                 DB::raw('ROUND(payrolls.total_deductions, 2) as total_deductions'),
                 DB::raw('ROUND(payrolls.net_pay, 2) as net_pay')
             )
+            // Also select the raw roles value so we can classify rows for totals, but we'll keep it out of the returned collection
+            ->addSelect('employees.roles as roles')
             ->get();
+
+        // Save full rows (including roles) for totals classification
+        $this->rows = $all;
+
+        // Partition rows into Administrator vs Basic Education based on roles
+        $isAdminCallback = function ($r) {
+            $roles = strtolower(trim((string)($r->roles ?? '')));
+            return str_contains($roles, 'admin') || str_contains($roles, 'administrator');
+        };
+
+        $adminRows = $all->filter($isAdminCallback);
+        $basicRows = $all->reject($isAdminCallback);
+
+        // Map helper for display columns
+        $mapDisplay = function ($r) {
+            return [
+                'employee_name' => $r->employee_name,
+                'honorarium' => $r->honorarium,
+                'rate_per_month' => $r->rate_per_month,
+                'rate_per_day' => $r->rate_per_day,
+                'total_late_absences' => $r->total_late_absences,
+                'gross_pay' => $r->gross_pay,
+                'sss_premium' => $r->sss_premium,
+                'sss_salary_loan' => $r->sss_salary_loan,
+                'sss_calamity_loan' => $r->sss_calamity_loan,
+                'pagibig_salary_loan' => $r->pagibig_salary_loan,
+                'pagibig_calamity_loan' => $r->pagibig_calamity_loan,
+                'philhealth_premium' => $r->philhealth_premium,
+                'withholding_tax' => $r->withholding_tax,
+                'cash_advance' => $r->cash_advance,
+                'ar_tuition' => $r->ar_tuition,
+                'chinabank_loan' => $r->chinabank_loan,
+                'loan' => $r->loan,
+                'fees' => $r->fees,
+                'total_deductions' => $r->total_deductions,
+                'net_pay' => $r->net_pay,
+            ];
+        };
+
+        // Compute totals for each group
+        $colKeys = [
+            'honorarium','rate_per_month','rate_per_day','total_late_absences','gross_pay','sss_premium','sss_salary_loan','sss_calamity_loan','pagibig_salary_loan','pagibig_calamity_loan','philhealth_premium','withholding_tax','cash_advance','ar_tuition','chinabank_loan','loan','fees','total_deductions','net_pay'
+        ];
+
+        $sumGroup = function ($rows) use ($colKeys) {
+            $sums = array_fill_keys($colKeys, 0.0);
+            foreach ($rows as $r) {
+                foreach ($colKeys as $k) {
+                    $sums[$k] += (float) ($r->{$k} ?? 0);
+                }
+            }
+            return $sums;
+        };
+
+        $adminSums = $sumGroup($adminRows);
+        $basicSums = $sumGroup($basicRows);
+
+        // Build display collections with totals inserted between groups
+        $adminDisplay = $adminRows->map($mapDisplay);
+        $basicDisplay = $basicRows->map($mapDisplay);
+
+        $adminTotalRow = array_merge(['employee_name' => 'TOTAL (ADMINISTRATOR)'], array_combine($colKeys, array_map(function ($v) { return round($v,2); }, array_values($adminSums))));
+        $basicTotalRow = array_merge(['employee_name' => 'TOTAL (BASIC ED)'], array_combine($colKeys, array_map(function ($v) { return round($v,2); }, array_values($basicSums))));
+
+        $ordered = collect();
+        if ($adminDisplay->isNotEmpty()) {
+            $ordered = $ordered->merge($adminDisplay);
+            $ordered->push($adminTotalRow);
+        }
+        if ($basicDisplay->isNotEmpty()) {
+            $ordered = $ordered->merge($basicDisplay);
+            $ordered->push($basicTotalRow);
+        }
+
+        // Grand total (sum of admin + basic)
+        $grandSums = array_map(function ($a, $b) { return $a + $b; }, array_values($adminSums), array_values($basicSums));
+        // Combine back to associative by colKeys
+        $grandAssoc = array_combine($colKeys, array_map(function ($v) { return round($v, 2); }, $grandSums));
+    $grandTotalRow = array_merge(['employee_name' => 'GRAND TOTAL'], $grandAssoc);
+        // Push grand total only if there is at least one row in either group
+        if ($adminDisplay->isNotEmpty() || $basicDisplay->isNotEmpty()) {
+            $ordered->push($grandTotalRow);
+        }
+
+        // Return the ordered display rows ready for export
+        return $ordered;
     }
 
     public function startCell(): string
@@ -171,7 +260,57 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
               $sheet->getStyle($dataRange)
                   ->getNumberFormat()
                   ->setFormatCode('#,##0.00');
-            }
+                
+                    // The totals rows are already inserted into the collection (admin total before basic total).
+                    // Find those rows by label in column A and apply styling (peach for BASIC ED, blue for ADMINISTRATOR).
+                    for ($r = 8; $r <= $lastRow; $r++) {
+                        $cellA = (string) $sheet->getCell('A' . $r)->getValue();
+                        if ($cellA === 'TOTAL (BASIC ED)') {
+                            // Peach fill for basic ed total
+                            $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
+                                'fill' => [
+                                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                                    'startColor' => ['rgb' => 'FDE9D9'],
+                                ],
+                                'font' => ['bold' => true],
+                            ]);
+                            $sheet->getStyle('A' . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+                            $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                            // Ensure number format
+                            $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getNumberFormat()->setFormatCode('#,##0.00');
+                        }
+                        if ($cellA === 'TOTAL (ADMINISTRATOR)') {
+                            // Blue fill for admin total
+                            $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
+                                'fill' => [
+                                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                                    'startColor' => ['rgb' => 'DDEBF7'],
+                                ],
+                                'font' => ['bold' => true],
+                            ]);
+                            $sheet->getStyle('A' . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+                            $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                            $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getNumberFormat()->setFormatCode('#,##0.00');
+                            // Add a top border to visually separate the admin group
+                            $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->getBorders()->getTop()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+                        }
+                            if ($cellA === 'GRAND TOTAL') {
+                                // Grey fill for grand total
+                                $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
+                                    'fill' => [
+                                        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                                        'startColor' => ['rgb' => 'D9D9D9'],
+                                    ],
+                                    'font' => ['bold' => true],
+                                ]);
+                                $sheet->getStyle('A' . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+                                $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                                $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getNumberFormat()->setFormatCode('#,##0.00');
+                                // Thicker top border for grand total
+                                $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->getBorders()->getTop()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM);
+                            }
+                    }
+                }
             },
         ];
     }
