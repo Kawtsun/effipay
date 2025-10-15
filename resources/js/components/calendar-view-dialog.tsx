@@ -34,6 +34,7 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [userSelectedDate, setUserSelectedDate] = useState<string | undefined>(undefined);
+  const [userSelectedDates, setUserSelectedDates] = useState<string[]>([]);
 
   // Refetch observances when markedDates changes and dialog is open
   useEffect(() => {
@@ -250,7 +251,7 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
             <div
               style={{
                 width: 400,
-                height: 430,
+                height: 480,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -315,7 +316,7 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
                     </div>
                   </motion.div>
                   {/* Add Event button: visible when a date is selected */}
-                  {selectedDate && markedDates.includes(selectedDate) && !automatedDates.includes(selectedDate) && !originalDates.includes(selectedDate) ? (
+                      {selectedDate && markedDates.includes(selectedDate) && !automatedDates.includes(selectedDate) && !originalDates.includes(selectedDate) ? (
                     <motion.div
                       key="add-event-button"
                       initial={{ opacity: 0, y: 8 }}
@@ -324,7 +325,10 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
                       style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 8 }}
                     >
                       <Button onClick={() => {
-                        // open the add event modal for the selected date
+                        // compute newly selected dates (those not in originalDates and not automated)
+                        const newly = markedDates.filter(d => !originalDates.includes(d) && !automatedDates.includes(d));
+                        setUserSelectedDates(newly.map(d => (d || '').slice(0,10)));
+                        // open the add event modal for the selected date(s)
                         setUserSelectedDate(selectedDate);
                         setShowAddModal(true);
                         // debug toast to confirm click registered
@@ -364,6 +368,7 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
   <AddEventModal
     open={showAddModal}
     date={userSelectedDate}
+    dates={userSelectedDates}
     onClose={() => setShowAddModal(false)}
     onConfirm={handleAddEventConfirm}
     initial={(() => {
