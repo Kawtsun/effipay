@@ -126,24 +126,25 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
         $basicTotalRow = array_merge(['employee_name' => 'TOTAL (BASIC ED)'], array_combine($colKeys, array_map(function ($v) { return round($v,2); }, array_values($basicSums))));
 
         $ordered = collect();
+        // Always include the ADMIN group (employee rows if present, then total row)
         if ($adminDisplay->isNotEmpty()) {
             $ordered = $ordered->merge($adminDisplay);
-            $ordered->push($adminTotalRow);
         }
+        $ordered->push($adminTotalRow);
+
+        // Always include the BASIC ED group (employee rows if present, then total row)
         if ($basicDisplay->isNotEmpty()) {
             $ordered = $ordered->merge($basicDisplay);
-            $ordered->push($basicTotalRow);
         }
+        $ordered->push($basicTotalRow);
 
         // Grand total (sum of admin + basic)
         $grandSums = array_map(function ($a, $b) { return $a + $b; }, array_values($adminSums), array_values($basicSums));
         // Combine back to associative by colKeys
         $grandAssoc = array_combine($colKeys, array_map(function ($v) { return round($v, 2); }, $grandSums));
     $grandTotalRow = array_merge(['employee_name' => 'GRAND TOTAL'], $grandAssoc);
-        // Push grand total only if there is at least one row in either group
-        if ($adminDisplay->isNotEmpty() || $basicDisplay->isNotEmpty()) {
-            $ordered->push($grandTotalRow);
-        }
+        // Always include grand total row
+        $ordered->push($grandTotalRow);
 
         // Return the ordered display rows ready for export
         return $ordered;
@@ -266,11 +267,11 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                     for ($r = 8; $r <= $lastRow; $r++) {
                         $cellA = (string) $sheet->getCell('A' . $r)->getValue();
                         if ($cellA === 'TOTAL (BASIC ED)') {
-                            // Peach fill for basic ed total
+                            // Green fill for basic ed total (#B5FDB1)
                             $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
                                 'fill' => [
                                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                                    'startColor' => ['rgb' => 'FDE9D9'],
+                                    'startColor' => ['rgb' => 'B5FDB1'],
                                 ],
                                 'font' => ['bold' => true],
                             ]);
@@ -280,11 +281,11 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                             $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getNumberFormat()->setFormatCode('#,##0.00');
                         }
                         if ($cellA === 'TOTAL (ADMINISTRATOR)') {
-                            // Blue fill for admin total
+                            // Green fill for admin total (#B5FDB1)
                             $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
                                 'fill' => [
                                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                                    'startColor' => ['rgb' => 'DDEBF7'],
+                                    'startColor' => ['rgb' => 'B5FDB1'],
                                 ],
                                 'font' => ['bold' => true],
                             ]);
