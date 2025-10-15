@@ -41,7 +41,7 @@ export function CalendarCarousel({ observances = [], onEdit }: { observances: Ob
 
   // Find the index of the closest upcoming or current holiday (manual or auto)
   // Find the index of the date closest to today (past or future)
-  function getFocusIndex() {
+  const getFocusIndex = React.useCallback(() => {
     const now = new Date();
     let closestIdx = 0;
     let minAbsDiff = Infinity;
@@ -54,21 +54,22 @@ export function CalendarCarousel({ observances = [], onEdit }: { observances: Ob
       }
     }
     return closestIdx;
-  }
+  }, [sortedObservances]);
   const [focusIndex, setFocusIndex] = useState(getFocusIndex());
   // Update focusIndex in real time if observances or date changes
   // Update focusIndex in real time if observances or date changes
   useEffect(() => {
     setFocusIndex(getFocusIndex());
-  }, [sortedObservances]);
+  }, [getFocusIndex]);
   useEffect(() => {
     const interval = setInterval(() => {
       setFocusIndex(getFocusIndex());
     }, 60 * 1000); // check every minute
     return () => clearInterval(interval);
-  }, [sortedObservances]);
+  }, [getFocusIndex]);
 
   // Use setApi to get Embla API instance and scroll to focusIndex
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [emblaApi, setEmblaApi] = useState<any>(null);
   useEffect(() => {
     if (emblaApi && sortedObservances.length > 0) {
@@ -95,10 +96,10 @@ export function CalendarCarousel({ observances = [], onEdit }: { observances: Ob
           containerWidth="850px"
           setApi={setEmblaApi}
         >
-          <CarouselContent className="flex" viewportWidth="850px">
-            {sortedObservances.length === 0 ? (
-              <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                <div className="p-1 flex justify-center">
+          <CarouselContent className="flex gap-1 overflow-visible" viewportWidth="850px">
+              {sortedObservances.length === 0 ? (
+                  <CarouselItem className="md:basis-1/2 lg:basis-1/3">
+                <div className="p-3 flex justify-center overflow-visible">
                   <Card style={{ width: 360, minWidth: 360, maxWidth: 360 }}>
                     <CardContent className="flex flex-col items-center justify-center h-[220px]">
                       <span className="text-lg text-muted-foreground">No holidays</span>
@@ -112,17 +113,17 @@ export function CalendarCarousel({ observances = [], onEdit }: { observances: Ob
                 const colors = OBSERVANCE_COLOR_MAP[type] || OBSERVANCE_COLOR_MAP.DEFAULT;
                 return (
                   <CarouselItem key={obs.date + (obs.label || '')} className="basis-1/3">
-                    <div className="flex justify-center w-full">
+                    <div className="p-3 flex justify-center w-full overflow-visible">
                       <Card
                         role={onEdit ? 'button' : undefined}
                         tabIndex={onEdit ? 0 : -1}
                         title={onEdit ? 'Edit observance' : undefined}
                         onClick={(e) => { if (onEdit) { e.stopPropagation(); onEdit(obs); } }}
                         onKeyDown={(e) => { if (onEdit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onEdit(obs); } }}
-                        className={`w-[320px] rounded-2xl overflow-hidden ${colors.bg} ${colors.border || ''} ${colors.ring || ''} shadow-[0_0_0_1px_rgba(0,0,0,0.05)] ${onEdit ? 'cursor-pointer hover:shadow-lg hover:scale-[1.01] transition-all' : ''} hover:${colors.hoverRing || ''} hover:${colors.hoverBorder || ''}`}
+                        className={`relative w-[320px] rounded-2xl overflow-hidden ${colors.bg} ${colors.border || ''} ${colors.ring || ''} shadow-[0_0_0_1px_rgba(0,0,0,0.05)] ${onEdit ? 'cursor-pointer hover:shadow-lg hover:scale-[1.01] transition-all' : ''} hover:z-50 focus:outline-none`}
                       >
+                        <div className={`absolute inset-0 pointer-events-none ${colors.grad || ''}`} />
                         <CardContent className={`relative flex flex-col items-center justify-center h-[160px] px-2 py-4 w-full ${colors.text}`}>
-                          <div className={`absolute inset-0 pointer-events-none ${colors.grad || ''}`} />
                           <span className="text-base font-bold mb-2 text-center tracking-wide break-words max-w-[280px] whitespace-pre-line" style={{ wordBreak: 'break-word' }}>
                             {formatManilaDate(obs.date)}
                           </span>

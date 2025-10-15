@@ -269,7 +269,7 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
                 <>
                   {/* Total marked dates in the current year (show only after loading) */}
                   <motion.div
-                    className="mb-4 mt-2 w-full flex justify-center"
+                    className="mb-2 mt-6 w-full flex justify-center"
                     key="marked-dates-label"
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
