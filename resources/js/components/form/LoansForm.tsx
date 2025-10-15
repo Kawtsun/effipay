@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { type UseFormReturn } from '@inertiajs/react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Wallet, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,10 +25,11 @@ type EmployeeFormData = {
 };
 
 interface LoansFormProps {
-    form: UseFormReturn<EmployeeFormData>;
+    form: any;
+    resetToken?: number; // triggers UI reset from parent
 }
 
-export function LoansForm({ form }: LoansFormProps) {
+export function LoansForm({ form, resetToken }: LoansFormProps) {
     const { data, setData, errors, clearErrors } = form;
 
     // Your original state logic (unchanged)
@@ -36,6 +37,15 @@ export function LoansForm({ form }: LoansFormProps) {
     const [showSssCalamity, setShowSssCalamity] = React.useState(false);
     const [showPagibigMulti, setShowPagibigMulti] = React.useState(false);
     const [showPagibigCalamity, setShowPagibigCalamity] = React.useState(false);
+
+    // Reset toggles when parent triggers reset
+    React.useEffect(() => {
+        if (resetToken === undefined) return;
+        setShowSssSalary(false);
+        setShowSssCalamity(false);
+        setShowPagibigMulti(false);
+        setShowPagibigCalamity(false);
+    }, [resetToken]);
 
     // Your original useEffects (unchanged)
     React.useEffect(() => { if (!showSssSalary) setData('sss_salary_loan', ''); }, [showSssSalary, setData]);

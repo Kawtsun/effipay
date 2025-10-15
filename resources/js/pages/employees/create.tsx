@@ -4,7 +4,7 @@ import { ArrowLeft, Check, RotateCcw, UserPlus } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { EmployeeNameForm } from '@/components/form/EmployeeNameForm';
 import { EmploymentDetailsForm } from '@/components/form/EmploymentDetailsForm';
@@ -43,8 +43,8 @@ type EmployeeFormData = {
 };
 
 type Props = {
-    salaryDefaults: any;
-    filters: Record<string, any>;
+    salaryDefaults: unknown;
+    filters: Record<string, unknown>;
 };
 
 // --- MAIN PAGE COMPONENT ---
@@ -77,6 +77,9 @@ export default function Index(props: Props) {
         tea: '',
     });
 
+    // Token to signal children to reset their local UI state
+    const [resetToken, setResetToken] = React.useState(0);
+
     // Your handleSubmit function (unchanged)
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,7 +89,7 @@ export default function Index(props: Props) {
                 toast.success('Employee created successfully!');
                 form.reset();
             },
-            onError: (errors) => {
+            onError: () => {
                 toast.error('Validation Failed', {
                     description: 'Please review the form for errors highlighted in red.',
                 });
@@ -103,7 +106,6 @@ export default function Index(props: Props) {
         {
             title: 'Add New Employee',
             href: route('employees.create'),
-            isCurrent: true, // Mark the current page
         },
     ];
 
@@ -136,20 +138,27 @@ export default function Index(props: Props) {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                                 <div className="space-y-8">
                                     <EmployeeNameForm form={form} />
-                                    <EmploymentDetailsForm form={form} salaryDefaults={salaryDefaults} />
+                                    <EmploymentDetailsForm form={form} salaryDefaults={salaryDefaults} resetToken={resetToken} />
                                     <WorkScheduleForm form={form} />
                                 </div>
                                 <div className="space-y-8">
                                     <EarningsForm form={form} />
-                                    <ContributionsForm form={form} />
-                                    <LoansForm form={form} />
-                                    <OtherDeductionsForm form={form} />
+                                    <ContributionsForm form={form} resetToken={resetToken} />
+                                    <LoansForm form={form} resetToken={resetToken} />
+                                    <OtherDeductionsForm form={form} resetToken={resetToken} />
                                 </div>
                             </div>
                         </CardContent>
                         <CardFooter className="bg-card/95 border-t p-6 sticky bottom-0 backdrop-blur-sm">
                             <div className="flex justify-end gap-4 w-full">
-                                <Button type="button" variant="outline" onClick={() => form.reset()}>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        form.reset();
+                                        setResetToken((t) => t + 1);
+                                    }}
+                                >
                                     <RotateCcw className="mr-2 h-4 w-4" />
                                     Reset
                                 </Button>

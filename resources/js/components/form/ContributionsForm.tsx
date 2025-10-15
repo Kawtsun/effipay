@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { type UseFormReturn } from '@inertiajs/react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { HandCoins, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,20 +27,30 @@ type EmployeeFormData = {
 };
 
 interface ContributionsFormProps {
-    form: UseFormReturn<EmployeeFormData>;
+    form: any;
+    resetToken?: number; // triggers UI reset from parent
 }
 
-export function ContributionsForm({ form }: ContributionsFormProps) {
+export function ContributionsForm({ form, resetToken }: ContributionsFormProps) {
     const { data, setData, errors, clearErrors } = form;
 
     const [pagIbigError, setPagIbigError] = React.useState<string | null>(null);
     const isAdmin = React.useMemo(() =>
-        data.roles.split(',').map(r => r.trim()).includes('administrator'),
+        data.roles.split(',').map((r: string) => r.trim()).includes('administrator'),
         [data.roles]
     );
     const [showSSS, setShowSSS] = React.useState(false);
     const [showPhilhealth, setShowPhilhealth] = React.useState(false);
     const [showPagibig, setShowPagibig] = React.useState(false);
+
+    // Reset all UI toggles and local validation state when parent triggers reset
+    React.useEffect(() => {
+        if (resetToken === undefined) return;
+        setShowSSS(false);
+        setShowPhilhealth(false);
+        setShowPagibig(false);
+        setPagIbigError(null);
+    }, [resetToken]);
 
     // This effect handles the calculation and clearing of SSS and PhilHealth
     React.useEffect(() => {
@@ -49,7 +59,7 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
         // If the base salary is not a valid number, clear the fields
         if (isNaN(baseSalaryNum) || baseSalaryNum <= 0) {
             if (data.sss !== '' || data.philhealth !== '') {
-                setData(currentData => ({
+                setData((currentData: EmployeeFormData) => ({
                     ...currentData,
                     sss: '',
                     philhealth: '',
@@ -66,12 +76,13 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
         const formattedPhilhealth = calculatedPhilhealth.toFixed(2);
 
         if (data.sss !== formattedSss || data.philhealth !== formattedPhilhealth) {
-            setData(currentData => ({
+            setData((currentData: EmployeeFormData) => ({
                 ...currentData,
                 sss: formattedSss,
                 philhealth: formattedPhilhealth,
             }));
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.base_salary, setData]);
 
     // Effects to clear fields when they are hidden
@@ -79,18 +90,21 @@ export function ContributionsForm({ form }: ContributionsFormProps) {
         if (!isAdmin && !showSSS && data.sss !== '') {
             setData('sss', '');
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAdmin, showSSS, setData]);
 
     React.useEffect(() => {
         if (!isAdmin && !showPhilhealth && data.philhealth !== '') {
             setData('philhealth', '');
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAdmin, showPhilhealth, setData]);
 
     React.useEffect(() => {
         if (!isAdmin && !showPagibig && data.pag_ibig !== '') {
             setData('pag_ibig', '');
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAdmin, showPagibig, setData]);
 
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {

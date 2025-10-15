@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Employment details form
 import * as React from 'react';
-import { type UseFormReturn } from '@inertiajs/react';
 import { Briefcase, AlertTriangle, Asterisk } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,21 +12,12 @@ import { EmployeeStatus } from '@/components/employee-status';
 import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
 import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-department';
 
-type EmployeeFormData = {
-    roles: string;
-    employee_types: Record<string, string>;
-    employee_status: string;
-    college_program: string;
-    rate_per_hour?: string;
-    base_salary?: string;
-    honorarium?: string;
-    college_work_hours?: string;
-    [key: string]: any;
-};
+
 
 interface EmploymentDetailsFormProps {
-    form: UseFormReturn<EmployeeFormData>;
-    salaryDefaults: any;
+    form: any;
+    salaryDefaults: unknown;
+    resetToken?: number; // triggers UI reset from parent
 }
 
 const roleTypeMappings = {
@@ -38,7 +29,7 @@ const roleTypeMappings = {
 
 const STANDARD_ROLES = ['administrator', 'college instructor', 'basic education instructor'];
 
-export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
+export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFormProps) {
     const { data, setData, errors, clearErrors } = form;
 
     const [isAdmin, setIsAdmin] = React.useState(false);
@@ -49,22 +40,38 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
     const [collegeProgram, setCollegeProgram] = React.useState('');
 
     // We only need to compute this once per render, so useMemo is fine
-    const rolesArr = React.useMemo(() => data.roles.split(',').map(r => r.trim()).filter(Boolean), [data.roles]);
+    const rolesArr = React.useMemo(() => data.roles.split(',').map((r: string) => r.trim()).filter(Boolean), [data.roles]);
 
     // This effect initializes local state from form data and should only run on mount
     React.useEffect(() => {
-        const currentRoles = data.roles.split(',').map(r => r.trim()).filter(Boolean);
+        const currentRoles = data.roles.split(',').map((r: string) => r.trim()).filter(Boolean);
         setIsAdmin(currentRoles.includes('administrator'));
         setIsCollege(currentRoles.includes('college instructor'));
         setIsBasicEdu(currentRoles.includes('basic education instructor'));
 
         // Find the custom role and set others state
-        const customRole = currentRoles.find(r => !STANDARD_ROLES.includes(r));
+        const customRole = currentRoles.find((r: string) => !STANDARD_ROLES.includes(r));
         setIsOthers(!!customRole);
         setOthersRoleText(customRole || '');
         setCollegeProgram(data.college_program);
 
-    }, []); // Empty dependency array ensures this only runs on mount
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // run only on mount to initialize from incoming form data
+
+    // Reset internal toggles and related form fields when parent triggers reset
+    React.useEffect(() => {
+        if (resetToken === undefined) return;
+        setIsAdmin(false);
+        setIsCollege(false);
+        setIsBasicEdu(false);
+        setIsOthers(false);
+        setOthersRoleText('');
+        setCollegeProgram('');
+        setData('roles', '');
+        setData('employee_types', {});
+        setData('college_work_hours', '');
+        setData('college_program', '');
+    }, [resetToken, setData]);
 
     // This effect updates form data based on local state (user interaction)
     React.useEffect(() => {
@@ -91,8 +98,8 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
     }, [collegeProgram, data.college_program, setData]);
 
     // This effect handles renaming the custom role in employee_types to preserve the selection
-    const customRole = React.useMemo(() => rolesArr.find(r => !STANDARD_ROLES.includes(r)), [rolesArr]);
-    const prevCustomRoleRef = React.useRef<string | undefined>();
+    const customRole = React.useMemo(() => rolesArr.find((r: string) => !STANDARD_ROLES.includes(r)), [rolesArr]);
+    const prevCustomRoleRef = React.useRef<string | undefined>(undefined);
 
     React.useEffect(() => {
         const prevCustomRole = prevCustomRoleRef.current;
@@ -112,7 +119,7 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
     React.useEffect(() => {
         const newEmployeeTypes: Record<string, string> = {};
         let shouldUpdate = false;
-        rolesArr.forEach(role => {
+    rolesArr.forEach((role: string) => {
             const mappingKey = STANDARD_ROLES.includes(role) ? role : 'others';
             // Use existing value if available, otherwise use default
             const defaultValue = roleTypeMappings[mappingKey as keyof typeof roleTypeMappings][0];
@@ -224,7 +231,7 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                                     className="overflow-hidden"
                                 >
                                     <div className="pt-2">
-                                        <Label className="text-sm font-semibold mb-2 block flex items-center">
+                                        <Label className="text-sm font-semibold mb-2 flex items-center">
                                             College Dept. <Asterisk className="h-4 w-4 text-destructive ml-1" />
                                         </Label>
                                         <CollegeProgramScrollArea>
@@ -248,7 +255,7 @@ export function EmploymentDetailsForm({ form }: EmploymentDetailsFormProps) {
                         {rolesArr.length > 0 ? (
                             <div className="space-y-4">
                                 <AnimatePresence>
-                                    {rolesArr.map((role) => {
+                                    {rolesArr.map((role: string) => {
                                         const isStandardRole = STANDARD_ROLES.includes(role);
                                         const roleLabel = isStandardRole ? role : othersRoleText || 'Others';
                                         const mappingKey = isStandardRole ? role : 'others';

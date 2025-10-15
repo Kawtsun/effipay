@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { type UseFormReturn } from '@inertiajs/react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Receipt, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,16 +24,25 @@ type EmployeeFormData = {
 };
 
 interface OtherDeductionsFormProps {
-    form: UseFormReturn<EmployeeFormData>;
+    form: any;
+    resetToken?: number; // triggers UI reset from parent
 }
 
-export function OtherDeductionsForm({ form }: OtherDeductionsFormProps) {
+export function OtherDeductionsForm({ form, resetToken }: OtherDeductionsFormProps) {
     const { data, setData, errors, clearErrors } = form;
 
     // State to control visibility of each deduction input
     const [showTuition, setShowTuition] = React.useState(false);
     const [showChinaBank, setShowChinaBank] = React.useState(false);
     const [showTea, setShowTea] = React.useState(false);
+
+    // Reset toggles when parent triggers reset
+    React.useEffect(() => {
+        if (resetToken === undefined) return;
+        setShowTuition(false);
+        setShowChinaBank(false);
+        setShowTea(false);
+    }, [resetToken]);
 
     // Effects to clear individual deduction data when they are hidden
     React.useEffect(() => { if (!showTuition) setData('tuition', ''); }, [showTuition, setData]);
