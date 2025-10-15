@@ -399,6 +399,42 @@ class CollegeGspSheet implements FromCollection, WithTitle, WithEvents, WithCust
                     $sheet->getStyle('F' . $row . ':' . $highestColumn . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
                     $sheet->getStyle('F' . $row . ':' . $highestColumn . $row)->getNumberFormat()->setFormatCode('#,##0.00');
 
+                    // After adding grand total formatting, insert signature block similar to Admin sheet
+                    // Find the grand total row index and insert labels and names with spacing
+                    $grandRowIdx = $row;
+                    // Labels will be at grandRowIdx + 3 (two blank rows after grand total)
+                    $labelRow = $grandRowIdx + 3;
+                    $sheet->setCellValue('A' . $labelRow, 'Prepared by:');
+                    $sheet->setCellValue('F' . $labelRow, 'Checked by:');
+                    $sheet->setCellValue('M' . $labelRow, 'Approved payment:');
+                    $sheet->getStyle('A' . $labelRow . ':A' . $labelRow)->getFont()->setBold(false);
+                    $sheet->getStyle('F' . $labelRow . ':F' . $labelRow)->getFont()->setBold(false);
+                    $sheet->getStyle('M' . $labelRow . ':M' . $labelRow)->getFont()->setBold(false);
+
+                    // Leave two blank rows after labels; names on labelRow + 3 and titles on labelRow + 4
+                    $nameRow = $labelRow + 3;
+                    $titleRow = $labelRow + 4;
+
+                    // Prepared by
+                    $sheet->setCellValue('A' . $nameRow, 'JIERDINNE C. MONTEVERDE');
+                    $sheet->setCellValue('A' . $titleRow, 'HR Payroll Clerk');
+                    $sheet->getStyle('A' . $nameRow . ':A' . $nameRow)->getFont()->setBold(true);
+
+                    // Checked by
+                    $sheet->setCellValue('F' . $nameRow, 'MELANIE C. SANTOS');
+                    $sheet->setCellValue('F' . $titleRow, 'HR Officer');
+                    $sheet->getStyle('F' . $nameRow . ':F' . $nameRow)->getFont()->setBold(true);
+
+                    // Approved payment
+                    $sheet->setCellValue('M' . $nameRow, 'FERGIE I. SANTIAGO');
+                    $sheet->setCellValue('M' . $titleRow, 'Treasurer');
+                    $sheet->getStyle('M' . $nameRow . ':M' . $nameRow)->getFont()->setBold(true);
+
+                    // President to the right
+                    $sheet->setCellValue('P' . $nameRow, 'EDMUND C. FRANCISCO');
+                    $sheet->setCellValue('P' . $titleRow, 'President');
+                    $sheet->getStyle('P' . $nameRow . ':P' . $nameRow)->getFont()->setBold(true);
+
                     // Ensure all numeric columns F..X are populated with 0 if empty so zeros are visible
                     foreach (range('F', $highestColumn) as $col) {
                         $cellCoord = $col . $row;

@@ -292,29 +292,43 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                                 }
                             }
                             if ($grandRowIndex !== null) {
-                                $targetRow = $grandRowIndex + 1;
-                                // Write labels
-                                $sheet->setCellValue('A' . $targetRow, 'Prepared by:');
-                                $sheet->setCellValue('F' . $targetRow, 'Checked by:');
-                                // Add Approved payment a few columns after Checked by (column M)
-                                $sheet->setCellValue('M' . $targetRow, 'Approved payment:');
-                                // Do not bold these labels
-                                $sheet->getStyle('A' . $targetRow . ':A' . $targetRow)->getFont()->setBold(false);
-                                $sheet->getStyle('F' . $targetRow . ':F' . $targetRow)->getFont()->setBold(false);
-                                $sheet->getStyle('M' . $targetRow . ':M' . $targetRow)->getFont()->setBold(false);
+                                // Leave two blank rows after GRAND TOTAL
+                                // Labels will be placed at GRAND_TOTAL_ROW + 3
+                                $labelRow = $grandRowIndex + 3;
 
-                                // Add name and title on the rows below Prepared by
-                                $nameRow = $targetRow + 1;
-                                $titleRow = $targetRow + 2;
+                                // Write labels on labelRow
+                                $sheet->setCellValue('A' . $labelRow, 'Prepared by:');
+                                $sheet->setCellValue('F' . $labelRow, 'Checked by:');
+                                $sheet->setCellValue('M' . $labelRow, 'Approved payment:');
+                                // Do not bold these labels
+                                $sheet->getStyle('A' . $labelRow . ':A' . $labelRow)->getFont()->setBold(false);
+                                $sheet->getStyle('F' . $labelRow . ':F' . $labelRow)->getFont()->setBold(false);
+                                $sheet->getStyle('M' . $labelRow . ':M' . $labelRow)->getFont()->setBold(false);
+
+                                // Leave two blank rows after labels, then add name and title rows
+                                // nameRow = labelRow + 3, titleRow = labelRow + 4
+                                $nameRow = $labelRow + 3;
+                                $titleRow = $labelRow + 4;
+
+                                // Prepared by block (column A)
                                 $sheet->setCellValue('A' . $nameRow, 'JIERDINNE C. MONTEVERDE');
                                 $sheet->setCellValue('A' . $titleRow, 'HR Payroll Clerk');
-                                // Bold the name
                                 $sheet->getStyle('A' . $nameRow . ':A' . $nameRow)->getFont()->setBold(true);
-                                // Add Checked by name and title under the Checked by column (column F)
+
+                                // Checked by block (column F)
                                 $sheet->setCellValue('F' . $nameRow, 'MELANIE C. SANTOS');
                                 $sheet->setCellValue('F' . $titleRow, 'HR Officer');
-                                // Bold the Checked by name
                                 $sheet->getStyle('F' . $nameRow . ':F' . $nameRow)->getFont()->setBold(true);
+
+                                // Approved payment block (column M)
+                                $sheet->setCellValue('M' . $nameRow, 'FERGIE I. SANTIAGO');
+                                $sheet->setCellValue('M' . $titleRow, 'Treasurer');
+                                $sheet->getStyle('M' . $nameRow . ':M' . $nameRow)->getFont()->setBold(true);
+
+                                // Additional signatory to the right (column P)
+                                $sheet->setCellValue('P' . $nameRow, 'EDMUND C. FRANCISCO');
+                                $sheet->setCellValue('P' . $titleRow, 'President');
+                                $sheet->getStyle('P' . $nameRow . ':P' . $nameRow)->getFont()->setBold(true);
                             }
                         if ($cellA === 'TOTAL (ADMINISTRATOR)') {
                             // Green fill for admin total (#B5FDB1)
