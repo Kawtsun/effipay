@@ -166,7 +166,7 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                                                 <Info className="h-4 w-4 text-gray-500" />
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                                <p>SSS contribution will be calculated based on the base salary.</p>
+                                                <p>SSS contribution will be calculated after running the payroll.</p>
                                             </TooltipContent>
                                         </Tooltip>
                                     </div>
@@ -185,7 +185,7 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                                                 <Info className="h-4 w-4 text-gray-500" />
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                                <p>PhilHealth contribution will be calculated based on the base salary.</p>
+                                                <p>PhilHealth contribution will be calculated after running the payroll.</p>
                                             </TooltipContent>
                                         </Tooltip>
                                     </div>
@@ -223,11 +223,11 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                         <div className="space-y-4">
                             {/* SSS Section */}
                             <div>
-                                {renderToggleButton('SSS Contribution', showSSS, setShowSSS, 'SSS contribution will be calculated based on the base salary.')}
+                                {renderToggleButton('SSS Contribution', showSSS, setShowSSS, 'SSS contribution will be calculated after running the payroll.')}
                             </div>
                             {/* PhilHealth Section */}
                             <div>
-                                {renderToggleButton('PhilHealth Contribution', showPhilhealth, setShowPhilhealth, 'PhilHealth contribution will be calculated based on the base salary.')}
+                                {renderToggleButton('PhilHealth Contribution', showPhilhealth, setShowPhilhealth, 'PhilHealth contribution will be calculated after running the payroll.')}
                             </div>
                             {/* Pag-IBIG Section */}
                             <div>
