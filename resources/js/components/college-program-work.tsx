@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export type CollegeProgram = { value: string; label: string };
 
@@ -42,7 +43,7 @@ export default function CollegeProgramWork({
   const ordered = programs.filter(p => selected.includes(p.value));
 
   return (
-    <div className="space-y-6">
+    <Accordion type="single" collapsible className="w-full" defaultValue={ordered.length > 0 ? ordered[0].value : undefined}>
       {ordered.map(({ value: code }) => {
         const hoursKey = `college_work_hours_by_program.${code}`;
         const daysKey = `college_work_days_by_program.${code}`;
@@ -50,41 +51,52 @@ export default function CollegeProgramWork({
         const days = workDaysByProgram[code] || [];
 
         return (
-          <div key={code} className="p-3 border rounded-lg">
-            <Label className="font-semibold flex items-center">
-              {getLabel(code)} <span className="ml-1 text-muted-foreground">({code})</span>
-              <Asterisk className="h-4 w-4 text-destructive ml-1" />
-            </Label>
+          <AccordionItem value={code} key={code}>
+            <AccordionTrigger className="font-semibold text-base">
+              <div className="flex items-center">
+                {getLabel(code)}
+                <span className="ml-2 text-sm font-normal text-muted-foreground">({code})</span>
+                <Asterisk className="h-4 w-4 text-destructive ml-2" />
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="grid md:grid-cols-2 gap-x-6 gap-y-4 pt-2">
+                {/* Work Hours Input */}
+                <div className="space-y-2">
+                  <Label htmlFor={`hours-${code}`} className="text-sm font-medium">
+                    Work Hours
+                  </Label>
+                  <Input
+                    id={`hours-${code}`}
+                    type="number"
+                    min="0"
+                    placeholder="e.g., 12"
+                    value={hours}
+                    onChange={(e) => onChangeHours(code, e.target.value)}
+                    className="w-full md:w-48"
+                  />
+                  <ErrorDisplay field={hoursKey as keyof typeof errors} />
+                  <ErrorDisplay field={'college_work_hours_by_program' as keyof typeof errors} />
+                </div>
 
-            <div className="mt-2">
-              <Label htmlFor={`hours-${code}`} className="text-sm font-medium">Work Hours</Label>
-              <Input
-                id={`hours-${code}`}
-                type="number"
-                min="0"
-                placeholder="e.g., 12"
-                value={hours}
-                onChange={(e) => onChangeHours(code, e.target.value)}
-                className="mt-1 w-48"
-              />
-              <ErrorDisplay field={hoursKey as keyof typeof errors} />
-              <ErrorDisplay field={'college_work_hours_by_program' as keyof typeof errors} />
-            </div>
-
-            <div className="mt-4">
-              <WorkDaysSelector
-                value={days}
-                onChange={(d: WorkDayTime[]) => onChangeWorkDays(code, d)}
-                selectedIndex={0}
-                onSelectIndex={() => {}}
-                showTimePickers={false}
-              />
-              <ErrorDisplay field={daysKey as keyof typeof errors} />
-              <ErrorDisplay field={'college_work_days_by_program' as keyof typeof errors} />
-            </div>
-          </div>
+                {/* Work Days Selector */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Work Days</Label>
+                  <WorkDaysSelector
+                    value={days}
+                    onChange={(d: WorkDayTime[]) => onChangeWorkDays(code, d)}
+                    selectedIndex={0}
+                    onSelectIndex={() => {}}
+                    showTimePickers={false}
+                  />
+                  <ErrorDisplay field={daysKey as keyof typeof errors} />
+                  <ErrorDisplay field={'college_work_days_by_program' as keyof typeof errors} />
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
         );
       })}
-    </div>
+    </Accordion>
   );
 }

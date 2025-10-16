@@ -1,23 +1,31 @@
+import * as React from 'react';
+import { Asterisk, CheckCircle, XCircle, ChevronDown, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Calendar, CheckCircle, Coffee, XCircle, Asterisk } from 'lucide-react';
-import React from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { TimePicker } from '@/components/ui/time-picker';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { TimePicker } from '@/components/ui/time-picker';
+import { cn } from '@/lib/utils';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const WEEKDAYS = [
+const ALL_DAYS = [
     { key: 'mon', label: 'Mon' },
     { key: 'tue', label: 'Tue' },
     { key: 'wed', label: 'Wed' },
     { key: 'thu', label: 'Thu' },
     { key: 'fri', label: 'Fri' },
-];
-const WEEKENDS = [
     { key: 'sat', label: 'Sat' },
     { key: 'sun', label: 'Sun' },
 ];
 
+const WEEKDAYS = ALL_DAYS.slice(0, 5).map(d => d.key);
+const WEEKENDS = ALL_DAYS.slice(5, 7).map(d => d.key);
 
 export type WorkDayTime = {
     day: string;
@@ -42,19 +50,20 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
     const allWeekends = WEEKENDS.map(d => d.key);
     const allDays = [...allWeekdays, ...allWeekends];
 
-    const areAllWeekdays = allWeekdays.every(k => isSelected(k));
-    const areAllWeekends = allWeekends.every(k => isSelected(k));
-    const areAllDays = allDays.every(k => isSelected(k));
+    const areAllWeekdays = WEEKDAYS.every(k => isSelected(k));
+    const areAllWeekends = WEEKENDS.every(k => isSelected(k));
+    const areAllDays = ALL_DAYS.map(d => d.key).every(k => isSelected(k));
 
     // Add or remove a day
     const toggleDay = (key: string) => {
         if (isSelected(key)) {
             onChange(value.filter(d => d.day !== key));
         } else {
-            onChange([
-                ...value,
-                { day: key, work_start_time: defaultStart, work_end_time: defaultEnd },
-            ]);
+            onChange(
+                [...value, { day: key, work_start_time: defaultStart, work_end_time: defaultEnd }].sort(
+                    (a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)
+                )
+            );
         }
     };
     // Toggle all days
@@ -62,36 +71,38 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
         if (areAllDays) {
             onChange([]);
         } else {
-            onChange(allDays.map(day => {
-                const found = value.find(d => d.day === day);
-                return found || { day, work_start_time: defaultStart, work_end_time: defaultEnd };
-            }));
+            onChange(
+                ALL_DAYS.map(day => {
+                    const found = value.find(d => d.day === day.key);
+                    return found || { day: day.key, work_start_time: defaultStart, work_end_time: defaultEnd };
+                })
+            );
         }
     };
     // Toggle all weekdays
     const handleWeekdays = () => {
         if (areAllWeekdays) {
-            onChange(value.filter(d => !allWeekdays.includes(d.day)));
+            onChange(value.filter(d => !WEEKDAYS.includes(d.day)));
         } else {
-            const weekends = value.filter(d => allWeekends.includes(d.day));
-            const weekdays = allWeekdays.map(day => {
+            const weekends = value.filter(d => WEEKENDS.includes(d.day));
+            const weekdays = WEEKDAYS.map(day => {
                 const found = value.find(d => d.day === day);
                 return found || { day, work_start_time: defaultStart, work_end_time: defaultEnd };
             });
-            onChange([...weekdays, ...weekends]);
+            onChange([...weekdays, ...weekends].sort((a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)));
         }
     };
     // Toggle all weekends
     const handleWeekends = () => {
         if (areAllWeekends) {
-            onChange(value.filter(d => !allWeekends.includes(d.day)));
+            onChange(value.filter(d => !WEEKENDS.includes(d.day)));
         } else {
-            const weekdays = value.filter(d => allWeekdays.includes(d.day));
-            const weekends = allWeekends.map(day => {
+            const weekdays = value.filter(d => WEEKDAYS.includes(d.day));
+            const weekends = WEEKENDS.map(day => {
                 const found = value.find(d => d.day === day);
                 return found || { day, work_start_time: defaultStart, work_end_time: defaultEnd };
             });
-            onChange([...weekdays, ...weekends]);
+            onChange([...weekdays, ...weekends].sort((a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)));
         }
     };
     const clearAll = () => onChange([]);
@@ -99,17 +110,16 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
     // Navigation helpers and time setter for selected day
     const hasDays = value.length > 0;
     const currentDay = hasDays ? value[selectedIndex] : undefined;
-    const goPrev = () => {
-        if (!hasDays) return;
-        onSelectIndex((selectedIndex - 1 + value.length) % value.length);
-    };
-    const goNext = () => {
-        if (!hasDays) return;
-        onSelectIndex((selectedIndex + 1) % value.length);
-    };
+
+    React.useEffect(() => {
+        if (value.length > 0 && selectedIndex >= value.length) {
+            onSelectIndex(value.length - 1);
+        }
+    }, [value, selectedIndex, onSelectIndex]);
+
     const setTime = (field: 'work_start_time' | 'work_end_time', time: string) => {
         if (!currentDay) return;
-        onChange(value.map((d, i) => i === selectedIndex ? { ...d, [field]: time } : d));
+        onChange(value.map((d, i) => (i === selectedIndex ? { ...d, [field]: time } : d)));
     };
 
     const formatTime12Hour = (time: string) => {
@@ -122,88 +132,61 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="space-y-4">
+            <div className="space-y-3">
                 <div className="flex items-center justify-between">
                     <Label className="font-semibold flex items-center">
                         Work Days <Asterisk className="h-4 w-4 text-destructive ml-1" />
                     </Label>
                     <div className="flex items-center gap-2">
-                        <Button type='button' size="sm" variant="ghost" onClick={handleAll} className="text-primary hover:text-primary h-8 px-2">
-                            <CheckCircle className='w-4 h-4 mr-2' />
-                            Select All
-                        </Button>
-                        <Button type="button" size="sm" variant="ghost" onClick={clearAll} className="text-destructive hover:text-destructive h-8 px-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="outline" size="sm" className="h-8 px-2">
+                                    Quick Select <ChevronDown className="w-4 h-4 ml-2" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onClick={handleWeekdays}>
+                                    {areAllWeekdays ? 'Deselect Weekdays' : 'Select Weekdays'}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleWeekends}>
+                                    {areAllWeekends ? 'Deselect Weekends' : 'Select Weekends'}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleAll}>
+                                    {areAllDays ? 'Deselect All Days' : 'Select All Days'}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={clearAll}
+                            className="text-destructive hover:text-destructive h-8 px-2"
+                        >
                             <XCircle className="w-4 h-4 mr-2" />
-                            Clear All
+                            Clear
                         </Button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-medium">Weekdays</span>
+                <div className="grid grid-cols-7 gap-2">
+                    {ALL_DAYS.map(day => {
+                        const selected = value.some(d => d.day === day.key);
+                        return (
                             <Button
+                                key={day.key}
                                 type="button"
                                 size="sm"
-                                variant={areAllWeekdays ? 'default' : 'outline'}
-                                onClick={handleWeekdays}
-                                className="px-3 py-1 text-xs h-auto"
+                                variant={selected ? 'default' : 'outline'}
+                                onClick={() => toggleDay(day.key)}
+                                title={day.label}
+                                className="h-10 text-xs"
                             >
-                                Select All
+                                {day.label}
                             </Button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {WEEKDAYS.map(day => {
-                                const selected = value.some(d => d.day === day.key);
-                                return (
-                                    <Button
-                                        key={day.key}
-                                        type="button"
-                                        size="icon"
-                                        variant={selected ? 'default' : 'outline'}
-                                        onClick={() => toggleDay(day.key)}
-                                        title={day.label}
-                                        className="w-10 h-10"
-                                    >
-                                        <span className="text-xs">{day.label}</span>
-                                    </Button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-medium">Weekends</span>
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant={areAllWeekends ? 'default' : 'outline'}
-                                onClick={handleWeekends}
-                                className="px-3 py-1 text-xs h-auto"
-                            >
-                                Select All
-                            </Button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {WEEKENDS.map(day => {
-                                const selected = value.some(d => d.day === day.key);
-                                return (
-                                    <Button
-                                        key={day.key}
-                                        type="button"
-                                        size="icon"
-                                        variant={selected ? 'default' : 'outline'}
-                                        onClick={() => toggleDay(day.key)}
-                                        title={day.label}
-                                        className="w-10 h-10"
-                                    >
-                                        <span className="text-xs">{day.label}</span>
-                                    </Button>
-                                );
-                            })}
-                        </div>
-                    </div>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -218,35 +201,45 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
                         className="space-y-4"
                     >
                         <Separator />
-                        <div className="flex items-center justify-between">
-                            <Label className="font-semibold">Work Hours</Label>
-                            <div className="flex items-center gap-2">
-                                <Button type="button" size="sm" variant="outline" onClick={goPrev}>&lt;</Button>
-                                <span className="text-sm font-semibold w-20 text-center">{currentDay ? currentDay.day.toUpperCase() : ''}</span>
-                                <Button type="button" size="sm" variant="outline" onClick={goNext}>&gt;</Button>
-                            </div>
-                        </div>
+                        <Label className="font-semibold">Work Hours</Label>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <div className='flex items-center'>
-                                    <Label>Start Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                        <Tabs
+                            value={currentDay?.day}
+                            onValueChange={day => onSelectIndex(value.findIndex(d => d.day === day))}
+                            className="w-full"
+                        >
+                            <TabsList>
+                                {value.map(d => (
+                                    <TabsTrigger key={d.day} value={d.day}>
+                                        {d.day.toUpperCase()}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                            <TabsContent value={currentDay?.day || ''} className="pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center">
+                                            <Label>Start Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                        </div>
+                                        <TimePicker
+                                            value={currentDay?.work_start_time || ''}
+                                            onChange={val => setTime('work_start_time', val)}
+                                            placeholder="Select start time"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center">
+                                            <Label>End Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                        </div>
+                                        <TimePicker
+                                            value={currentDay?.work_end_time || ''}
+                                            onChange={val => setTime('work_end_time', val)}
+                                            placeholder="Select end time"
+                                        />
+                                    </div>
                                 </div>
-                                <TimePicker
-                                    value={currentDay?.work_start_time || ''}
-                                    onChange={val => setTime('work_start_time', val)}
-                                    placeholder="Select start time" label={undefined}                                />
-                            </div>
-                            <div className="space-y-2">
-                                <div className='flex items-center'>
-                                    <Label>End Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
-                                </div>
-                                <TimePicker
-                                    value={currentDay?.work_end_time || ''}
-                                    onChange={val => setTime('work_end_time', val)}
-                                    placeholder="Select end time" label={undefined}                                />
-                            </div>
-                        </div>
+                            </TabsContent>
+                        </Tabs>
 
                         <AnimatePresence initial={false}>
                             {currentDay && currentDay.work_start_time && currentDay.work_end_time && (
@@ -316,30 +309,36 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
                                             let breakText;
 
                                             if (messageMinutes === 0) {
-                                                breakText = 'No break time deduction.';
-                                            }
-                                            // Condition 1: If the reported time is less than 60 minutes (1-59 min), it's overlap.
-                                            else if (messageMinutes < mandatedDeduction) {
-                                                breakText = `Your schedule is overlapping with the break time for ${deductionAmount}.`;
-                                            }
-                                            // Condition 2: If the reported time is 60 minutes or more (the full mandate).
-                                            else {
-                                                // This handles 60 minutes, 1 hour 15 minutes, etc. (though 60 min is the practical max here).
-                                                breakText = `A mandatory break of ${deductionAmount} is deducted from your total work hours.`;
+                                                breakText = 'No break deduction applied.';
+                                            } else if (messageMinutes < mandatedDeduction) {
+                                                breakText = (
+                                                    <>
+                                                        The scheduled work ends before 1:00 PM, so only the actual overlap of{' '}
+                                                        <span className="font-bold">{deductionAmount}</span> is deducted.
+                                                    </>
+                                                );
+                                            } else {
+                                                breakText = (
+                                                    <>
+                                                        A mandated <span className="font-bold">{deductionAmount}</span> break is deducted
+                                                        because the work schedule extends past 1:00 PM.
+                                                    </>
+                                                );
                                             }
 
                                             return (
-                                                <>
-                                                    <div className="flex items-center gap-2">
-                                                        <Calendar className="h-4 w-4" />
-                                                        <span>Schedule: <strong>{formatTime12Hour(currentDay.work_start_time)} - {formatTime12Hour(currentDay.work_end_time)}</strong> (Total Work Hours:<strong> {durationText} </strong>)</span>
+                                                <div className="flex items-start gap-2">
+                                                    <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                                    <div>
+                                                        Scheduled from{' '}
+                                                        <span className="font-semibold">{formatTime12Hour(currentDay.work_start_time)}</span> to{' '}
+                                                        <span className="font-semibold">{formatTime12Hour(currentDay.work_end_time)}</span>, the
+                                                        net work duration is{' '}
+                                                        <span className="font-bold text-blue-800 dark:text-blue-200">{durationText}</span>.
+                                                        <br />
+                                                        <span className="opacity-80">{breakText}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <Coffee className="h-4 w-4" />
-                                                        <span>Break Time: <strong>12:00PM - 1:00PM</strong></span>
-                                                    </div>
-                                                    <span className="text-xs text-blue-600 dark:text-blue-400 mt-2 block">*{breakText}</span>
-                                                </>
+                                                </div>
                                             );
                                         })()}
                                     </div>
