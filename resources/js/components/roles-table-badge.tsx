@@ -49,6 +49,15 @@ const getProgramLabel = (programValue?: string) => {
     return program ? program.label : ''
 }
 
+const getProgramLabels = (programValues?: string) => {
+    if (!programValues) return [];
+    const values = programValues.split(',').map(v => v.trim());
+    return values.map(value => {
+        const program = COLLEGE_PROGRAMS.find(p => p.value === value);
+        return program ? { value, label: program.label } : { value, label: value };
+    });
+};
+
 const RoleBadge: React.FC<RoleBadgeProps> = ({ role, className, program }) => {
     const style = roleStyles[role.toLowerCase()] || roleStyles.default
     return (
@@ -90,9 +99,15 @@ export function RolesTableBadge({ roles, college_program }: RolesTableBadgeProps
     const additionalRolesCount = sortedRoles.length - 1
     const isMainRoleCollegeInstructor = mainRole.toLowerCase() === 'college instructor'
 
+    const programs = college_program ? college_program.split(',').map(p => p.trim()) : [];
+    let displayProgram = college_program;
+    if (isMainRoleCollegeInstructor && programs.length > 1) {
+        displayProgram = `${programs[0]},...`;
+    }
+
     const badgeContent = (
         <span className="inline-flex items-center gap-1.5">
-            <RoleBadge role={mainRole} program={isMainRoleCollegeInstructor ? college_program : undefined} />
+            <RoleBadge role={mainRole} program={isMainRoleCollegeInstructor ? displayProgram : undefined} />
             {additionalRolesCount > 0 && (
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                     +{additionalRolesCount}
@@ -122,16 +137,30 @@ export function RolesTableBadge({ roles, college_program }: RolesTableBadgeProps
                         <div className="flex flex-col items-start gap-2">
                             <p className="mb-1 text-sm font-semibold">{hasMultipleRoles ? 'All Roles' : 'Role Details'}</p>
                             {sortedRoles.map((role) => {
-                                const isCollegeInstructor = role.toLowerCase() === 'college instructor'
-                                const programForRole = isCollegeInstructor ? college_program : undefined
-                                const programLabel = getProgramLabel(programForRole)
+                                const isCollegeInstructor = role.toLowerCase() === 'college instructor';
+                                const programsForRole = isCollegeInstructor ? (college_program || '').split(',').map(p => p.trim()).filter(Boolean) : [];
+                                const programLabels = programsForRole.map(p => getProgramLabel(p));
+
+                                if (isCollegeInstructor && programsForRole.length > 0) {
+                                    return (
+                                        <div key={role} className="flex flex-col items-start gap-2">
+                                            <RoleBadge role={role} program={programsForRole.join(', ')} />
+                                            <div className="pl-4 mt-1 space-y-1">
+                                                {programsForRole.map((prog, index) => (
+                                                    <div key={prog} className="text-xs text-muted-foreground">
+                                                        <span className="font-semibold">{prog}:</span> {programLabels[index]}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                }
 
                                 return (
                                     <div key={role} className="flex items-center gap-2">
-                                        <RoleBadge role={role} program={programForRole} />
-                                        {programLabel && <span className="text-xs text-muted-foreground">{programLabel}</span>}
+                                        <RoleBadge role={role} />
                                     </div>
-                                )
+                                );
                             })}
                         </div>
                     </TooltipContent>
