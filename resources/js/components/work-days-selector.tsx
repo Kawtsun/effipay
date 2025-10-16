@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Asterisk, CheckCircle, XCircle, ChevronDown, Info } from 'lucide-react';
+import { Asterisk, CheckCircle, XCircle, ChevronDown, Info, Calendar, Coffee } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -309,36 +309,30 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
                                             let breakText;
 
                                             if (messageMinutes === 0) {
-                                                breakText = 'No break deduction applied.';
-                                            } else if (messageMinutes < mandatedDeduction) {
-                                                breakText = (
-                                                    <>
-                                                        The scheduled work ends before 1:00 PM, so only the actual overlap of{' '}
-                                                        <span className="font-bold">{deductionAmount}</span> is deducted.
-                                                    </>
-                                                );
-                                            } else {
-                                                breakText = (
-                                                    <>
-                                                        A mandated <span className="font-bold">{deductionAmount}</span> break is deducted
-                                                        because the work schedule extends past 1:00 PM.
-                                                    </>
-                                                );
+                                                breakText = 'No break time deduction.';
+                                            }
+                                            // Condition 1: If the reported time is less than 60 minutes (1-59 min), it's overlap.
+                                            else if (messageMinutes < mandatedDeduction) {
+                                                breakText = `Your schedule is overlapping with the break time for ${deductionAmount}.`;
+                                            }
+                                            // Condition 2: If the reported time is 60 minutes or more (the full mandate).
+                                            else {
+                                                // This handles 60 minutes, 1 hour 15 minutes, etc. (though 60 min is the practical max here).
+                                                breakText = `A mandatory break of ${deductionAmount} is deducted from your total work hours.`;
                                             }
 
                                             return (
-                                                <div className="flex items-start gap-2">
-                                                    <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                                    <div>
-                                                        Scheduled from{' '}
-                                                        <span className="font-semibold">{formatTime12Hour(currentDay.work_start_time)}</span> to{' '}
-                                                        <span className="font-semibold">{formatTime12Hour(currentDay.work_end_time)}</span>, the
-                                                        net work duration is{' '}
-                                                        <span className="font-bold text-blue-800 dark:text-blue-200">{durationText}</span>.
-                                                        <br />
-                                                        <span className="opacity-80">{breakText}</span>
+                                                <>
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-4 w-4" />
+                                                        <span>Schedule: <strong>{formatTime12Hour(currentDay.work_start_time)} - {formatTime12Hour(currentDay.work_end_time)}</strong> (Total Work Hours:<strong> {durationText} </strong>)</span>
                                                     </div>
-                                                </div>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <Coffee className="h-4 w-4" />
+                                                        <span>Break Time: <strong>12:00PM - 1:00PM</strong></span>
+                                                    </div>
+                                                    <span className="text-xs text-blue-600 dark:text-blue-400 mt-2 block">*{breakText}</span>
+                                                </>
                                             );
                                         })()}
                                     </div>
