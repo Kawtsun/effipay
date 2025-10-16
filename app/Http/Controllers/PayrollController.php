@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use App\Exports\PayrollExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class PayrollController extends Controller
 {
@@ -219,6 +220,21 @@ class PayrollController extends Controller
         }
 
         if ($createdCount > 0) {
+            // Audit log: payroll run
+            try {
+                $username = Auth::user()->username ?? 'system';
+                \App\Models\AuditLogs::create([
+                    'username'    => $username,
+                    'action'      => 'run payroll',
+                    'name'        => $payrollMonth,
+                    'entity_type' => 'payroll',
+                    'entity_id'   => null,
+                    'details'     => json_encode(['month' => $payrollMonth, 'created_count' => $createdCount, 'payroll_date' => $request->payroll_date]),
+                    'date'        => now('Asia/Manila'),
+                ]);
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to write audit log for payroll run: ' . $e->getMessage());
+            }
             return redirect()->back()->with('flash', 'Payroll run successfully for ' . date('F Y', strtotime($request->payroll_date)) . '. Payroll records created: ' . $createdCount);
         } else {
             return redirect()->back()->with('flash', 'Payroll already run twice for this month.');
@@ -346,6 +362,22 @@ class PayrollController extends Controller
                 $payrollRecordToUpdate->save();
                 $createdCount++;
             }
+        }
+
+        // Audit log: 13th month pay run
+        try {
+            $username = Auth::user()->username ?? 'system';
+            \App\Models\AuditLogs::create([
+                'username'    => $username,
+                'action'      => 'run 13th month pay',
+                'name'        => $payrollDate->format('Y-m-d'),
+                'entity_type' => 'payroll',
+                'entity_id'   => null,
+                'details'     => json_encode(['cutoff_month' => $cutoffMonth, 'year' => $currentYear, 'updated_employees' => $createdCount]),
+                'date'        => now('Asia/Manila'),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to write audit log for 13th month pay run: ' . $e->getMessage());
         }
 
         return redirect()->back()->with('flash', ['message' => '13th Month Pay has been added to the payroll of ' . $payrollDate->format('F d, Y') . ' for ' . $createdCount . ' employees.']);
@@ -539,6 +571,22 @@ class PayrollController extends Controller
         // Generate a filename based on the selected month
         $fileName = 'payroll-ledger-' . $month->format('Y-m') . '.xlsx';
 
+        // Audit log: export payroll ledger
+        try {
+            $username = Auth::user()->username ?? 'system';
+            \App\Models\AuditLogs::create([
+                'username'    => $username,
+                'action'      => 'export payroll ledger',
+                'name'        => $month->format('Y-m'),
+                'entity_type' => 'payroll',
+                'entity_id'   => null,
+                'details'     => json_encode(['month' => $month->format('Y-m')]),
+                'date'        => now('Asia/Manila'),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to write audit log for payroll export: ' . $e->getMessage());
+        }
+
         // Pass the selected month to your Excel export class
         return Excel::download(new PayrollExport($month), $fileName);
     }
@@ -593,6 +641,22 @@ class PayrollController extends Controller
         $payroll->gross_pay = ($payroll->gross_pay ?? 0) + $amount;
         $payroll->net_pay = ($payroll->net_pay ?? 0) + $amount;
         $payroll->save();
+
+        // Audit log: payroll adjustment
+        try {
+            $username = Auth::user()->username ?? 'system';
+            \App\Models\AuditLogs::create([
+                'username'    => $username,
+                'action'      => 'payroll adjustment',
+                'name'        => 'Employee #' . $employeeId,
+                'entity_type' => 'payroll',
+                'entity_id'   => $payroll->id,
+                'details'     => json_encode(['employee_id' => $employeeId, 'month' => $month, 'amount' => $amount, 'type' => $validated['type']]),
+                'date'        => now('Asia/Manila'),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to write audit log for payroll adjustment: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,

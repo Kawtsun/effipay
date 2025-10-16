@@ -51,6 +51,9 @@ Route::middleware('auth')->group(function () {
     // API: Get monthly summary for employee and month (ADD THIS LINE)
     Route::get('/api/timekeeping/monthlySummary', [TimeKeepingController::class, 'monthlySummary']); 
 
+    // API: Log print actions (payslip/BTR)
+    Route::post('/api/audit/print-log', [AuditLogsController::class, 'logPrint'])->name('audit.print-log');
+
     // Add merged months endpoint for selectors
     Route::get('/payroll/all-available-months', [PayrollController::class, 'getAllAvailableMonths'])->name('payroll.all-available-months');
 
