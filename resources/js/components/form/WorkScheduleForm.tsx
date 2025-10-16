@@ -12,9 +12,14 @@ import { COLLEGE_PROGRAMS } from '@/constants/college-programs';
 
 interface WorkScheduleFormProps {
     form: any;
+    /**
+     * When true and role contains 'college' (case-insensitive), hide the default WorkDaysSelector
+     * so the form only renders CollegeProgramWork for college roles.
+     */
+    hideDefaultWorkDaysSelectorForCollegeRole?: boolean;
 }
 
-export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
+export function WorkScheduleForm({ form, hideDefaultWorkDaysSelectorForCollegeRole = true }: WorkScheduleFormProps) {
     // THE FIX: Destructure clearErrors from the form hook
     const { data, setData, errors, clearErrors } = form;
 
@@ -22,6 +27,15 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
 
     const rolesArr = React.useMemo(
         () => (data.roles || '').split(',').map((r: string) => r.trim()).filter(Boolean),
+        [data.roles]
+    );
+    // Case-insensitive detection: treat anything containing 'college' as a college role (e.g., 'College Instructor')
+    const isCollegeRole = React.useMemo(
+        () => (data.roles || '')
+            .toLowerCase()
+            .split(',')
+            .map((r: string) => r.trim())
+            .some((r: string) => r.includes('college')),
         [data.roles]
     );
 
@@ -82,6 +96,15 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                         </motion.div>
                     ) : (
                         <motion.div key="work-schedule-fields" {...motionProps}>
+                            {/* If college role but no program selected yet, show the same guidance alert */}
+                            {isCollegeRole && selectedPrograms.length === 0 && (
+                                <Alert className="mb-4">
+                                    <Info className="h-4 w-4" />
+                                    <AlertDescription>
+                                        Please select a college program first to set their work schedule.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
                             {/* College program specific hours & days (via presentational component) */}
                             {selectedPrograms.length > 0 && (
                                 <div className="mb-6">
@@ -112,19 +135,23 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                     />
                                 </div>
                             )}
-                            <WorkDaysSelector
-                                value={data.work_days || []}
-                                // THE FIX: When days are changed, also clear the validation error.
-                                onChange={(days: WorkDayTime[]) => {
-                                    setData('work_days', days);
-                                    if (errors.work_days) {
-                                        clearErrors('work_days');
-                                    }
-                                }}
-                                selectedIndex={selectedIndex}
-                                onSelectIndex={setSelectedIndex}
-                            />
-                            <ErrorDisplay field="work_days" />
+                            {/* Conditionally render the default WorkDaysSelector */}
+                            {(!isCollegeRole || !hideDefaultWorkDaysSelectorForCollegeRole) && (
+                                <>
+                                    <WorkDaysSelector
+                                        value={data.work_days || []}
+                                        onChange={(days: WorkDayTime[]) => {
+                                            setData('work_days', days);
+                                            if (errors.work_days) {
+                                                clearErrors('work_days');
+                                            }
+                                        }}
+                                        selectedIndex={selectedIndex}
+                                        onSelectIndex={setSelectedIndex}
+                                    />
+                                    <ErrorDisplay field="work_days" />
+                                </>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
