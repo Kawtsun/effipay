@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { EmployeeType } from '@/components/employee-type';
 import { EmployeeStatus } from '@/components/employee-status';
 import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
-import EmployeeCollegeRadioDepartment from '@/components/employee-college-radio-department';
+import EmployeeCollegeCheckboxDepartment from '@/components/employee-college-checkbox-department';
 
 
 
@@ -38,7 +38,7 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
     const [isBasicEdu, setIsBasicEdu] = React.useState(false);
     const [isOthers, setIsOthers] = React.useState(false);
     const [othersRoleText, setOthersRoleText] = React.useState('');
-    const [collegeProgram, setCollegeProgram] = React.useState('');
+    const [collegePrograms, setCollegePrograms] = React.useState<string[]>([]);
 
     // We only need to compute this once per render, so useMemo is fine
     const rolesArr = React.useMemo(() => data.roles.split(',').map((r: string) => r.trim()).filter(Boolean), [data.roles]);
@@ -54,7 +54,7 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
         const customRole = currentRoles.find((r: string) => !STANDARD_ROLES.includes(r));
         setIsOthers(!!customRole);
         setOthersRoleText(customRole || '');
-        setCollegeProgram(data.college_program);
+        setCollegePrograms(data.college_program ? data.college_program.split(',').map((p: string) => p.trim()) : []);
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // run only on mount to initialize from incoming form data
@@ -67,7 +67,7 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
         setIsBasicEdu(false);
         setIsOthers(false);
         setOthersRoleText('');
-        setCollegeProgram('');
+        setCollegePrograms([]);
         setData('roles', '');
         setData('employee_types', {});
         setData('college_work_hours', '');
@@ -93,10 +93,11 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
 
     // Update form data for college program
     React.useEffect(() => {
-        if (data.college_program !== collegeProgram) {
-            setData('college_program', collegeProgram);
+        const newCollegeProgramString = collegePrograms.join(', ');
+        if (data.college_program !== newCollegeProgramString) {
+            setData('college_program', newCollegeProgramString);
         }
-    }, [collegeProgram, data.college_program, setData]);
+    }, [collegePrograms, data.college_program, setData]);
 
     // This effect handles renaming the custom role in employee_types to preserve the selection
     const customRole = React.useMemo(() => rolesArr.find((r: string) => !STANDARD_ROLES.includes(r)), [rolesArr]);
@@ -189,7 +190,7 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
                                     if (!isChecked) {
                                         setData('college_work_hours', '');
                                         setData('college_program', '');
-                                        setCollegeProgram('');
+                                        setCollegePrograms([]);
                                     }
                                 }}
                             />
@@ -235,13 +236,13 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
                                 >
                                     <div className="pt-2">
                                         <Label className="text-sm font-semibold mb-2 flex items-center">
-                                            College Dept. <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                            College Program <Asterisk className="h-4 w-4 text-destructive ml-1" />
                                         </Label>
                                         <CollegeProgramScrollArea>
-                                            <EmployeeCollegeRadioDepartment
-                                                value={collegeProgram}
+                                            <EmployeeCollegeCheckboxDepartment
+                                                value={collegePrograms}
                                                 onChange={(value) => {
-                                                    setCollegeProgram(value);
+                                                    setCollegePrograms(value);
                                                     clearErrors('college_program');
                                                 }}
                                             />

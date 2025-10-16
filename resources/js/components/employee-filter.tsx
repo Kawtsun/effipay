@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Filter } from "lucide-react"
 import { employee_status, leave_statuses } from "./employee-status"
 import { Badge } from "./ui/badge"
-import EmployeeCollegeRadioDepartment from './employee-college-radio-department';
+import EmployeeCollegeCheckboxDepartment from './employee-college-checkbox-department';
 import CollegeProgramScrollArea from './college-program-scroll-area';
 import OthersRolesRadio from './others-roles-radio';
 import OthersRolesScrollArea from './others-roles-scroll-area';
@@ -18,7 +18,7 @@ interface FilterState {
   types: string[]
   statuses: string[]
   roles: string[]
-  collegeProgram?: string
+  collegeProgram?: string[]
   othersRole?: string // NEW
 }
 
@@ -26,7 +26,7 @@ interface Props {
   selectedTypes: string[]
   selectedStatuses: string[]
   selectedRoles: string[]
-  collegeProgram?: string
+  collegeProgram?: string[]
   othersRole?: string // NEW
   othersRoles?: Array<{ value: string; label: string }> // Available others roles
   onChange: (filters: FilterState) => void
@@ -44,7 +44,7 @@ export default function EmployeeFilter({
   selectedTypes,
   selectedStatuses,
   selectedRoles,
-  collegeProgram: selectedCollegeProgram = '',
+  collegeProgram: selectedCollegeProgram = [],
   othersRole: selectedOthersRole = '', // NEW
   othersRoles = [], // NEW
   onChange,
@@ -55,7 +55,7 @@ export default function EmployeeFilter({
   const [types, setTypes] = useState<string[]>(selectedTypes)
   const [statuses, setStatuses] = useState<string[]>(selectedStatuses)
   const [roles, setRoles] = useState<string[]>(selectedRoles)
-  const [collegeProgram, setCollegeProgram] = useState<string>(selectedCollegeProgram)
+  const [collegeProgram, setCollegeProgram] = useState<string[]>(selectedCollegeProgram)
   const [othersRole, setOthersRole] = useState<string>(selectedOthersRole) // NEW
 
   const collegeDeptRef = useRef<HTMLDivElement>(null);
@@ -98,9 +98,9 @@ export default function EmployeeFilter({
     setTypes([])
     setStatuses([])
     setRoles([])
-    setCollegeProgram('')
+    setCollegeProgram([])
     setOthersRole('')
-    onChange({ types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' })
+    onChange({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
     setOpen(false)
   }
   const activeCount = selectedTypes.length + selectedStatuses.length + selectedRoles.length
@@ -261,7 +261,7 @@ export default function EmployeeFilter({
                   >
                     <div className="text-xs font-semibold mb-1">College Department</div>
                     <CollegeProgramScrollArea>
-                      <EmployeeCollegeRadioDepartment
+                      <EmployeeCollegeCheckboxDepartment
                         value={collegeProgram}
                         onChange={setCollegeProgram}
                       />
