@@ -28,6 +28,7 @@ type EmployeeFormData = {
     work_days: WorkDayTime[];
     college_work_hours: string;
     college_work_hours_by_program: Record<string, string>;
+    college_work_days_by_program: Record<string, WorkDayTime[]>;
     base_salary: string;
     rate_per_hour: string;
     honorarium: string;
@@ -64,6 +65,7 @@ export default function Index(props: Props) {
         work_days: [],
         college_work_hours: '',
     college_work_hours_by_program: {},
+    college_work_days_by_program: {},
         base_salary: '',
         rate_per_hour: '',
         honorarium: '',

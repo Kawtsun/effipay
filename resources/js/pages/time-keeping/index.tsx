@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react'
-type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string; othersRole?: string }
+type FilterState = { types: string[]; statuses: string[]; roles: string[] }
+import { getCollegeProgramLabel } from '@/constants/college-programs'
 const MIN_SPINNER_MS = 400
 import EmployeeFilter from '@/components/employee-filter'
 import Encoding from 'encoding-japanese'
@@ -14,9 +15,8 @@ import AppLayout from '@/layouts/app-layout'
 import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
 import { Head, router } from '@inertiajs/react'
-import { Users, Import, Calendar, Clock } from 'lucide-react'
+import { Import, Calendar, Clock } from 'lucide-react'
 import { CalendarViewDialog } from '@/components/calendar-view-dialog'
-import { Spinner } from '@/components/ui/spinner'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
@@ -173,24 +173,7 @@ export default function TimeKeeping() {
         }
     }
 
-    function getCollegeProgramLabel(acronym: string) {
-        const COLLEGE_PROGRAMS = [
-            { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-            { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-            { value: 'COELA', label: 'College of Education and Liberal Arts' },
-            { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-            { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-            { value: 'JD', label: 'Juris Doctor' },
-            { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-            { value: 'RLE', label: 'Related Learning Experience' },
-            { value: 'CG', label: 'Career Guidance' },
-            { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-            { value: 'GSP', label: 'Graduate Studies Programs' },
-            { value: 'MBA', label: 'Master of Business Administration' },
-        ]
-        const found = COLLEGE_PROGRAMS.find((p) => p.value === acronym)
-        return found ? found.label : acronym
-    }
+    // getCollegeProgramLabel imported from shared constants
     const page = usePage()
     const {
         employees = [],
@@ -208,18 +191,27 @@ export default function TimeKeeping() {
         othersRoles?: Array<{ value: string; label: string }>
     }
 
-    const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [] }
+    const raw = (initialFiltersRaw || {}) as Partial<FilterState & { collegeProgram?: string; othersRole?: string }>
+    const initialFilters: FilterState = {
+        types: raw.types ?? [],
+        statuses: raw.statuses ?? [],
+        roles: raw.roles ?? [],
+    }
+    const initialCollegeProgram = raw.collegeProgram ?? ''
+    const initialOthersRole = raw.othersRole ?? ''
     const [searchTerm, setSearchTerm] = useState(initialSearch)
     const toArray = (val: unknown) => (Array.isArray(val) ? val : val ? [val] : [])
-    const [filters, setFilters] = useState<FilterState>({
+    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
-        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+        collegeProgram: initialCollegeProgram,
+        othersRole: initialOthersRole,
     })
-    const [appliedFilters, setAppliedFilters] = useState<FilterState>({
+    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
-        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+        collegeProgram: initialCollegeProgram,
+        othersRole: initialOthersRole,
     })
     const [loading, setLoading] = useState(true)
     const spinnerStart = useRef<number>(Date.now())
@@ -274,23 +266,23 @@ export default function TimeKeeping() {
 
     // Filter apply
     const handleFilterChange = useCallback(
-        (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
-            // The local `filters` state should immediately reflect the UI controls
-            setFilters(newFilters)
+        (newFilters: FilterState & { collegeProgram?: string | string[]; othersRole?: string }) => {
+            // Normalize collegeProgram to a single string (first selected)
+            const normalizedCollegeProgram = Array.isArray(newFilters.collegeProgram)
+                ? newFilters.collegeProgram[0] || ''
+                : newFilters.collegeProgram || ''
 
-            // Now, construct the filters that will actually be APPLIED and sent to the backend
-            let applied = { ...newFilters }
+            const applied = { ...newFilters, collegeProgram: normalizedCollegeProgram } as FilterState & { collegeProgram?: string; othersRole?: string }
+            // Immediately reflect in local UI state
+            setFilters(applied)
+
+            // Build roles to send (expand 'others' to specific role)
             let rolesToSend = [...applied.roles]
-
-            // If 'others' is selected and a specific 'othersRole' is chosen,
-            // we replace 'others' with the specific role for the backend query.
-            if (applied.roles.includes('others') && applied.othersRole) {
+            if (applied.roles.includes('others') && (applied as { othersRole?: string }).othersRole) {
                 rolesToSend = rolesToSend.filter((r) => r !== 'others')
-                rolesToSend.push(applied.othersRole)
+                rolesToSend.push((applied as { othersRole?: string }).othersRole as string)
             }
 
-            // Update the applied filters state. We create a version for the UI display
-            // that keeps the specific role for the badge, but doesn't include 'others'.
             const appliedForUI = { ...applied, roles: rolesToSend }
             setAppliedFilters(appliedForUI)
 
@@ -301,7 +293,7 @@ export default function TimeKeeping() {
                     types: applied.types.length ? applied.types : undefined,
                     statuses: applied.statuses.length ? applied.statuses : undefined,
                     roles: rolesToSend.length ? rolesToSend : undefined,
-                    collegeProgram: applied.collegeProgram || undefined,
+                    collegeProgram: (applied as { collegeProgram?: string }).collegeProgram || undefined,
                     perPage: pageSize,
                     per_page: pageSize,
                 },
@@ -391,7 +383,7 @@ export default function TimeKeeping() {
                                 selectedTypes={filters.types}
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
-                                collegeProgram={filters.collegeProgram}
+                                collegeProgram={filters.collegeProgram ? [filters.collegeProgram] : []}
                                 othersRole={filters.othersRole}
                                 othersRoles={Array.isArray(initialOthersRoles) ? initialOthersRoles : []}
                                 onChange={(newFilters) => handleFilterChange({ ...filters, ...newFilters })}

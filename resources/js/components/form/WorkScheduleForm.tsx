@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selector';
 import {} from 'framer-motion';
 import CollegeProgramWork from '@/components/college-program-work';
+import { COLLEGE_PROGRAMS } from '@/constants/college-programs';
 
 // Minimal typing is intentionally omitted here to stay compatible with various useForm shapes.
 
@@ -20,23 +21,7 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
     const [selectedIndex, setSelectedIndex] = React.useState(0);
 
     // Program list (canonical order) for per-program inputs
-    const COLLEGE_PROGRAMS = React.useMemo(
-        () => [
-            { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-            { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-            { value: 'COELA', label: 'College of Education and Liberal Arts' },
-            { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-            { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-            { value: 'JD', label: 'Juris Doctor' },
-            { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-            { value: 'RLE', label: 'Related Learning Experience' },
-            { value: 'CG', label: 'Career Guidance' },
-            { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-            { value: 'GSP', label: 'Graduate Studies Programs' },
-            { value: 'MBA', label: 'Master of Business Administration' },
-        ],
-        []
-    );
+    // canonical program order via shared constant
 
     const selectedPrograms = React.useMemo(
         () =>

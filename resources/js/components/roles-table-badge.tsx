@@ -2,21 +2,7 @@ import * as React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { Shield, GraduationCap, Book, User } from 'lucide-react'
-
-const COLLEGE_PROGRAMS = [
-    { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-    { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-    { value: 'COELA', label: 'College of Education and Liberal Arts' },
-    { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-    { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-    { value: 'JD', label: 'Juris Doctor' },
-    { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-    { value: 'RLE', label: 'Related Learning Experience' },
-    { value: 'CG', label: 'Career Guidance' },
-    { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-    { value: 'GSP', label: 'Graduate Studies Programs' },
-    { value: 'MBA', label: 'Master of Business Administration' },
-]
+import { COLLEGE_PROGRAMS } from '@/constants/college-programs'
 
 interface RoleBadgeProps {
     role: string
@@ -49,14 +35,6 @@ const getProgramLabel = (programValue?: string) => {
     return program ? program.label : ''
 }
 
-const getProgramLabels = (programValues?: string) => {
-    if (!programValues) return [];
-    const values = programValues.split(',').map(v => v.trim());
-    return values.map(value => {
-        const program = COLLEGE_PROGRAMS.find(p => p.value === value);
-        return program ? { value, label: program.label } : { value, label: value };
-    });
-};
 
 const RoleBadge: React.FC<RoleBadgeProps> = ({ role, className, program }) => {
     const style = roleStyles[role.toLowerCase()] || roleStyles.default
