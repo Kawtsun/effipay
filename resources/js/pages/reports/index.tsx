@@ -1,363 +1,439 @@
-import { toast } from 'sonner'
-import ReportViewDialog from '@/components/report-view-dialog'
-import EmployeeFilter from '@/components/employee-filter'
-import EmployeeSearch from '@/components/employee-search'
-import TableReport from '@/components/table_report'
+import * as React from 'react'
+import {
+    ColumnDef,
+    getCoreRowModel,
+    getSortedRowModel,
+    PaginationState,
+    SortingState,
+    useReactTable,
+} from '@tanstack/react-table'
+import {
+    Eye,
+    Printer,
+    ChevronsLeft,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsRight,
+    ArrowDown,
+    ArrowUp,
+    ArrowUpDown,
+    MoreHorizontal,
+    Pencil,
+} from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
-import AppLayout from '@/layouts/app-layout'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { BreadcrumbItem, Employees } from '@/types'
-import { Head, router, usePage } from '@inertiajs/react'
-import { Printer, Users } from 'lucide-react'
-import PrintDialog from '@/components/print-dialog';
-import PrintAllDialog from '@/components/print-all-dialog';
-import { Loader2 } from 'lucide-react'
-import ExportLedgerDialog from '@/components/export-ledger-dialog';
-import { useCallback, useEffect, useRef, useState } from 'react'
-import AdjustmentDialog from '@/components/adjustment-dialog';
+import { Employees } from '@/types'
+import { formatFullName } from '@/utils/formatFullName'
+import { EmployeeTypesBadges } from './employee-types-badges'
+import { RolesTableBadge } from './roles-table-badge'
+import { StatusBadge } from './status-badge'
 
-export default function ReportsIndex() {
-    const page = usePage();
-    // --- State and constants ---
-    type FilterState = { types: string[]; statuses: string[]; roles: string[]; othersRole?: string };
-    const MIN_SPINNER_MS = 400;
-    const COLLEGE_PROGRAMS = [
-        { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-        { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-        { value: 'COELA', label: 'College of Education and Liberal Arts' },
-        { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-        { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-        { value: 'JD', label: 'Juris Doctor' },
-        { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-        { value: 'RLE', label: 'Related Learning Experience' },
-    { value: 'CG', label: 'Career Guidance' },
-        { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-    { value: 'GSP', label: 'Graduate Studies Programs' },
-        { value: 'MBA', label: 'Master of Business Administration' },
-    ];
-    function getCollegeProgramLabel(acronym: string) {
-        const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
-        return found ? found.label : acronym;
-    }
+type TableReportProps = {
+    data: Employees[]
+    loading?: boolean
+    currentPage: number
+    totalPages: number
+    onPageChange: (page: number) => void
+    onPageSizeChange?: (pageSize: number) => void
+    onView: (emp: Employees) => void
+    onPrint: (emp: Employees) => void
+    onAdjustments: (emp: Employees) => void // Added from tcc-adjustments
+    activeRoles?: string[]
+}
 
-    // --- Page props and state ---
-    const {
-        employees = [],
-        currentPage = 1,
-        totalPages = 1,
-        search: initialSearch = '',
-        filters: initialFiltersRaw = { types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' },
-        othersRoles: initialOthersRoles = [],
-    } = page.props as unknown as {
-        employees: Employees[];
-        currentPage: number;
-        totalPages: number;
-        search: string;
-        filters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string };
-        othersRoles?: Array<{ value: string; label: string }>;
-    };
-    const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' };
-    const [viewing, setViewing] = useState(null as Employees | null);
-    const [adjusting, setAdjusting] = useState(null as Employees | null);
-    const [printDialog, setPrintDialog] = useState<{ open: boolean, employee: Employees | null }>({ open: false, employee: null });
-    const [searchTerm, setSearchTerm] = useState(initialSearch);
-    const [printAllDialogOpen, setPrintAllDialogOpen] = useState(false);
-    const [pageSize, setPageSize] = useState<number>(10)
-    const toArray = (val: unknown) => Array.isArray(val) ? val : val ? [val] : [];
-    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
-        ...initialFilters,
-        roles: toArray(initialFilters.roles),
-        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
-        othersRole: typeof initialFilters.othersRole !== 'undefined' ? initialFilters.othersRole : '',
-    });
-    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
-        ...initialFilters,
-        roles: toArray(initialFilters.roles),
-        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
-        othersRole: typeof initialFilters.othersRole !== 'undefined' ? initialFilters.othersRole : '',
-    });
-    const [loading, setLoading] = useState(false);
-    const spinnerStart = useRef<number>(0);
-    const [month, setMonth] = useState<string>(() => {
-        const today = new Date();
-        return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    });
-    const hasFilters = Array.isArray(appliedFilters.types) && appliedFilters.types.length > 0
-        || Array.isArray(appliedFilters.statuses) && appliedFilters.statuses.length > 0
-        || Array.isArray(appliedFilters.roles) && appliedFilters.roles.length > 0
-        || (appliedFilters.othersRole && appliedFilters.othersRole.length > 0);
-    // Toast/flash logic
-    const flash = (page.props as unknown as { flash?: string | { type?: string; message?: string } }).flash;
-    useEffect(() => {
-        if (!flash) return;
-        if (typeof flash === 'string') {
-            toast.success(flash);
-        } else if (typeof flash === 'object' && flash !== null) {
-            if ('type' in flash && 'message' in flash) {
-                if (flash.type === 'error') {
-                    toast.error(flash.message || 'An error occurred');
-                } else if (flash.type === 'success') {
-                    toast.success(flash.message || 'Success');
-                } else {
-                    toast(flash.message || 'Notification');
-                }
-            }
+const MAX_ROWS = 10
+const ROW_HEIGHT = 53
+
+export default function TableReport({
+    data,
+    loading = false,
+    currentPage,
+    totalPages,
+    onPageChange,
+    onPageSizeChange,
+    onView,
+    onPrint,
+    onAdjustments,
+    activeRoles = [],
+}: TableReportProps) {
+    const density: 'comfortable' | 'compact' = 'compact'
+    const stickyId = true
+    const [isAnimating, setIsAnimating] = React.useState(false)
+
+    React.useEffect(() => {
+        if (!loading) {
+            const timer = setTimeout(() => setIsAnimating(true), 100)
+            return () => clearTimeout(timer)
+        } else {
+            setIsAnimating(false)
         }
-    }, [flash]);
+    }, [loading])
 
-
-    // Show toast on success (optional, currently not used)
-
-    // Visit helper
-    const visit = useCallback((params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
-        spinnerStart.current = Date.now()
-        setLoading(true)
-
-        router.visit(route('reports.index'), {
-            method: 'get',
-            data: params,
-            preserveState: options.preserve ?? false,
-            preserveScroll: true,
-            only: ['employees', 'currentPage', 'totalPages', 'search', 'filters', 'perPage'],
-            onFinish: () => {
-                const elapsed = Date.now() - spinnerStart.current
-                const wait = Math.max(0, MIN_SPINNER_MS - elapsed)
-                setTimeout(() => setLoading(false), wait)
-            },
-        })
-    }, [])
-
-    // Search handler
-    const handleSearch = useCallback(
-        (term: string) => {
-            setSearchTerm(term)
-            visit(
-                {
-                    search: term || undefined,
-                    page: 1,
-                    types: hasFilters ? appliedFilters.types : undefined,
-                    statuses: hasFilters ? appliedFilters.statuses : undefined,
-                    roles: hasFilters ? appliedFilters.roles : undefined,
-                    collegeProgram: appliedFilters.collegeProgram || undefined,
-                    perPage: pageSize,
-                    per_page: pageSize,
-                },
-                { preserve: true }
-            )
-        },
-        [visit, appliedFilters, hasFilters, pageSize]
-    )
-
-    // Filter apply
-    const handleFilterChange = useCallback(
-    (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
-        // The local `filters` state should immediately reflect the UI controls
-        setFilters(newFilters);
-
-        // Now, construct the filters that will actually be APPLIED and sent to the backend
-        let applied = { ...newFilters };
-        let rolesToSend = [...applied.roles];
-
-        // If 'others' is selected and a specific 'othersRole' is chosen,
-        // we replace 'others' with the specific role for the backend query.
-        if (applied.roles.includes('others') && applied.othersRole) {
-            rolesToSend = rolesToSend.filter(r => r !== 'others');
-            rolesToSend.push(applied.othersRole);
-        }
-
-        // Update the applied filters state. We create a version for the UI display
-        // that keeps the specific role for the badge, but doesn't include 'others'.
-        const appliedForUI = { ...applied, roles: rolesToSend };
-        setAppliedFilters(appliedForUI);
-
-        visit(
+    const columns = React.useMemo<ColumnDef<Employees>[]>(
+        () => [
             {
-                search: searchTerm || undefined,
-                page: 1,
-                types: applied.types.length ? applied.types : undefined,
-                statuses: applied.statuses.length ? applied.statuses : undefined,
-                roles: rolesToSend.length ? rolesToSend : undefined,
-                collegeProgram: applied.collegeProgram || undefined,
-                perPage: pageSize,
-                per_page: pageSize,
+                accessorKey: 'id',
+                header: ({ column }) => (
+                    <div className="px-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="data-[state=open]:bg-accent -ml-2 h-8 px-2"
+                            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                        >
+                            <span className="text-xs font-semibold uppercase tracking-wide">Employee ID</span>
+                            {column.getIsSorted() === 'desc' ? (
+                                <ArrowDown className="ml-2 h-4 w-4" />
+                            ) : column.getIsSorted() === 'asc' ? (
+                                <ArrowUp className="ml-2 h-4 w-4" />
+                            ) : (
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                            )}
+                        </Button>
+                    </div>
+                ),
+                cell: ({ row }) => <div className="px-4 py-2">{row.original.id}</div>,
+                size: 120,
             },
-            { preserve: true }
-        );
-    },
-    [visit, searchTerm, pageSize]
-);
-
-    // Reset filters
-    const resetFilters = useCallback(() => {
-        const empty = { types: [], statuses: [], roles: [], othersRole: '' };
-        setFilters(empty);
-        setAppliedFilters(empty);
-        visit({ search: searchTerm || undefined, page: 1, perPage: pageSize, per_page: pageSize }, { preserve: true });
-    }, [visit, searchTerm, pageSize])
-
-    // Pagination
-    const handlePage = useCallback(
-        (page: number) => {
-            let rolesToSend = [...appliedFilters.roles];
-            // Re-apply the same logic for pagination requests
-            if (appliedFilters.roles.includes('others') && appliedFilters.othersRole) {
-                rolesToSend = rolesToSend.filter(r => r !== 'others');
-                rolesToSend.push(appliedFilters.othersRole);
-            }
-
-            visit(
-                {
-                    search: searchTerm || undefined,
-                    page,
-                    types: appliedFilters.types.length ? appliedFilters.types : undefined,
-                    statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
-                    roles: rolesToSend.length ? rolesToSend : undefined,
-                    collegeProgram: appliedFilters.collegeProgram || undefined,
-                    // othersRole is now part of the 'roles' array, no need to send separately
-                    perPage: pageSize,
-                    per_page: pageSize,
+            {
+                id: 'name',
+                accessorFn: (row) => formatFullName(row.last_name, row.first_name, row.middle_name).toLowerCase(),
+                header: ({ column }) => (
+                    <div className="px-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="data-[state=open]:bg-accent -ml-2 h-8 px-2"
+                            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                        >
+                            <span className="text-xs font-semibold uppercase tracking-wide">Employee Name</span>
+                            {column.getIsSorted() === 'desc' ? (
+                                <ArrowDown className="ml-2 h-4 w-4" />
+                            ) : column.getIsSorted() === 'asc' ? (
+                                <ArrowUp className="ml-2 h-4 w-4" />
+                            ) : (
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                            )}
+                        </Button>
+                    </div>
+                ),
+                cell: ({ row }) => (
+                    <div className="px-4 py-2 font-medium text-foreground">
+                        {formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}
+                    </div>
+                ),
+                size: 400,
+            },
+            {
+                id: 'employee_types',
+                accessorFn: (row) => row.employee_types,
+                header: () => <div className="px-4 text-xs font-semibold uppercase tracking-wide">Employee Type</div>,
+                cell: ({ row }) => <EmployeeTypesBadges employeeTypes={row.original.employee_types} />,
+                size: 200,
+                enableSorting: false,
+            },
+            {
+                accessorKey: 'employee_status',
+                header: ({ column }) => (
+                    <div className="px-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="data-[state=open]:bg-accent -ml-2 h-8 px-2"
+                            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                        >
+                            <span className="text-xs font-semibold uppercase tracking-wide">Status</span>
+                            {column.getIsSorted() === 'desc' ? (
+                                <ArrowDown className="ml-2 h-4 w-4" />
+                            ) : column.getIsSorted() === 'asc' ? (
+                                <ArrowUp className="ml-2 h-4 w-4" />
+                            ) : (
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                            )}
+                        </Button>
+                    </div>
+                ),
+                cell: ({ row }) => (
+                    <div className="px-4 py-2">
+                        <StatusBadge status={row.original.employee_status} />
+                    </div>
+                ),
+                size: 180,
+            },
+            {
+                id: 'roles',
+                accessorFn: (row) => row.roles,
+                header: () => <div className="px-4 text-xs font-semibold uppercase tracking-wide">Roles</div>,
+                cell: ({ row }) => {
+                    const roles = row.original.roles ? row.original.roles.split(',').map((r) => r.trim()).filter(Boolean) : []
+                    return <RolesTableBadge roles={roles} college_program={row.original.college_program} activeRoles={activeRoles} />
                 },
-                { preserve: true }
-            )
-        },
-        [visit, searchTerm, appliedFilters, pageSize]
+                size: 250,
+                enableSorting: false,
+            },
+            {
+                id: 'actions',
+                enableSorting: false,
+                header: () => <div className="px-4 text-right text-xs font-semibold uppercase tracking-wide">Actions</div>,
+                cell: ({ row }) => {
+                    const emp = row.original
+                    return (
+                        <div className="whitespace-nowrap px-4 py-2 text-right">
+                            {/* Desktop actions */}
+                            <div className="hidden md:flex justify-end items-center gap-2">
+                                <Button variant="ghost" onClick={() => onAdjustments(emp)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Adjustments
+                                </Button>
+                                <Button variant="secondary" onClick={() => onView(emp)}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View
+                                </Button>
+                                <Button onClick={() => onPrint(emp)}>
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Print
+                                </Button>
+                            </div>
+                            {/* Mobile actions */}
+                            <div className="md:hidden flex justify-end">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Open menu</span>
+                                            <MoreHorizontal />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem onClick={() => onAdjustments(emp)}>Adjustments</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onView(emp)}>View</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onPrint(emp)}>Print</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </div>
+                    )
+                },
+                size: 220,
+            },
+        ],
+        [onView, onPrint, onAdjustments, activeRoles],
     )
 
-    // Helper to capitalize each word
-    function capitalizeWords(str: string) {
-        return str.replace(/\b\w/g, c => c.toUpperCase());
-    }
+    const [pagination, setPagination] = React.useState<PaginationState>({
+        pageIndex: Math.max(0, currentPage - 1),
+        pageSize: MAX_ROWS,
+    })
+    const [sorting, setSorting] = React.useState<SortingState>([])
 
-    const crumbs: BreadcrumbItem[] = [
-        {
-            title: 'Reports',
-            href: route('reports.index', {
-                search: initialSearch,
-                types: initialFilters.types,
-                statuses: initialFilters.statuses,
-                page: currentPage,
-            }),
-        },
-    ]
+    React.useEffect(() => {
+        setPagination((prev) => ({ ...prev, pageIndex: Math.max(0, currentPage - 1) }))
+    }, [currentPage])
+
+    const table = useReactTable({
+        data,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        onPaginationChange: setPagination,
+        manualPagination: true,
+        pageCount: totalPages,
+        onSortingChange: setSorting,
+        state: { pagination, sorting },
+    })
+
+    React.useEffect(() => {
+        const nextPage = table.getState().pagination.pageIndex + 1
+        if (nextPage !== currentPage) {
+            onPageChange(nextPage)
+        }
+    }, [table.getState().pagination.pageIndex])
 
     return (
-        <AppLayout breadcrumbs={crumbs}>
-            <Head title="Reports" />
-            <div className="flex h-full flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
-                {/* HEADER */}
-                <div className="flex-none">
-                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
-                        <Users className="h-6 w-6 text-primary" />
-                        Reports
-                    </h1>
-                    <p className="text-sm text-muted-foreground">View and print employee payroll reports.</p>
-                </div>
-
-                {/* SEARCH & CONTROLS */}
-                <div className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        {/* Search Input */}
-                        <div className="min-w-[200px] flex-1">
-                            <EmployeeSearch initialSearch={searchTerm} onSearch={handleSearch} />
-                        </div>
-                        {/* Reset / Filter / Print All */}
-                        <div className="flex items-center gap-2">
-                            {(filters.types.length > 0 || filters.statuses.length > 0 || filters.roles.length > 0) && (
-                                <Button variant="ghost" size="sm" onClick={resetFilters}>
-                                    Reset Filters
-                                </Button>
-                            )}
-                            <EmployeeFilter
-                                selectedTypes={filters.types}
-                                selectedStatuses={filters.statuses}
-                                selectedRoles={filters.roles}
-                                collegeProgram={filters.collegeProgram}
-                                othersRole={filters.othersRole}
-                                othersRoles={Array.isArray(initialOthersRoles) ? initialOthersRoles : []}
-                                onChange={newFilters => handleFilterChange({ ...filters, ...newFilters })}
-                            />
-                            <Button variant="default" onClick={() => setPrintAllDialogOpen(true)}>
-                                <Printer />
-                                Print All
-                            </Button>
-                            <ExportLedgerDialog />
-                        </div>
+        <div className="flex flex-1 flex-col">
+            <div className="relative overflow-hidden rounded-lg border bg-card shadow-sm">
+                {loading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 dark:bg-black/70">
+                        <Spinner className="h-10 w-10 animate-spin-slow text-primary" />
                     </div>
-                    {/* Category filter and Active Filters Preview in one line */}
-                    <div className="flex items-center justify-between w-full">
-                        <div
-                            className={cn(
-                                'text-right text-xs text-muted-foreground transition-all duration-200 ease-in-out',
-                                (appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0 || appliedFilters.roles.length > 0) ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0',
-                            )}
+                )}
+                <Table className="w-full min-w-[900px] select-none text-sm" style={{ tableLayout: 'fixed', width: '100%' }}>
+                    <TableHeader>
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow key={headerGroup.id} className="sticky top-0 z-[1] bg-muted/50/80 backdrop-blur-sm">
+                                {headerGroup.headers.map((header, idx) => (
+                                    <TableHead
+                                        key={header.id}
+                                        className={cn(
+                                            'h-11 whitespace-nowrap text-muted-foreground/90',
+                                            stickyId && idx === 0 ? 'sticky left-0 z-[2] bg-muted/50/80 backdrop-blur-sm' : ''
+                                        )}
+                                        style={{ width: header.getSize() || undefined }}
+                                    >
+                                        {header.isPlaceholder
+                                            ? null
+                                            : typeof header.column.columnDef.header === 'function'
+                                            ? header.column.columnDef.header(header.getContext())
+                                            : header.column.columnDef.header}
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            Array.from({ length: MAX_ROWS }).map((_, i) => (
+                                <TableRow key={`skeleton-${i}`} style={{ height: ROW_HEIGHT }}>
+                                    {columns.map((col) => (
+                                        <TableCell key={col.id} style={{ width: col.size }}>
+                                            <Skeleton className="h-4 w-full" />
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        ) : data.length === 0 ? (
+                            <>
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={columns.length}
+                                        className="py-10 text-center text-muted-foreground"
+                                        style={{ height: ROW_HEIGHT }}
+                                    >
+                                        No employees found
+                                    </TableCell>
+                                </TableRow>
+                                {Array.from({ length: MAX_ROWS - 1 }).map((_, i) => (
+                                    <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
+                                        {columns.map((col) => (
+                                            <TableCell key={col.id} />
+                                        ))}
+                                    </TableRow>
+                                ))}
+                            </>
+                        ) : (
+                            <>
+                                {table.getRowModel().rows.map((row, index) => (
+                                    <TableRow
+                                        key={row.id}
+                                        className={cn('transition-opacity duration-300', isAnimating ? 'opacity-100' : 'opacity-0')}
+                                        style={{ transitionDelay: `${index * 30}ms` }}
+                                    >
+                                        {row.getVisibleCells().map((cell, idx) => (
+                                            <TableCell
+                                                key={cell.id}
+                                                className={cn(
+                                                    density === 'compact' ? 'py-1.5' : 'py-3',
+                                                    idx === 0 ? cn('pl-4', stickyId ? 'sticky left-0 z-[1] bg-inherit' : '') : ''
+                                                )}
+                                                style={{ width: cell.column.getSize() || undefined }}
+                                            >
+                                                {typeof cell.column.columnDef.cell === 'function'
+                                                    ? cell.column.columnDef.cell(cell.getContext())
+                                                    : cell.column.columnDef.cell}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))}
+                                {Array.from({ length: Math.max(0, MAX_ROWS - data.length) }).map((_, i) => (
+                                    <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
+                                        {columns.map((col) => (
+                                            <TableCell key={col.id} />
+                                        ))}
+                                    </TableRow>
+                                ))}
+                            </>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+
+            <div className="mt-4 flex min-h-[56px] items-center justify-between rounded-md border bg-card px-3 py-2 text-sm">
+                <div className="flex-1 text-sm text-muted-foreground">{data.length} row(s) loaded.</div>
+
+                <div className="flex items-center space-x-6 lg:space-x-8">
+                    <div className="flex items-center space-x-2">
+                        <p className="text-sm font-medium">Rows per page</p>
+                        <Select
+                            value={`${pagination.pageSize}`}
+                            onValueChange={(value) => {
+                                const size = Number(value)
+                                setPagination((p) => ({ ...p, pageIndex: 0, pageSize: size }))
+                                if (onPageSizeChange) onPageSizeChange(size)
+                            }}
                         >
-                            Showing: {appliedFilters.types.length ? appliedFilters.types.map(capitalizeWords).join(', ') : 'All Types'} /
-                            {appliedFilters.statuses.length ? ' ' + appliedFilters.statuses.map(capitalizeWords).join(', ') : ' All Statuses'} /
-                            {appliedFilters.roles.length ? ' ' + appliedFilters.roles.map(capitalizeWords).join(', ') : ' All Roles'}
-                            {appliedFilters.roles.includes('college instructor') && appliedFilters.collegeProgram ?
-                                ` / ${' '}${appliedFilters.collegeProgram} - ${getCollegeProgramLabel(appliedFilters.collegeProgram)}` : ''}
-                            {appliedFilters.roles.includes('others') && appliedFilters.othersRole ?
-                                ` / ${' '}${capitalizeWords(appliedFilters.othersRole)}` : ''}
-                        </div>
+                            <SelectTrigger className="h-8 w-[70px]">
+                                <SelectValue placeholder={pagination.pageSize} />
+                            </SelectTrigger>
+                            <SelectContent side="top">
+                                {[10, 20, 25, 30, 40, 50].map((size) => (
+                                    <SelectItem key={size} value={`${size}`}>
+                                        {size}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
-                </div>
 
-                {/* TABLE & PAGINATION */}
-                <div className="relative flex flex-1 flex-col">
-                    {loading && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 transition-opacity duration-300 dark:bg-black/70">
-                            <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                        </div>
-                    )}
+                    <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                        Page {currentPage} of {totalPages}
+                    </div>
 
-                    <TableReport
-                        data={employees}
-                        loading={loading}
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={handlePage}
-                        onPageSizeChange={(size) => {
-                            setPageSize(size)
-                            visit({
-                                search: searchTerm || undefined,
-                                page: 1,
-                                types: appliedFilters.types.length ? appliedFilters.types : undefined,
-                                statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
-                                roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
-                                collegeProgram: appliedFilters.collegeProgram || undefined,
-                                perPage: size,
-                                per_page: size,
-                            }, { preserve: true })
-                        }}
-                        onView={(emp) => setViewing(emp)}
-                        onPrint={(emp) => setPrintDialog({ open: true, employee: emp })}
-                        onAdjustments={(emp) => setAdjusting(emp)}
-                        activeRoles={appliedFilters.roles}
-                    />
-
-                    <ReportViewDialog
-                        employee={viewing}
-                        onClose={() => setViewing(null)}
-                        activeRoles={appliedFilters.roles}
-                    />
-                    <PrintDialog
-                        open={printDialog.open}
-                        onClose={() => setPrintDialog({ open: false, employee: null })}
-                        employee={printDialog.employee as Employees | null}
-                    />
-                    <PrintAllDialog
-                        open={printAllDialogOpen}
-                        onClose={() => setPrintAllDialogOpen(false)}
-                    />
-                    <AdjustmentDialog
-                        employee={adjusting}
-                        open={!!adjusting}
-                        onClose={() => setAdjusting(null)}
-                        month={month}
-                        onMonthChange={setMonth}
-                    />
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="hidden h-8 w-8 p-0 lg:flex"
+                            onClick={() => onPageChange(1)}
+                            disabled={currentPage <= 1 || loading}
+                        >
+                            <span className="sr-only">Go to first page</span>
+                            <ChevronsLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 p-0"
+                            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                            disabled={currentPage <= 1 || loading}
+                        >
+                            <span className="sr-only">Go to previous page</span>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 p-0"
+                            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                            disabled={currentPage >= totalPages || loading}
+                        >
+                            <span className="sr-only">Go to next page</span>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="hidden h-8 w-8 p-0 lg:flex"
+                            onClick={() => onPageChange(totalPages)}
+                            disabled={currentPage >= totalPages || loading}
+                        >
+                            <span className="sr-only">Go to last page</span>
+                            <ChevronsRight className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
             </div>
-        </AppLayout>
-    );
+        </div>
+    )
 }

@@ -34,6 +34,7 @@ type Defaults = {
 type FlashObject = { type: string; message: string };
 type PageProps = {
   flash?: string | FlashObject;
+  errors: Record<string, string>;
   types: string[];
   selected: string;
   defaults: Defaults;
@@ -44,7 +45,6 @@ export default function Index() {
   const [type, setType] = useState(selected || types[0])
   const [selectedMonth, setSelectedMonth] = useState('')
   const [isRunningPayroll, setIsRunningPayroll] = useState(false)
-  // State to control the dialog visibility
   const [isThirteenthMonthDialogOpen, setIsThirteenthMonthDialogOpen] = useState(false);
 
   useEffect(() => setType(selected || types[0]), [selected, types])
@@ -57,9 +57,7 @@ export default function Index() {
         toast.success(flash);
       }
     } else if (typeof flash === 'object' && flash !== null) {
-      // If backend sends { type, message }
       if (flash.type === 'error') {
-        // Show specific toast if missing time keeping data
         if (flash.message && flash.message.toLowerCase().includes('no time keeping data')) {
           toast.error('Some employees have no time keeping data. Please check time keeping records before running payroll.');
         } else {
@@ -76,13 +74,11 @@ export default function Index() {
   }, [flash])
 
   useEffect(() => {
-    // Check if the errors object has any messages in it
     if (errors && Object.keys(errors).length > 0) {
-      // Get the first error message from the object
       const firstError = Object.values(errors)[0];
       toast.error(firstError);
     }
-  }, [errors]); // This effect will run whenever the errors prop changes
+  }, [errors]);
 
   const onTypeChange = useCallback((val: string) => {
     setType(val)
@@ -104,7 +100,7 @@ export default function Index() {
       route('payroll.run'),
       { payroll_date: selectedMonth },
       {
-        preserveState: false, // reload page to get flash
+        preserveState: false,
         onFinish: () => setIsRunningPayroll(false),
       }
     )
@@ -140,15 +136,14 @@ export default function Index() {
         <div className="py-6 px-8 space-y-6">
           {/* HEADER */}
           <div className="flex items-center justify-between">
-            {/* Left side: Title and Subtitle */}
-            <div>
-              <h1 className="flex items-center gap-2 text-2xl font-semibold">
-                <Wallet className="w-6 h-6 text-primary" />
-                Salary Management
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Set default salary values by employee type and run payroll.
-              </p>
+            <div className="flex items-center gap-4">
+              <div className="bg-primary/10 dark:bg-primary p-3 rounded-full border border-primary/20 dark:border-primary">
+                <Wallet className="h-6 w-6 text-primary dark:text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Salary Management</h1>
+                <p className="text-muted-foreground">Set default salary values by employee type and run payroll.</p>
+              </div>
             </div>
 
             {/* Right side: Payroll and 13th Month Buttons */}

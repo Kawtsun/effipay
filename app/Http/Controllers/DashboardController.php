@@ -6,21 +6,23 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Employees;
 use App\Models\Payroll;
+use App\Models\EmployeeType; // ADDED: Import the new model
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        // Get employee classification counts for pie chart
-        $employeeClassifications = Employees::select('employee_type')
+        // MODIFIED: Get employee classification counts from the new 'employee_types' table
+        $employeeClassifications = EmployeeType::select('type')
             ->get()
-            ->groupBy('employee_type')
+            ->groupBy('type')
             ->map(function($group, $type) {
                 return [
                     'classification' => $type,
                     'count' => $group->count(),
                 ];
             })->values();
+
         $totalEmployees = Employees::count();
 
         // Distinct months available from payrolls (Y-m)
@@ -29,10 +31,7 @@ class DashboardController extends Controller
             ->unique()
             ->values();
 
-        $selectedMonth = $request->input('month');
-        if (!$selectedMonth) {
-            $selectedMonth = $months->first(); // may be null if no payrolls
-        }
+        $selectedMonth = $request->input('month', $months->first());
 
         $processedPayroll = 0;
         $totalNetPay = 0;
@@ -46,14 +45,14 @@ class DashboardController extends Controller
         if ($selectedMonth) {
             $perEmployee = Payroll::where('month', $selectedMonth)
                 ->join('employees', 'payrolls.employee_id', '=', 'employees.id')
-                ->selectRaw("CONCAT(employees.last_name, ', ', employees.first_name, ' ', employees.middle_name) as name, payrolls.net_pay as net_pay, payrolls.payroll_date")
+                ->selectRaw("CONCAT(employees.last_name, ', ', employees.first_name) as name, payrolls.net_pay")
                 ->orderBy('net_pay', 'desc')
                 ->get();
         }
 
-        // Build last 12 months overview totals for bar chart (YYYY-mm for x, sum of net pay)
+        // Build last 12 months overview totals for bar chart
         $monthly = [];
-        $now = \Carbon\Carbon::now();
+        $now = now();
         for ($i = 11; $i >= 0; $i--) {
             $d = $now->copy()->subMonths($i);
             $key = $d->format('Y-m');
@@ -80,19 +79,20 @@ class DashboardController extends Controller
 
     public function stats(Request $request)
     {
-        // Get employee classification counts for pie chart
-        $employeeClassifications = Employees::select('employee_type')
+        $request->validate([
+            'month' => 'nullable|date_format:Y-m',
+        ]);
+        
+        // MODIFIED: Get employee classification counts from the new 'employee_types' table
+        $employeeClassifications = EmployeeType::select('type')
             ->get()
-            ->groupBy('employee_type')
+            ->groupBy('type')
             ->map(function($group, $type) {
                 return [
                     'classification' => $type,
                     'count' => $group->count(),
                 ];
             })->values();
-        $request->validate([
-            'month' => 'nullable|date_format:Y-m',
-        ]);
 
         $selectedMonth = $request->input('month');
         if (!$selectedMonth) {
@@ -110,15 +110,15 @@ class DashboardController extends Controller
         // Chart data
         $perEmployee = [];
         if ($selectedMonth) {
-            $perEmployee = Payroll::where('month', $selectedMonth)
+            $perEmployee = Payroll::where('month', 'selectedMonth')
                 ->join('employees', 'payrolls.employee_id', '=', 'employees.id')
-                ->selectRaw("CONCAT(employees.last_name, ', ', employees.first_name, ' ', employees.middle_name) as name, payrolls.net_pay as net_pay, payrolls.payroll_date")
+                ->selectRaw("CONCAT(employees.last_name, ', ', employees.first_name) as name, payrolls.net_pay")
                 ->orderBy('net_pay', 'desc')
                 ->get();
         }
 
         $monthly = [];
-        $now = \Carbon\Carbon::now();
+        $now = now();
         for ($i = 11; $i >= 0; $i--) {
             $d = $now->copy()->subMonths($i);
             $key = $d->format('Y-m');
@@ -143,5 +143,3 @@ class DashboardController extends Controller
         ]);
     }
 }
-
-

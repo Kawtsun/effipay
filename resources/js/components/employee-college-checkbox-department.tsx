@@ -1,4 +1,4 @@
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import React from 'react';
 
 const COLLEGE_PROGRAMS = [
@@ -16,22 +16,35 @@ const COLLEGE_PROGRAMS = [
   { value: 'MBA', label: 'Master of Business Administration' },
 ];
 
-interface EmployeeCollegeRadioDepartmentProps {
-  value: string;
-  onChange: (val: string) => void;
+interface EmployeeCollegeCheckboxDepartmentProps {
+  value: string[];
+  onChange: (val: string[]) => void;
   disabledOptions?: string[];
   className?: string;
 }
 
-export default function EmployeeCollegeRadioDepartment({ value, onChange, disabledOptions = [], className }: EmployeeCollegeRadioDepartmentProps) {
+export default function EmployeeCollegeCheckboxDepartment({ value, onChange, disabledOptions = [], className }: EmployeeCollegeCheckboxDepartmentProps) {
+  const handleCheckedChange = (checked: boolean, progValue: string) => {
+    if (checked) {
+      onChange([...value, progValue]);
+    } else {
+      onChange(value.filter((v) => v !== progValue));
+    }
+  };
+
   return (
-    <RadioGroup value={value} onValueChange={onChange} className={className}>
+    <div className={className}>
       {COLLEGE_PROGRAMS.map((prog) => (
-        <label key={prog.value} className="flex items-center gap-2 text-xs select-none cursor-pointer">
-          <RadioGroupItem value={prog.value} disabled={disabledOptions.includes(prog.value)} />
+        <label key={prog.value} className="flex items-center gap-2 text-xs select-none cursor-pointer mb-2">
+          <Checkbox
+            id={`college-dept-${prog.value}`}
+            checked={value.includes(prog.value)}
+            onCheckedChange={(c) => handleCheckedChange(!!c, prog.value)}
+            disabled={disabledOptions.includes(prog.value)}
+          />
           <span>{prog.label} <span className="ml-1 text-muted-foreground">({prog.value})</span></span>
         </label>
       ))}
-    </RadioGroup>
+    </div>
   );
 } 
