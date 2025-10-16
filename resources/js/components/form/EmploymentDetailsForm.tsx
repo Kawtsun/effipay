@@ -12,6 +12,8 @@ import { EmployeeType } from '@/components/employee-type';
 import { EmployeeStatus } from '@/components/employee-status';
 import CollegeProgramScrollArea from '@/components/college-program-scroll-area';
 import EmployeeCollegeCheckboxDepartment from '@/components/employee-college-checkbox-department';
+import EmployeeBasicEducationLevel from '@/components/employee-basic-education-level';
+import BasicEducationScrollArea from '../basic-education-scroll-area';
 
 
 
@@ -183,7 +185,13 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
                             <Label htmlFor="role-college" className="cursor-pointer font-normal">College Instructor</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-basicedu" checked={isBasicEdu} onCheckedChange={(c) => setIsBasicEdu(!!c)} />
+                            <Checkbox id="role-basicedu" checked={isBasicEdu} onCheckedChange={(c) => {
+                                const isChecked = !!c;
+                                setIsBasicEdu(isChecked);
+                                if (!isChecked) {
+                                    setData('basic_education_level', '');
+                                }
+                            }} />
                             <Label htmlFor="role-basicedu" className="cursor-pointer font-normal">Basic Education</Label>
                         </div>
                         <div className="flex items-center gap-2">
@@ -234,6 +242,33 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
                                             />
                                         </CollegeProgramScrollArea>
                                         <ErrorDisplay field="college_program" />
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                        <AnimatePresence>
+                            {isBasicEdu && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="pt-2">
+                                        <Label className="text-sm font-semibold mb-2 flex items-center">
+                                            Basic Education Level <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                        </Label>
+                                        <BasicEducationScrollArea>
+                                            <EmployeeBasicEducationLevel
+                                                value={data.basic_education_level || ''}
+                                                onChange={(value) => {
+                                                    setData('basic_education_level', value);
+                                                    clearErrors('basic_education_level');
+                                                }}
+                                            />
+                                        </BasicEducationScrollArea>
+                                        <ErrorDisplay field="basic_education_level" />
                                     </div>
                                 </motion.div>
                             )}
