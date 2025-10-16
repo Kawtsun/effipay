@@ -155,12 +155,13 @@ export default function AdjustmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Adjustments for {employeeName}</DialogTitle>
+          <DialogTitle>Adjustments for</DialogTitle>
+          <DialogTitle>{employeeName}</DialogTitle>
         </DialogHeader>
         <div className="py-4 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-15">
             <div>
               <p className="text-sm font-medium mb-2">Adjustment Type</p>
               <RadioGroup
