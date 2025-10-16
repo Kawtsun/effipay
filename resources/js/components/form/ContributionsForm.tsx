@@ -40,46 +40,52 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
         data.roles.split(',').map((r: string) => r.trim()).includes('administrator'),
         [data.roles]
     );
-    const [showSSS, setShowSSS] = React.useState(false);
-    const [showPhilhealth, setShowPhilhealth] = React.useState(false);
-    const [showPagibig, setShowPagibig] = React.useState(false);
+    const [showSSS, setShowSSS] = React.useState(isAdmin);
+    const [showPhilhealth, setShowPhilhealth] = React.useState(isAdmin);
+    const [showPagibig, setShowPagibig] = React.useState(isAdmin);
+
+    React.useEffect(() => {
+        setShowSSS(isAdmin);
+        setShowPhilhealth(isAdmin);
+        setShowPagibig(isAdmin);
+    }, [isAdmin]);
 
     // Reset all UI toggles and local validation state when parent triggers reset
     React.useEffect(() => {
         if (resetToken === undefined) return;
-        setShowSSS(false);
-        setShowPhilhealth(false);
-        setShowPagibig(false);
+        setShowSSS(isAdmin);
+        setShowPhilhealth(isAdmin);
+        setShowPagibig(isAdmin);
         setPagIbigError(null);
-    }, [resetToken]);
+    }, [resetToken, isAdmin]);
 
     // Effects to clear fields when they are hidden
     React.useEffect(() => {
-        if (!isAdmin && !showSSS) {
+        if (!showSSS) {
             setData('sss', '');
-        } else if (!isAdmin && showSSS) {
+        } else if (showSSS && data.sss === '') {
             setData('sss', '0'); // Set to a placeholder value when added
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAdmin, showSSS]);
+    }, [showSSS]);
 
     React.useEffect(() => {
-        if (!isAdmin && !showPhilhealth) {
+        if (!showPhilhealth) {
             setData('philhealth', '');
-        } else if (!isAdmin && showPhilhealth) {
+        } else if (showPhilhealth && data.philhealth === '') {
             setData('philhealth', '0'); // Set to a placeholder value when added
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAdmin, showPhilhealth]);
+    }, [showPhilhealth]);
 
     React.useEffect(() => {
-        if (!isAdmin && !showPagibig) {
+        if (!showPagibig) {
             setData('pag_ibig', '');
-        } else if (!isAdmin && showPagibig) {
+        } else if (showPagibig && data.pag_ibig === '') {
             setData('pag_ibig', '200.00'); // Default to min value
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAdmin, showPagibig]);
+    }, [showPagibig]);
 
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {
         const rawValue = value.replace(/,/g, '');
@@ -127,6 +133,7 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                 size="sm"
                 onClick={() => setter(prev => !prev)}
                 className={`h-8 px-2 ${isShown ? 'text-primary hover:text-primary' : 'text-primary hover:text-primary'}`}
+                disabled={isAdmin && isShown}
             >
                 {isShown ? <MinusCircle className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
                 <span className="ml-2">{isShown ? 'Remove' : 'Add'}</span>
@@ -151,112 +158,42 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
             </CardHeader>
             <CardContent className="space-y-4">
                 <TooltipProvider>
-                    {isAdmin ? (
-                        <div className="space-y-4">
-                            {/* SSS Section */}
-                            <div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Label className="font-semibold flex items-center text-green-600">
-                                            <CheckCircle className="h-4 w-4 mr-2" />
-                                            SSS Contribution
-                                        </Label>
-                                        <Tooltip>
-                                            <TooltipTrigger>
-                                                <Info className="h-4 w-4 text-gray-500" />
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>SSS contribution will be calculated after running the payroll.</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* PhilHealth Section */}
-                            <div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Label className="font-semibold flex items-center text-green-600">
-                                            <CheckCircle className="h-4 w-4 mr-2" />
-                                            PhilHealth Contribution
-                                        </Label>
-                                        <Tooltip>
-                                            <TooltipTrigger>
-                                                <Info className="h-4 w-4 text-gray-500" />
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>PhilHealth contribution will be calculated after running the payroll.</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* Pag-IBIG Section */}
-                            <div>
-                                <div className="flex items-center justify-between">
-                                    <Label className="font-semibold flex items-center text-green-600">
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Pag-IBIG Contribution
-                                    </Label>
-                                </div>
-                                <div className="mt-2">
-                                    <div className="relative">
-                                        <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                                        <Input
-                                            type="text"
-                                            placeholder="Min 200.00"
-                                            value={formatWithCommas(data.pag_ibig)}
-                                            onChange={e => handleNumericChange('pag_ibig', e.target.value)}
-                                            className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
-                                        />
-                                    </div>
-                                    {pagIbigError && (
-                                        <Alert variant="destructive" className="mt-2">
-                                            <AlertTriangle className="h-4 w-4" />
-                                            <AlertDescription>{pagIbigError}</AlertDescription>
-                                        </Alert>
-                                    )}
-                                </div>
-                            </div>
+                    <div className="space-y-4">
+                        {/* SSS Section */}
+                        <div>
+                            {renderToggleButton('SSS Contribution', showSSS, setShowSSS, 'SSS contribution will be calculated after running the payroll.')}
                         </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {/* SSS Section */}
-                            <div>
-                                {renderToggleButton('SSS Contribution', showSSS, setShowSSS, 'SSS contribution will be calculated after running the payroll.')}
-                            </div>
-                            {/* PhilHealth Section */}
-                            <div>
-                                {renderToggleButton('PhilHealth Contribution', showPhilhealth, setShowPhilhealth, 'PhilHealth contribution will be calculated after running the payroll.')}
-                            </div>
-                            {/* Pag-IBIG Section */}
-                            <div>
-                                {renderToggleButton('Pag-IBIG Contribution', showPagibig, setShowPagibig)}
-                                <AnimatePresence>
-                                    {showPagibig && (
-                                        <motion.div key="pagibig-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
-                                            <div className="relative">
-                                                <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                                                <Input
-                                                    type="text"
-                                                    placeholder="Min 200.00"
-                                                    value={formatWithCommas(data.pag_ibig)}
-                                                    onChange={e => handleNumericChange('pag_ibig', e.target.value)}
-                                                    className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
-                                                />
-                                            </div>
-                                            {pagIbigError && (
-                                                <Alert variant="destructive" className="mt-2">
-                                                    <AlertTriangle className="h-4 w-4" />
-                                                    <AlertDescription>{pagIbigError}</AlertDescription>
-                                                </Alert>
-                                            )}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                        {/* PhilHealth Section */}
+                        <div>
+                            {renderToggleButton('PhilHealth Contribution', showPhilhealth, setShowPhilhealth, 'PhilHealth contribution will be calculated after running the payroll.')}
                         </div>
-                    )}
+                        {/* Pag-IBIG Section */}
+                        <div>
+                            {renderToggleButton('Pag-IBIG Contribution', showPagibig, setShowPagibig)}
+                            <AnimatePresence>
+                                {showPagibig && (
+                                    <motion.div key="pagibig-input" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-2">
+                                        <div className="relative">
+                                            <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                                            <Input
+                                                type="text"
+                                                placeholder="Min 200.00"
+                                                value={formatWithCommas(data.pag_ibig)}
+                                                onChange={e => handleNumericChange('pag_ibig', e.target.value)}
+                                                className={`pl-8 ${errors.pag_ibig || pagIbigError ? 'border-destructive' : ''}`}
+                                            />
+                                        </div>
+                                        {pagIbigError && (
+                                            <Alert variant="destructive" className="mt-2">
+                                                <AlertTriangle className="h-4 w-4" />
+                                                <AlertDescription>{pagIbigError}</AlertDescription>
+                                            </Alert>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </div>
                 </TooltipProvider>
             </CardContent>
         </Card>
