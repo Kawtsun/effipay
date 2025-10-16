@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from 'react';
-import { Clock, AlertTriangle } from 'lucide-react';
+import { Clock, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selector';
-import {} from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import CollegeProgramWork from '@/components/college-program-work';
 import { COLLEGE_PROGRAMS } from '@/constants/college-programs';
 
@@ -19,6 +19,11 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
     const { data, setData, errors, clearErrors } = form;
 
     const [selectedIndex, setSelectedIndex] = React.useState(0);
+
+    const rolesArr = React.useMemo(
+        () => (data.roles || '').split(',').map((r: string) => r.trim()).filter(Boolean),
+        [data.roles]
+    );
 
     // Program list (canonical order) for per-program inputs
     // canonical program order via shared constant
@@ -38,11 +43,17 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
         return (
             <Alert variant="destructive" className="mt-2">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                    {errors[field]}
-                </AlertDescription>
+                <AlertDescription>{errors[field]}</AlertDescription>
             </Alert>
         );
+    };
+
+    const motionProps = {
+        initial: { opacity: 0, height: 0, marginTop: 0 },
+        animate: { opacity: 1, height: 'auto', marginTop: 0 },
+        exit: { opacity: 0, height: 0, marginTop: 0 },
+        transition: { duration: 0.3, ease: 'easeInOut' as const },
+        className: 'overflow-hidden',
     };
 
     // College-specific inputs moved to CollegeWorkDaysForm component
@@ -61,49 +72,62 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                 </div>
             </CardHeader>
             <CardContent>
-                {/* College program specific hours & days (via presentational component) */}
-                {selectedPrograms.length > 0 && (
-                    <div className="mb-6">
-                        <CollegeProgramWork
-                            programs={COLLEGE_PROGRAMS}
-                            selected={selectedPrograms}
-                            hoursByProgram={data.college_work_hours_by_program || {}}
-                            onChangeHours={(code, hours) => {
-                                const next = { ...(data.college_work_hours_by_program || {}) } as Record<string, string>;
-                                next[code] = hours;
-                                setData('college_work_hours_by_program', next);
-                                const key = `college_work_hours_by_program.${code}`;
-                                if (errors[key as keyof typeof errors]) {
-                                    clearErrors(key);
-                                }
-                            }}
-                            workDaysByProgram={data.college_work_days_by_program || {}}
-                            onChangeWorkDays={(code, days: WorkDayTime[]) => {
-                                const next = { ...(data.college_work_days_by_program || {}) } as Record<string, WorkDayTime[]>;
-                                next[code] = days;
-                                setData('college_work_days_by_program', next);
-                                const key = `college_work_days_by_program.${code}`;
-                                if (errors[key as keyof typeof errors]) {
-                                    clearErrors(key);
-                                }
-                            }}
-                            errors={errors as Record<string, string>}
-                        />
-                    </div>
-                )}
-                <WorkDaysSelector
-                    value={data.work_days || []}
-                    // THE FIX: When days are changed, also clear the validation error.
-                    onChange={(days: WorkDayTime[]) => {
-                        setData('work_days', days);
-                        if (errors.work_days) {
-                            clearErrors('work_days');
-                        }
-                    }}
-                    selectedIndex={selectedIndex}
-                    onSelectIndex={setSelectedIndex}
-                />
-                <ErrorDisplay field="work_days" />
+                <AnimatePresence mode="wait">
+                    {rolesArr.length === 0 ? (
+                        <motion.div key="no-roles-alert" {...motionProps}>
+                            <Alert>
+                                <Info className="h-4 w-4" />
+                                <AlertDescription>Please select an employee role first to set their work schedule.</AlertDescription>
+                            </Alert>
+                        </motion.div>
+                    ) : (
+                        <motion.div key="work-schedule-fields" {...motionProps}>
+                            {/* College program specific hours & days (via presentational component) */}
+                            {selectedPrograms.length > 0 && (
+                                <div className="mb-6">
+                                    <CollegeProgramWork
+                                        programs={COLLEGE_PROGRAMS}
+                                        selected={selectedPrograms}
+                                        hoursByProgram={data.college_work_hours_by_program || {}}
+                                        onChangeHours={(code, hours) => {
+                                            const next = { ...(data.college_work_hours_by_program || {}) } as Record<string, string>;
+                                            next[code] = hours;
+                                            setData('college_work_hours_by_program', next);
+                                            const key = `college_work_hours_by_program.${code}`;
+                                            if (errors[key as keyof typeof errors]) {
+                                                clearErrors(key);
+                                            }
+                                        }}
+                                        workDaysByProgram={data.college_work_days_by_program || {}}
+                                        onChangeWorkDays={(code, days: WorkDayTime[]) => {
+                                            const next = { ...(data.college_work_days_by_program || {}) } as Record<string, WorkDayTime[]>;
+                                            next[code] = days;
+                                            setData('college_work_days_by_program', next);
+                                            const key = `college_work_days_by_program.${code}`;
+                                            if (errors[key as keyof typeof errors]) {
+                                                clearErrors(key);
+                                            }
+                                        }}
+                                        errors={errors as Record<string, string>}
+                                    />
+                                </div>
+                            )}
+                            <WorkDaysSelector
+                                value={data.work_days || []}
+                                // THE FIX: When days are changed, also clear the validation error.
+                                onChange={(days: WorkDayTime[]) => {
+                                    setData('work_days', days);
+                                    if (errors.work_days) {
+                                        clearErrors('work_days');
+                                    }
+                                }}
+                                selectedIndex={selectedIndex}
+                                onSelectIndex={setSelectedIndex}
+                            />
+                            <ErrorDisplay field="work_days" />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </CardContent>
         </Card>
     );
