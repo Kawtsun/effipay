@@ -83,6 +83,20 @@ export default function AdjustmentDialog({
 
       const data = await res.json();
 
+      // If CSRF/session expired or method not allowed, reload to recover session/routes
+      if (res.status === 419 || res.status === 401) {
+        toast.error('Session expired. The page will reload to recover your session.');
+        window.setTimeout(() => window.location.reload(), 1200);
+        return;
+      }
+
+      // Method not allowed (route mismatch) — reload to ensure route cache / server state is fresh
+      if (res.status === 405) {
+        toast.error('Server route mismatch detected. Reloading the page to refresh routes.');
+        window.setTimeout(() => window.location.reload(), 1200);
+        return;
+      }
+
       if (!res.ok) {
         const message = data && data.message ? data.message : 'Failed to apply adjustment.';
         toast.error(message);
@@ -94,7 +108,9 @@ export default function AdjustmentDialog({
       // Optionally, refresh the page or refetch reports data here using Inertia or provided callback
     } catch (err) {
       console.error(err);
-      toast.error('An error occurred while applying adjustment.');
+      // Network error or unexpected exception — reload to recover session/state
+      toast.error('Network or session error occurred. The page will reload to try to recover.');
+      window.setTimeout(() => window.location.reload(), 1200);
     }
   };
 

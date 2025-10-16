@@ -148,6 +148,21 @@ export default function TimeKeeping() {
                 .then(async (response) => {
                     // Dismiss loading toast first, then show result toast
                     toast.dismiss(typeof toastId === 'number' ? undefined : toastId)
+
+                    // Session expired / CSRF problem
+                    if (response.status === 419 || response.status === 401) {
+                        toast.error('Session expired. The page will reload to recover your session.');
+                        window.setTimeout(() => window.location.reload(), 1200);
+                        return;
+                    }
+
+                    // Method not allowed / route mismatch
+                    if (response.status === 405) {
+                        toast.error('Server route mismatch detected. Reloading the page to refresh routes.');
+                        window.setTimeout(() => window.location.reload(), 1200);
+                        return;
+                    }
+
                     if (response.ok) {
                         toast.success(`Successfully imported: ${fileName}`, { id: `success-${Date.now()}`, duration: 1000 })
                         router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] })
@@ -166,9 +181,11 @@ export default function TimeKeeping() {
                     }
                 })
                 .catch((err) => {
-                    toast.error('Import failed.')
+                    // Network or unexpected error — reload to attempt recovery
+                    toast.error('Import failed due to network or session error. The page will reload to try to recover.');
                     toast.dismiss(typeof toastId === 'number' ? undefined : toastId)
                     console.error('Import failed:', err)
+                    window.setTimeout(() => window.location.reload(), 1200);
                 })
         }
     }
