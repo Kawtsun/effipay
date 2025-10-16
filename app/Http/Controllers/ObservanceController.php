@@ -22,11 +22,10 @@ class ObservanceController extends Controller
     // Store new observances (expects array of dates and optional label)
     public function store(Request $request)
     {
+        // Accept either array of date strings (backwards compatible) or array of objects
         $data = $request->validate([
             'add' => 'array',
-            'add.*' => 'date',
             'remove' => 'array',
-            'remove.*' => 'date',
             'label' => 'nullable|string',
         ]);
 
@@ -35,12 +34,29 @@ class ObservanceController extends Controller
 
         // Add new observances (manual entries always is_automated = false)
         if (!empty($data['add'])) {
-            foreach ($data['add'] as $date) {
+            foreach ($data['add'] as $item) {
+                // support string date (backwards compatible) or object { date, label, type, start_time }
+                if (is_string($item)) {
+                    $date = $item;
+                    $label = $data['label'] ?? null;
+                    $type = null;
+                    $start_time = null;
+                } elseif (is_array($item)) {
+                    $date = $item['date'] ?? null;
+                    $label = $item['label'] ?? ($data['label'] ?? null);
+                    $type = $item['type'] ?? null;
+                    $start_time = $item['start_time'] ?? null;
+                } else {
+                    continue;
+                }
+                if (!$date) continue;
                 $created[] = Observance::updateOrCreate(
                     ['date' => $date],
                     [
-                        'label' => $data['label'] ?? null,
+                        'label' => $label,
                         'is_automated' => false,
+                        'type' => $type,
+                        'start_time' => $start_time,
                     ]
                 );
             }

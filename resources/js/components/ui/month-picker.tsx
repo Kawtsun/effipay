@@ -26,20 +26,51 @@ export function MonthPicker({
   className,
   availableMonths = []
 }: MonthPickerProps) {
-  // Use available months from API if provided, otherwise generate default options
-  const monthOptions = availableMonths.length > 0 
-    ? availableMonths.map(month => {
-        const [year, monthNum] = month.split('-')
-        const date = new Date(parseInt(year), parseInt(monthNum) - 1, 1)
-        return {
-          value: month,
-          label: date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long'
-          })
-        }
-      })
-    : []
+  // Helpers
+  const normalizeYm = (ym: string) => {
+    const base = (ym || '').slice(0, 7)
+    const [y, m] = base.split('-')
+    const yi = parseInt(y || '', 10)
+    const mi = parseInt(m || '', 10)
+    if (Number.isNaN(yi) || Number.isNaN(mi)) return base || ym
+    return `${yi}-${String(mi).padStart(2, '0')}`
+  }
+
+  const toOption = (ym: string) => {
+    const n = normalizeYm(ym)
+    const [y, m] = n.split('-')
+    const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1)
+    return {
+      value: n,
+      label: date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long'
+      }),
+      y: parseInt(y, 10),
+      m: parseInt(m, 10)
+    }
+  }
+
+  const genDefaultMonths = (count = 12) => {
+    const now = new Date()
+    const list: Array<{ value: string; label: string; y: number; m: number }> = []
+    for (let i = 0; i < count; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      list.push(toOption(ym))
+    }
+    return list
+  }
+
+  const monthOptions = React.useMemo(() => {
+    const base = (availableMonths || []).map((m) => normalizeYm(m)).filter(Boolean) as string[]
+    const mapped = base.map(toOption)
+    const dedup = new Map<string, { value: string; label: string; y: number; m: number }>()
+    for (const o of mapped) dedup.set(o.value, o)
+    const items = dedup.size > 0 ? Array.from(dedup.values()) : genDefaultMonths(12)
+    items.sort((a, b) => (b.y - a.y) || (b.m - a.m))
+    return items.map(({ value, label }) => ({ value, label }))
+  }, [availableMonths])
 
   const triggerRef = React.useRef<HTMLButtonElement>(null);
 
@@ -52,8 +83,10 @@ export function MonthPicker({
     }, 0);
   };
 
+  const normalizedValue = value ? normalizeYm(value) : undefined
+
   return (
-    <Select value={value} onValueChange={handleValueChange}>
+    <Select value={normalizedValue} onValueChange={handleValueChange}>
       <SelectTrigger ref={triggerRef} className={cn("w-[200px]", className)}>
         <CalendarIcon className="mr-2 h-4 w-4" />
         <SelectValue placeholder={placeholder} />

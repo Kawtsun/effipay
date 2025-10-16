@@ -11,7 +11,11 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
-export function CalendarCarousel({ observances = [] }: { observances: { date: string, label?: string, is_automated?: boolean }[] }) {
+import { OBSERVANCE_COLOR_MAP, OBSERVANCE_PRETTY } from './observance-colors';
+
+type ObservanceItem = { date: string, label?: string, is_automated?: boolean, type?: string, start_time?: string };
+
+export function CalendarCarousel({ observances = [], onEdit }: { observances: ObservanceItem[]; onEdit?: (obs: ObservanceItem) => void }) {
   function formatManilaDate(dateStr: string) {
     if (!dateStr) return '';
     let d;
@@ -37,7 +41,7 @@ export function CalendarCarousel({ observances = [] }: { observances: { date: st
 
   // Find the index of the closest upcoming or current holiday (manual or auto)
   // Find the index of the date closest to today (past or future)
-  function getFocusIndex() {
+  const getFocusIndex = React.useCallback(() => {
     const now = new Date();
     let closestIdx = 0;
     let minAbsDiff = Infinity;
@@ -50,21 +54,22 @@ export function CalendarCarousel({ observances = [] }: { observances: { date: st
       }
     }
     return closestIdx;
-  }
+  }, [sortedObservances]);
   const [focusIndex, setFocusIndex] = useState(getFocusIndex());
   // Update focusIndex in real time if observances or date changes
   // Update focusIndex in real time if observances or date changes
   useEffect(() => {
     setFocusIndex(getFocusIndex());
-  }, [sortedObservances]);
+  }, [getFocusIndex]);
   useEffect(() => {
     const interval = setInterval(() => {
       setFocusIndex(getFocusIndex());
     }, 60 * 1000); // check every minute
     return () => clearInterval(interval);
-  }, [sortedObservances]);
+  }, [getFocusIndex]);
 
   // Use setApi to get Embla API instance and scroll to focusIndex
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [emblaApi, setEmblaApi] = useState<any>(null);
   useEffect(() => {
     if (emblaApi && sortedObservances.length > 0) {
@@ -91,10 +96,10 @@ export function CalendarCarousel({ observances = [] }: { observances: { date: st
           containerWidth="850px"
           setApi={setEmblaApi}
         >
-          <CarouselContent className="flex" viewportWidth="850px">
-            {sortedObservances.length === 0 ? (
-              <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                <div className="p-1 flex justify-center">
+          <CarouselContent className="flex gap-1 overflow-visible" viewportWidth="850px">
+              {sortedObservances.length === 0 ? (
+                  <CarouselItem className="md:basis-1/2 lg:basis-1/3">
+                <div className="p-3 flex justify-center overflow-visible">
                   <Card style={{ width: 360, minWidth: 360, maxWidth: 360 }}>
                     <CardContent className="flex flex-col items-center justify-center h-[220px]">
                       <span className="text-lg text-muted-foreground">No holidays</span>
@@ -103,22 +108,38 @@ export function CalendarCarousel({ observances = [] }: { observances: { date: st
                 </div>
               </CarouselItem>
             ) : (
-              sortedObservances.map((obs) => (
-                <CarouselItem key={obs.date + (obs.label || '')} className="basis-1/3">
-                  <div className="flex justify-center w-full">
-                    <Card className="w-[320px]">
-                      <CardContent className="flex flex-col items-center justify-center h-[160px] px-2 py-4 w-full">
-                        <span className="text-base font-bold mb-2 text-primary text-center tracking-wide break-words max-w-[280px] whitespace-pre-line" style={{ wordBreak: 'break-word' }}>
-                          {formatManilaDate(obs.date)}
-                        </span>
-                        <span className="text-sm text-center text-muted-foreground font-medium break-words max-w-[260px] whitespace-pre-line" style={{ wordBreak: 'break-word' }}>
-                          {obs.label || 'Suspension/Holiday'}
-                        </span>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </CarouselItem>
-              ))
+              sortedObservances.map((obs) => {
+                const type = obs.type || 'DEFAULT';
+                const colors = OBSERVANCE_COLOR_MAP[type] || OBSERVANCE_COLOR_MAP.DEFAULT;
+                return (
+                  <CarouselItem key={obs.date + (obs.label || '')} className="basis-1/3">
+                    <div className="p-3 flex justify-center w-full overflow-visible">
+                      <Card
+                        role={onEdit ? 'button' : undefined}
+                        tabIndex={onEdit ? 0 : -1}
+                        title={onEdit ? 'Edit observance' : undefined}
+                        onClick={(e) => { if (onEdit) { e.stopPropagation(); onEdit(obs); } }}
+                        onKeyDown={(e) => { if (onEdit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onEdit(obs); } }}
+                        className={`relative w-[320px] rounded-2xl overflow-hidden ${colors.bg} ${colors.border || ''} ${colors.ring || ''} shadow-[0_0_0_1px_rgba(0,0,0,0.05)] ${onEdit ? 'cursor-pointer hover:shadow-lg hover:scale-[1.01] transition-all' : ''} hover:z-50 focus:outline-none`}
+                      >
+                        <div className={`absolute inset-0 pointer-events-none ${colors.grad || ''}`} />
+                        <CardContent className={`relative flex flex-col items-center justify-center h-[160px] px-2 py-4 w-full ${colors.text}`}>
+                          <span className="text-base font-bold mb-2 text-center tracking-wide break-words max-w-[280px] whitespace-pre-line" style={{ wordBreak: 'break-word' }}>
+                            {formatManilaDate(obs.date)}
+                          </span>
+                          <span className="text-sm text-center text-muted-foreground font-medium break-words max-w-[260px] whitespace-pre-line" style={{ wordBreak: 'break-word' }}>
+                            {obs.label || (obs.type ? (OBSERVANCE_PRETTY[obs.type] || obs.type.replace('-', ' ')) : 'Suspension/Holiday')}
+                          </span>
+                          {obs.start_time ? (
+                            <span className="text-xs text-center text-muted-foreground mt-1">Starts at: {new Date(`1970-01-01T${obs.start_time}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                          ) : null}
+                          {/* Badge removed to avoid redundancy */}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CarouselItem>
+                );
+              })
             )}
           </CarouselContent>
           <CarouselPrevious />

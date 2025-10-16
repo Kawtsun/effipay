@@ -3,6 +3,32 @@ import { ColumnDef, getCoreRowModel, getSortedRowModel, PaginationState, Sorting
 import { Eye, Printer, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import {
+    ColumnDef,
+    getCoreRowModel,
+    getSortedRowModel,
+    PaginationState,
+    SortingState,
+    useReactTable,
+} from '@tanstack/react-table'
+import { Eye, Printer, Shield, GraduationCap, Book, User, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, MoreHorizontal, Pencil } from 'lucide-react'
+import { Button, buttonVariants } from '@/components/ui/button'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -23,6 +49,10 @@ type TableReportProps = {
     onPageSizeChange?: (pageSize: number) => void
     onView: (emp: Employees) => void
     onPrint: (emp: Employees) => void
+    onView: (emp: Employees | null) => void
+    onPrint: (emp: Employees | null) => void
+    onAdjustments: (emp: Employees | null) => void
+    activeRoles?: string[]
 }
 
 const MAX_ROWS = 10
@@ -37,6 +67,8 @@ export default function TableReport({
     onPageSizeChange,
     onView,
     onPrint,
+    onAdjustments,
+    activeRoles = [],
 }: TableReportProps) {
     const density: 'comfortable' | 'compact' = 'compact'
     const stickyId = true
@@ -124,6 +156,24 @@ export default function TableReport({
                     const emp = row.original
                     return (
                         <div className="whitespace-nowrap px-4 py-2 text-right">
+            size: 350,
+        },
+        {
+            id: 'actions',
+            enableSorting: false,
+            header: () => (
+                <div className="text-right text-xs font-semibold uppercase tracking-wide px-4 py-2">Actions</div>
+            ),
+            cell: ({ row }) => {
+                const emp = row.original
+                return (
+                    <div className="px-4 py-2 whitespace-nowrap text-right">
+                        {/* Desktop actions */}
+                        <div className="hidden md:flex justify-end items-center gap-2">
+                            <Button variant="ghost" onClick={() => onAdjustments(emp)}>
+                                <Pencil />
+                                Adjustments
+                            </Button>
                             <Button variant="secondary" onClick={() => onView(emp)}>
                                 <Eye />
                                 View
@@ -140,6 +190,35 @@ export default function TableReport({
         ],
         [onView, onPrint],
     )
+                        {/* Mobile actions */}
+                        <div className="md:hidden flex justify-end">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => onAdjustments(emp)}>
+                                        Adjustments
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => onView(emp)}>
+                                        View
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => onPrint(emp)}>
+                                        Print
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    </div>
+                )
+            },
+            size: 180,
+        },
+    ], [onView, onPrint, onAdjustments, activeRoles])
 
     const [pagination, setPagination] = React.useState<PaginationState>({
         pageIndex: Math.max(0, currentPage - 1),
