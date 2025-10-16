@@ -86,6 +86,8 @@ Route::middleware('auth')->group(function () {
 
     // Payroll routes
     Route::post('/payroll/run', [PayrollController::class, 'runPayroll'])->name('payroll.run');
+    // Update payroll adjustments (must be authenticated)
+    Route::match(['get','post'], '/payrolls/adjustments', [PayrollController::class, 'updateAdjustment'])->name('payroll.adjustments');
     Route::get('/payroll/employee', [PayrollController::class, 'getEmployeePayroll'])->name('payroll.employee');
     Route::get('/payroll/employee/dates', [PayrollController::class, 'getEmployeePayrollDates'])->name('payroll.employee.dates');
     Route::get('/payroll/employee/monthly', [PayrollController::class, 'getEmployeeMonthlyPayroll'])->name('payroll.employee.monthly');
