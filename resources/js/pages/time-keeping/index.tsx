@@ -143,7 +143,7 @@ export default function TimeKeeping() {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                 },
-                body: JSON.stringify({ records: rows }),
+                body: JSON.stringify({ records: rows, file_name: fileName }),
             })
                 .then(async (response) => {
                     // Dismiss loading toast first, then show result toast
@@ -214,12 +214,12 @@ export default function TimeKeeping() {
     const [filters, setFilters] = useState<FilterState>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
-        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? (initialFilters as any).collegeProgram : '',
     })
     const [appliedFilters, setAppliedFilters] = useState<FilterState>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
-        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? (initialFilters as any).collegeProgram : '',
     })
     const [loading, setLoading] = useState(true)
     const spinnerStart = useRef<number>(Date.now())
@@ -391,10 +391,15 @@ export default function TimeKeeping() {
                                 selectedTypes={filters.types}
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
-                                collegeProgram={filters.collegeProgram}
+                                collegeProgram={filters.collegeProgram ? [filters.collegeProgram] : []}
                                 othersRole={filters.othersRole}
                                 othersRoles={Array.isArray(initialOthersRoles) ? initialOthersRoles : []}
-                                onChange={(newFilters) => handleFilterChange({ ...filters, ...newFilters })}
+                                onChange={(newFilters) => {
+                                    const cp = Array.isArray(newFilters.collegeProgram)
+                                        ? (newFilters.collegeProgram[0] ?? '')
+                                        : (newFilters.collegeProgram as unknown as string) || ''
+                                    handleFilterChange({ ...(filters as any), ...(newFilters as any), collegeProgram: cp })
+                                }}
                             />
                             <Button variant="secondary" type="button" onClick={() => setCalendarOpen(true)}>
                                 <Calendar />

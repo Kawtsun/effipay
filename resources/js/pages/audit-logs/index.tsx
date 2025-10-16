@@ -120,11 +120,50 @@ export default function AuditLogs() {
 
                 {/* AUDIT LOG ROWS */}
                 <div className="flex flex-col gap-4">
-                    {auditLogs.map(log => (
+                    {auditLogs.map(log => {
+                        const isMonth = /^\d{4}-\d{2}$/.test(log.name ?? '');
+                        const isImport = (log.action || '').toLowerCase().includes('import');
+                        const isAdjustment = (log.action || '').toLowerCase() === 'payroll adjustment';
+                        let details: any = null;
+                        let fileName: string | null = null;
+                        try {
+                            if (log.details) {
+                                details = JSON.parse(log.details);
+                                if (details && typeof details.file_name === 'string' && details.file_name.length) {
+                                    fileName = details.file_name;
+                                }
+                            }
+                        } catch {}
+                        return (
                         <Card key={log.id} className="px-6 py-4">
                             <div className="flex flex-col gap-1">
                                 <div className="text-base font-medium text-muted-foreground space-x-1">
-                                    {log.entity_type === 'employee' ? (
+                                    {isAdjustment && details ? (
+                                        <>
+                                            <span className="text-primary font-semibold">{log.username}</span>
+                                            <span className="">{log.action}</span>
+                                            <span className="">employee:</span>
+                                            <span className="text-foreground font-bold">{log.name}</span>
+                                            {details.type ? (
+                                                <>
+                                                    <span className="">type:</span>
+                                                    <span className="text-foreground font-bold">{details.type}</span>
+                                                </>
+                                            ) : null}
+                                            {details.month ? (
+                                                <>
+                                                    <span className="">month:</span>
+                                                    <span className="text-foreground font-bold">{details.month}</span>
+                                                </>
+                                            ) : null}
+                                            {typeof details.amount !== 'undefined' ? (
+                                                <>
+                                                    <span className="">amount:</span>
+                                                    <span className="text-foreground font-bold">{new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(details.amount)}</span>
+                                                </>
+                                            ) : null}
+                                        </>
+                                    ) : log.entity_type === 'employee' ? (
                                         <>
                                             <span className="text-primary font-semibold">{log.username}</span>
                                             <span className="">{log.action}</span>
@@ -141,13 +180,43 @@ export default function AuditLogs() {
                                             <span className="">type:</span>
                                             <span className="font-bold text-foreground">{log.name}</span>
                                         </>
+                                    ) : log.entity_type === 'timekeeping' && isImport && isMonth ? (
+                                        <>
+                                            <span className="text-primary font-semibold">{log.username}</span>
+                                            <span className="">{log.action}</span>
+                                            {/* avoid repeating entity_type 'timekeeping' */}
+                                            <span className="">month:</span>
+                                            <span className="text-foreground font-bold">{log.name}</span>
+                                            {fileName ? (
+                                                <>
+                                                    <span className="">file:</span>
+                                                    <span className="text-foreground font-bold">{fileName}</span>
+                                                </>
+                                            ) : null}
+                                        </>
+                                    ) : log.entity_type === 'users' && isImport ? (
+                                        <>
+                                            <span className="text-primary font-semibold">{log.username}</span>
+                                            <span className="">{log.action}</span>
+                                            {/* avoid redundant 'users' repeat */}
+                                            <span className="">file:</span>
+                                            <span className="text-foreground font-bold">{log.name}</span>
+                                        </>
                                     ) : (
                                         <>
                                             <span className="text-primary font-semibold">{log.username}</span>
                                             <span className="">{log.action}</span>
-                                            <span className="">{log.entity_type}</span>
-                                            <span className="">ID:</span>
-                                            <span className="font-bold text-foreground">{log.entity_id}</span>
+                                            {/* Show entity_type when it's informative and not redundant with action */}
+                                            {log.entity_type && (
+                                                <span className="">{log.entity_type}</span>
+                                            )}
+                                            {/* Only show ID if present */}
+                                            {log.entity_id ? (
+                                                <>
+                                                    <span className="">ID:</span>
+                                                    <span className="font-bold text-foreground">{log.entity_id}</span>
+                                                </>
+                                            ) : null}
                                             <span className="text-foreground font-bold">{log.name}</span>
                                         </>
                                     )}
@@ -157,7 +226,8 @@ export default function AuditLogs() {
                                 </div>
                             </div>
                         </Card>
-                    ))}
+                        );
+                    })}
                 </div>
                 <div className="mt-4 flex min-h-[56px] justify-center">
                     <EmployeePagination
