@@ -194,8 +194,7 @@ export default function TableReport({
                             {/* Desktop actions */}
                             <div className="hidden md:flex justify-end items-center gap-2">
                                 <Button variant="ghost" onClick={() => onAdjustments(emp)}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Adjustments
+                                    <Pencil/>
                                 </Button>
                                 <Button variant="secondary" onClick={() => onView(emp)}>
                                     <Eye className="mr-2 h-4 w-4" />

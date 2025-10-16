@@ -59,6 +59,22 @@ class ObservanceController extends Controller
                         'start_time' => $start_time,
                     ]
                 );
+
+                // Audit log: added calendar event
+                try {
+                    $username = \Illuminate\Support\Facades\Auth::user()->username ?? 'system';
+                    \App\Models\AuditLogs::create([
+                        'username'    => $username,
+                        'action'      => 'add calendar event',
+                        'name'        => $label ?? ($type ?? 'observance'),
+                        'entity_type' => 'observance',
+                        'entity_id'   => null,
+                        'details'     => json_encode(['date' => $date, 'type' => $type, 'start_time' => $start_time]),
+                        'date'        => now('Asia/Manila'),
+                    ]);
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to write audit log for adding observance: ' . $e->getMessage());
+                }
             }
         }
 
@@ -72,6 +88,21 @@ class ObservanceController extends Controller
                     ->delete();
                 if ($deleted) {
                     $removed[] = $date;
+                    // Audit log: removed calendar event
+                    try {
+                        $username = \Illuminate\Support\Facades\Auth::user()->username ?? 'system';
+                        \App\Models\AuditLogs::create([
+                            'username'    => $username,
+                            'action'      => 'remove calendar event',
+                            'name'        => 'observance',
+                            'entity_type' => 'observance',
+                            'entity_id'   => null,
+                            'details'     => json_encode(['date' => $date]),
+                            'date'        => now('Asia/Manila'),
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Log::warning('Failed to write audit log for removing observance: ' . $e->getMessage());
+                    }
                 }
             }
         }

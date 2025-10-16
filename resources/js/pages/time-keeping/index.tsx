@@ -143,11 +143,26 @@ export default function TimeKeeping() {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                 },
-                body: JSON.stringify({ records: rows }),
+                body: JSON.stringify({ records: rows, file_name: fileName }),
             })
                 .then(async (response) => {
                     // Dismiss loading toast first, then show result toast
                     toast.dismiss(typeof toastId === 'number' ? undefined : toastId)
+
+                    // Session expired / CSRF problem
+                    if (response.status === 419 || response.status === 401) {
+                        toast.error('Session expired. The page will reload to recover your session.');
+                        window.setTimeout(() => window.location.reload(), 1200);
+                        return;
+                    }
+
+                    // Method not allowed / route mismatch
+                    if (response.status === 405) {
+                        toast.error('Server route mismatch detected. Reloading the page to refresh routes.');
+                        window.setTimeout(() => window.location.reload(), 1200);
+                        return;
+                    }
+
                     if (response.ok) {
                         toast.success(`Successfully imported: ${fileName}`, { id: `success-${Date.now()}`, duration: 1000 })
                         router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] })
@@ -166,9 +181,11 @@ export default function TimeKeeping() {
                     }
                 })
                 .catch((err) => {
-                    toast.error('Import failed.')
+                    // Network or unexpected error — reload to attempt recovery
+                    toast.error('Import failed due to network or session error. The page will reload to try to recover.');
                     toast.dismiss(typeof toastId === 'number' ? undefined : toastId)
                     console.error('Import failed:', err)
+                    window.setTimeout(() => window.location.reload(), 1200);
                 })
         }
     }
@@ -214,12 +231,12 @@ export default function TimeKeeping() {
     const [filters, setFilters] = useState<FilterState>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
-        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? (initialFilters as any).collegeProgram : '',
     })
     const [appliedFilters, setAppliedFilters] = useState<FilterState>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
-        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
+        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? (initialFilters as any).collegeProgram : '',
     })
     const [loading, setLoading] = useState(true)
     const spinnerStart = useRef<number>(Date.now())
@@ -391,10 +408,15 @@ export default function TimeKeeping() {
                                 selectedTypes={filters.types}
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
-                                collegeProgram={filters.collegeProgram}
+                                collegeProgram={filters.collegeProgram ? [filters.collegeProgram] : []}
                                 othersRole={filters.othersRole}
                                 othersRoles={Array.isArray(initialOthersRoles) ? initialOthersRoles : []}
-                                onChange={(newFilters) => handleFilterChange({ ...filters, ...newFilters })}
+                                onChange={(newFilters) => {
+                                    const cp = Array.isArray(newFilters.collegeProgram)
+                                        ? (newFilters.collegeProgram[0] ?? '')
+                                        : (newFilters.collegeProgram as unknown as string) || ''
+                                    handleFilterChange({ ...(filters as any), ...(newFilters as any), collegeProgram: cp })
+                                }}
                             />
                             <Button variant="secondary" type="button" onClick={() => setCalendarOpen(true)}>
                                 <Calendar />

@@ -49,7 +49,8 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
     useEffect(() => {
         // Only fetch if months prop is empty (SSR/first load)
         if (!months || months.length === 0) {
-            fetch('/payroll/all-available-months')
+            // Fetch payroll-only months (processed payrolls) instead of merged months
+            fetch('/payroll/processed-months')
                 .then(res => res.json())
                 .then(data => {
                     if (data.success && Array.isArray(data.months)) {

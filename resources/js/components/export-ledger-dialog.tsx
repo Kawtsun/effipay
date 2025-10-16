@@ -13,6 +13,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { MonthPicker } from '@/components/ui/month-picker'; // Assuming you have a month picker
 import { LoaderCircle, FileDown } from 'lucide-react';
+import { toast } from 'sonner';
 
 // The `route` function is globally available in Inertia with Ziggy.
 // If you have a strict TypeScript setup, you might need to declare it globally.
@@ -20,15 +21,30 @@ declare function route(name: string, params?: object): string;
 
 const ExportLedgerDialog: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
+    const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [selectedMonth, setSelectedMonth] = useState<string>(() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
     const [isDialogOpen, setDialogOpen] = useState<boolean>(false);
 
+    // `month` alias for consistency with Dashboard code
+    const month = selectedMonth;
+
+    // Accept either a string (from MonthPicker) or an event-like object
+    const handleMonthChange = (payload: string | { target: { value: string } }) => {
+        let val: string | undefined;
+        if (typeof payload === 'string') {
+            val = payload;
+        } else if (payload && payload.target && typeof payload.target.value === 'string') {
+            val = payload.target.value;
+        }
+        if (val) setSelectedMonth(val);
+    };
+
     const handleExport = async () => {
         if (!selectedMonth) {
-            alert('Please select a month.');
+            toast.error('Please select a month.');
             return;
         }
 
@@ -67,14 +83,43 @@ const ExportLedgerDialog: React.FC = () => {
             setDialogOpen(false); // Close dialog on successful export
         } catch (error) {
             console.error('Error downloading the file:', error);
-            alert('Failed to download the payroll report.');
+            toast.error('Failed to download the payroll report.');
         } finally {
             setLoading(false);
         }
     };
 
+    // Fetch available months when dialog opens (copying dashboard behavior)
+    const fetchAvailableMonths = async () => {
+        try {
+            // Use payroll-only months endpoint so the ledger picker only shows months with processed payroll
+            const res = await fetch('/payroll/processed-months');
+            const data = await res.json();
+            if (data && data.success && Array.isArray(data.months)) {
+                setAvailableMonths(data.months);
+                if (data.months.length === 0) {
+                    // No months available for export
+                    setSelectedMonth('');
+                    toast.error('No available months to export.');
+                } else {
+                    // Default to first available month if current selection not in list
+                    setSelectedMonth((prev) => (data.months.includes(prev) ? prev : (data.months[0] || prev)));
+                }
+            }
+        } catch (err) {
+            console.debug('Could not fetch available months for export dialog', err);
+        }
+    };
+
+    const handleOpenChange = (open: boolean) => {
+        setDialogOpen(open);
+        if (open && availableMonths.length === 0) {
+            fetchAvailableMonths();
+        }
+    };
+
     return (
-        <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
                 <Button>
                     <FileDown className='h-4 w-4 mr-2' />
@@ -95,8 +140,11 @@ const ExportLedgerDialog: React.FC = () => {
                         </Label>
                         <div className='col-span-3'>
                             <MonthPicker
-                                value={selectedMonth}
-                                onValueChange={setSelectedMonth}
+                                value={month}
+                                onValueChange={handleMonthChange}
+                                placeholder="Select month"
+                                availableMonths={availableMonths}
+                                className="w-46 min-w-0 px-2 py-1 text-sm"
                             />
                         </div>
                     </div>

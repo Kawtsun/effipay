@@ -3,8 +3,8 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
-import { useState, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Loader2, Search as SearchIcon, X } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import { ScrollText } from 'lucide-react';
 import EmployeePagination from '@/components/employee-pagination';
@@ -24,7 +24,7 @@ export default function AuditLogs() {
     // Get audit logs from Inertia props
     // You must pass auditLogs, currentPage, totalPages from the backend controller
     // Example: return Inertia::render('audit-logs/index', [...])
-    const { auditLogs, currentPage, totalPages } = usePage().props as unknown as {
+    const { auditLogs, currentPage, totalPages, q: initialQ } = usePage().props as unknown as {
         auditLogs: Array<{
             id: number;
             action: string;
@@ -37,11 +37,49 @@ export default function AuditLogs() {
         }>;
         currentPage: number;
         totalPages: number;
+        q?: string;
     };
 
-    // Import shadcn Card components
-    // If not already imported, add these at the top:
-    // import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+    const [q, setQ] = useState<string>(initialQ ?? '');
+    const debounceRef = useRef<number | null>(null);
+    const firstLoadRef = useRef<boolean>(true);
+
+    useEffect(() => {
+        setQ(initialQ ?? '');
+    }, [initialQ]);
+
+    // Debounced, reactive search
+    useEffect(() => {
+        if (firstLoadRef.current) {
+            firstLoadRef.current = false;
+            return;
+        }
+        if (debounceRef.current) {
+            window.clearTimeout(debounceRef.current);
+        }
+        debounceRef.current = window.setTimeout(() => {
+            spinnerStart.current = Date.now();
+            setLoading(true);
+            const data = q ? { q } : {};
+            router.visit(route('audit-logs.index'), {
+                method: 'get',
+                data,
+                preserveState: true,
+                preserveScroll: true,
+                only: ['auditLogs', 'currentPage', 'totalPages', 'q'],
+                onFinish: () => {
+                    const elapsed = Date.now() - spinnerStart.current;
+                    const wait = Math.max(0, 400 - elapsed);
+                    setTimeout(() => setLoading(false), wait);
+                },
+            });
+        }, 350);
+        return () => {
+            if (debounceRef.current) {
+                window.clearTimeout(debounceRef.current);
+            }
+        };
+    }, [q]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -58,13 +96,74 @@ export default function AuditLogs() {
                     </div>
                 </div>
 
+                {/* SEARCH BAR - reactive with inline clear */}
+                <div className="relative w-100">
+                    <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                        type="text"
+                        value={q}
+                        onChange={(e) => setQ(e.target.value)}
+                        placeholder="Search"
+                        className="w-full rounded-full border bg-background pl-9 pr-9 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    {q?.length ? (
+                        <button
+                            type="button"
+                            aria-label="Clear search"
+                            onClick={() => setQ('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-accent"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    ) : null}
+                </div>
+
                 {/* AUDIT LOG ROWS */}
                 <div className="flex flex-col gap-4">
-                    {auditLogs.map(log => (
+                    {auditLogs.map(log => {
+                        const isMonth = /^\d{4}-\d{2}$/.test(log.name ?? '');
+                        const isImport = (log.action || '').toLowerCase().includes('import');
+                        const isAdjustment = (log.action || '').toLowerCase() === 'payroll adjustment';
+                        let details: any = null;
+                        let fileName: string | null = null;
+                        try {
+                            if (log.details) {
+                                details = JSON.parse(log.details);
+                                if (details && typeof details.file_name === 'string' && details.file_name.length) {
+                                    fileName = details.file_name;
+                                }
+                            }
+                        } catch {}
+                        return (
                         <Card key={log.id} className="px-6 py-4">
                             <div className="flex flex-col gap-1">
                                 <div className="text-base font-medium text-muted-foreground space-x-1">
-                                    {log.entity_type === 'employee' ? (
+                                    {isAdjustment && details ? (
+                                        <>
+                                            <span className="text-primary font-semibold">{log.username}</span>
+                                            <span className="">{log.action}</span>
+                                            <span className="">employee:</span>
+                                            <span className="text-foreground font-bold">{log.name}</span>
+                                            {details.type ? (
+                                                <>
+                                                    <span className="">type:</span>
+                                                    <span className="text-foreground font-bold">{details.type}</span>
+                                                </>
+                                            ) : null}
+                                            {details.month ? (
+                                                <>
+                                                    <span className="">month:</span>
+                                                    <span className="text-foreground font-bold">{details.month}</span>
+                                                </>
+                                            ) : null}
+                                            {typeof details.amount !== 'undefined' ? (
+                                                <>
+                                                    <span className="">amount:</span>
+                                                    <span className="text-foreground font-bold">{new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(details.amount)}</span>
+                                                </>
+                                            ) : null}
+                                        </>
+                                    ) : log.entity_type === 'employee' ? (
                                         <>
                                             <span className="text-primary font-semibold">{log.username}</span>
                                             <span className="">{log.action}</span>
@@ -81,13 +180,43 @@ export default function AuditLogs() {
                                             <span className="">type:</span>
                                             <span className="font-bold text-foreground">{log.name}</span>
                                         </>
+                                    ) : log.entity_type === 'timekeeping' && isImport && isMonth ? (
+                                        <>
+                                            <span className="text-primary font-semibold">{log.username}</span>
+                                            <span className="">{log.action}</span>
+                                            {/* avoid repeating entity_type 'timekeeping' */}
+                                            <span className="">month:</span>
+                                            <span className="text-foreground font-bold">{log.name}</span>
+                                            {fileName ? (
+                                                <>
+                                                    <span className="">file:</span>
+                                                    <span className="text-foreground font-bold">{fileName}</span>
+                                                </>
+                                            ) : null}
+                                        </>
+                                    ) : log.entity_type === 'users' && isImport ? (
+                                        <>
+                                            <span className="text-primary font-semibold">{log.username}</span>
+                                            <span className="">{log.action}</span>
+                                            {/* avoid redundant 'users' repeat */}
+                                            <span className="">file:</span>
+                                            <span className="text-foreground font-bold">{log.name}</span>
+                                        </>
                                     ) : (
                                         <>
                                             <span className="text-primary font-semibold">{log.username}</span>
                                             <span className="">{log.action}</span>
-                                            <span className="">{log.entity_type}</span>
-                                            <span className="">ID:</span>
-                                            <span className="font-bold text-foreground">{log.entity_id}</span>
+                                            {/* Show entity_type when it's informative and not redundant with action */}
+                                            {log.entity_type && (
+                                                <span className="">{log.entity_type}</span>
+                                            )}
+                                            {/* Only show ID if present */}
+                                            {log.entity_id ? (
+                                                <>
+                                                    <span className="">ID:</span>
+                                                    <span className="font-bold text-foreground">{log.entity_id}</span>
+                                                </>
+                                            ) : null}
                                             <span className="text-foreground font-bold">{log.name}</span>
                                         </>
                                     )}
@@ -97,7 +226,8 @@ export default function AuditLogs() {
                                 </div>
                             </div>
                         </Card>
-                    ))}
+                        );
+                    })}
                 </div>
                 <div className="mt-4 flex min-h-[56px] justify-center">
                     <EmployeePagination
@@ -108,10 +238,10 @@ export default function AuditLogs() {
                             setLoading(true);
                             router.visit(route('audit-logs.index'), {
                                 method: 'get',
-                                data: { page },
+                                data: { page, q },
                                 preserveState: true,
                                 preserveScroll: true,
-                                only: ['auditLogs', 'currentPage', 'totalPages'],
+                                only: ['auditLogs', 'currentPage', 'totalPages', 'q'],
                                 onFinish: () => {
                                     const elapsed = Date.now() - spinnerStart.current;
                                     const wait = Math.max(0, 400 - elapsed);

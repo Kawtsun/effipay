@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,34 @@ export default function AdjustmentDialog({
   month,
   onMonthChange,
 }: Props) {
+  // When dialog opens, fetch payroll-processed months and auto-select latest if needed
+  useEffect(() => {
+    let mounted = true;
+    if (!open) return;
+    (async () => {
+      try {
+        const res = await fetch('/payroll/processed-months');
+        const data = await res.json();
+        if (!mounted) return;
+        if (data && data.success && Array.isArray(data.months)) {
+          if (data.months.length === 0) {
+            // Nothing to select
+            onMonthChange('');
+            toast.error('No payroll months available for adjustments.');
+          } else {
+            // If current month isn't present, auto-select the latest (first) month
+            if (!month || !data.months.includes(month)) {
+              onMonthChange(data.months[0]);
+            }
+          }
+        }
+      } catch {
+        console.error('Failed to fetch processed months for adjustment dialog');
+      }
+    })();
+    return () => { mounted = false; };
+  }, [open, month, onMonthChange]);
+
   const [adjustmentType, setAdjustmentType] = useState("add");
   const [amount, setAmount] = useState("");
   const employeeName = employee
@@ -83,6 +111,20 @@ export default function AdjustmentDialog({
 
       const data = await res.json();
 
+      // If CSRF/session expired or method not allowed, reload to recover session/routes
+      if (res.status === 419 || res.status === 401) {
+        toast.error('Session expired. The page will reload to recover your session.');
+        window.setTimeout(() => window.location.reload(), 1200);
+        return;
+      }
+
+      // Method not allowed (route mismatch) — reload to ensure route cache / server state is fresh
+      if (res.status === 405) {
+        toast.error('Server route mismatch detected. Reloading the page to refresh routes.');
+        window.setTimeout(() => window.location.reload(), 1200);
+        return;
+      }
+
       if (!res.ok) {
         const message = data && data.message ? data.message : 'Failed to apply adjustment.';
         toast.error(message);
@@ -90,22 +132,64 @@ export default function AdjustmentDialog({
       }
 
       toast.success(data.message || 'Adjustment applied successfully.');
+
+      // Fetch authoritative payroll for this employee/month and dispatch a custom event so other components can update
+      try {
+        const parsedAmount = parseFloat(amount.replace(/,/g, ''));
+        // Use Ziggy's route() if available to build the URL; otherwise fallback to a direct path
+        let payrollUrl = '';
+        try {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          payrollUrl = route('payroll.employee.monthly', { employee_id: employee.id, month });
+        } catch {
+          payrollUrl = `/payrolls/employee/monthly?employee_id=${employee.id}&month=${encodeURIComponent(month)}`;
+        }
+
+        const payrollRes = await fetch(payrollUrl, { credentials: 'same-origin' });
+        let payroll = null;
+        if (payrollRes.ok) {
+          const payrollData = await payrollRes.json();
+          if (payrollData && payrollData.payrolls) {
+            // pick the latest payroll like report-view-dialog does
+            payroll = (payrollData.payrolls as { payroll_date: string }[]).reduce((latest, curr) => {
+              return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
+            }, payrollData.payrolls[0]);
+          }
+        }
+
+        const eventDetail = {
+          payroll,
+          adjustment: {
+            amount: parsedAmount,
+            type: adjustmentType,
+          },
+          message: data && data.message ? data.message : null,
+        };
+        window.dispatchEvent(new CustomEvent('payroll.adjusted', { detail: eventDetail }));
+      } catch {
+        console.error('Failed to dispatch payroll.adjusted event');
+      }
+
       onClose();
       // Optionally, refresh the page or refetch reports data here using Inertia or provided callback
     } catch (err) {
       console.error(err);
-      toast.error('An error occurred while applying adjustment.');
+      // Network error or unexpected exception — reload to recover session/state
+      toast.error('Network or session error occurred. The page will reload to try to recover.');
+      window.setTimeout(() => window.location.reload(), 1200);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Adjustments for {employeeName}</DialogTitle>
+          <DialogTitle>Adjustments for</DialogTitle>
+          <DialogTitle>{employeeName}</DialogTitle>
         </DialogHeader>
         <div className="py-4 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-15">
             <div>
               <p className="text-sm font-medium mb-2">Adjustment Type</p>
               <RadioGroup
