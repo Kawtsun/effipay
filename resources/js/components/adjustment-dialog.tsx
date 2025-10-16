@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { MonthPicker } from "./ui/month-picker";
 
 function formatWithCommas(value: string) {
   if (!value) return "";
@@ -26,9 +27,17 @@ interface Props {
   employee: Employees | null;
   open: boolean;
   onClose: () => void;
+  month: string;
+  onMonthChange: (month: string) => void;
 }
 
-export default function AdjustmentDialog({ employee, open, onClose }: Props) {
+export default function AdjustmentDialog({
+  employee,
+  open,
+  onClose,
+  month,
+  onMonthChange,
+}: Props) {
   const [adjustmentType, setAdjustmentType] = useState("add");
   const [amount, setAmount] = useState("");
   const employeeName = employee
@@ -63,23 +72,33 @@ export default function AdjustmentDialog({ employee, open, onClose }: Props) {
           <DialogTitle>Adjustments for {employeeName}</DialogTitle>
         </DialogHeader>
         <div className="py-4 space-y-4">
-          <div>
-            <p className="text-sm font-medium mb-2">Adjustment Type</p>
-            <RadioGroup
-              defaultValue="add"
-              value={adjustmentType}
-              onValueChange={setAdjustmentType}
-              className="flex items-center space-x-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="add" id="r1" />
-                <Label htmlFor="r1">Add</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="deduct" id="r2" />
-                <Label htmlFor="r2">Deduct</Label>
-              </div>
-            </RadioGroup>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium mb-2">Adjustment Type</p>
+              <RadioGroup
+                defaultValue="add"
+                value={adjustmentType}
+                onValueChange={setAdjustmentType}
+                className="flex items-center space-x-4 mt-3"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="add" id="r1" />
+                  <Label htmlFor="r1">Add</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="deduct" id="r2" />
+                  <Label htmlFor="r2">Deduct</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div>
+              <Label htmlFor="adjustment-month">Month</Label>
+              <MonthPicker
+                value={month}
+                onValueChange={onMonthChange}
+                className="mt-1"
+              />
+            </div>
           </div>
           <div>
             <Label htmlFor="adjustment-amount">Amount</Label>

@@ -78,6 +78,10 @@ export default function ReportsIndex() {
     });
     const [loading, setLoading] = useState(false);
     const spinnerStart = useRef<number>(0);
+    const [month, setMonth] = useState<string>(() => {
+        const today = new Date();
+        return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    });
     const hasFilters = Array.isArray(appliedFilters.types) && appliedFilters.types.length > 0
         || Array.isArray(appliedFilters.statuses) && appliedFilters.statuses.length > 0
         || Array.isArray(appliedFilters.roles) && appliedFilters.roles.length > 0
@@ -349,6 +353,8 @@ export default function ReportsIndex() {
                         employee={adjusting}
                         open={!!adjusting}
                         onClose={() => setAdjusting(null)}
+                        month={month}
+                        onMonthChange={setMonth}
                     />
                 </div>
             </div>
