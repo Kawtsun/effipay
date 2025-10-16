@@ -14,6 +14,7 @@ import PrintAllDialog from '@/components/print-all-dialog';
 import { Loader2 } from 'lucide-react'
 import ExportLedgerDialog from '@/components/export-ledger-dialog';
 import { useCallback, useEffect, useRef, useState } from 'react'
+import AdjustmentDialog from '@/components/adjustment-dialog';
 
 export default function ReportsIndex() {
     const page = usePage();
@@ -57,6 +58,7 @@ export default function ReportsIndex() {
     };
     const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' };
     const [viewing, setViewing] = useState(null as Employees | null);
+    const [adjusting, setAdjusting] = useState(null as Employees | null);
     const [printDialog, setPrintDialog] = useState<{ open: boolean, employee: Employees | null }>({ open: false, employee: null });
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [printAllDialogOpen, setPrintAllDialogOpen] = useState(false);
@@ -325,7 +327,7 @@ export default function ReportsIndex() {
                         }}
                         onView={(emp) => setViewing(emp)}
                         onPrint={(emp) => setPrintDialog({ open: true, employee: emp })}
-                        onAdjustments={(emp) => toast.info(`Adjustments for ${emp.first_name} clicked`)}
+                        onAdjustments={(emp) => setAdjusting(emp)}
                         activeRoles={appliedFilters.roles}
                     />
 
@@ -342,6 +344,11 @@ export default function ReportsIndex() {
                     <PrintAllDialog
                         open={printAllDialogOpen}
                         onClose={() => setPrintAllDialogOpen(false)}
+                    />
+                    <AdjustmentDialog
+                        employee={adjusting}
+                        open={!!adjusting}
+                        onClose={() => setAdjusting(null)}
                     />
                 </div>
             </div>
