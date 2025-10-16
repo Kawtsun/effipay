@@ -104,6 +104,45 @@ export default function AdjustmentDialog({
       }
 
       toast.success(data.message || 'Adjustment applied successfully.');
+
+      // Fetch authoritative payroll for this employee/month and dispatch a custom event so other components can update
+      try {
+        const parsedAmount = parseFloat(amount.replace(/,/g, ''));
+        // Use Ziggy's route() if available to build the URL; otherwise fallback to a direct path
+        let payrollUrl = '';
+        try {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          payrollUrl = route('payroll.employee.monthly', { employee_id: employee.id, month });
+        } catch (e) {
+          payrollUrl = `/payrolls/employee/monthly?employee_id=${employee.id}&month=${encodeURIComponent(month)}`;
+        }
+
+        const payrollRes = await fetch(payrollUrl, { credentials: 'same-origin' });
+        let payroll = null;
+        if (payrollRes.ok) {
+          const payrollData = await payrollRes.json();
+          if (payrollData && payrollData.payrolls) {
+            // pick the latest payroll like report-view-dialog does
+            payroll = payrollData.payrolls.reduce((latest: any, curr: any) => {
+              return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
+            }, payrollData.payrolls[0]);
+          }
+        }
+
+        const eventDetail = {
+          payroll,
+          adjustment: {
+            amount: parsedAmount,
+            type: adjustmentType,
+          },
+          message: data && data.message ? data.message : null,
+        };
+        window.dispatchEvent(new CustomEvent('payroll.adjusted', { detail: eventDetail }));
+      } catch (e) {
+        console.error('Failed to dispatch payroll.adjusted event', e);
+      }
+
       onClose();
       // Optionally, refresh the page or refetch reports data here using Inertia or provided callback
     } catch (err) {
