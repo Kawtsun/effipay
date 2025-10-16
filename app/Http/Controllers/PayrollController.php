@@ -542,4 +542,62 @@ class PayrollController extends Controller
         // Pass the selected month to your Excel export class
         return Excel::download(new PayrollExport($month), $fileName);
     }
+
+    /**
+     * Update adjustments for a payroll in a given month. Requires that a payroll
+     * has already been processed for that employee in the selected month.
+     * Expects: employee_id (int), month (YYYY-MM), amount (numeric), type (add|deduct)
+     */
+    public function updateAdjustment(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_id' => 'required|integer|exists:employees,id',
+            'month' => ['required', 'regex:/^\d{4}-\d{2}$/'],
+            'amount' => 'required|numeric',
+            'type' => 'required|in:add,deduct',
+        ]);
+
+        $employeeId = $validated['employee_id'];
+        $month = $validated['month'];
+
+        // Find the latest payroll record for that employee and month
+        $payroll = Payroll::where('employee_id', $employeeId)
+            ->where('month', $month)
+            ->orderBy('payroll_date', 'desc')
+            ->first();
+
+        if (!$payroll) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No processed payroll found for the selected month. Please process payroll first.'
+            ], 422);
+        }
+
+        $amount = (float) $validated['amount'];
+        if ($validated['type'] === 'deduct') {
+            $amount = -abs($amount);
+        } else {
+            $amount = abs($amount);
+        }
+
+        // Ensure adjustments column exists on the model (defensive)
+        if (!array_key_exists('adjustments', $payroll->getAttributes())) {
+            // If adjustments column is missing, return 500 with clear message
+            return response()->json([
+                'success' => false,
+                'message' => 'Payroll adjustments column is not available on payroll records.'
+            ], 500);
+        }
+
+        $payroll->adjustments = ($payroll->adjustments ?? 0) + $amount;
+        $payroll->gross_pay = ($payroll->gross_pay ?? 0) + $amount;
+        $payroll->net_pay = ($payroll->net_pay ?? 0) + $amount;
+        $payroll->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Adjustment applied successfully.',
+            'payroll' => $payroll,
+        ]);
+    }
 }

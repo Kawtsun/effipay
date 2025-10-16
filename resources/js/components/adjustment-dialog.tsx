@@ -54,15 +54,48 @@ export default function AdjustmentDialog({
     setAmount(finalValue);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!employee || !amount) {
       toast.error("Please enter an amount.");
       return;
     }
-    const action = adjustmentType === "add" ? "added" : "deducted";
-    const formattedAmount = formatWithCommas(amount);
-    toast.success(`${employeeName} was ${action} ${formattedAmount}`);
-    onClose();
+
+    // Read CSRF token from meta tag (web routes require CSRF)
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+    const csrfToken = tokenMeta ? tokenMeta.content : null;
+
+    try {
+      const res = await fetch('/payrolls/adjustments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          employee_id: employee.id,
+          month: month,
+          amount: parseFloat(amount.replace(/,/g, '')),
+          type: adjustmentType,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const message = data && data.message ? data.message : 'Failed to apply adjustment.';
+        toast.error(message);
+        return;
+      }
+
+      toast.success(data.message || 'Adjustment applied successfully.');
+      onClose();
+      // Optionally, refresh the page or refetch reports data here using Inertia or provided callback
+    } catch (err) {
+      console.error(err);
+      toast.error('An error occurred while applying adjustment.');
+    }
   };
 
   return (
