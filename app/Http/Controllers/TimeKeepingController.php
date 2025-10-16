@@ -39,9 +39,10 @@ class TimeKeepingController extends Controller
         // Get employee and compute rate per hour
         $employee = \App\Models\Employees::find($employeeId);
         $base_salary = $employee ? $employee->base_salary : 0;
+        // Use the employee's specific schedule, fallback to 8
         $work_hours_per_day = $employee && $employee->work_hours_per_day ? $employee->work_hours_per_day : 8;
         $rate_per_day = ($base_salary * 12) / 288;
-        $rate_per_hour = $work_hours_per_day > 0 ? $rate_per_day / $work_hours_per_day : 0;
+        $rate_per_hour = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
 
         // Format clock_in and clock_out as 12-hour time (h:i A)
         $formatted = $records->map(function ($rec) {
@@ -262,6 +263,16 @@ class TimeKeepingController extends Controller
             $early_count = 0;
             $overtime_count = 0;
             $records = \App\Models\TimeKeeping::where('employee_id', $emp->id)->get();
+            // Preload observances for the dates present in records so we can apply per-date rules (e.g., rainy-day grace)
+            $recordDates = $records->pluck('date')->unique()->values()->toArray();
+            $observanceRows = [];
+            if (count($recordDates) > 0) {
+                $observanceRows = DB::table('observances')->whereIn('date', $recordDates)->get(['date', 'type']);
+            }
+            $observanceTypeMap = [];
+            foreach ($observanceRows as $or) {
+                $observanceTypeMap[$or->date] = $or->type ?? null;
+            }
             $late_threshold = null;
             if ($emp->work_start_time) {
                 $late_threshold = date('H:i:s', strtotime($emp->work_start_time) + 15 * 60);
@@ -300,11 +311,32 @@ class TimeKeepingController extends Controller
                     }
                     return false;
                 };
+                // Fetch observances for the whole period so we can exclude whole-day suspensions
+                $periodStart = $startDate;
+                $periodEnd = $endDate;
+                $observancesForPeriod = [];
+                try {
+                    $observancesForPeriod = DB::table('observances')
+                        ->where('date', '>=', $periodStart)
+                        ->where('date', '<=', $periodEnd)
+                        ->get(['date', 'type', 'is_automated']);
+                } catch (\Throwable $e) {
+                    $observancesForPeriod = [];
+                }
+                $observanceExcludeMap = [];
+                foreach ($observancesForPeriod as $o) {
+                    $d = $o->date;
+                    // exclude if whole-day suspension OR automated holiday
+                    if ((isset($o->type) && strtolower(trim((string)$o->type)) === 'whole-day') || (!empty($o->is_automated))) {
+                        $observanceExcludeMap[$d] = true;
+                    }
+                }
                 foreach ($period as $dateObj) {
                     $date = $dateObj->format('Y-m-d');
                     $dayOfWeek = $dateObj->format('N'); // 1=Mon, 7=Sun
                     if (!in_array($dayOfWeek, $workDays)) continue; // skip if not a workday
                     if ($isInLeaveInterval($date)) continue; // skip if in leave interval
+                    if (isset($observanceExcludeMap[$date]) && $observanceExcludeMap[$date]) continue; // skip whole-day/automated observances
                     $dayRecords = $records->where('date', $date);
                     $hasClockIn = $dayRecords->contains(function ($tk) {
                         return !empty($tk->clock_in);
@@ -335,10 +367,28 @@ class TimeKeepingController extends Controller
             }
             foreach ($records as $tk) {
                 // Tardiness: count decimal hours late (not stacked)
-                if ($tk->clock_in && $late_threshold && strtotime($tk->clock_in) > strtotime($late_threshold)) {
-                    $late_minutes = (strtotime($tk->clock_in) - strtotime($late_threshold)) / 60;
-                    if ($late_minutes > 0) {
-                        $late_count += round($late_minutes / 60, 2); // decimal hours
+                if ($tk->clock_in && $emp->work_start_time) {
+                    $obsType = $observanceTypeMap[$tk->date] ?? null;
+                    // Skip tardiness entirely on whole-day suspension
+                    if ($obsType && strtolower(trim($obsType)) === 'whole-day') {
+                        // do not add tardiness for whole-day suspension
+                    } else {
+                        // Determine grace minutes: rainy-day gets 60, otherwise default 15
+                        $graceMinutes = 15;
+                        if ($obsType && strtolower(trim($obsType)) === 'rainy-day') {
+                            $graceMinutes = 60;
+                        }
+                        $scheduled = strtotime($emp->work_start_time);
+                        $threshold = $scheduled + ($graceMinutes * 60);
+                        $clockIn = strtotime($tk->clock_in);
+                        // Only count tardiness if clock-in is after scheduled start + grace
+                        if ($clockIn > $threshold) {
+                            // tardiness is measured from the original scheduled start (includes the grace period)
+                            $late_minutes = ($clockIn - $scheduled) / 60;
+                            if ($late_minutes > 0) {
+                                $late_count += round($late_minutes / 60, 2); // decimal hours
+                            }
+                        }
                     }
                 }
                 // Undertime: count decimal hours early (not stacked)
@@ -513,22 +563,51 @@ class TimeKeepingController extends Controller
 
         // Use payroll values if available, otherwise fallback to employee
         $base_salary = $payroll ? $payroll->base_salary : $employee->base_salary;
+        // Use the employee's specific schedule, fallback to 8
+        $work_hours_per_day = $employee->work_hours_per_day ?? 8;
+
         $rate_per_day = ($base_salary * 12) / 288;
-        $rate_per_hour = $rate_per_day / 8;
+        $rate_per_hour = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
         $work_start_time = $employee->work_start_time;
         $work_end_time = $employee->work_end_time;
 
-        $grace_period_minutes = 15;
-        $late_threshold = $work_start_time ? date('H:i:s', strtotime($work_start_time) + $grace_period_minutes * 60) : null;
+        $grace_period_default_minutes = 15;
 
+        // Fetch observances for this month early so we can apply per-date rules (e.g., rainy-day -> 60min grace)
+        $observancesRows = DB::table('observances')
+            ->where('date', 'like', "$month%")
+            ->get(['date', 'type', 'is_automated'])
+            ->toArray();
+        $observanceDates = array_map(function ($o) { return $o->date; }, $observancesRows);
+        $observanceSet = array_flip($observanceDates);
+        $observanceTypeMap = [];
+        $observanceAutomatedMap = [];
+        foreach ($observancesRows as $orow) {
+            $observanceTypeMap[$orow->date] = $orow->type ?? null;
+            $observanceAutomatedMap[$orow->date] = isset($orow->is_automated) ? (bool)$orow->is_automated : false;
+        }
 
         foreach ($records as $tk) {
             // Tardiness (decimal hours)
-            if ($tk->clock_in && $work_start_time && strtotime($tk->clock_in) > strtotime($late_threshold)) {
-                // Count all minutes late from scheduled start time, not from grace period
-                $late_minutes = (strtotime($tk->clock_in) - strtotime($work_start_time)) / 60;
-                if ($late_minutes > 0) {
-                    $late_count += ($late_minutes / 60);
+            if ($tk->clock_in && $work_start_time) {
+                $date = $tk->date;
+                // Skip tardiness entirely on whole-day suspension
+                if (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day') {
+                    // no tardiness on whole-day observance
+                } else {
+                    // default grace, override for rainy-day observance
+                    $grace = $grace_period_default_minutes;
+                    if (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'rainy-day') {
+                        $grace = 60; // 1 hour grace for rainy day
+                    }
+                    $late_threshold = date('H:i:s', strtotime($work_start_time) + $grace * 60);
+                    if (strtotime($tk->clock_in) > strtotime($late_threshold)) {
+                        // Count all minutes late from scheduled start time, not from grace period
+                        $late_minutes = (strtotime($tk->clock_in) - strtotime($work_start_time)) / 60;
+                        if ($late_minutes > 0) {
+                            $late_count += ($late_minutes / 60);
+                        }
+                    }
                 }
             }
             // Undertime (decimal hours)
@@ -615,12 +694,7 @@ class TimeKeepingController extends Controller
         }
         // --- END MODIFIED LEAVE DATE CALCULATION ---
 
-        // Fetch all observance dates for this month
-        $observanceDates = DB::table('observances')
-            ->where('date', 'like', "$month%")
-            ->pluck('date')
-            ->toArray();
-        $observanceSet = array_flip($observanceDates); // for fast lookup
+        // Note: observanceSet and observanceTypeMap were populated earlier for this month
 
         // FIX: Define daysInMonth for the loop to work
         $daysInMonth = (int)date('t', strtotime($monthStart));
@@ -644,8 +718,11 @@ class TimeKeepingController extends Controller
             $workDay = $workDaysModels->get($dayOfWeekStr);
             if (!$workDay) continue; // not a scheduled work day
 
-            // Skip if date is in observances table (Holiday/Non-working day)
-            if (isset($observanceSet[$date])) continue;
+            // Skip if date is a whole-day suspension or an automated holiday (do not count as absent)
+            $isObservance = isset($observanceSet[$date]);
+            $isWholeDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day');
+            $isAutomatedHoliday = $isObservance && (!empty($observanceAutomatedMap[$date]));
+            if ($isWholeDay || $isAutomatedHoliday) continue;
 
             // Skip if date is an existing leave day (assuming approved since no status column)
             if (isset($leaveDatesSet[$date])) {

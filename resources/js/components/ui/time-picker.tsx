@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
-  PopoverContent,
+  PopoverContentInline,
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -32,14 +32,25 @@ export function TimePicker({
   const [selectedHour, setSelectedHour] = React.useState<number>(0)
   const [selectedMinute, setSelectedMinute] = React.useState<number>(0)
   const [isAM, setIsAM] = React.useState<boolean>(true)
+  const [draftHour, setDraftHour] = React.useState<number>(0)
+  const [draftMinute, setDraftMinute] = React.useState<number>(0)
+  const [draftIsAM, setDraftIsAM] = React.useState<boolean>(true)
+  const justConfirmedRef = React.useRef(false);
 
   // Parse initial value
   React.useEffect(() => {
     if (value) {
       const [hours, minutes] = value.split(':').map(Number)
-      setSelectedHour(hours % 12 || 12)
-      setSelectedMinute(minutes)
-      setIsAM(hours < 12)
+      const sh = hours % 12 || 12
+      const sm = minutes
+      const sam = hours < 12
+      setSelectedHour(sh)
+      setSelectedMinute(sm)
+      setIsAM(sam)
+      // initialize drafts to the committed value
+      setDraftHour(sh)
+      setDraftMinute(sm)
+      setDraftIsAM(sam)
     }
   }, [value])
 
@@ -57,12 +68,30 @@ export function TimePicker({
     return `${hour24.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
   }
 
+  // When interacting with the popover, update draft values only.
   const handleTimeSelect = (hour: number, minute: number, am: boolean) => {
-    setSelectedHour(hour)
-    setSelectedMinute(minute)
-    setIsAM(am)
-    const time24 = format24Hour(hour, minute, am)
+    setDraftHour(hour)
+    setDraftMinute(minute)
+    setDraftIsAM(am)
+  }
+
+  const handleConfirm = () => {
+    // Mark that we're intentionally confirming so the onOpenChange handler
+    // does not treat this as a cancel.
+    justConfirmedRef.current = true;
+    setSelectedHour(draftHour)
+    setSelectedMinute(draftMinute)
+    setIsAM(draftIsAM)
+    const time24 = format24Hour(draftHour, draftMinute, draftIsAM)
     onChange(time24)
+    setIsOpen(false)
+  }
+
+  const handleCancel = () => {
+    // revert drafts to committed value and close
+    setDraftHour(selectedHour)
+    setDraftMinute(selectedMinute)
+    setDraftIsAM(isAM)
     setIsOpen(false)
   }
 
@@ -72,10 +101,25 @@ export function TimePicker({
   return (
     <div className={cn("grid gap-2", className)}>
       {label && <Label>{label}</Label>}
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
+      <Popover open={isOpen} onOpenChange={(v) => {
+        // When popover is closed (v === false) without confirming, revert drafts.
+        if (!v) {
+          // If we just confirmed, skip reverting. Clear the flag and return.
+          if (justConfirmedRef.current) {
+            justConfirmedRef.current = false;
+            setIsOpen(false);
+            return;
+          }
+          handleCancel();
+          return;
+        }
+        // Opening
+        setIsOpen(true);
+      }}>
+          <PopoverTrigger asChild>
           <Button
             variant="outline"
+            type="button"
             className={cn(
               "w-full justify-start text-left font-normal",
               !value && "text-muted-foreground"
@@ -85,7 +129,7 @@ export function TimePicker({
             {value ? formatTime(selectedHour, selectedMinute, isAM) : placeholder}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+  <PopoverContentInline className="w-auto p-0" align="start">
           <div className="p-3">
             <div className="grid grid-cols-3 gap-2">
               {/* Hours */}
@@ -96,9 +140,10 @@ export function TimePicker({
                     {hours.map((hour) => (
                       <Button
                         key={hour}
-                        variant={selectedHour === hour ? "default" : "outline"}
+                        type="button"
+                        variant={draftHour === hour ? "default" : "outline"}
                         size="sm"
-                        onClick={() => handleTimeSelect(hour, selectedMinute, isAM)}
+                        onClick={() => handleTimeSelect(hour, draftMinute, draftIsAM)}
                         className="h-8"
                       >
                         {hour}
@@ -116,9 +161,10 @@ export function TimePicker({
                     {minutes.map((minute) => (
                       <Button
                         key={minute}
-                        variant={selectedMinute === minute ? "default" : "outline"}
+                        type="button"
+                        variant={draftMinute === minute ? "default" : "outline"}
                         size="sm"
-                        onClick={() => handleTimeSelect(selectedHour, minute, isAM)}
+                        onClick={() => handleTimeSelect(draftHour, minute, draftIsAM)}
                         className="h-8"
                       >
                         {minute.toString().padStart(2, '0')}
@@ -131,19 +177,21 @@ export function TimePicker({
               {/* AM/PM */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Period</Label>
-                <div className="space-y-1">
+                  <div className="space-y-1">
                   <Button
-                    variant={isAM ? "default" : "outline"}
+                    type="button"
+                    variant={draftIsAM ? "default" : "outline"}
                     size="sm"
-                    onClick={() => handleTimeSelect(selectedHour, selectedMinute, true)}
+                    onClick={() => handleTimeSelect(draftHour, draftMinute, true)}
                     className="w-full h-8"
                   >
                     AM
                   </Button>
                   <Button
-                    variant={!isAM ? "default" : "outline"}
+                    type="button"
+                    variant={!draftIsAM ? "default" : "outline"}
                     size="sm"
-                    onClick={() => handleTimeSelect(selectedHour, selectedMinute, false)}
+                    onClick={() => handleTimeSelect(draftHour, draftMinute, false)}
                     className="w-full h-8"
                   >
                     PM
@@ -152,7 +200,15 @@ export function TimePicker({
               </div>
             </div>
           </div>
-        </PopoverContent>
+          <div className="border-t px-3 py-2 flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button type="button" size="sm" onClick={handleConfirm}>
+              OK
+            </Button>
+          </div>
+  </PopoverContentInline>
       </Popover>
     </div>
   )

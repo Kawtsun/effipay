@@ -13,10 +13,13 @@ class Observance extends Model
         'date',
         'label',
         'is_automated',
+        'type',
+        'start_time',
     ];
 
     protected $casts = [
         'date' => 'date',
         'is_automated' => 'boolean',
+        'start_time' => 'datetime:H:i',
     ];
 }

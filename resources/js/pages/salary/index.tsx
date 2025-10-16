@@ -1,12 +1,10 @@
-// resources/js/Pages/salary/index.tsx
-
 import { Head, router, usePage } from '@inertiajs/react'
 import { calculateSSS } from '@/utils/salaryFormulas'
 import AppLayout from '@/layouts/app-layout'
 import { EmployeeType } from '@/components/employee-type'
 import { EmployeeSalaryEdit } from '@/components/employee-salary-edit'
 import { type BreadcrumbItem } from '@/types'
-import { Wallet, Pencil, Calculator, Lightbulb } from 'lucide-react'
+import { Wallet, Pencil, Calculator, Lightbulb, TrendingUp } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -18,7 +16,8 @@ import {
   CardContent,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { PayrollDatePicker } from '@/components/ui/payroll-date-picker'
+import ThirteenthMonthPayDialog from '@/components/thirtheen-month-pay-dialog'
+import { PayrollMonthPicker } from '@/components/ui/payroll-month-picker'
 
 type Defaults = {
   employee_type: string
@@ -35,16 +34,18 @@ type Defaults = {
 type FlashObject = { type: string; message: string };
 type PageProps = {
   flash?: string | FlashObject;
+  errors: Record<string, string>;
   types: string[];
   selected: string;
   defaults: Defaults;
 }
 
 export default function Index() {
-  const { flash, types, selected, defaults } = usePage<PageProps>().props
+  const { flash, errors, types, selected, defaults } = usePage<PageProps>().props
   const [type, setType] = useState(selected || types[0])
-  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState('')
   const [isRunningPayroll, setIsRunningPayroll] = useState(false)
+  const [isThirteenthMonthDialogOpen, setIsThirteenthMonthDialogOpen] = useState(false);
 
   useEffect(() => setType(selected || types[0]), [selected, types])
   useEffect(() => {
@@ -56,9 +57,7 @@ export default function Index() {
         toast.success(flash);
       }
     } else if (typeof flash === 'object' && flash !== null) {
-      // If backend sends { type, message }
       if (flash.type === 'error') {
-        // Show specific toast if missing time keeping data
         if (flash.message && flash.message.toLowerCase().includes('no time keeping data')) {
           toast.error('Some employees have no time keeping data. Please check time keeping records before running payroll.');
         } else {
@@ -74,6 +73,13 @@ export default function Index() {
     }
   }, [flash])
 
+  useEffect(() => {
+    if (errors && Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0];
+      toast.error(firstError);
+    }
+  }, [errors]);
+
   const onTypeChange = useCallback((val: string) => {
     setType(val)
     if (!val && types[0]) setType(types[0])
@@ -85,20 +91,20 @@ export default function Index() {
   }, [types])
 
   const handleRunPayroll = useCallback(async () => {
-    if (!selectedDate) {
+    if (!selectedMonth) {
       toast.error('Please select a date first')
       return
     }
     setIsRunningPayroll(true)
     router.post(
       route('payroll.run'),
-      { payroll_date: selectedDate },
+      { payroll_date: selectedMonth },
       {
-        preserveState: false, // reload page to get flash
+        preserveState: false,
         onFinish: () => setIsRunningPayroll(false),
       }
     )
-  }, [selectedDate])
+  }, [selectedMonth])
 
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Salary Management', href: route('salary.index') },
@@ -115,10 +121,6 @@ export default function Index() {
 
   const earningsCards = cards.filter(c => c.isEarning)
   const deductionCards = cards.filter(c => !c.isEarning)
-  // Calculate total compensation
-  // const totalCompensation =
-  //   Number(defaults.base_salary) -
-  //   (Number(calculateSSS(defaults.base_salary)) + Number(defaults.pag_ibig) + Number(defaults.philhealth));
 
   const allTypes = [
     { value: 'Full Time', label: 'Full Time' },
@@ -143,16 +145,19 @@ export default function Index() {
                 <p className="text-muted-foreground">Set default salary values by employee type and run payroll.</p>
               </div>
             </div>
+
+            {/* Right side: Payroll and 13th Month Buttons */}
             <div className="flex items-center gap-4">
+              {/* Run Payroll Group */}
               <div className="flex items-center gap-2">
-                <PayrollDatePicker
-                  value={selectedDate}
-                  onValueChange={setSelectedDate}
-                  placeholder="Select payroll date"
+                <PayrollMonthPicker
+                  value={selectedMonth}
+                  onValueChange={setSelectedMonth}
+                  placeholder="Select payroll month"
                 />
                 <Button
                   onClick={handleRunPayroll}
-                  disabled={!selectedDate || isRunningPayroll}
+                  disabled={!selectedMonth || isRunningPayroll}
                   className="flex items-center gap-2"
                 >
                   <Calculator className="w-4 h-4" />
@@ -160,20 +165,19 @@ export default function Index() {
                 </Button>
               </div>
 
+              {/* 13th Month Button */}
+              <Button
+                onClick={() => setIsThirteenthMonthDialogOpen(true)}
+                variant="secondary"
+                className="flex items-center gap-2 transition-transform duration-150 hover:scale-[1.03]"
+              >
+                <TrendingUp className="w-4 h-4" />
+                13th Month Pay
+              </Button>
+
             </div>
           </div>
           <EmployeeType value={type} onChange={onTypeChange} types={allTypes} />
-
-          {/* Total Compensation Box */}
-          {/* <div className="mb-8">
-            <label className="block text-sm font-medium mb-2">Total Compensation</label>
-            <input
-              type="text"
-              value={`₱${totalCompensation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              readOnly
-              className="w-64 px-3 py-2 border rounded bg-gray-900 text-green-500 font-bold text-xl"
-            />
-          </div> */}
 
           {/* EARNINGS */}
           <section>
@@ -271,6 +275,11 @@ export default function Index() {
           </section>
         </div>
       </AppLayout>
+      {/* DIALOG COMPONENT INTEGRATION */}
+      <ThirteenthMonthPayDialog
+        isOpen={isThirteenthMonthDialogOpen}
+        onClose={() => setIsThirteenthMonthDialogOpen(false)}
+      />
     </>
   )
 }

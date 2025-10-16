@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AboutController;
 use App\Http\Controllers\AuditLogsController;
 use App\Http\Controllers\EmployeesController;
 use App\Http\Controllers\DashboardController;
@@ -85,14 +86,21 @@ Route::middleware('auth')->group(function () {
 
     // Payroll routes
     Route::post('/payroll/run', [PayrollController::class, 'runPayroll'])->name('payroll.run');
+    // Update payroll adjustments (must be authenticated)
+    Route::match(['get','post'], '/payrolls/adjustments', [PayrollController::class, 'updateAdjustment'])->name('payroll.adjustments');
     Route::get('/payroll/employee', [PayrollController::class, 'getEmployeePayroll'])->name('payroll.employee');
     Route::get('/payroll/employee/dates', [PayrollController::class, 'getEmployeePayrollDates'])->name('payroll.employee.dates');
     Route::get('/payroll/employee/monthly', [PayrollController::class, 'getEmployeeMonthlyPayroll'])->name('payroll.employee.monthly');
     Route::get('/payroll/employee/months', [PayrollController::class, 'getEmployeePayrollMonths'])->name('payroll.employee.months');
     Route::get('/timekeeping/employee/monthly-summary', [TimeKeepingController::class, 'monthlySummary'])->name('timekeeping.employee.monthly-summary');
+    Route::post('/payroll/run-13th-month', [PayrollController::class, 'run13thMonthPay'])->name('payroll.run.13th');
+    Route::get('/payroll/export', [PayrollController::class, 'export'])->name('payroll.export');
 
     // Trigger artisan fetch-holidays 
     Route::post('/fetch-holidays', [ObservanceController::class, 'fetchHolidays']);
+
+    // Credits
+    Route::get('/about', [AboutController::class, 'index'])->name('about');
 });
 
 
