@@ -81,7 +81,6 @@ export default function CollegeProgramWork({
 
                 {/* Work Days Selector */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Work Days</Label>
                   <WorkDaysSelector
                     value={days}
                     onChange={(d: WorkDayTime[]) => onChangeWorkDays(code, d)}
