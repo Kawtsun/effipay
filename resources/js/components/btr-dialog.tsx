@@ -116,7 +116,7 @@ export default function BTRDialog({ employee, onClose }: Props) {
   const now = new Date();
   const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  const [selectedMonth, setSelectedMonth] = useState(normalizeYm(currentYm));
+  const [selectedMonth, setSelectedMonth] = useState("");
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [records, setRecords] = useState<TimeRecord[]>([]);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
@@ -138,13 +138,11 @@ export default function BTRDialog({ employee, onClose }: Props) {
             .map((m) => normalizeYm(m))
             .filter(Boolean) as string[];
           setAvailableMonths(normalized);
-          if (!selectedMonth) {
-            if (normalized.length > 0) {
-              setSelectedMonth(normalized[0]);
-            } else {
-              // Fallback to current month when API returns nothing
-              setSelectedMonth(normalizeYm(currentYm));
-            }
+          if (normalized.length > 0 && !selectedMonth) {
+            setSelectedMonth(normalized[0]);
+          } else if (normalized.length === 0) {
+            // Fallback to current month when API returns nothing
+            setSelectedMonth(normalizeYm(currentYm));
           }
         }
       })
@@ -152,7 +150,7 @@ export default function BTRDialog({ employee, onClose }: Props) {
         // On failure, still allow user to pick current/recent months
         if (!selectedMonth) setSelectedMonth(normalizeYm(currentYm));
       });
-  }, [employee]);
+  }, [employee, selectedMonth, currentYm]);
 
   // Fetch observances for the selected month to drive row highlighting
   useEffect(() => {
