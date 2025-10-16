@@ -867,4 +867,22 @@ class TimeKeepingController extends Controller
         }
         return response()->json($response);
     }
+
+    /**
+     * Return distinct YYYY-MM months present in timekeeping records, sorted descending.
+     */
+    public function getAvailableMonths(Request $request)
+    {
+        $tkMonths = \App\Models\TimeKeeping::selectRaw('DISTINCT LEFT(date, 7) as month')
+            ->orderBy('month', 'desc')
+            ->pluck('month')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'months' => $tkMonths,
+        ]);
+    }
 }

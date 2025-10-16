@@ -392,6 +392,23 @@ class PayrollController extends Controller
     }
 
     /**
+     * Get months that have processed payroll records only (payroll table months), sorted descending.
+     */
+    public function getProcessedPayrollMonths(Request $request): JsonResponse
+    {
+        $payrollMonths = \App\Models\Payroll::orderBy('month', 'desc')
+            ->pluck('month')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'months' => $payrollMonths,
+        ]);
+    }
+
+    /**
      * Get payroll data for a specific employee and month
      */
     public function getEmployeePayroll(Request $request): JsonResponse

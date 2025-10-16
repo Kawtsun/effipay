@@ -51,8 +51,13 @@ Route::middleware('auth')->group(function () {
     // API: Get monthly summary for employee and month (ADD THIS LINE)
     Route::get('/api/timekeeping/monthlySummary', [TimeKeepingController::class, 'monthlySummary']); 
 
+    // Timekeeping-only months (distinct months from timekeeping records)
+    Route::get('/timekeeping/available-months', [TimeKeepingController::class, 'getAvailableMonths'])->name('timekeeping.available-months');
+
     // Add merged months endpoint for selectors
     Route::get('/payroll/all-available-months', [PayrollController::class, 'getAllAvailableMonths'])->name('payroll.all-available-months');
+    // Payroll-only months (processed payroll months)
+    Route::get('/payroll/processed-months', [PayrollController::class, 'getProcessedPayrollMonths'])->name('payroll.processed-months');
 
     Route::post('/time-keeping/import', [TimeKeepingController::class, 'import'])->name('time-keeping.import');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');

@@ -22,56 +22,59 @@ export function MonthRangePicker({
   onValueChange,
   placeholder = "Select month",
   className,
-  availableMonths = [],
+  availableMonths,
 }: MonthRangePickerProps) {
   // Helpers
-  const first7 = (s: string) => (s && s.length >= 7 ? s.slice(0, 7) : s);
-  const normalizeYm = (ym: string) => {
-    const base = first7(ym);
-    const [y, m] = (base || "").split("-");
-    const yi = parseInt(y || "", 10);
-    const mi = parseInt(m || "", 10);
-    if (Number.isNaN(yi) || Number.isNaN(mi)) return base || ym;
-    return `${yi}-${String(mi).padStart(2, "0")}`;
-  };
 
-  const toOption = (ymRaw: string) => {
-    const ym = normalizeYm(ymRaw);
-    const [y, m] = ym.split("-");
-    const yi = parseInt(y, 10);
-    const mi = parseInt(m, 10) - 1; // Date month is 0-based
-    const date = new Date(yi, mi, 1);
-    const lastDay = new Date(yi, mi + 1, 0).getDate();
-    const monthName = date.toLocaleDateString("en-US", { month: "long" });
-    return {
-      value: ym,
-      label: `${monthName} 1 - ${lastDay}, ${y}`,
-      y: yi,
-      m: mi + 1,
-    };
-  };
+  const [fetchedMonths, setFetchedMonths] = React.useState<string[] | undefined>(undefined);
 
-  const genDefaultMonths = (count = 12) => {
-    const now = new Date();
-    const res: Array<{ value: string; label: string; y: number; m: number }> = [];
-    for (let i = 0; i < count; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      res.push(toOption(ym));
+  // If availableMonths isn't provided by caller, fetch payroll-only months
+  React.useEffect(() => {
+    let mounted = true;
+    if (!Array.isArray(availableMonths)) {
+      fetch('/payroll/processed-months')
+        .then((r) => r.json())
+        .then((d) => {
+          if (!mounted) return;
+          if (d && d.success && Array.isArray(d.months)) setFetchedMonths(d.months);
+          else setFetchedMonths([]);
+        })
+        .catch(() => { if (mounted) setFetchedMonths([]); });
     }
-    return res;
-  };
+    return () => { mounted = false };
+  }, [availableMonths]);
 
-  // Build and sort options (desc), with fallback when empty
+  // Build and sort options (desc). If source array is empty -> no months. If undefined -> fetch in progress -> no months.
   const monthOptions = React.useMemo(() => {
-    const base = (availableMonths || []).map(first7).filter(Boolean) as string[];
-    const mapped = base.map(toOption);
+    const source = Array.isArray(availableMonths)
+      ? availableMonths
+      : (Array.isArray(fetchedMonths) ? fetchedMonths : undefined);
+    if (!Array.isArray(source) || source.length === 0) return [];
+
     const map = new Map<string, { value: string; label: string; y: number; m: number }>();
-    for (const o of mapped) map.set(o.value, o);
-    const items = map.size > 0 ? Array.from(map.values()) : genDefaultMonths(12);
+    for (const raw of source) {
+      if (!raw) continue;
+      const base = raw && raw.length >= 7 ? raw.slice(0, 7) : raw;
+      const [y, m] = (base || "").split("-");
+      const yi = parseInt(y || "", 10);
+      const mi = parseInt(m || "", 10);
+      const ym = (Number.isNaN(yi) || Number.isNaN(mi)) ? (base || raw) : `${yi}-${String(mi).padStart(2, "0")}`;
+
+      const [yy, mm] = ym.split("-");
+      const yyi = parseInt(yy || "", 10);
+      const mmi = parseInt(mm || "", 10) - 1; // Date month 0-based
+      if (Number.isNaN(yyi) || Number.isNaN(mmi)) continue;
+      const date = new Date(yyi, mmi, 1);
+      const lastDay = new Date(yyi, mmi + 1, 0).getDate();
+      const monthName = date.toLocaleDateString("en-US", { month: "long" });
+      const label = `${monthName} 1 - ${lastDay}, ${yy}`;
+      map.set(ym, { value: ym, label, y: yyi, m: mmi + 1 });
+    }
+
+    const items = Array.from(map.values());
     items.sort((a, b) => (b.y - a.y) || (b.m - a.m));
     return items.map(({ value, label }) => ({ value, label }));
-  }, [availableMonths]);
+  }, [availableMonths, fetchedMonths]);
 
   const triggerRef = React.useRef<HTMLButtonElement>(null);
 
@@ -82,7 +85,7 @@ export function MonthRangePicker({
     }, 0);
   };
 
-  const normalizedValue = value ? normalizeYm(value) : undefined;
+  const normalizedValue = value ? (value && value.length >= 7 ? value.slice(0, 7) : value) : undefined;
 
   return (
     <Select value={normalizedValue} onValueChange={handleValueChange}>
