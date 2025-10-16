@@ -163,6 +163,19 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
         const asPdf = pdf(doc);
         const blob = await asPdf.toBlob();
         const url = URL.createObjectURL(blob);
+        // Fire-and-forget audit log for batch BTR print
+        try {
+          fetch('/api/audit/print-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'btr',
+              employee_id: null,
+              month: selectedMonth,
+              details: { source: 'PrintAllDialog', employees: filtered.length },
+            }),
+          });
+        } catch {}
         if (AUTO_DOWNLOAD) {
           const a = document.createElement('a');
           a.href = url;
