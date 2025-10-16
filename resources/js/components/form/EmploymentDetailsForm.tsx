@@ -43,7 +43,8 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
     // We only need to compute this once per render, so useMemo is fine
     const rolesArr = React.useMemo(() => data.roles.split(',').map((r: string) => r.trim()).filter(Boolean), [data.roles]);
 
-    // This effect initializes local state from form data and should only run on mount
+    // This effect initializes local state from form data
+    // It needs to run when resetToken changes (for reset functionality) and when data.roles/data.college_program change (for edit page initialization)
     React.useEffect(() => {
         const currentRoles = data.roles.split(',').map((r: string) => r.trim()).filter(Boolean);
         setIsAdmin(currentRoles.includes('administrator'));
@@ -57,22 +58,7 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
         setCollegePrograms(data.college_program ? data.college_program.split(',').map((p: string) => p.trim()) : []);
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // run only on mount to initialize from incoming form data
-
-    // Reset internal toggles and related form fields when parent triggers reset
-    React.useEffect(() => {
-        if (resetToken === undefined) return;
-        setIsAdmin(false);
-        setIsCollege(false);
-        setIsBasicEdu(false);
-        setIsOthers(false);
-        setOthersRoleText('');
-        setCollegePrograms([]);
-        setData('roles', '');
-        setData('employee_types', {});
-        setData('college_work_hours', '');
-        setData('college_program', '');
-    }, [resetToken, setData]);
+    }, [resetToken]); // run when resetToken changes and on mount to initialize from incoming form data
 
     // This effect updates form data based on local state (user interaction)
     React.useEffect(() => {
