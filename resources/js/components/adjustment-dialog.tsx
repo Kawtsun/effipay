@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,34 @@ export default function AdjustmentDialog({
   month,
   onMonthChange,
 }: Props) {
+  // When dialog opens, fetch payroll-processed months and auto-select latest if needed
+  useEffect(() => {
+    let mounted = true;
+    if (!open) return;
+    (async () => {
+      try {
+        const res = await fetch('/payroll/processed-months');
+        const data = await res.json();
+        if (!mounted) return;
+        if (data && data.success && Array.isArray(data.months)) {
+          if (data.months.length === 0) {
+            // Nothing to select
+            onMonthChange('');
+            toast.error('No payroll months available for adjustments.');
+          } else {
+            // If current month isn't present, auto-select the latest (first) month
+            if (!month || !data.months.includes(month)) {
+              onMonthChange(data.months[0]);
+            }
+          }
+        }
+      } catch {
+        console.error('Failed to fetch processed months for adjustment dialog');
+      }
+    })();
+    return () => { mounted = false; };
+  }, [open, month, onMonthChange]);
+
   const [adjustmentType, setAdjustmentType] = useState("add");
   const [amount, setAmount] = useState("");
   const employeeName = employee
@@ -114,7 +142,7 @@ export default function AdjustmentDialog({
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
           payrollUrl = route('payroll.employee.monthly', { employee_id: employee.id, month });
-        } catch (e) {
+        } catch {
           payrollUrl = `/payrolls/employee/monthly?employee_id=${employee.id}&month=${encodeURIComponent(month)}`;
         }
 
@@ -124,7 +152,7 @@ export default function AdjustmentDialog({
           const payrollData = await payrollRes.json();
           if (payrollData && payrollData.payrolls) {
             // pick the latest payroll like report-view-dialog does
-            payroll = payrollData.payrolls.reduce((latest: any, curr: any) => {
+            payroll = (payrollData.payrolls as { payroll_date: string }[]).reduce((latest, curr) => {
               return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
             }, payrollData.payrolls[0]);
           }
@@ -139,8 +167,8 @@ export default function AdjustmentDialog({
           message: data && data.message ? data.message : null,
         };
         window.dispatchEvent(new CustomEvent('payroll.adjusted', { detail: eventDetail }));
-      } catch (e) {
-        console.error('Failed to dispatch payroll.adjusted event', e);
+      } catch {
+        console.error('Failed to dispatch payroll.adjusted event');
       }
 
       onClose();
