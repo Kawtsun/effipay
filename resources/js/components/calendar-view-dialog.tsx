@@ -45,6 +45,20 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
     async function refetchObservances() {
       try {
         const res = await fetch("/observances");
+
+        // Session expired / CSRF problem
+        if (res.status === 419 || res.status === 401) {
+          toast.error('Session expired. The page will reload to recover your session.');
+          window.setTimeout(() => window.location.reload(), 1200);
+          return;
+        }
+
+        if (res.status === 405) {
+          toast.error('Server route mismatch detected. Reloading the page to refresh routes.');
+          window.setTimeout(() => window.location.reload(), 1200);
+          return;
+        }
+
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -60,7 +74,11 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
             setServerObservances(uniq);
           }
         }
-      } catch {}
+      } catch (e) {
+        toast.error('Failed to fetch observances due to network or session error. Reloading to recover.');
+        console.error('refetchObservances error:', e);
+        window.setTimeout(() => window.location.reload(), 1200);
+      }
     }
     refetchObservances();
   }, [markedDates, open]);

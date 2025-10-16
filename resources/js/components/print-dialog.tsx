@@ -126,6 +126,7 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             undertime: payroll.undertime ?? 0,
             absences: payroll.absences ?? 0,
             overtime_pay_total: payroll.overtime_pay ?? 0,
+            adjustment: payroll.adjustments ?? 0,
             ratePerHour: undefined,
             collegeRate: payroll.college_rate ?? 0,
         },

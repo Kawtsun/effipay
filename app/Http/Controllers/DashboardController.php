@@ -25,7 +25,7 @@ class DashboardController extends Controller
 
         $totalEmployees = Employees::count();
 
-        // Distinct months available from payrolls (Y-m)
+        // Distinct months available from payrolls only (Y-m)
         $months = Payroll::orderBy('month', 'desc')
             ->pluck('month')
             ->unique()

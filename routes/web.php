@@ -54,8 +54,13 @@ Route::middleware('auth')->group(function () {
     // API: Log print actions (payslip/BTR)
     Route::post('/api/audit/print-log', [AuditLogsController::class, 'logPrint'])->name('audit.print-log');
 
+    // Timekeeping-only months (distinct months from timekeeping records)
+    Route::get('/timekeeping/available-months', [TimeKeepingController::class, 'getAvailableMonths'])->name('timekeeping.available-months');
+
     // Add merged months endpoint for selectors
     Route::get('/payroll/all-available-months', [PayrollController::class, 'getAllAvailableMonths'])->name('payroll.all-available-months');
+    // Payroll-only months (processed payroll months)
+    Route::get('/payroll/processed-months', [PayrollController::class, 'getProcessedPayrollMonths'])->name('payroll.processed-months');
 
     Route::post('/time-keeping/import', [TimeKeepingController::class, 'import'])->name('time-keeping.import');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -71,7 +76,7 @@ Route::middleware('auth')->group(function () {
 
     // Resourceful controllers
     Route::resources([
-        'salary'      => SalaryController::class,
+        'salary'     => SalaryController::class,
         'employees'   => EmployeesController::class,
         'time-keeping' => TimeKeepingController::class,
         'reports'     => ReportsController::class,

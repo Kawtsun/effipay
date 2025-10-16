@@ -157,10 +157,10 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     // Show toast if no data, but only once per employee+month, and reset properly when data is present
     // Remove lastToastRef and use BTRDialog's approach
 
-    // Fetch merged months from backend (payroll + timekeeping)
+    // Fetch timekeeping-only months from backend (distinct months found in timekeeping records)
     const fetchAvailableMonths = React.useCallback(async () => {
         try {
-            const response = await fetch('/payroll/all-available-months');
+            const response = await fetch('/timekeeping/available-months');
             const result = await response.json();
             if (result.success) {
                 setAvailableMonths(result.months);

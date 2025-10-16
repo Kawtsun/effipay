@@ -24,7 +24,7 @@ export function MonthPicker({
   onValueChange,
   placeholder = "Select month",
   className,
-  availableMonths = []
+  availableMonths
 }: MonthPickerProps) {
   // Helpers
   const normalizeYm = (ym: string) => {
@@ -36,41 +36,51 @@ export function MonthPicker({
     return `${yi}-${String(mi).padStart(2, '0')}`
   }
 
-  const toOption = (ym: string) => {
-    const n = normalizeYm(ym)
-    const [y, m] = n.split('-')
-    const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1)
-    return {
-      value: n,
-      label: date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long'
-      }),
-      y: parseInt(y, 10),
-      m: parseInt(m, 10)
-    }
-  }
+  const [fetchedMonths, setFetchedMonths] = React.useState<string[] | undefined>(undefined)
 
-  const genDefaultMonths = (count = 12) => {
-    const now = new Date()
-    const list: Array<{ value: string; label: string; y: number; m: number }> = []
-    for (let i = 0; i < count; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      list.push(toOption(ym))
+  // If caller didn't provide availableMonths, fetch the processed payroll months and use that.
+  React.useEffect(() => {
+    let mounted = true
+    if (!Array.isArray(availableMonths)) {
+      // fetch payroll-only months
+      fetch('/payroll/processed-months')
+        .then((r) => r.json())
+        .then((d) => {
+          if (!mounted) return
+          if (d && d.success && Array.isArray(d.months)) {
+            setFetchedMonths(d.months)
+          } else {
+            setFetchedMonths([])
+          }
+        })
+        .catch(() => {
+          if (!mounted) return
+          setFetchedMonths([])
+        })
     }
-    return list
-  }
+    return () => { mounted = false }
+  }, [availableMonths])
 
   const monthOptions = React.useMemo(() => {
-    const base = (availableMonths || []).map((m) => normalizeYm(m)).filter(Boolean) as string[]
-    const mapped = base.map(toOption)
-    const dedup = new Map<string, { value: string; label: string; y: number; m: number }>()
-    for (const o of mapped) dedup.set(o.value, o)
-    const items = dedup.size > 0 ? Array.from(dedup.values()) : genDefaultMonths(12)
-    items.sort((a, b) => (b.y - a.y) || (b.m - a.m))
-    return items.map(({ value, label }) => ({ value, label }))
-  }, [availableMonths])
+    const source = Array.isArray(availableMonths) ? availableMonths : (Array.isArray(fetchedMonths) ? fetchedMonths : undefined)
+    // If source is explicitly an array:
+    if (Array.isArray(source)) {
+      if (source.length === 0) return []
+      const mapped = source.map((m) => normalizeYm(m)).filter(Boolean) as string[]
+      const dedup = new Map<string, { value: string; label: string; y: number; m: number }>()
+      for (const n of mapped) {
+        const [y, m] = n.split('-')
+        const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1)
+        dedup.set(n, { value: n, label: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' }), y: parseInt(y, 10), m: parseInt(m, 10) })
+      }
+      const items = Array.from(dedup.values())
+      items.sort((a, b) => (b.y - a.y) || (b.m - a.m))
+      return items.map(({ value, label }) => ({ value, label }))
+    }
+
+    // If source is undefined (fetch in progress or neither provided), show no months (do not fallback to last-12)
+    return []
+  }, [availableMonths, fetchedMonths])
 
   const triggerRef = React.useRef<HTMLButtonElement>(null);
 

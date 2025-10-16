@@ -32,6 +32,15 @@ class PayrollController extends Controller
 
         // Get all employees
         $employees = \App\Models\Employees::all();
+
+        // If no employees have any timekeeping records for the month, fail early with a clear message.
+        $employeesWithTkCount = \App\Models\TimeKeeping::where('date', 'like', $payrollMonth . '%')
+            ->distinct()
+            ->count('employee_id');
+        if ($employeesWithTkCount === 0) {
+            // Send an error flash that the frontend will display as a toast
+            return redirect()->back()->with('flash', ['type' => 'error', 'message' => 'No TimeKeeping Record found for this month']);
+        }
         $createdCount = 0;
         foreach ($employees as $employee) {
 
@@ -411,6 +420,23 @@ class PayrollController extends Controller
         return response()->json([
             'success' => true,
             'months' => $allMonths,
+        ]);
+    }
+
+    /**
+     * Get months that have processed payroll records only (payroll table months), sorted descending.
+     */
+    public function getProcessedPayrollMonths(Request $request): JsonResponse
+    {
+        $payrollMonths = \App\Models\Payroll::orderBy('month', 'desc')
+            ->pluck('month')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'months' => $payrollMonths,
         ]);
     }
 
