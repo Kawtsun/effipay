@@ -30,8 +30,9 @@ export type WorkDaysSelectorProps = {
     onChange: (days: WorkDayTime[]) => void;
     selectedIndex: number;
     onSelectIndex: (idx: number) => void;
+    showTimePickers?: boolean;
 };
-export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex }: WorkDaysSelectorProps) {
+export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex, showTimePickers = true }: WorkDaysSelectorProps) {
     // Helper to get default times
     const defaultStart = '08:00';
     const defaultEnd = '16:00';
@@ -207,7 +208,7 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
             </div>
 
             <AnimatePresence initial={false}>
-                {hasDays && (
+                {hasDays && showTimePickers && (
                     <motion.div
                         key="workdays-time-picker"
                         initial={{ opacity: 0, y: 10 }}
@@ -229,20 +230,18 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <div className='flex items-center'>
-                                    <Label htmlFor="work-start-time">Start Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                    <Label>Start Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
                                 </div>
                                 <TimePicker
-                                    id="work-start-time"
                                     value={currentDay?.work_start_time || ''}
                                     onChange={val => setTime('work_start_time', val)}
                                     placeholder="Select start time" label={undefined}                                />
                             </div>
                             <div className="space-y-2">
                                 <div className='flex items-center'>
-                                    <Label htmlFor="work-start-time">End Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                    <Label>End Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
                                 </div>
                                 <TimePicker
-                                    id="work-end-time"
                                     value={currentDay?.work_end_time || ''}
                                     onChange={val => setTime('work_end_time', val)}
                                     placeholder="Select end time" label={undefined}                                />

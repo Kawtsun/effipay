@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from 'react';
-import { Clock, AlertTriangle, Hourglass, Asterisk } from 'lucide-react';
+import { Clock, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selector';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { motion, AnimatePresence } from 'framer-motion';
+import {} from 'framer-motion';
+import CollegeProgramWork from '@/components/college-program-work';
 
 // Minimal typing is intentionally omitted here to stay compatible with various useForm shapes.
 
@@ -20,7 +19,7 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
 
     const [selectedIndex, setSelectedIndex] = React.useState(0);
 
-    // Local list of college programs for labeling. Keep in sync with other components.
+    // Program list (canonical order) for per-program inputs
     const COLLEGE_PROGRAMS = React.useMemo(
         () => [
             { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
@@ -37,11 +36,6 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
             { value: 'MBA', label: 'Master of Business Administration' },
         ],
         []
-    );
-
-    const getCollegeProgramLabel = React.useCallback(
-        (code: string) => COLLEGE_PROGRAMS.find((p) => p.value === code)?.label || code,
-        [COLLEGE_PROGRAMS]
     );
 
     const selectedPrograms = React.useMemo(
@@ -66,8 +60,7 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
         );
     };
 
-    // Check if the 'college instructor' role is selected
-    const isCollegeInstructor = data.roles.includes('college instructor');
+    // College-specific inputs moved to CollegeWorkDaysForm component
 
     return (
         <Card className="w-full shadow-sm">
@@ -83,76 +76,36 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                 </div>
             </CardHeader>
             <CardContent>
-                <AnimatePresence>
-                    {isCollegeInstructor && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.3, ease: 'easeInOut' }}
-                            className="overflow-hidden"
-                        >
-                            {/* If multiple programs are selected, show one field per program. */}
-                            {selectedPrograms.length > 0 ? (
-                                <div className="p-1 mb-6 space-y-4">
-                                    {COLLEGE_PROGRAMS.filter(p => selectedPrograms.includes(p.value)).map(({ value: code }) => {
-                                        const fieldKey = `college_work_hours_by_program.${code}`;
-                                        const value = data.college_work_hours_by_program?.[code] || '';
-                                        return (
-                                            <div key={code} className="">
-                                                <Label htmlFor={`hours-${code}`} className="font-semibold flex items-center">
-                                                    College Work Hours — {getCollegeProgramLabel(code)} <span className="ml-1 text-muted-foreground">({code})</span>
-                                                    <Asterisk className="h-4 w-4 text-destructive ml-1" />
-                                                </Label>
-                                                <div className="relative mt-2">
-                                                    <Hourglass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                    <Input
-                                                        id={`hours-${code}`}
-                                                        type="number"
-                                                        min="0"
-                                                        className="pl-10"
-                                                        placeholder="e.g., 12"
-                                                        value={value}
-                                                        onChange={(e) => {
-                                                            const next = { ...(data.college_work_hours_by_program || {}) };
-                                                            next[code] = e.target.value;
-                                                            setData('college_work_hours_by_program', next);
-                                                            if (errors[fieldKey as keyof typeof errors]) {
-                                                                clearErrors(fieldKey);
-                                                            }
-                                                        }}
-                                                    />
-                                                </div>
-                                                {/* Try both flattened and nested error keys */}
-                                                <ErrorDisplay field={fieldKey as keyof typeof errors} />
-                                                <ErrorDisplay field={('college_work_hours_by_program' as keyof typeof errors)} />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                // Fallback: single field when no program is selected yet
-                                <div className="mb-6">
-                                    <Label htmlFor="college_work_hours" className="font-semibold flex items-center">
-                                        College Work Hours <Asterisk className="h-4 w-4 text-destructive ml-1" />
-                                    </Label>
-                                    <div className="relative mt-2">
-                                        <Hourglass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            id="college_work_hours"
-                                            type="number"
-                                            className="pl-10"
-                                            placeholder="e.g., 40"
-                                            value={data.college_work_hours || ''}
-                                            onChange={(e) => setData('college_work_hours', e.target.value)}
-                                        />
-                                    </div>
-                                    <ErrorDisplay field="college_work_hours" />
-                                </div>
-                            )}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* College program specific hours & days (via presentational component) */}
+                {selectedPrograms.length > 0 && (
+                    <div className="mb-6">
+                        <CollegeProgramWork
+                            programs={COLLEGE_PROGRAMS}
+                            selected={selectedPrograms}
+                            hoursByProgram={data.college_work_hours_by_program || {}}
+                            onChangeHours={(code, hours) => {
+                                const next = { ...(data.college_work_hours_by_program || {}) } as Record<string, string>;
+                                next[code] = hours;
+                                setData('college_work_hours_by_program', next);
+                                const key = `college_work_hours_by_program.${code}`;
+                                if (errors[key as keyof typeof errors]) {
+                                    clearErrors(key);
+                                }
+                            }}
+                            workDaysByProgram={data.college_work_days_by_program || {}}
+                            onChangeWorkDays={(code, days: WorkDayTime[]) => {
+                                const next = { ...(data.college_work_days_by_program || {}) } as Record<string, WorkDayTime[]>;
+                                next[code] = days;
+                                setData('college_work_days_by_program', next);
+                                const key = `college_work_days_by_program.${code}`;
+                                if (errors[key as keyof typeof errors]) {
+                                    clearErrors(key);
+                                }
+                            }}
+                            errors={errors as Record<string, string>}
+                        />
+                    </div>
+                )}
                 <WorkDaysSelector
                     value={data.work_days || []}
                     // THE FIX: When days are changed, also clear the validation error.
