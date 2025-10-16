@@ -325,6 +325,7 @@ export default function ReportsIndex() {
                         }}
                         onView={(emp) => setViewing(emp)}
                         onPrint={(emp) => setPrintDialog({ open: true, employee: emp })}
+                        onAdjustments={(emp) => toast.info(`Adjustments for ${emp.first_name} clicked`)}
                         activeRoles={appliedFilters.roles}
                     />
 
