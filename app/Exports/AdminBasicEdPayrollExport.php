@@ -263,15 +263,16 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                   ->setFormatCode('#,##0.00');
                 
                     // The totals rows are already inserted into the collection (admin total before basic total).
-                    // Find those rows by label in column A and apply styling (peach for BASIC ED, blue for ADMINISTRATOR).
+                    // Find those rows by label in column A and apply styling.
+                    $grandRowIndex = null;
                     for ($r = 8; $r <= $lastRow; $r++) {
                         $cellA = (string) $sheet->getCell('A' . $r)->getValue();
                         if ($cellA === 'TOTAL (BASIC ED)') {
-                            // Green fill for basic ed total (#B5FDB1)
+                            // Blue fill for basic ed total (#8DB4E2)
                             $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
                                 'fill' => [
                                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                                    'startColor' => ['rgb' => 'B5FDB1'],
+                                    'startColor' => ['rgb' => '8DB4E2'],
                                 ],
                                 'font' => ['bold' => true],
                             ]);
@@ -279,63 +280,21 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                             $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
                             // Ensure number format
                             $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getNumberFormat()->setFormatCode('#,##0.00');
-                        }
-
-                            // After formatting totals, add 'Prepared by:' and 'Checked by:' on the row below GRAND TOTAL
-                            // Find the row index of the GRAND TOTAL label
-                            $grandRowIndex = null;
-                            for ($r = 8; $r <= $lastRow; $r++) {
-                                $cellA = (string) $sheet->getCell('A' . $r)->getValue();
-                                if ($cellA === 'GRAND TOTAL') {
-                                    $grandRowIndex = $r;
-                                    break;
+                            
+                            // Ensure numeric columns B..T are populated with 0 if empty
+                            foreach (range('B', $highestColumn) as $col) {
+                                $coord = $col . $r;
+                                $val = $sheet->getCell($coord)->getValue();
+                                if ($val === null || $val === '') {
+                                    $sheet->setCellValue($coord, 0);
                                 }
                             }
-                            if ($grandRowIndex !== null) {
-                                // Leave two blank rows after GRAND TOTAL
-                                // Labels will be placed at GRAND_TOTAL_ROW + 3
-                                $labelRow = $grandRowIndex + 3;
-
-                                // Write labels on labelRow
-                                $sheet->setCellValue('A' . $labelRow, 'Prepared by:');
-                                $sheet->setCellValue('F' . $labelRow, 'Checked by:');
-                                $sheet->setCellValue('M' . $labelRow, 'Approved payment:');
-                                // Do not bold these labels
-                                $sheet->getStyle('A' . $labelRow . ':A' . $labelRow)->getFont()->setBold(false);
-                                $sheet->getStyle('F' . $labelRow . ':F' . $labelRow)->getFont()->setBold(false);
-                                $sheet->getStyle('M' . $labelRow . ':M' . $labelRow)->getFont()->setBold(false);
-
-                                // Leave two blank rows after labels, then add name and title rows
-                                // nameRow = labelRow + 3, titleRow = labelRow + 4
-                                $nameRow = $labelRow + 3;
-                                $titleRow = $labelRow + 4;
-
-                                // Prepared by block (column A)
-                                $sheet->setCellValue('A' . $nameRow, 'JIERDINNE C. MONTEVERDE');
-                                $sheet->setCellValue('A' . $titleRow, 'HR Payroll Clerk');
-                                $sheet->getStyle('A' . $nameRow . ':A' . $nameRow)->getFont()->setBold(true);
-
-                                // Checked by block (column F)
-                                $sheet->setCellValue('F' . $nameRow, 'MELANIE C. SANTOS');
-                                $sheet->setCellValue('F' . $titleRow, 'HR Officer');
-                                $sheet->getStyle('F' . $nameRow . ':F' . $nameRow)->getFont()->setBold(true);
-
-                                // Approved payment block (column M)
-                                $sheet->setCellValue('M' . $nameRow, 'FERGIE I. SANTIAGO');
-                                $sheet->setCellValue('M' . $titleRow, 'Treasurer');
-                                $sheet->getStyle('M' . $nameRow . ':M' . $nameRow)->getFont()->setBold(true);
-
-                                // Additional signatory to the right (column P)
-                                $sheet->setCellValue('P' . $nameRow, 'EDMUND C. FRANCISCO');
-                                $sheet->setCellValue('P' . $titleRow, 'President');
-                                $sheet->getStyle('P' . $nameRow . ':P' . $nameRow)->getFont()->setBold(true);
-                            }
-                        if ($cellA === 'TOTAL (ADMINISTRATOR)') {
-                            // Green fill for admin total (#B5FDB1)
+                        } else if ($cellA === 'TOTAL (ADMINISTRATOR)') {
+                            // Blue fill for admin total (#8DB4E2)
                             $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
                                 'fill' => [
                                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                                    'startColor' => ['rgb' => 'B5FDB1'],
+                                    'startColor' => ['rgb' => '8DB4E2'],
                                 ],
                                 'font' => ['bold' => true],
                             ]);
@@ -344,31 +303,81 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                             $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getNumberFormat()->setFormatCode('#,##0.00');
                             // Add a top border to visually separate the admin group
                             $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->getBorders()->getTop()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
-                        }
-                            if ($cellA === 'GRAND TOTAL') {
-                                // Bright yellow fill for grand total (#EDFC2C)
-                                $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
-                                    'fill' => [
-                                        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                                        'startColor' => ['rgb' => 'EDFC2C'],
-                                    ],
-                                    'font' => ['bold' => true],
-                                ]);
-                                $sheet->getStyle('A' . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
-                                $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
-                                $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getNumberFormat()->setFormatCode('#,##0.00');
-                                // Thicker top border for grand total
-                                $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->getBorders()->getTop()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM);
-
-                                // Ensure numeric columns B..T are populated with 0 if empty
-                                foreach (range('B', $highestColumn) as $col) {
-                                    $coord = $col . $r;
-                                    $val = $sheet->getCell($coord)->getValue();
-                                    if ($val === null || $val === '') {
-                                        $sheet->setCellValue($coord, 0);
-                                    }
+                            
+                            // Ensure numeric columns B..T are populated with 0 if empty
+                            foreach (range('B', $highestColumn) as $col) {
+                                $coord = $col . $r;
+                                $val = $sheet->getCell($coord)->getValue();
+                                if ($val === null || $val === '') {
+                                    $sheet->setCellValue($coord, 0);
                                 }
                             }
+                        } else if ($cellA === 'GRAND TOTAL') {
+                            $grandRowIndex = $r; // Save the grand total row index
+                            // Bright yellow fill for grand total (#EDFC2C)
+                            $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
+                                'fill' => [
+                                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                                    'startColor' => ['rgb' => 'EDFC2C'],
+                                ],
+                                'font' => ['bold' => true],
+                            ]);
+                            $sheet->getStyle('A' . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+                            $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                            $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getNumberFormat()->setFormatCode('#,##0.00');
+                            // Thicker top border for grand total
+                            $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->getBorders()->getTop()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM);
+
+                            // Ensure numeric columns B..T are populated with 0 if empty
+                            foreach (range('B', $highestColumn) as $col) {
+                                $coord = $col . $r;
+                                $val = $sheet->getCell($coord)->getValue();
+                                if ($val === null || $val === '') {
+                                    $sheet->setCellValue($coord, 0);
+                                }
+                            }
+                        }
+                    }
+
+                    // After formatting totals, add 'Prepared by:' and 'Checked by:' on the row below GRAND TOTAL
+                    if ($grandRowIndex !== null) {
+                        // Leave two blank rows after GRAND TOTAL
+                        // Labels will be placed at GRAND_TOTAL_ROW + 3
+                        $labelRow = $grandRowIndex + 3;
+
+                        // Write labels on labelRow
+                        $sheet->setCellValue('A' . $labelRow, 'Prepared by:');
+                        $sheet->setCellValue('F' . $labelRow, 'Checked by:');
+                        $sheet->setCellValue('M' . $labelRow, 'Approved payment:');
+                        // Do not bold these labels
+                        $sheet->getStyle('A' . $labelRow . ':A' . $labelRow)->getFont()->setBold(false);
+                        $sheet->getStyle('F' . $labelRow . ':F' . $labelRow)->getFont()->setBold(false);
+                        $sheet->getStyle('M' . $labelRow . ':M' . $labelRow)->getFont()->setBold(false);
+
+                        // Leave two blank rows after labels, then add name and title rows
+                        // nameRow = labelRow + 3, titleRow = labelRow + 4
+                        $nameRow = $labelRow + 3;
+                        $titleRow = $labelRow + 4;
+
+                        // Prepared by block (column A)
+                        $sheet->setCellValue('A' . $nameRow, 'JIERDINNE C. MONTEVERDE');
+                        $sheet->setCellValue('A' . $titleRow, 'HR Payroll Clerk');
+                        $sheet->getStyle('A' . $nameRow . ':A' . $nameRow)->getFont()->setBold(true);
+
+                        // Checked by block (column F)
+                        $sheet->setCellValue('F' . $nameRow, 'MELANIE C. SANTOS');
+                        $sheet->setCellValue('F' . $titleRow, 'HR Officer');
+                        $sheet->getStyle('F' . $nameRow . ':F' . $nameRow)->getFont()->setBold(true);
+
+                        // Approved payment block (column M)
+                        $sheet->setCellValue('M' . $nameRow, 'FERGIE I. SANTIAGO');
+                        $sheet->setCellValue('M' . $titleRow, 'Treasurer');
+                        $sheet->getStyle('M' . $nameRow . ':M' . $nameRow)->getFont()->setBold(true);
+
+                        // Additional signatory to the right (column P)
+                        $sheet->setCellValue('P' . $nameRow, 'EDMUND C. FRANCISCO');
+                        $sheet->setCellValue('P' . $titleRow, 'President');
+                        $sheet->getStyle('P' . $nameRow . ':P' . $nameRow)->getFont()->setBold(true);
                     }
                 }
             },
