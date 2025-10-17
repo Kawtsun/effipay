@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { motion } from 'framer-motion';
+import { Separator } from '@/components/ui/separator';
 
 export type CollegeProgram = { value: string; label: string };
 
@@ -46,7 +47,7 @@ export default function CollegeProgramWork({
     <Accordion
       type="single"
       collapsible
-      className="w-full"
+      className="w-full space-y-3"
       defaultValue={ordered.length > 0 ? ordered[0].value : undefined}
     >
       {ordered.map(({ value: code }) => {
@@ -56,26 +57,26 @@ export default function CollegeProgramWork({
         const days = workDaysByProgram[code] || [];
 
         return (
-          <AccordionItem value={code} key={code}>
-            <AccordionTrigger className="font-semibold text-base px-4">
+          <AccordionItem value={code} key={code} className="border rounded-md bg-muted/20 dark:bg-muted/10">
+            <AccordionTrigger className="font-semibold text-base px-4 py-3 hover:no-underline">
               <div className="flex items-center">
                 {getLabel(code)}
                 <span className="ml-2 text-sm font-normal text-muted-foreground">({code})</span>
                 <Asterisk className="h-4 w-4 text-destructive ml-2" />
               </div>
             </AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="pt-4 px-3 pb-3">
               <motion.div
                 key={`content-${code}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.15, ease: 'easeOut' }}
               >
-                <div className="grid md:grid-cols-2 gap-x-6 gap-y-4 pt-2">
+                <div className="space-y-4">
                   {/* Work Hours Input */}
                   <div className="space-y-2 px-4">
-                    <Label htmlFor={`hours-${code}`} className="text-sm font-medium">
-                      Work Hours
+                    <Label htmlFor={`hours-${code}`} className="text-sm font-semibold flex items-center">
+                      Work Hours <Asterisk className="h-4 w-4 text-destructive ml-1" />
                     </Label>
                     <Input
                       id={`hours-${code}`}
@@ -89,7 +90,7 @@ export default function CollegeProgramWork({
                     <ErrorDisplay field={hoursKey as keyof typeof errors} />
                     <ErrorDisplay field={'college_work_hours_by_program' as keyof typeof errors} />
                   </div>
-
+                  
                   {/* Work Days Selector */}
                   <div className="space-y-2">
                     <WorkDaysSelector
