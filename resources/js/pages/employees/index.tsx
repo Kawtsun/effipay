@@ -12,6 +12,7 @@ import TableEmployee from '@/components/table_employee'
 import AppLayout from '@/layouts/app-layout'
 import { cn } from '@/lib/utils'
 import { BreadcrumbItem, Employees } from '@/types'
+import { COLLEGE_PROGRAMS } from '@/constants/college-programs'
 
 type FlashObject = { type: string; message: string }
 type Flash = { success?: string } | string | FlashObject
@@ -32,20 +33,6 @@ type FilterState = { types: string[]; statuses: string[]; roles: string[]; other
 const MIN_SPINNER_MS = 400
 const PAGE_SIZE_STORAGE_KEY = 'employees.table.pageSize'
 
-const COLLEGE_PROGRAMS = [
-    { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-    { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-    { value: 'COELA', label: 'College of Education and Liberal Arts' },
-    { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-    { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-    { value: 'JD', label: 'Juris Doctor' },
-    { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-    { value: 'RLE', label: 'Related Learning Experience' },
-    { value: 'CG', label: 'Career Guidance' },
-    { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-    { value: 'GSP', label: 'Graduate Studies Programs' },
-    { value: 'MBA', label: 'Master of Business Administration' },
-]
 function getCollegeProgramLabel(acronym: string) {
     const found = COLLEGE_PROGRAMS.find((p) => p.value === acronym)
     return found ? found.label : acronym
@@ -164,10 +151,16 @@ export default function Index({
     )
 
     const handleFilterChange = useCallback(
-        (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
-            setFilters(newFilters)
+        (newFilters: FilterState & { collegeProgram?: string | string[]; othersRole?: string }) => {
+            // Normalize collegeProgram to a single string (first selected) for this page's state
+            const normalizedCollegeProgram = Array.isArray(newFilters.collegeProgram)
+                ? (newFilters.collegeProgram[0] || '')
+                : (newFilters.collegeProgram || '');
 
-            let applied = { ...newFilters }
+            const nextFilters = { ...newFilters, collegeProgram: normalizedCollegeProgram } as FilterState & { collegeProgram?: string; othersRole?: string };
+            setFilters(nextFilters)
+
+            const applied = { ...nextFilters }
             let rolesToSend = [...applied.roles]
 
             if (applied.roles.includes('others') && applied.othersRole) {
@@ -277,7 +270,7 @@ export default function Index({
                                 selectedTypes={filters.types}
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
-                                collegeProgram={filters.collegeProgram}
+                                collegeProgram={filters.collegeProgram ? [filters.collegeProgram] : []}
                                 othersRole={filters.othersRole}
                                 othersRoles={Array.isArray(props.othersRoles) ? props.othersRoles : []}
                                 onChange={(newFilters) => handleFilterChange({ ...filters, ...newFilters })}
@@ -362,7 +355,8 @@ export default function Index({
                         }
                     />
 
-                    <EmployeeViewDialog employee={viewing} onClose={() => setViewing(null)} showPayroll={false} />
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    <EmployeeViewDialog employee={viewing as unknown as any} onClose={() => setViewing(null)} showPayroll={false} />
                     <EmployeeDelete
                         open={open}
                         setOpen={setOpen}

@@ -13,6 +13,7 @@ import PrintDialog from '@/components/print-dialog'
 import PrintAllDialog from '@/components/print-all-dialog'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import AdjustmentDialog from '@/components/adjustment-dialog'
+import { getCollegeProgramLabel } from '@/constants/college-programs'
 import ExportLedgerDialog from '@/components/export-ledger-dialog'
 
 export default function ReportsIndex() {
@@ -20,24 +21,6 @@ export default function ReportsIndex() {
     // --- State and constants ---
     type FilterState = { types: string[]; statuses: string[]; roles: string[]; othersRole?: string }
     const MIN_SPINNER_MS = 400
-    const COLLEGE_PROGRAMS = [
-        { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-        { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-        { value: 'COELA', label: 'College of Education and Liberal Arts' },
-        { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-        { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-        { value: 'JD', label: 'Juris Doctor' },
-        { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-        { value: 'RLE', label: 'Related Learning Experience' },
-        { value: 'CG', label: 'Career Guidance' },
-        { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-        { value: 'GSP', label: 'Graduate Studies Programs' },
-        { value: 'MBA', label: 'Master of Business Administration' },
-    ]
-    function getCollegeProgramLabel(acronym: string) {
-        const found = COLLEGE_PROGRAMS.find((p) => p.value === acronym)
-        return found ? found.label : acronym
-    }
 
     // --- Page props and state (from tcc-adjustments) ---
     const {
@@ -154,11 +137,16 @@ export default function ReportsIndex() {
     )
 
     const handleFilterChange = useCallback(
-        (newFilters: FilterState & { collegeProgram?: string; othersRole?: string }) => {
-            setFilters(newFilters)
-            let applied = { ...newFilters }
-            let rolesToSend = [...applied.roles]
+        (newFilters: FilterState & { collegeProgram?: string | string[]; othersRole?: string }) => {
+            // Normalize collegeProgram to a single string (first selected)
+            const normalizedCollegeProgram = Array.isArray(newFilters.collegeProgram)
+                ? newFilters.collegeProgram[0] || ''
+                : newFilters.collegeProgram || ''
 
+            const applied = { ...newFilters, collegeProgram: normalizedCollegeProgram } as FilterState & { collegeProgram?: string; othersRole?: string }
+            setFilters(applied)
+
+            let rolesToSend = [...applied.roles]
             if (applied.roles.includes('others') && applied.othersRole) {
                 rolesToSend = rolesToSend.filter((r) => r !== 'others')
                 rolesToSend.push(applied.othersRole)
@@ -192,7 +180,7 @@ export default function ReportsIndex() {
     }, [visit, searchTerm, pageSize])
 
     const handlePage = useCallback(
-        (page: number) => {
+        (newPage: number) => {
             let rolesToSend = [...appliedFilters.roles]
             if (appliedFilters.roles.includes('others') && appliedFilters.othersRole) {
                 rolesToSend = rolesToSend.filter((r) => r !== 'others')
@@ -202,7 +190,7 @@ export default function ReportsIndex() {
             visit(
                 {
                     search: searchTerm || undefined,
-                    page,
+                    page: newPage,
                     types: appliedFilters.types.length ? appliedFilters.types : undefined,
                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                     roles: rolesToSend.length ? rolesToSend : undefined,
@@ -263,7 +251,7 @@ export default function ReportsIndex() {
                                 selectedTypes={filters.types}
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
-                                collegeProgram={filters.collegeProgram}
+                                collegeProgram={filters.collegeProgram ? [filters.collegeProgram] : []}
                                 othersRole={filters.othersRole}
                                 othersRoles={Array.isArray(initialOthersRoles) ? initialOthersRoles : []}
                                 onChange={(newFilters) => handleFilterChange({ ...filters, ...newFilters })}

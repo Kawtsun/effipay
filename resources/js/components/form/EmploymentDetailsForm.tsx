@@ -178,6 +178,8 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
                                     if (!isChecked) {
                                         setData('college_work_hours', '');
                                         setData('college_program', '');
+                                        setData('college_work_hours_by_program', {});
+                                        setData('college_work_days_by_program', {});
                                         setCollegePrograms([]);
                                     }
                                 }}
@@ -238,6 +240,20 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
                                                 onChange={(value) => {
                                                     setCollegePrograms(value);
                                                     clearErrors('college_program');
+                                                    // Prune any per-program hours not in current selection
+                                                    const current = (data.college_work_hours_by_program || {}) as Record<string, string>;
+                                                    const pruned: Record<string, string> = {};
+                                                    value.forEach((code) => {
+                                                        if (current[code]) pruned[code] = current[code];
+                                                    });
+                                                    setData('college_work_hours_by_program', pruned);
+                                                    // Prune per-program work days not in current selection
+                                                    const currentDays = (data.college_work_days_by_program || {}) as Record<string, any>;
+                                                    const prunedDays: Record<string, any> = {};
+                                                    value.forEach((code) => {
+                                                        if (currentDays[code]) prunedDays[code] = currentDays[code];
+                                                    });
+                                                    setData('college_work_days_by_program', prunedDays);
                                                 }}
                                             />
                                         </CollegeProgramScrollArea>

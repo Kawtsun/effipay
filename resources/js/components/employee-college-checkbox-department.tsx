@@ -1,5 +1,6 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import React from 'react';
+import { Label } from './ui/label';
 
 const COLLEGE_PROGRAMS = [
   { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
@@ -35,7 +36,7 @@ export default function EmployeeCollegeCheckboxDepartment({ value, onChange, dis
   return (
     <div className={className}>
       {COLLEGE_PROGRAMS.map((prog) => (
-        <label key={prog.value} className="flex items-center gap-2 text-xs select-none cursor-pointer mb-2">
+        <Label key={prog.value} className="flex items-center gap-2 text-sm font-normal select-none cursor-pointer mb-2">
           <Checkbox
             id={`college-dept-${prog.value}`}
             checked={value.includes(prog.value)}
@@ -43,7 +44,7 @@ export default function EmployeeCollegeCheckboxDepartment({ value, onChange, dis
             disabled={disabledOptions.includes(prog.value)}
           />
           <span>{prog.label} <span className="ml-1 text-muted-foreground">({prog.value})</span></span>
-        </label>
+        </Label>
       ))}
     </div>
   );
