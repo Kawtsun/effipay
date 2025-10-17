@@ -57,7 +57,7 @@ export default function CollegeProgramWork({
 
         return (
           <AccordionItem value={code} key={code}>
-            <AccordionTrigger className="font-semibold text-base">
+            <AccordionTrigger className="font-semibold text-base px-4">
               <div className="flex items-center">
                 {getLabel(code)}
                 <span className="ml-2 text-sm font-normal text-muted-foreground">({code})</span>
@@ -73,7 +73,7 @@ export default function CollegeProgramWork({
               >
                 <div className="grid md:grid-cols-2 gap-x-6 gap-y-4 pt-2">
                   {/* Work Hours Input */}
-                  <div className="space-y-2">
+                  <div className="space-y-2 px-4">
                     <Label htmlFor={`hours-${code}`} className="text-sm font-medium">
                       Work Hours
                     </Label>

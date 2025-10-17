@@ -131,7 +131,7 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
     };
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 px-4 py-2">
             <div className="space-y-3">
                 <div className="flex items-center justify-between">
                     <Label className="font-semibold flex items-center">
