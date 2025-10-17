@@ -7,7 +7,31 @@ import { cn } from "@/lib/utils"
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+    // Wrap onOpenChange so we can intercept close attempts.
+  const { onOpenChange, ...rest } = props as React.ComponentProps<typeof DialogPrimitive.Root>
+
+  const handleOpenChange = (open: boolean) => {
+    // If this is an attempt to close the dialog, but there is an open Select/Popover,
+    // first close those pickers (by sending Escape) and prevent the dialog from closing.
+    if (!open) {
+      try {
+        const openPicker = document.querySelector(
+          '[data-slot="select-content"][data-state="open"], [data-slot="popover-content"][data-state="open"]'
+        )
+        if (openPicker) {
+          // Send Escape so Radix components close themselves predictably.
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+          return
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (typeof onOpenChange === 'function') onOpenChange(open)
+  }
+
+  return <DialogPrimitive.Root data-slot="dialog" {...rest} onOpenChange={handleOpenChange} />
 }
 
 function DialogTrigger({
