@@ -374,7 +374,6 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
                         setUserSelectedDates(current ? [current] : []);
                         setUserSelectedDate(current);
                         setShowAddModal(true);
-                        toast.success(`Opening Add Event for ${newly.length} date${newly.length > 1 ? 's' : ''}`);
                       }}>
                         Add Event
                       </Button>

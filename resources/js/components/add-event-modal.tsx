@@ -38,7 +38,7 @@ export default function AddEventModal({ open, date, dates, onClose, onConfirm, i
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md w-full z-[12000]">
+  <DialogContent hideOverlay className="max-w-md w-full z-[12000]">
         <DialogHeader>
           <DialogTitle>Add Event</DialogTitle>
         </DialogHeader>
