@@ -8,6 +8,7 @@ import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selec
 import { motion, AnimatePresence } from 'framer-motion';
 import CollegeProgramWork from '@/components/college-program-work';
 import { COLLEGE_PROGRAMS } from '@/constants/college-programs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Minimal typing is intentionally omitted here to stay compatible with various useForm shapes.
 
@@ -137,31 +138,56 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                 </div>
                             )}
                             {/* Conditionally render the default WorkDaysSelector */}
-                            {nonCollegeRoles.map((role: string) => (
-                                <div key={role} className="mt-4">
-                                    <Label className="font-semibold text-lg capitalize mb-2 block">{role} Schedule</Label>
-                                    <WorkDaysSelector
-                                        value={data.work_days?.[role] || []}
-                                        onChange={(days: WorkDayTime[]) => {
-                                            setData('work_days', {
-                                                ...(data.work_days || {}),
-                                                [role]: days,
-                                            });
-                                            if (errors[`work_days.${role}`]) {
-                                                clearErrors(`work_days.${role}`);
-                                            }
-                                        }}
-                                        selectedIndex={selectedIndices[role] || 0}
-                                        onSelectIndex={idx =>
-                                            setSelectedIndices(prev => ({
-                                                ...prev,
-                                                [role]: idx,
-                                            }))
-                                        }
-                                    />
-                                    <ErrorDisplay field={`work_days.${role}` as any} />
-                                </div>
-                            ))}
+                            <AnimatePresence>
+                                {nonCollegeRoles.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                        className="overflow-hidden"
+                                    >
+                                        <Accordion type="multiple" className="w-full space-y-2">
+                                            {nonCollegeRoles.map((role: string) => (
+                                                <AccordionItem value={role} key={role} className="border-b-0">
+                                                    <AccordionTrigger className="text-base capitalize bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-md hover:no-underline border dark:border-gray-700">
+                                                        {role} Schedule
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="py-4 px-1">
+                                                        <motion.div
+                                                            key={`content-${role}`}
+                                                            initial={{ opacity: 0 }}
+                                                            animate={{ opacity: 1 }}
+                                                            transition={{ duration: 0.15, ease: 'easeOut' }}
+                                                        >
+                                                            <WorkDaysSelector
+                                                                value={data.work_days?.[role] || []}
+                                                                onChange={(days: WorkDayTime[]) => {
+                                                                    setData('work_days', {
+                                                                        ...(data.work_days || {}),
+                                                                        [role]: days,
+                                                                    });
+                                                                    if (errors[`work_days.${role}`]) {
+                                                                        clearErrors(`work_days.${role}`);
+                                                                    }
+                                                                }}
+                                                                selectedIndex={selectedIndices[role] || 0}
+                                                                onSelectIndex={idx =>
+                                                                    setSelectedIndices(prev => ({
+                                                                        ...prev,
+                                                                        [role]: idx,
+                                                                    }))
+                                                                }
+                                                            />
+                                                            <ErrorDisplay field={`work_days.${role}` as any} />
+                                                        </motion.div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            ))}
+                                        </Accordion>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </motion.div>
                     )}
                 </AnimatePresence>
