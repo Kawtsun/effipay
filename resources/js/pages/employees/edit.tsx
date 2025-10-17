@@ -27,7 +27,8 @@ type EmployeeFormData = {
     employee_types: Record<string, string>;
     employee_status: string;
     college_program: string;
-    work_days: WorkDayTime[];
+    // WorkScheduleForm expects a per-role map of days
+    work_days: Record<string, WorkDayTime[]>;
     college_work_hours_by_program: Record<string, string>;
     college_work_days_by_program: Record<string, WorkDayTime[]>;
     base_salary: string;
@@ -54,7 +55,8 @@ type EmployeeDataFromServer = {
     employee_types?: Record<string, string> | null;
     employee_status?: string | null;
     college_program?: string | null;
-    work_days?: WorkDayTime[] | null;
+    // Older records may store this as a flat array; newer UI uses a per-role map
+    work_days?: WorkDayTime[] | Record<string, WorkDayTime[]> | null;
     base_salary?: string | number | null;
     college_rate?: string | number | null;
     honorarium?: string | number | null;
@@ -82,17 +84,49 @@ export default function Edit(props: Props) {
 
     const toString = (value: unknown) => (value === null || value === undefined ? '' : String(value));
 
+    // Derive roles array from employee to prefill work_days per role
+    const rolesArr = React.useMemo(
+        () =>
+            toString(employee.roles)
+                .split(',')
+                .map(r => r.trim())
+                .filter(Boolean),
+        [employee.roles]
+    );
+
+    // Normalize server-provided work_days into a per-role map expected by WorkScheduleForm
+    const initialWorkDaysByRole: Record<string, WorkDayTime[]> = React.useMemo(() => {
+        const raw = employee.work_days as unknown;
+        // If it's already an object map, pass-through
+        if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+            return raw as Record<string, WorkDayTime[]>;
+        }
+        // If it's an array (legacy), attach to the employee's role(s)
+        const arr = Array.isArray(raw) ? (raw as WorkDayTime[]) : [];
+        if (rolesArr.length === 1) {
+            return { [rolesArr[0]]: arr };
+        }
+        if (rolesArr.length > 1 && arr.length > 0) {
+            const map: Record<string, WorkDayTime[]> = {};
+            rolesArr.forEach(role => {
+                map[role] = arr;
+            });
+            return map;
+        }
+        return {};
+    }, [employee.work_days, rolesArr]);
+
     const form = useForm<EmployeeFormData>({
         first_name: toString(employee.first_name),
         middle_name: toString(employee.middle_name),
         last_name: toString(employee.last_name),
         roles: toString(employee.roles),
-    employee_types: employee.employee_types || ({} as Record<string, string>),
+        employee_types: employee.employee_types || ({} as Record<string, string>),
         employee_status: toString(employee.employee_status),
         college_program: toString(employee.college_program),
-    work_days: (employee.work_days as WorkDayTime[] | null | undefined) || ([] as WorkDayTime[]),
+        work_days: initialWorkDaysByRole,
         college_work_hours_by_program: {},
-    college_work_days_by_program: {},
+        college_work_days_by_program: {},
         base_salary: toString(employee.base_salary),
         rate_per_hour: toString(employee.college_rate),
         honorarium: toString(employee.honorarium),
@@ -217,7 +251,7 @@ export default function Edit(props: Props) {
                                             employee_types: {},
                                             employee_status: 'Active',
                                             college_program: '',
-                                            work_days: [],
+                                            work_days: {},
                                             college_work_hours_by_program: {},
                                             college_work_days_by_program: {},
                                             base_salary: '',

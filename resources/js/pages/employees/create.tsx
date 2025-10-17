@@ -25,7 +25,7 @@ type EmployeeFormData = {
     employee_types: Record<string, string>;
     employee_status: string;
     college_program: string;
-    work_days: WorkDayTime[];
+    work_days: Record<string, WorkDayTime[]>;
     college_work_hours: string;
     college_work_hours_by_program: Record<string, string>;
     college_work_days_by_program: Record<string, WorkDayTime[]>;
@@ -62,7 +62,7 @@ export default function Index(props: Props) {
         employee_types: {},
         employee_status: 'Active',
         college_program: '',
-        work_days: [],
+    work_days: {},
         college_work_hours: '',
     college_work_hours_by_program: {},
     college_work_days_by_program: {},
