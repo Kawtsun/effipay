@@ -9,6 +9,8 @@ import CollegeProgramWork from '@/components/college-program-work';
 import { COLLEGE_PROGRAMS } from '@/constants/college-programs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SummaryBadge } from '@/components/summary-badge';
+import { Separator } from '@/components/ui/separator';
+import { Clock as ClockIcon } from 'lucide-react';
 
 // Minimal typing is intentionally omitted here to stay compatible with various useForm shapes.
 
@@ -178,9 +180,67 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                                                     if (errors[key as keyof typeof errors]) {
                                                                         clearErrors(key);
                                                                     }
+
+                                                                    // If no work days remain for this program, also clear its hours and related errors
+                                                                    if (!days || days.length === 0) {
+                                                                        const hoursMap = {
+                                                                            ...(data.college_work_hours_by_program || {}),
+                                                                        } as Record<string, string>;
+                                                                        if ((hoursMap[code] ?? '') !== '') {
+                                                                            hoursMap[code] = '';
+                                                                            setData('college_work_hours_by_program', hoursMap);
+                                                                        }
+                                                                        const hoursKey = `college_work_hours_by_program.${code}`;
+                                                                        if (errors[hoursKey as keyof typeof errors]) {
+                                                                            clearErrors(hoursKey);
+                                                                        }
+                                                                    }
                                                                 }}
                                                                 errors={errors as Record<string, string>}
                                                             />
+
+                                                            {/* Overall College Hours Hint */}
+                                                            <AnimatePresence initial={false}>
+                                                                {(() => {
+                                                                    const hoursByProgram = (data.college_work_hours_by_program || {}) as Record<string, string>;
+                                                                    const rows = (selectedPrograms as string[])
+                                                                        .map((code: string) => ({
+                                                                            code,
+                                                                            label: COLLEGE_PROGRAMS.find(p => p.value === code)?.label || code,
+                                                                            hours: Number(hoursByProgram[code] || 0),
+                                                                        }))
+                                                                        .filter((r) => Number.isFinite(r.hours) && r.hours > 0);
+                                                                    if (rows.length === 0) return null;
+                                                                    const sum = rows.reduce((acc: number, r) => acc + r.hours, 0);
+                                                                    return (
+                                                                        <motion.div
+                                                                            key="college-hours-hint"
+                                                                            initial={{ opacity: 0, y: 8 }}
+                                                                            animate={{ opacity: 1, y: 0 }}
+                                                                            exit={{ opacity: 0, y: 8 }}
+                                                                            transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                                                            className="mt-4 space-y-3"
+                                                                        >
+                                                                            <Separator />
+                                                                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                                                                <div className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                                                                                    <ClockIcon className="h-4 w-4" />
+                                                                                    <span>
+                                                                                        Total College Work Hours: <strong>{sum} hour{sum === 1 ? '' : 's'}</strong> per day
+                                                                                    </span>
+                                                                                </div>
+                                                                                <ul className="mt-2 text-xs text-blue-700 dark:text-blue-300 list-disc pl-5 space-y-1">
+                                                                                    {rows.map(r => (
+                                                                                        <li key={r.code}>
+                                                                                            {r.label} <span className="text-muted-foreground">({r.code})</span>: <strong>{r.hours} hour{r.hours === 1 ? '' : 's'}</strong>
+                                                                                        </li>
+                                                                                    ))}
+                                                                                </ul>
+                                                                            </div>
+                                                                        </motion.div>
+                                                                    );
+                                                                })()}
+                                                            </AnimatePresence>
                                                         </motion.div>
                                                     </AccordionContent>
                                                 </AccordionItem>
