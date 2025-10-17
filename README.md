@@ -2,6 +2,17 @@
 
 **Effipay** is a Laravel + React (Inertia + Vite) payroll management system. This system was developed **In Partial Fulfillment of the Requirements for the Degree Bachelor of Science in Computer Science.**
 
+## Tech Stack
+
+This project is built with a modern, full-stack technology set:
+
+- **[Laravel](https://laravel.com/)**: The PHP framework for our backend logic and structure.
+- **[React](https://react.dev/)**: A JavaScript library for building the user interface.
+- **[Inertia.js](https://inertiajs.com/)**: The "glue" that connects the Laravel backend to the React frontend without requiring a separate API.
+- **[Vite](https://vitejs.dev/)**: Next-generation frontend tooling for a fast development server and optimized production builds.
+- **[Tailwind CSS](https://tailwindcss.com/)**: A utility-first CSS framework for rapidly designing the UI.
+- **[shadcn/ui](https://ui.shadcn.com/)**: A collection of re-usable, accessible, and beautifully designed UI components.
+
 ## Prerequisites (Windows + XAMPP)
 
 - XAMPP (Apache + MySQL)
