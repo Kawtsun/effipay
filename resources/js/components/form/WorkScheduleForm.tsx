@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from 'react';
-import { Clock, AlertTriangle, Info } from 'lucide-react';
+import { Clock, AlertTriangle, Info, CalendarDays } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selector';
 import { motion, AnimatePresence } from 'framer-motion';
 import CollegeProgramWork from '@/components/college-program-work';
 import { COLLEGE_PROGRAMS } from '@/constants/college-programs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { SummaryBadge } from '@/components/summary-badge';
 
 // Minimal typing is intentionally omitted here to stay compatible with various useForm shapes.
 
@@ -74,6 +74,23 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
 
     // College-specific inputs moved to CollegeWorkDaysForm component
 
+    // Helpers: derive short summaries for accordion triggers
+    const getRoleSummary = (role: string) => {
+        const list = (data.work_days?.[role] || []) as WorkDayTime[];
+        const daysCount = Array.isArray(list) ? list.length : 0;
+        return daysCount > 0 ? `${daysCount} day${daysCount > 1 ? 's' : ''}/wk` : 'No days set';
+    };
+
+    const getCollegeSummary = () => {
+        const programs = selectedPrograms.length;
+        if (programs === 0) return 'No program set';
+        // Try to show how many programs configured with hours
+    const hoursByProgram = (data.college_work_hours_by_program || {}) as Record<string, string>;
+    const configured = selectedPrograms.filter((p: string) => !!hoursByProgram[p]?.trim()).length;
+        if (configured === 0) return `${programs} program${programs > 1 ? 's' : ''}`;
+        return `${programs} program${programs > 1 ? 's' : ''} • ${configured} with hours`;
+    };
+
     return (
         <Card className="w-full shadow-sm">
             <CardHeader>
@@ -117,14 +134,18 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                         transition={{ duration: 0.3, ease: 'easeInOut' }}
                                         className="overflow-hidden"
                                     >
-                                        <Accordion type="multiple" className="w-full space-y-2">
+                                        {/* Use single/collapsible to avoid layout conflicts between panels */}
+                                        <Accordion type="single" collapsible className="w-full space-y-3">
                                             {/* College program specific hours & days */}
                                             {selectedPrograms.length > 0 && (
-                                                <AccordionItem value="college_schedule" className="border-b-0">
-                                                    <AccordionTrigger className="text-base capitalize bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-md hover:no-underline border dark:border-gray-700">
-                                                        College Schedule
+                                                <AccordionItem value="college_schedule" className="border rounded-md bg-muted/20 dark:bg-muted/10">
+                                                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                                        <div className="flex w-full items-center justify-between gap-3 text-base">
+                                                            <span className="font-medium">College Schedule</span>
+                                                            <SummaryBadge icon={<CalendarDays size={12} />} className="mr-2">{getCollegeSummary()}</SummaryBadge>
+                                                        </div>
                                                     </AccordionTrigger>
-                                                    <AccordionContent className="pt-4 px-1 pb-0">
+                                                    <AccordionContent className="pt-4 px-3 pb-3">
                                                         <motion.div
                                                             key="content-college"
                                                             initial={{ opacity: 0 }}
@@ -167,11 +188,14 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
 
                                             {/* Conditionally render the default WorkDaysSelector */}
                                             {nonCollegeRoles.map((role: string) => (
-                                                <AccordionItem value={role} key={role} className="border-b-0">
-                                                    <AccordionTrigger className="text-base capitalize bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-md hover:no-underline border dark:border-gray-700">
-                                                        {role} Schedule
+                                                <AccordionItem value={`role:${role}`} key={role} className="border rounded-md bg-muted/20 dark:bg-muted/10">
+                                                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                                        <div className="flex w-full items-center justify-between gap-3 text-base">
+                                                            <span className="capitalize font-medium">{role} Schedule</span>
+                                                            <SummaryBadge icon={<CalendarDays size={12} />} className="mr-2">{getRoleSummary(role)}</SummaryBadge>
+                                                        </div>
                                                     </AccordionTrigger>
-                                                    <AccordionContent className="pt-4 px-1 pb-0">
+                                                    <AccordionContent className="pt-4 px-3 pb-3">
                                                         <motion.div
                                                             key={`content-${role}`}
                                                             initial={{ opacity: 0 }}
