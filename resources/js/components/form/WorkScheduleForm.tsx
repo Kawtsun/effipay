@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Clock, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { WorkDaysSelector, type WorkDayTime } from '@/components/work-days-selector';
 import { motion, AnimatePresence } from 'framer-motion';
 import CollegeProgramWork from '@/components/college-program-work';
@@ -12,18 +13,13 @@ import { COLLEGE_PROGRAMS } from '@/constants/college-programs';
 
 interface WorkScheduleFormProps {
     form: any;
-    /**
-     * When true and role contains 'college' (case-insensitive), hide the default WorkDaysSelector
-     * so the form only renders CollegeProgramWork for college roles.
-     */
-    hideDefaultWorkDaysSelectorForCollegeRole?: boolean;
 }
 
-export function WorkScheduleForm({ form, hideDefaultWorkDaysSelectorForCollegeRole = true }: WorkScheduleFormProps) {
+export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
     // THE FIX: Destructure clearErrors from the form hook
     const { data, setData, errors, clearErrors } = form;
 
-    const [selectedIndex, setSelectedIndex] = React.useState(0);
+    const [selectedIndices, setSelectedIndices] = React.useState<Record<string, number>>({});
 
     const rolesArr = React.useMemo(
         () => (data.roles || '').split(',').map((r: string) => r.trim()).filter(Boolean),
@@ -37,6 +33,11 @@ export function WorkScheduleForm({ form, hideDefaultWorkDaysSelectorForCollegeRo
             .map((r: string) => r.trim())
             .some((r: string) => r.includes('college')),
         [data.roles]
+    );
+
+    const nonCollegeRoles = React.useMemo(
+        () => rolesArr.filter((r: string) => !r.toLowerCase().includes('college')),
+        [rolesArr]
     );
 
     // Program list (canonical order) for per-program inputs
@@ -136,22 +137,31 @@ export function WorkScheduleForm({ form, hideDefaultWorkDaysSelectorForCollegeRo
                                 </div>
                             )}
                             {/* Conditionally render the default WorkDaysSelector */}
-                            {(!isCollegeRole || !hideDefaultWorkDaysSelectorForCollegeRole) && (
-                                <>
+                            {nonCollegeRoles.map((role: string) => (
+                                <div key={role} className="mt-4">
+                                    <Label className="font-semibold text-lg capitalize mb-2 block">{role} Schedule</Label>
                                     <WorkDaysSelector
-                                        value={data.work_days || []}
+                                        value={data.work_days?.[role] || []}
                                         onChange={(days: WorkDayTime[]) => {
-                                            setData('work_days', days);
-                                            if (errors.work_days) {
-                                                clearErrors('work_days');
+                                            setData('work_days', {
+                                                ...(data.work_days || {}),
+                                                [role]: days,
+                                            });
+                                            if (errors[`work_days.${role}`]) {
+                                                clearErrors(`work_days.${role}`);
                                             }
                                         }}
-                                        selectedIndex={selectedIndex}
-                                        onSelectIndex={setSelectedIndex}
+                                        selectedIndex={selectedIndices[role] || 0}
+                                        onSelectIndex={idx =>
+                                            setSelectedIndices(prev => ({
+                                                ...prev,
+                                                [role]: idx,
+                                            }))
+                                        }
                                     />
-                                    <ErrorDisplay field="work_days" />
-                                </>
-                            )}
+                                    <ErrorDisplay field={`work_days.${role}` as any} />
+                                </div>
+                            ))}
                         </motion.div>
                     )}
                 </AnimatePresence>
