@@ -107,39 +107,9 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                     </AlertDescription>
                                 </Alert>
                             )}
-                            {/* College program specific hours & days (via presentational component) */}
-                            {selectedPrograms.length > 0 && (
-                                <div className="mb-6">
-                                    <CollegeProgramWork
-                                        programs={COLLEGE_PROGRAMS}
-                                        selected={selectedPrograms}
-                                        hoursByProgram={data.college_work_hours_by_program || {}}
-                                        onChangeHours={(code, hours) => {
-                                            const next = { ...(data.college_work_hours_by_program || {}) } as Record<string, string>;
-                                            next[code] = hours;
-                                            setData('college_work_hours_by_program', next);
-                                            const key = `college_work_hours_by_program.${code}`;
-                                            if (errors[key as keyof typeof errors]) {
-                                                clearErrors(key);
-                                            }
-                                        }}
-                                        workDaysByProgram={data.college_work_days_by_program || {}}
-                                        onChangeWorkDays={(code, days: WorkDayTime[]) => {
-                                            const next = { ...(data.college_work_days_by_program || {}) } as Record<string, WorkDayTime[]>;
-                                            next[code] = days;
-                                            setData('college_work_days_by_program', next);
-                                            const key = `college_work_days_by_program.${code}`;
-                                            if (errors[key as keyof typeof errors]) {
-                                                clearErrors(key);
-                                            }
-                                        }}
-                                        errors={errors as Record<string, string>}
-                                    />
-                                </div>
-                            )}
-                            {/* Conditionally render the default WorkDaysSelector */}
+
                             <AnimatePresence>
-                                {nonCollegeRoles.length > 0 && (
+                                {(nonCollegeRoles.length > 0 || selectedPrograms.length > 0) && (
                                     <motion.div
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
@@ -148,12 +118,60 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                         className="overflow-hidden"
                                     >
                                         <Accordion type="multiple" className="w-full space-y-2">
+                                            {/* College program specific hours & days */}
+                                            {selectedPrograms.length > 0 && (
+                                                <AccordionItem value="college_schedule" className="border-b-0">
+                                                    <AccordionTrigger className="text-base capitalize bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-md hover:no-underline border dark:border-gray-700">
+                                                        College Schedule
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-4 px-1 pb-0">
+                                                        <motion.div
+                                                            key="content-college"
+                                                            initial={{ opacity: 0 }}
+                                                            animate={{ opacity: 1 }}
+                                                            transition={{ duration: 0.15, ease: 'easeOut' }}
+                                                        >
+                                                            <CollegeProgramWork
+                                                                programs={COLLEGE_PROGRAMS}
+                                                                selected={selectedPrograms}
+                                                                hoursByProgram={data.college_work_hours_by_program || {}}
+                                                                onChangeHours={(code, hours) => {
+                                                                    const next = {
+                                                                        ...(data.college_work_hours_by_program || {}),
+                                                                    } as Record<string, string>;
+                                                                    next[code] = hours;
+                                                                    setData('college_work_hours_by_program', next);
+                                                                    const key = `college_work_hours_by_program.${code}`;
+                                                                    if (errors[key as keyof typeof errors]) {
+                                                                        clearErrors(key);
+                                                                    }
+                                                                }}
+                                                                workDaysByProgram={data.college_work_days_by_program || {}}
+                                                                onChangeWorkDays={(code, days: WorkDayTime[]) => {
+                                                                    const next = {
+                                                                        ...(data.college_work_days_by_program || {}),
+                                                                    } as Record<string, WorkDayTime[]>;
+                                                                    next[code] = days;
+                                                                    setData('college_work_days_by_program', next);
+                                                                    const key = `college_work_days_by_program.${code}`;
+                                                                    if (errors[key as keyof typeof errors]) {
+                                                                        clearErrors(key);
+                                                                    }
+                                                                }}
+                                                                errors={errors as Record<string, string>}
+                                                            />
+                                                        </motion.div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            )}
+
+                                            {/* Conditionally render the default WorkDaysSelector */}
                                             {nonCollegeRoles.map((role: string) => (
                                                 <AccordionItem value={role} key={role} className="border-b-0">
                                                     <AccordionTrigger className="text-base capitalize bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-md hover:no-underline border dark:border-gray-700">
                                                         {role} Schedule
                                                     </AccordionTrigger>
-                                                    <AccordionContent className="py-4 px-1">
+                                                    <AccordionContent className="pt-4 px-1 pb-0">
                                                         <motion.div
                                                             key={`content-${role}`}
                                                             initial={{ opacity: 0 }}
