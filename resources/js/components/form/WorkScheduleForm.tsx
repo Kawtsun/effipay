@@ -52,6 +52,20 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
         [rolesArr]
     );
 
+    // Group roles to control render order: Admin > College > Basic Edu > Others
+    const adminRoles = React.useMemo(
+        () => nonCollegeRoles.filter((r: string) => r.toLowerCase().includes('admin')),
+        [nonCollegeRoles]
+    );
+    const basicEduRoles = React.useMemo(
+        () => nonCollegeRoles.filter((r: string) => r.toLowerCase().includes('basic education')),
+        [nonCollegeRoles]
+    );
+    const otherRoles = React.useMemo(
+        () => nonCollegeRoles.filter((r: string) => !r.toLowerCase().includes('admin') && !r.toLowerCase().includes('basic education')),
+        [nonCollegeRoles]
+    );
+
     // Program list (canonical order) for per-program inputs
     // canonical program order via shared constant
 
@@ -156,7 +170,59 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                     >
                                         {/* Use single/collapsible to avoid layout conflicts between panels */}
                                         <Accordion type="single" collapsible className="w-full space-y-3">
-                                            {/* College program specific hours & days */}
+                                            {/* 1) Administrator roles */}
+                                            <AnimatePresence initial={false}>
+                                                {adminRoles.map((role: string) => (
+                                                    <motion.div
+                                                        key={`role-item-${role}`}
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        exit={{ opacity: 0, height: 0 }}
+                                                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                                        className="overflow-hidden"
+                                                    >
+                                                        <AccordionItem value={`role:${role}`} className="border rounded-md bg-muted/20 dark:bg-muted/10">
+                                                            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                                                <div className="flex w-full items-center justify-between gap-3 text-base">
+                                                                    <span className="capitalize font-medium">{role} Schedule</span>
+                                                                    <SummaryBadge icon={<CalendarDays size={12} />} className="mr-2">{getRoleSummary(role)}</SummaryBadge>
+                                                                </div>
+                                                            </AccordionTrigger>
+                                                            <AccordionContent className="pt-4 px-3 pb-3">
+                                                                <motion.div
+                                                                    key={`content-${role}`}
+                                                                    initial={{ opacity: 0 }}
+                                                                    animate={{ opacity: 1 }}
+                                                                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                                                                >
+                                                                    <WorkDaysSelector
+                                                                        value={data.work_days?.[role] || []}
+                                                                        onChange={(days: WorkDayTime[]) => {
+                                                                            setData('work_days', {
+                                                                                ...(data.work_days || {}),
+                                                                                [role]: days,
+                                                                            });
+                                                                            if (errors[`work_days.${role}`]) {
+                                                                                clearErrors(`work_days.${role}`);
+                                                                            }
+                                                                        }}
+                                                                        selectedIndex={selectedIndices[role] || 0}
+                                                                        onSelectIndex={idx =>
+                                                                            setSelectedIndices(prev => ({
+                                                                                ...prev,
+                                                                                [role]: idx,
+                                                                            }))
+                                                                        }
+                                                                    />
+                                                                    <ErrorDisplay field={`work_days.${role}` as any} />
+                                                                </motion.div>
+                                                            </AccordionContent>
+                                                        </AccordionItem>
+                                                    </motion.div>
+                                                ))}
+                                            </AnimatePresence>
+
+                                            {/* 2) College program specific hours & days */}
                                             {selectedPrograms.length > 0 && (
                                                 <AccordionItem value="college_schedule" className="border rounded-md bg-muted/20 dark:bg-muted/10">
                                                     <AccordionTrigger className="px-4 py-3 hover:no-underline">
@@ -264,16 +330,10 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                                 </AccordionItem>
                                             )}
 
-                                            {/* Conditionally render the default WorkDaysSelector with animated mount/unmount */}
+                                            {/* 3) Basic Education roles (only if level selected) */}
                                             <AnimatePresence initial={false}>
-                                                {nonCollegeRoles
-                                                    .filter((role: string) => {
-                                                        const isBasicEduRole = role.toLowerCase().includes('basic education');
-                                                        const hasBasicEduLevel = !!(data.basic_education_level && String(data.basic_education_level).trim());
-                                                        // Hide Basic Education schedule when no level selected
-                                                        if (isBasicEduRole && !hasBasicEduLevel) return false;
-                                                        return true;
-                                                    })
+                                                {basicEduRoles
+                                                    .filter(() => !!(data.basic_education_level && String(data.basic_education_level).trim()))
                                                     .map((role: string) => (
                                                         <motion.div
                                                             key={`role-item-${role}`}
@@ -288,9 +348,7 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                                                     <div className="flex w-full items-center justify-between gap-3 text-base">
                                                                         <div className="flex items-baseline gap-2">
                                                                             <span className="capitalize font-medium leading-tight">{role} Schedule</span>
-                                                                            {role.toLowerCase().includes('basic education') && !!(data.basic_education_level && String(data.basic_education_level).trim()) && (
-                                                                                <span className="text-xs text-muted-foreground leading-none">({String(data.basic_education_level)})</span>
-                                                                            )}
+                                                                            <span className="text-xs text-muted-foreground leading-none">({String(data.basic_education_level)})</span>
                                                                         </div>
                                                                         <SummaryBadge icon={<CalendarDays size={12} />} className="mr-2">{getRoleSummary(role)}</SummaryBadge>
                                                                     </div>
@@ -327,6 +385,58 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                                             </AccordionItem>
                                                         </motion.div>
                                                     ))}
+                                            </AnimatePresence>
+
+                                            {/* 4) Other roles */}
+                                            <AnimatePresence initial={false}>
+                                                {otherRoles.map((role: string) => (
+                                                    <motion.div
+                                                        key={`role-item-${role}`}
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        exit={{ opacity: 0, height: 0 }}
+                                                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                                        className="overflow-hidden"
+                                                    >
+                                                        <AccordionItem value={`role:${role}`} className="border rounded-md bg-muted/20 dark:bg-muted/10">
+                                                            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                                                <div className="flex w-full items-center justify-between gap-3 text-base">
+                                                                    <span className="capitalize font-medium">{role} Schedule</span>
+                                                                    <SummaryBadge icon={<CalendarDays size={12} />} className="mr-2">{getRoleSummary(role)}</SummaryBadge>
+                                                                </div>
+                                                            </AccordionTrigger>
+                                                            <AccordionContent className="pt-4 px-3 pb-3">
+                                                                <motion.div
+                                                                    key={`content-${role}`}
+                                                                    initial={{ opacity: 0 }}
+                                                                    animate={{ opacity: 1 }}
+                                                                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                                                                >
+                                                                    <WorkDaysSelector
+                                                                        value={data.work_days?.[role] || []}
+                                                                        onChange={(days: WorkDayTime[]) => {
+                                                                            setData('work_days', {
+                                                                                ...(data.work_days || {}),
+                                                                                [role]: days,
+                                                                            });
+                                                                            if (errors[`work_days.${role}`]) {
+                                                                                clearErrors(`work_days.${role}`);
+                                                                            }
+                                                                        }}
+                                                                        selectedIndex={selectedIndices[role] || 0}
+                                                                        onSelectIndex={idx =>
+                                                                            setSelectedIndices(prev => ({
+                                                                                ...prev,
+                                                                                [role]: idx,
+                                                                            }))
+                                                                        }
+                                                                    />
+                                                                    <ErrorDisplay field={`work_days.${role}` as any} />
+                                                                </motion.div>
+                                                            </AccordionContent>
+                                                        </AccordionItem>
+                                                    </motion.div>
+                                                ))}
                                             </AnimatePresence>
                                         </Accordion>
                                     </motion.div>
