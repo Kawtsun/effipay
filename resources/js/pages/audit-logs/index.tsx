@@ -4,12 +4,13 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
-import { Loader2, Search as SearchIcon, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import { ScrollText } from 'lucide-react';
 import EmployeePagination from '@/components/employee-pagination';
 
 import { Card } from "@/components/ui/card";
+import { AuditLogsActionFilter } from '@/components/audit-logs-action-filter';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -24,7 +25,7 @@ export default function AuditLogs() {
     // Get audit logs from Inertia props
     // You must pass auditLogs, currentPage, totalPages from the backend controller
     // Example: return Inertia::render('audit-logs/index', [...])
-    const { auditLogs, currentPage, totalPages, q: initialQ } = usePage().props as unknown as {
+    const { auditLogs, currentPage, totalPages, action: initialAction } = usePage().props as unknown as {
         auditLogs: Array<{
             id: number;
             action: string;
@@ -37,49 +38,11 @@ export default function AuditLogs() {
         }>;
         currentPage: number;
         totalPages: number;
-        q?: string;
+        action?: string;
     };
 
-    const [q, setQ] = useState<string>(initialQ ?? '');
-    const debounceRef = useRef<number | null>(null);
-    const firstLoadRef = useRef<boolean>(true);
-
-    useEffect(() => {
-        setQ(initialQ ?? '');
-    }, [initialQ]);
-
-    // Debounced, reactive search
-    useEffect(() => {
-        if (firstLoadRef.current) {
-            firstLoadRef.current = false;
-            return;
-        }
-        if (debounceRef.current) {
-            window.clearTimeout(debounceRef.current);
-        }
-        debounceRef.current = window.setTimeout(() => {
-            spinnerStart.current = Date.now();
-            setLoading(true);
-            const data = q ? { q } : {};
-            router.visit(route('audit-logs.index'), {
-                method: 'get',
-                data,
-                preserveState: true,
-                preserveScroll: true,
-                only: ['auditLogs', 'currentPage', 'totalPages', 'q'],
-                onFinish: () => {
-                    const elapsed = Date.now() - spinnerStart.current;
-                    const wait = Math.max(0, 400 - elapsed);
-                    setTimeout(() => setLoading(false), wait);
-                },
-            });
-        }, 350);
-        return () => {
-            if (debounceRef.current) {
-                window.clearTimeout(debounceRef.current);
-            }
-        };
-    }, [q]);
+    const [selectedAction, setSelectedAction] = useState<string>(initialAction ?? 'All');
+    
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -96,26 +59,30 @@ export default function AuditLogs() {
                     </div>
                 </div>
 
-                {/* SEARCH BAR - reactive with inline clear */}
-                <div className="relative w-100">
-                    <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input
-                        type="text"
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                        placeholder="Search"
-                        className="w-full rounded-full border bg-background pl-9 pr-9 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                {/* Top controls: Action filter */}
+                <div className="flex flex-wrap gap-2 items-center">
+                    <AuditLogsActionFilter
+                        value={selectedAction}
+                        onSelect={(value) => {
+                            setSelectedAction(value);
+                            spinnerStart.current = Date.now();
+                            setLoading(true);
+                            const data: any = {};
+                            if (value && value.toLowerCase() !== 'all') (data as any).action = value;
+                            router.visit(route('audit-logs.index'), {
+                                method: 'get',
+                                data,
+                                preserveState: true,
+                                preserveScroll: true,
+                                only: ['auditLogs','currentPage','totalPages','action'],
+                                onFinish: () => {
+                                    const elapsed = Date.now() - spinnerStart.current;
+                                    const wait = Math.max(0, 400 - elapsed);
+                                    setTimeout(() => setLoading(false), wait);
+                                },
+                            });
+                        }}
                     />
-                    {q?.length ? (
-                        <button
-                            type="button"
-                            aria-label="Clear search"
-                            onClick={() => setQ('')}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-accent"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
-                    ) : null}
                 </div>
 
                 {/* AUDIT LOG ROWS */}
@@ -238,10 +205,13 @@ export default function AuditLogs() {
                             setLoading(true);
                             router.visit(route('audit-logs.index'), {
                                 method: 'get',
-                                data: { page, q },
+                                data: {
+                                    page,
+                                    ...(selectedAction && selectedAction.toLowerCase() !== 'all' ? { action: selectedAction } : {}),
+                                },
                                 preserveState: true,
                                 preserveScroll: true,
-                                only: ['auditLogs', 'currentPage', 'totalPages', 'q'],
+                                only: ['auditLogs', 'currentPage', 'totalPages', 'action'],
                                 onFinish: () => {
                                     const elapsed = Date.now() - spinnerStart.current;
                                     const wait = Math.max(0, 400 - elapsed);

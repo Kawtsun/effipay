@@ -18,6 +18,7 @@ class AuditLogsController extends Controller
     {
         $perPage = 6;
         $search = trim((string) $request->input('q', ''));
+        $selectedAction = trim((string) $request->input('action', ''));
 
         $query = AuditLogs::query();
 
@@ -63,7 +64,14 @@ class AuditLogsController extends Controller
             });
         }
 
-        $logs = $query->orderByDesc('date')->paginate($perPage)->appends(['q' => $search]);
+        if ($selectedAction !== '' && strtolower($selectedAction) !== 'all') {
+            $query->where('action', $selectedAction);
+        }
+
+        $logs = $query->orderByDesc('date')->paginate($perPage)->appends([
+            'q' => $search,
+            'action' => $selectedAction,
+        ]);
 
         // Format logs for frontend
         $auditLogs = array_map(function ($log) {
@@ -84,6 +92,7 @@ class AuditLogsController extends Controller
             'currentPage' => $logs->currentPage(),
             'totalPages' => $logs->lastPage(),
             'q' => $search,
+            'action' => $selectedAction,
         ]);
     }
 
@@ -152,6 +161,21 @@ class AuditLogsController extends Controller
             $entityName = $validated['type'] === 'payslip' ? 'Print Payslip' : ($validated['type'] === 'btr' ? 'Print BTR' : 'Export Ledger');
             $entityType = $validated['type'];
             $entityId = $validated['employee_id'] ?? null;
+            $details = $validated['details'] ?? [];
+
+            // If individual printing (employee_id present), include employee name
+            if (!empty($entityId)) {
+                try {
+                    $emp = \App\Models\Employees::find($entityId);
+                    if ($emp) {
+                        $fullName = trim($emp->last_name . ', ' . $emp->first_name . ($emp->middle_name ? ' ' . $emp->middle_name : ''));
+                        $details['employee_id'] = $entityId;
+                        $details['employee_name'] = $fullName;
+                    }
+                } catch (\Throwable $e) {
+                    // ignore lookup errors
+                }
+            }
 
             AuditLogs::create([
                 'username'    => $username,
@@ -159,7 +183,7 @@ class AuditLogsController extends Controller
                 'name'        => $validated['month'] ?? now('Asia/Manila')->toDateString(),
                 'entity_type' => $entityType,
                 'entity_id'   => $entityId,
-                'details'     => json_encode($validated['details'] ?? []),
+                'details'     => json_encode($details),
                 'date'        => now('Asia/Manila'),
             ]);
 
