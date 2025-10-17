@@ -39,12 +39,26 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
   // Normalize helper to compare dates reliably (YYYY-MM-DD)
   const norm = (s?: string) => (s || '').slice(0, 10);
 
-  // Refetch observances when markedDates changes and dialog is open
+  // Refetch observances when dialog opens (avoid wiping local unsaved edits on every selection change)
   useEffect(() => {
     if (!open) return;
     async function refetchObservances() {
       try {
         const res = await fetch("/observances");
+
+        // Session expired / CSRF problem
+        if (res.status === 419 || res.status === 401) {
+          toast.error('Session expired. The page will reload to recover your session.');
+          window.setTimeout(() => window.location.reload(), 1200);
+          return;
+        }
+
+        if (res.status === 405) {
+          toast.error('Server route mismatch detected. Reloading the page to refresh routes.');
+          window.setTimeout(() => window.location.reload(), 1200);
+          return;
+        }
+
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
@@ -60,10 +74,14 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
             setServerObservances(uniq);
           }
         }
-      } catch {}
+      } catch (e) {
+        toast.error('Failed to fetch observances due to network or session error. Reloading to recover.');
+        console.error('refetchObservances error:', e);
+        window.setTimeout(() => window.location.reload(), 1200);
+      }
     }
     refetchObservances();
-  }, [markedDates, open]);
+  }, [open]);
 
   // Save handler for markedDates
   const handleSave = async () => {
@@ -132,12 +150,20 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
             const createdLocal = created.map((c: any) => ({ date: c.date, label: c.label, type: c.type, start_time: c.start_time }));
             setObservances(prev => {
               const map = new Map(prev.map(p => [p.date.slice(0,10), { ...p, date: p.date.slice(0,10) }]));
+              // Remove dates that were deleted
+              for (const r of removedDates) {
+                map.delete((r || '').slice(0,10));
+              }
               for (const c of createdLocal) map.set((c.date || '').slice(0,10), { ...c, date: (c.date || '').slice(0,10) });
               for (const u of updates) map.set((u.date || '').slice(0,10), { ...(map.get((u.date || '').slice(0,10)) || { date: (u.date || '').slice(0,10) }), ...u });
               return Array.from(map.values());
             });
             setServerObservances(prev => {
               const map = new Map(prev.map(p => [p.date.slice(0,10), { ...p, date: p.date.slice(0,10) }]));
+              // Remove dates that were deleted
+              for (const r of removedDates) {
+                map.delete((r || '').slice(0,10));
+              }
               for (const c of createdLocal) map.set((c.date || '').slice(0,10), { ...c, date: (c.date || '').slice(0,10) });
               for (const u of updates) map.set((u.date || '').slice(0,10), { ...(map.get((u.date || '').slice(0,10)) || { date: (u.date || '').slice(0,10) }), ...u });
               return Array.from(map.values());
@@ -339,15 +365,15 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
                         const originalSet = new Set(originalDates.map(norm));
                         const automatedSet = new Set(automatedDates.map(norm));
                         const newly = Array.from(markedSet).filter(d => !originalSet.has(d) && !automatedSet.has(d));
-                        setUserSelectedDates(newly);
                         // Use the currently highlighted date if available, else default to first newly selected
                         const currentNorm = norm(selectedDate);
                         const current = currentNorm && newly.includes(currentNorm)
                           ? currentNorm
                           : (newly[0] || undefined);
+                        // Only target the currently selected date to avoid overwriting other dates
+                        setUserSelectedDates(current ? [current] : []);
                         setUserSelectedDate(current);
                         setShowAddModal(true);
-                        toast.success(`Opening Add Event for ${newly.length} date${newly.length > 1 ? 's' : ''}`);
                       }}>
                         Add Event
                       </Button>

@@ -8,6 +8,8 @@ use App\Http\Requests\UpdateTimeKeepingRequest;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Models\AuditLogs;
 
 
 class TimeKeepingController extends Controller
@@ -65,9 +67,19 @@ class TimeKeepingController extends Controller
     public function import(Request $request)
     {
         $records = $request->input('records', []);
+        // Try to capture file name if provided (either as uploaded file or as a simple field)
+        $fileName = $request->input('file_name');
+        if (!$fileName && $request->hasFile('file')) {
+            try {
+                $fileName = $request->file('file')->getClientOriginalName();
+            } catch (\Throwable $e) {
+                $fileName = null;
+            }
+        }
         $imported = 0;
         $errors = [];
         $shownIdNameError = false;
+        $importMonths = [];
         foreach ($records as $i => $row) {
             try {
                 // Normalize keys to lowercase for robust matching
@@ -116,10 +128,37 @@ class TimeKeepingController extends Controller
                     ]
                 );
                 $imported++;
+                if (!empty($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                    $importMonths[] = substr($date, 0, 7);
+                }
             } catch (\Throwable $e) {
                 $errors[] = "Row $i: " . $e->getMessage();
             }
         }
+        // Create Audit Log for import attempt
+        try {
+            $username = Auth::user()->username ?? 'system';
+            $months = array_values(array_unique($importMonths));
+            $name = count($months) === 1 ? $months[0] : (count($months) > 1 ? 'multiple months' : date('Y-m'));
+            $details = [
+                'imported' => $imported,
+                'errors_count' => count($errors),
+                'sample_errors' => array_slice($errors, 0, 5),
+                'file_name' => $fileName,
+            ];
+            AuditLogs::create([
+                'username'    => $username,
+                'action'      => 'import timekeeping',
+                'name'        => $name,
+                'entity_type' => 'timekeeping',
+                'entity_id'   => null,
+                'details'     => json_encode($details),
+                'date'        => now('Asia/Manila'),
+            ]);
+        } catch (\Throwable $e) {
+            // fail silently for logging
+        }
+
         if ($imported > 0) {
             return response()->json(['success' => true, 'imported' => $imported, 'errors' => $errors]);
         } else {
@@ -866,5 +905,23 @@ class TimeKeepingController extends Controller
             $response['college_rate'] = $employee->college_rate ?? null;
         }
         return response()->json($response);
+    }
+
+    /**
+     * Return distinct YYYY-MM months present in timekeeping records, sorted descending.
+     */
+    public function getAvailableMonths(Request $request)
+    {
+        $tkMonths = \App\Models\TimeKeeping::selectRaw('DISTINCT LEFT(date, 7) as month')
+            ->orderBy('month', 'desc')
+            ->pluck('month')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'months' => $tkMonths,
+        ]);
     }
 }

@@ -126,6 +126,7 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             undertime: payroll.undertime ?? 0,
             absences: payroll.absences ?? 0,
             overtime_pay_total: payroll.overtime_pay ?? 0,
+            adjustment: payroll.adjustments ?? 0,
             ratePerHour: undefined,
             collegeRate: payroll.college_rate ?? 0,
         },
@@ -273,6 +274,22 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             setShowPDF('payslip');
             setLoadingPayslip(false);
         }, 100);
+
+        // Fire-and-forget audit log for payslip print
+        try {
+            fetch('/api/audit/print-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'payslip',
+                    employee_id: employee?.id,
+                    month: selectedMonth,
+                    details: { source: 'PrintDialog' },
+                }),
+            });
+        } catch {
+            // ignore audit errors
+        }
     };
 
     const handlePrintBTR = async () => {
@@ -341,6 +358,22 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 setShowPDF('btr');
                 setLoadingBTR(false);
             }, 100);
+
+            // Fire-and-forget audit log for BTR print
+            try {
+                fetch('/api/audit/print-log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'btr',
+                        employee_id: employee?.id,
+                        month: selectedMonth,
+                        details: { source: 'PrintDialog' },
+                    }),
+                });
+            } catch {
+                // ignore audit errors
+            }
         } catch {
             toast.error('Error generating BTR.');
             setLoadingBTR(false);
