@@ -40,6 +40,7 @@ import { formatFullName } from '@/utils/formatFullName'
 import { EmployeeTypesBadges } from './employee-types-badges'
 import { RolesTableBadge } from './roles-table-badge'
 import { StatusBadge } from './status-badge'
+import { COLUMN_SIZES } from '@/constants/tableColumnSizes'
 
 type TableReportProps = {
     data: Employees[]
@@ -208,7 +209,7 @@ export default function TableReport({
                     </div>
                 ),
                 cell: ({ row }) => <div className="px-4 py-2">{row.original.id}</div>,
-                size: 120,
+                size: COLUMN_SIZES.id,
             },
             {
                 id: 'name',
@@ -237,7 +238,7 @@ export default function TableReport({
                         {formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}
                     </div>
                 ),
-                size: 400,
+                size: COLUMN_SIZES.name,
             },
             {
                 id: 'employee_types',
@@ -248,7 +249,7 @@ export default function TableReport({
                     const normalized = Array.isArray(raw) ? normalizeEmployeeTypes(raw) : normalizeEmployeeTypes(typeof raw === 'string' ? raw.split(',') : raw)
                     return <EmployeeTypesBadges employeeTypes={normalized} />
                 },
-                size: 200,
+                size: COLUMN_SIZES.employee_types,
                 enableSorting: false,
             },
             {
@@ -277,7 +278,7 @@ export default function TableReport({
                         <StatusBadge status={row.original.employee_status} />
                     </div>
                 ),
-                size: 180,
+                size: COLUMN_SIZES.employee_status,
             },
             {
                 id: 'roles',
@@ -287,7 +288,7 @@ export default function TableReport({
                     const roles = row.original.roles ? row.original.roles.split(',').map((r) => r.trim()).filter(Boolean) : []
                     return <RolesTableBadge roles={roles} college_program={row.original.college_program} />
                 },
-                size: 250,
+                size: COLUMN_SIZES.roles,
                 enableSorting: false,
             },
             {
@@ -302,7 +303,7 @@ export default function TableReport({
                         </div>
                     )
                 },
-                size: 220,
+                size: COLUMN_SIZES.actions,
             },
         ],
         [onView, onPrint, onAdjustments, activeRoles],
