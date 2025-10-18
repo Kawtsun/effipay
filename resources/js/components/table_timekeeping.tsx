@@ -1,8 +1,9 @@
 import * as React from 'react'
 import { ColumnDef, getCoreRowModel, getSortedRowModel, PaginationState, SortingState, useReactTable } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, Fingerprint } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, Fingerprint, MoreHorizontal } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,6 +43,92 @@ export default function TableTimekeeping({
     const stickyId = true
     const [isAnimating, setIsAnimating] = React.useState(false)
 
+    type EmpType = { role: string; type: string }
+
+    const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+    const extractType = (value: unknown): string | null => {
+        if (typeof value === 'string') {
+            const t = value.trim()
+            return t.length ? t : null
+        }
+        if (isObject(value)) {
+            const t = value.type
+            const et = (value as Record<string, unknown>).employee_type
+            if (typeof t === 'string' && t.trim().length) return t.trim()
+            if (typeof et === 'string' && et.trim().length) return et.trim()
+        }
+        return null
+    }
+    const extractRole = (value: unknown): string => (isObject(value) && typeof value.role === 'string' && value.role.trim().length ? value.role.trim() : 'Employee')
+    const normalizeEmployeeTypes = (raw: unknown): EmpType[] => {
+        if (Array.isArray(raw)) {
+            return (raw as unknown[])
+                .map((item) => {
+                    const type = extractType(item)
+                    if (!type) return null
+                    const role = extractRole(item)
+                    return { type, role }
+                })
+                .filter((v): v is EmpType => v !== null)
+        }
+        const t = extractType(raw)
+        return t ? [{ type: t, role: 'Employee' }] : []
+    }
+
+    function ActionsMenu({ emp, onView, onBTR, menuActiveRef }: { emp: Employees; onView: (e: Employees) => void; onBTR: (e: Employees) => void; menuActiveRef: React.MutableRefObject<boolean> }) {
+        const [open, setOpen] = React.useState(false)
+        const handleOpenChange = (next: boolean) => {
+            menuActiveRef.current = next
+            setOpen(next)
+        }
+        return (
+            <DropdownMenu open={open} onOpenChange={handleOpenChange} modal={false}>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 p-0"
+                        aria-label="Actions"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                    >
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem
+                        onSelect={(e) => {
+                            e.preventDefault()
+                            menuActiveRef.current = true
+                            setOpen(false)
+                            setTimeout(() => {
+                                onView(emp)
+                                menuActiveRef.current = false
+                            }, 0)
+                        }}
+                    >
+                        <Eye className="mr-2 h-4 w-4" /> View
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        onSelect={(e) => {
+                            e.preventDefault()
+                            menuActiveRef.current = true
+                            setOpen(false)
+                            setTimeout(() => {
+                                onBTR(emp)
+                                menuActiveRef.current = false
+                            }, 0)
+                        }}
+                    >
+                        <Fingerprint className="mr-2 h-4 w-4" /> Record
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        )
+    }
+
     React.useEffect(() => {
         if (!loading) {
             const timer = setTimeout(() => setIsAnimating(true), 100) // Small delay to trigger animation
@@ -50,6 +137,8 @@ export default function TableTimekeeping({
             setIsAnimating(false)
         }
     }, [loading])
+
+    const menuActiveRef = React.useRef(false)
 
     const columns = React.useMemo<ColumnDef<Employees>[]>(
         () => [
@@ -84,7 +173,11 @@ export default function TableTimekeeping({
                 id: 'employee_types',
                 accessorFn: (row) => row.employee_types,
                 header: () => <div className="px-4 text-xs font-semibold uppercase tracking-wide">Employee Type</div>,
-                cell: ({ row }) => <EmployeeTypesBadges employeeTypes={row.original.employee_types} />,
+                cell: ({ row }) => {
+                    const raw = row.original.employee_types as unknown
+                    const normalized = Array.isArray(raw) ? normalizeEmployeeTypes(raw) : normalizeEmployeeTypes(typeof raw === 'string' ? raw.split(',') : raw)
+                    return <EmployeeTypesBadges employeeTypes={normalized} />
+                },
                 size: 200,
                 enableSorting: false,
             },
@@ -124,16 +217,7 @@ export default function TableTimekeeping({
                     const emp = row.original
                     return (
                         <div className="whitespace-nowrap px-4 py-2 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                                <Button variant="secondary" onClick={() => onView(emp)}>
-                                    <Eye />
-                                    View
-                                </Button>
-                                <Button onClick={() => onBTR(emp)}>
-                                    <Fingerprint />
-                                    BTR
-                                </Button>
-                            </div>
+                            <ActionsMenu emp={emp} onView={onView} onBTR={onBTR} menuActiveRef={menuActiveRef} />
                         </div>
                     )
                 },
@@ -166,11 +250,11 @@ export default function TableTimekeeping({
     })
 
     React.useEffect(() => {
-        const nextPage = table.getState().pagination.pageIndex + 1
+        const nextPage = pagination.pageIndex + 1
         if (nextPage !== currentPage) {
             onPageChange(nextPage)
         }
-    }, [table.getState().pagination.pageIndex])
+    }, [pagination.pageIndex, currentPage, onPageChange])
 
     return (
         <div className="flex flex-1 flex-col">
@@ -227,8 +311,20 @@ export default function TableTimekeeping({
                                 {table.getRowModel().rows.map((row, index) => (
                                     <TableRow
                                         key={row.id}
-                                        className={cn('transition-opacity duration-300', isAnimating ? 'opacity-100' : 'opacity-0')}
+                                        className={cn('transition-opacity duration-300 cursor-pointer hover:bg-muted/40', isAnimating ? 'opacity-100' : 'opacity-0')}
                                         style={{ transitionDelay: `${index * 30}ms` }}
+                                        tabIndex={0}
+                                        onClick={() => {
+                                            if (menuActiveRef.current) return
+                                            onView(row.original)
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault()
+                                                if (menuActiveRef.current) return
+                                                onView(row.original)
+                                            }
+                                        }}
                                     >
                                         {row.getVisibleCells().map((cell, idx) => (
                                             <TableCell
