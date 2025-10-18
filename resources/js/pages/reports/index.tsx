@@ -231,7 +231,7 @@ export default function ReportsIndex() {
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
-                        <p className="text-muted-foreground">View and print employee payroll reports.</p>
+                        <p className="text-muted-foreground">View, export, and print employee payroll reports.</p>
                     </div>
                 </div>
 
@@ -256,7 +256,7 @@ export default function ReportsIndex() {
                                 othersRoles={Array.isArray(initialOthersRoles) ? initialOthersRoles : []}
                                 onChange={(newFilters) => handleFilterChange({ ...filters, ...newFilters })}
                             />
-                            <Button variant="default" onClick={() => setPrintAllDialogOpen(true)}>
+                            <Button variant="secondary" onClick={() => setPrintAllDialogOpen(true)}>
                                 <Printer />
                                 Print All
                             </Button>
