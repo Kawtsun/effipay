@@ -14,8 +14,6 @@ export default function EmployeeSearch({
   onSearch,
 }: Props) {
   const [search, setSearch] = useState<string>(initialSearch ?? '')
-  const [hints, setHints] = useState<string[]>([])
-  const [showHint, setShowHint] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const didMount = useRef(false)
 
@@ -52,8 +50,6 @@ export default function EmployeeSearch({
 
   const handleClear = () => {
     setSearch('')
-    setHints([])
-    setShowHint(false)
     onSearch('')
     // inputRef.current?.focus()
   }
@@ -61,7 +57,6 @@ export default function EmployeeSearch({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const term = search.trim()
-    setShowHint(false)
     onSearch(term)
     inputRef.current?.blur() // 👈 blur the input
   }
@@ -69,65 +64,36 @@ export default function EmployeeSearch({
   return (
     <form onSubmit={handleSubmit} className="mb-4 max-w-md relative">
       <div className="relative w-full">
+        {/* Left Search Icon */}
+        <div className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center text-gray-500 dark:text-gray-400">
+          <Search size={16} />
+        </div>
         <Input
           ref={inputRef}
           value={search}
           onChange={e => {
             setSearch(e.target.value)
-            setShowHint(true)
           }}
-          onFocus={() => hints.length > 0 && setShowHint(true)}
           placeholder="Search employees..."
-          className="pr-10 w-full"
+          className="pl-8 pr-10 w-full"
         />
 
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center">
-          {/* Search Icon */}
-          <Search
-            size={16}
-            className={`
-            absolute transition-all duration-200 ease-in-out
-            ${search ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}
-          text-gray-500 dark:text-gray-400
-          `}
-          />
-
-          {/* Clear Button */}
+        {/* Right Clear Button */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 flex items-center justify-center">
           <button
             type="button"
             onClick={handleClear}
             tabIndex={-1}
             className={`
-            absolute transition-all duration-200 ease-in-out
-            ${search ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}
-            text-gray-500 dark:text-gray-400
-          `}
+              transition-all duration-200 ease-in-out
+              ${search ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}
+              text-gray-500 dark:text-gray-400
+            `}
           >
             <X size={16} />
           </button>
         </div>
       </div>
-
-
-
-      {showHint && hints.length > 0 && (
-        <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded shadow">
-          {hints.map((h, i) => (
-            <li
-              key={i}
-              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-              onMouseDown={() => {
-                setSearch(h)
-                setShowHint(false)
-                onSearch(h)
-                inputRef.current?.blur() // 👈 blur on hint click too
-              }}
-            >
-              {h}
-            </li>
-          ))}
-        </ul>
-      )}
     </form>
   )
 }
