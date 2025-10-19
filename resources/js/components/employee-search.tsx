@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 // import axios from 'axios'
 import { Input } from '@/components/ui/input'
 import { X, Search } from 'lucide-react'
-import debounce from 'lodash/debounce'
+// import debounce from 'lodash/debounce'
+import { useStickySearch } from '@/contexts/sticky-search'
 
 interface Props {
   initialSearch?: string | null
@@ -16,24 +17,58 @@ export default function EmployeeSearch({
   const [search, setSearch] = useState<string>(initialSearch ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
   const didMount = useRef(false)
+  const containerRef = useRef<HTMLFormElement>(null)
+  const focusedRef = useRef(false)
+  const userTyping = useRef(false)
 
-  // Debounced search
-  const debouncedSearch = useMemo(
-    () =>
-      debounce((term: string) => {
-        onSearch(term.trim())
-      }, 200),
-    [onSearch]
-  )
+  // Sticky search context integration
+  const sticky = useStickySearch()
+  // Register on mount
+  useEffect(() => {
+    const unregister = sticky.register({ onSearch, initialTerm: initialSearch ?? '', placeholder: 'Search employees...' })
+    return unregister
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Keep term in context in sync only when user changes it here, and also mirror context->local when it changes elsewhere (e.g., sticky header)
+  const updateStickyTerm = sticky.updateTerm;
+  useEffect(() => {
+    updateStickyTerm(search)
+  }, [search, updateStickyTerm])
+
+  // If the header updates the term, reflect it in the main input value so they always match
+  useEffect(() => {
+    if (!focusedRef.current && !userTyping.current && sticky.term !== search) {
+      setSearch(sticky.term)
+    }
+  }, [sticky.term, search])
+
+  // Debounced search is centralized in context; call it directly here to match sticky behavior
 
   useEffect(() => {
     if (!didMount.current) {
       didMount.current = true
     } else {
-      debouncedSearch(search)
+      sticky.triggerSearchDebounced(search)
     }
-    return () => debouncedSearch.cancel()
-  }, [search, debouncedSearch])
+  }, [search, sticky])
+
+  // Observe visibility to toggle header sticky search
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !('IntersectionObserver' in window)) return
+    // Try to find the Radix ScrollArea viewport to observe within the scrolling container
+    const scrollRoot = document.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null
+    const io = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        sticky.setSourceVisible(entry.isIntersecting)
+      },
+      { root: scrollRoot ?? null, threshold: 0 }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [sticky])
 
   // Fetch hints
   // useEffect(() => {
@@ -50,19 +85,19 @@ export default function EmployeeSearch({
 
   const handleClear = () => {
     setSearch('')
-    onSearch('')
+    sticky.triggerSearch('')
     // inputRef.current?.focus()
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const term = search.trim()
-    onSearch(term)
+    sticky.triggerSearch(term)
     inputRef.current?.blur() // 👈 blur the input
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4 max-w-md relative">
+    <form ref={containerRef} onSubmit={handleSubmit} className="mb-4 max-w-md relative">
       <div className="relative w-full">
         {/* Left Search Icon */}
         <div className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center text-gray-500 dark:text-gray-400">
@@ -72,8 +107,11 @@ export default function EmployeeSearch({
           ref={inputRef}
           value={search}
           onChange={e => {
+            userTyping.current = true
             setSearch(e.target.value)
           }}
+          onFocus={() => { focusedRef.current = true }}
+          onBlur={() => { focusedRef.current = false; userTyping.current = false }}
           placeholder="Search employees..."
           className="pl-8 pr-10 w-full"
         />

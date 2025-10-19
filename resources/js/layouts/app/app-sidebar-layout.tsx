@@ -7,6 +7,7 @@ import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import TccHeader from '@/components/tcc-header';
 import { Toaster } from '@/components/ui/sonner';
 import { type BreadcrumbItem } from '@/types';
+import { StickySearchProvider } from '@/contexts/sticky-search';
 import { type PropsWithChildren } from 'react';
 
 export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWithChildren<{ breadcrumbs?: BreadcrumbItem[] }>) {
@@ -20,10 +21,12 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
                     <AppSidebar />
                     {/* 👇 REMOVE overflow-hidden from here */}
                     <AppContent variant="sidebar">
-                        <AppSidebarHeader breadcrumbs={breadcrumbs} />
-                        <AppContentScrollArea>
-                            {children}
-                        </AppContentScrollArea>
+                        <StickySearchProvider>
+                            <AppSidebarHeader breadcrumbs={breadcrumbs} />
+                            <AppContentScrollArea>
+                                {children}
+                            </AppContentScrollArea>
+                        </StickySearchProvider>
                     </AppContent>
                     <Toaster richColors position={'top-right'} visibleToasts={5} />
                 </div>
