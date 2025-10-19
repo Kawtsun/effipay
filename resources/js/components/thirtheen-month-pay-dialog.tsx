@@ -9,10 +9,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle, Calculator, Loader2, TrendingUp, Lightbulb } from "lucide-react";
+import { Calculator, TrendingUp, Lightbulb } from "lucide-react";
 import { router } from "@inertiajs/react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 
 // I'm assuming MONTHS is defined here or imported
 const MONTHS = [
@@ -117,13 +118,15 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
                             </div>
 
                             <DialogFooter className="flex-shrink-0 pt-4">
+                                <Button onClick={onClose} variant="outline">Close</Button>
                                 <Button
                                     onClick={handleRun13thMonthPay}
                                     disabled={!selectedCutoffMonth || isCalculating}
+                                    aria-busy={isCalculating}
                                 >
                                     {isCalculating ? (
                                         <span className="flex items-center gap-2">
-                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <Spinner />
                                             Processing...
                                         </span>
                                     ) : (
@@ -133,7 +136,7 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
                                         </span>
                                     )}
                                 </Button>
-                                <Button onClick={onClose} variant="outline">Close</Button>
+                                
                             </DialogFooter>
                         </DialogContent>
                     </motion.div>
