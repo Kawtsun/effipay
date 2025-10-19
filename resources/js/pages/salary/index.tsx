@@ -5,6 +5,7 @@ import { EmployeeType } from '@/components/employee-type'
 import { EmployeeSalaryEdit } from '@/components/employee-salary-edit'
 import { type BreadcrumbItem } from '@/types'
 import { Wallet, Pencil, Calculator, Lightbulb, TrendingUp } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -159,8 +160,13 @@ export default function Index() {
                   onClick={handleRunPayroll}
                   disabled={!selectedMonth || isRunningPayroll}
                   className="flex items-center gap-2"
+                  aria-busy={isRunningPayroll}
                 >
-                  <Calculator className="w-4 h-4" />
+                  {isRunningPayroll ? (
+                    <Spinner />
+                  ) : (
+                    <Calculator className="w-4 h-4" />
+                  )}
                   {isRunningPayroll ? 'Running...' : 'Run Payroll'}
                 </Button>
               </div>
@@ -169,7 +175,7 @@ export default function Index() {
               <Button
                 onClick={() => setIsThirteenthMonthDialogOpen(true)}
                 variant="secondary"
-                className="flex items-center gap-2 transition-transform duration-150 hover:scale-[1.03]"
+                className="flex items-center gap-2"
               >
                 <TrendingUp className="w-4 h-4" />
                 13th Month Pay
