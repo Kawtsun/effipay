@@ -112,7 +112,7 @@ export default function ThirteenthMonthPayDialog({ isOpen, onClose }: Props) {
                                             Calculation Basis
                                         </h5>
                                         <p>The amount is calculated based on the formula: <strong>(Sum of Monthly Adjusted Basic Salary YTD) / 12</strong>. </p>
-                                        <p className="font-medium">The 'Monthly Adjusted Basic Salary' uses Base Salary less the monetary value of Lates and Absences recorded up to the **Cutoff Month**.</p>
+                                        <p className="font-medium">The 'Monthly Adjusted Basic Salary' uses Base Salary less the monetary value of Lates and Absences recorded up to the <strong>Cutoff Month</strong>.</p>
                                     </div>
                                 </div>
                             </div>

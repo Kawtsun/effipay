@@ -156,6 +156,16 @@ export default function Index() {
                   onValueChange={setSelectedMonth}
                   placeholder="Select payroll month"
                 />
+
+                {/* 13th Month Button */}
+              <Button
+                onClick={() => setIsThirteenthMonthDialogOpen(true)}
+                variant="secondary"
+                className="flex items-center gap-2"
+              >
+                <TrendingUp className="w-4 h-4" />
+                13th Month Pay
+              </Button>
                 <Button
                   onClick={handleRunPayroll}
                   disabled={!selectedMonth || isRunningPayroll}
@@ -170,16 +180,6 @@ export default function Index() {
                   {isRunningPayroll ? 'Running...' : 'Run Payroll'}
                 </Button>
               </div>
-
-              {/* 13th Month Button */}
-              <Button
-                onClick={() => setIsThirteenthMonthDialogOpen(true)}
-                variant="secondary"
-                className="flex items-center gap-2"
-              >
-                <TrendingUp className="w-4 h-4" />
-                13th Month Pay
-              </Button>
 
             </div>
           </div>
