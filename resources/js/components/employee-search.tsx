@@ -16,7 +16,6 @@ export default function EmployeeSearch({
 }: Props) {
   const [search, setSearch] = useState<string>(initialSearch ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
-  const didMount = useRef(false)
   const containerRef = useRef<HTMLFormElement>(null)
   const focusedRef = useRef(false)
   const userTyping = useRef(false)
@@ -45,13 +44,7 @@ export default function EmployeeSearch({
 
   // Debounced search is centralized in context; call it directly here to match sticky behavior
 
-  useEffect(() => {
-    if (!didMount.current) {
-      didMount.current = true
-    } else {
-      sticky.triggerSearchDebounced(search)
-    }
-  }, [search, sticky])
+  // Do not auto-trigger on mount. We trigger only on user input via onChange below.
 
   // Observe visibility to toggle header sticky search
   useEffect(() => {
@@ -109,6 +102,9 @@ export default function EmployeeSearch({
           onChange={e => {
             userTyping.current = true
             setSearch(e.target.value)
+            // keep context term and trigger debounced search only on user input
+            sticky.updateTerm(e.target.value)
+            sticky.triggerSearchDebounced(e.target.value.trim())
           }}
           onFocus={() => { focusedRef.current = true }}
           onBlur={() => { focusedRef.current = false; userTyping.current = false }}
