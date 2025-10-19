@@ -50,7 +50,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
             {/* Sticky compact search when source is scrolled out of view */}
-            <div className="ml-auto max-w-md w-full hidden md:block">
+            <div className="ml-auto mr-2 md:mr-4 max-w-[20rem] w-full hidden md:block">
                 <AnimatePresence initial={false}>
                     {showSticky && (
                         <motion.div

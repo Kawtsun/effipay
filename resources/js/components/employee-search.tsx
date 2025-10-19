@@ -90,7 +90,7 @@ export default function EmployeeSearch({
   }
 
   return (
-    <form ref={containerRef} onSubmit={handleSubmit} className="mb-4 max-w-md relative">
+    <form ref={containerRef} onSubmit={handleSubmit} className="mb-4 max-w-[20rem] relative">
       <div className="relative w-full">
         {/* Left Search Icon */}
         <div className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center text-gray-500 dark:text-gray-400">
