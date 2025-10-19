@@ -78,6 +78,9 @@ export default function EmployeeSearch({
 
   const handleClear = () => {
     setSearch('')
+    // Update shared term before triggering, so mirrors won't repopulate the old value
+    sticky.updateTerm('')
+    sticky.cancelDebounced()
     sticky.triggerSearch('')
     // inputRef.current?.focus()
   }

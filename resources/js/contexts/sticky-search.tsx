@@ -20,6 +20,7 @@ type StickySearchContextType = {
   triggerSearch: (term?: string) => void
   triggerSearchDebounced: (term?: string) => void
   flushDebounced: () => void
+  cancelDebounced: () => void
 }
 
 const StickySearchContext = createContext<StickySearchContextType | undefined>(undefined)
@@ -80,6 +81,10 @@ export function StickySearchProvider({ children }: { children: React.ReactNode }
     ;(debouncedRef.current as unknown as { flush?: () => void })?.flush?.()
   }, [])
 
+  const cancelDebounced = useCallback(() => {
+    ;(debouncedRef.current as unknown as { cancel?: () => void })?.cancel?.()
+  }, [])
+
   const value = useMemo<StickySearchContextType>(() => ({
     active,
     sourceVisible,
@@ -91,7 +96,8 @@ export function StickySearchProvider({ children }: { children: React.ReactNode }
     triggerSearch,
     triggerSearchDebounced,
     flushDebounced,
-  }), [active, sourceVisible, term, placeholder, register, updateTerm, triggerSearch, triggerSearchDebounced, flushDebounced])
+    cancelDebounced,
+  }), [active, sourceVisible, term, placeholder, register, updateTerm, triggerSearch, triggerSearchDebounced, flushDebounced, cancelDebounced])
 
   return <StickySearchContext.Provider value={value}>{children}</StickySearchContext.Provider>
 }
