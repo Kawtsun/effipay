@@ -31,6 +31,7 @@ type TableEmployeeProps = {
 
 const MAX_ROWS = 10
 const ROW_HEIGHT = 53 // 53px height for each row
+const ROW_HEIGHT_CLASS = 'h-[53px]'
 
 type EmpType = { role: string; type: string }
 
@@ -191,7 +192,7 @@ export default function TableEmployee({
                         </Button>
                     </div>
                 ),
-                cell: ({ row }) => <div className="px-4 py-2">{row.original.id}</div>,
+                cell: ({ row }) => <span className="inline-block px-1">{row.original.id}</span>,
                 size: COLUMN_SIZES.id,
             },
             {
@@ -205,7 +206,7 @@ export default function TableEmployee({
                         </Button>
                     </div>
                 ),
-                cell: ({ row }) => <div className="px-4 py-2 font-medium text-foreground">{formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}</div>,
+                cell: ({ row }) => <span className="inline-block font-medium text-foreground">{formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}</span>,
                 size: COLUMN_SIZES.name,
             },
             {
@@ -216,7 +217,7 @@ export default function TableEmployee({
                     const raw = row.original.employee_types as unknown
                     // Support string (comma-separated), string[], or array of objects
                     const normalized = Array.isArray(raw) ? normalizeEmployeeTypes(raw) : normalizeEmployeeTypes(typeof raw === 'string' ? raw.split(',') : raw)
-                    return <EmployeeTypesBadges employeeTypes={normalized} />
+                    return <EmployeeTypesBadges employeeTypes={normalized} variant="plain" compact />
                 },
                 size: COLUMN_SIZES.employee_types,
                 enableSorting: false,
@@ -231,11 +232,7 @@ export default function TableEmployee({
                         </Button>
                     </div>
                 ),
-                cell: ({ row }) => (
-                    <div className="px-4 py-2">
-                        <StatusBadge status={row.original.employee_status} />
-                    </div>
-                ),
+                cell: ({ row }) => <StatusBadge status={row.original.employee_status} />,
                 size: COLUMN_SIZES.employee_status,
             },
             {
@@ -244,7 +241,7 @@ export default function TableEmployee({
                 header: () => <div className="px-4 text-xs font-semibold uppercase tracking-wide">Roles</div>,
                 cell: ({ row }) => {
                     const roles = row.original.roles ? row.original.roles.split(',').map((r) => r.trim()).filter(Boolean) : []
-                    return <RolesTableBadge roles={roles} college_program={row.original.college_program} />
+                    return <RolesTableBadge roles={roles} college_program={row.original.college_program} compact />
                 },
                 size: COLUMN_SIZES.roles,
                 enableSorting: false,
@@ -313,9 +310,9 @@ export default function TableEmployee({
                     <TableBody>
                         {loading ? (
                             Array.from({ length: pagination.pageSize }).map((_, i) => (
-                                <TableRow key={`skeleton-${i}`} style={{ height: ROW_HEIGHT }}>
+                                <TableRow key={`skeleton-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
                                     {columns.map((col) => (
-                                        <TableCell key={col.id ?? `col-${i}`} style={{ width: col.size }}>
+                                        <TableCell key={col.id ?? `col-${i}`} className={cn('py-0', ROW_HEIGHT_CLASS)} style={{ width: col.size }}>
                                             <Skeleton className="h-4 w-full" />
                                         </TableCell>
                                     ))}
@@ -329,9 +326,9 @@ export default function TableEmployee({
                                     </TableCell>
                                 </TableRow>
                                 {Array.from({ length: Math.max(0, pagination.pageSize - 1) }).map((_, i) => (
-                                    <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
+                                    <TableRow key={`empty-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
                                         {columns.map((col) => (
-                                            <TableCell key={col.id ?? `col-${i}`} />
+                                            <TableCell key={col.id ?? `col-${i}`} className={cn('py-0', ROW_HEIGHT_CLASS)} />
                                         ))}
                                     </TableRow>
                                 ))}
@@ -357,16 +354,20 @@ export default function TableEmployee({
                                         }}
                                     >
                                         {row.getVisibleCells().map((cell, idx) => (
-                                            <TableCell key={cell.id} className={cn(density === 'compact' ? 'py-1.5' : 'py-3', idx === 0 ? cn('pl-4', stickyId ? 'sticky left-0 z-[1] bg-inherit' : '') : '')} style={{ width: cell.column.getSize() || undefined }}>
+                                            <TableCell
+                                                key={cell.id}
+                                                className={cn('py-0 px-4', ROW_HEIGHT_CLASS, idx === 0 ? (stickyId ? 'sticky left-0 z-[1] bg-inherit' : '') : '')}
+                                                style={{ width: cell.column.getSize() || undefined }}
+                                            >
                                                 {typeof cell.column.columnDef.cell === 'function' ? cell.column.columnDef.cell(cell.getContext()) : cell.column.columnDef.cell}
                                             </TableCell>
                                         ))}
                                     </TableRow>
                                 ))}
                                 {Array.from({ length: Math.max(0, pagination.pageSize - data.length) }).map((_, i) => (
-                                    <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
+                                    <TableRow key={`empty-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
                                         {columns.map((col) => (
-                                            <TableCell key={col.id ?? `col-${i}`} />
+                                            <TableCell key={col.id ?? `col-${i}`} className={cn('py-0', ROW_HEIGHT_CLASS)} />
                                         ))}
                                     </TableRow>
                                 ))}

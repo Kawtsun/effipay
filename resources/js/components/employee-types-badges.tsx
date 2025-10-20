@@ -12,6 +12,7 @@ type Variant = 'plain' | 'text'
 interface EmployeeTypesBadgesProps {
     employeeTypes: EmployeeType[]
     variant?: Variant // default: 'plain' (subdued look); set to 'text' for text-only
+    compact?: boolean // when true, remove outer padding/min-width for tight table rows
 }
 
 // Removed per-type style mapping to keep a subdued, consistent look
@@ -39,7 +40,7 @@ const EmployeeTypeBadge: React.FC<{ employeeType: EmployeeType; className?: stri
     )
 }
 
-export function EmployeeTypesBadges({ employeeTypes, variant = 'plain' }: EmployeeTypesBadgesProps) {
+export function EmployeeTypesBadges({ employeeTypes, variant = 'plain', compact = false }: EmployeeTypesBadgesProps) {
     if (!Array.isArray(employeeTypes) || employeeTypes.length === 0) {
         // Keep this low emphasis as well
         return <div className="px-4 py-2 text-muted-foreground">Not Assigned</div>
@@ -65,11 +66,11 @@ export function EmployeeTypesBadges({ employeeTypes, variant = 'plain' }: Employ
     )
 
     if (employeeTypes.length <= 1) {
-        return <div className="min-w-[160px] px-4 py-2">{badgeContent}</div>
+        return <div className={cn(compact ? 'px-0 py-0 min-w-0' : 'min-w-[160px] px-4 py-2')}>{badgeContent}</div>
     }
 
     return (
-        <div className="min-w-[160px] px-4 py-2">
+        <div className={cn(compact ? 'px-0 py-0 min-w-0' : 'min-w-[160px] px-4 py-2')}>
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>

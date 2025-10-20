@@ -56,9 +56,10 @@ const RoleBadge: React.FC<RoleBadgeProps> = ({ role, className, program }) => {
 interface RolesTableBadgeProps {
     roles: string[]
     college_program?: string
+    compact?: boolean // when true, remove extra outer padding for table usage
 }
 
-export function RolesTableBadge({ roles, college_program }: RolesTableBadgeProps) {
+export function RolesTableBadge({ roles, college_program, compact = false }: RolesTableBadgeProps) {
     if (!roles || roles.length === 0) {
         return <div className="px-4 py-2 text-muted-foreground">Not Assigned</div>
     }
@@ -98,11 +99,11 @@ export function RolesTableBadge({ roles, college_program }: RolesTableBadgeProps
     const hasSingleCollegeInstructorRole = sortedRoles.length === 1 && isMainRoleCollegeInstructor && !!college_program
 
     if (!hasMultipleRoles && !hasSingleCollegeInstructorRole) {
-        return <div className="min-w-[160px] px-4 py-2">{badgeContent}</div>
+        return <div className={cn(compact ? 'px-0 py-0 min-w-0' : 'min-w-[160px] px-4 py-2')}>{badgeContent}</div>
     }
 
     return (
-        <div className="min-w-[160px] px-4 py-2">
+        <div className={cn(compact ? 'px-0 py-0 min-w-0' : 'min-w-[160px] px-4 py-2')}>
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
