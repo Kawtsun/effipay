@@ -289,12 +289,6 @@ export default function TableEmployee({
         state: { pagination, sorting },
     })
 
-    React.useEffect(() => {
-        const nextPage = pagination.pageIndex + 1
-        if (nextPage !== currentPage) {
-            onPageChange(nextPage)
-        }
-    }, [pagination.pageIndex, currentPage, onPageChange])
 
     return (
         <div className="flex flex-1 flex-col">
@@ -318,10 +312,10 @@ export default function TableEmployee({
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            Array.from({ length: MAX_ROWS }).map((_, i) => (
+                            Array.from({ length: pagination.pageSize }).map((_, i) => (
                                 <TableRow key={`skeleton-${i}`} style={{ height: ROW_HEIGHT }}>
                                     {columns.map((col) => (
-                                        <TableCell key={col.id} style={{ width: col.size }}>
+                                        <TableCell key={col.id ?? `col-${i}`} style={{ width: col.size }}>
                                             <Skeleton className="h-4 w-full" />
                                         </TableCell>
                                     ))}
@@ -334,10 +328,10 @@ export default function TableEmployee({
                                         No employees found
                                     </TableCell>
                                 </TableRow>
-                                {Array.from({ length: MAX_ROWS - 1 }).map((_, i) => (
+                                {Array.from({ length: Math.max(0, pagination.pageSize - 1) }).map((_, i) => (
                                     <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
                                         {columns.map((col) => (
-                                            <TableCell key={col.id} />
+                                            <TableCell key={col.id ?? `col-${i}`} />
                                         ))}
                                     </TableRow>
                                 ))}
@@ -369,10 +363,10 @@ export default function TableEmployee({
                                         ))}
                                     </TableRow>
                                 ))}
-                                {Array.from({ length: Math.max(0, MAX_ROWS - data.length) }).map((_, i) => (
+                                {Array.from({ length: Math.max(0, pagination.pageSize - data.length) }).map((_, i) => (
                                     <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
                                         {columns.map((col) => (
-                                            <TableCell key={col.id} />
+                                            <TableCell key={col.id ?? `col-${i}`} />
                                         ))}
                                     </TableRow>
                                 ))}

@@ -51,7 +51,7 @@ type TableReportProps = {
     onPageSizeChange?: (pageSize: number) => void
     onView: (emp: Employees) => void
     onPrint: (emp: Employees) => void
-    onAdjustments: (emp: Employees) => void // Added from tcc-adjustments
+    onAdjustments: (emp: Employees) => void
     activeRoles?: string[]
 }
 
@@ -68,7 +68,6 @@ export default function TableReport({
     onView,
     onPrint,
     onAdjustments,
-    activeRoles = [],
 }: TableReportProps) {
     const density: 'comfortable' | 'compact' = 'compact'
     const stickyId = true
@@ -76,22 +75,22 @@ export default function TableReport({
 
     type EmpType = { role: string; type: string }
 
-    const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
-    const extractType = (value: unknown): string | null => {
-        if (typeof value === 'string') {
-            const t = value.trim()
-            return t.length ? t : null
+    const normalizeEmployeeTypes = React.useCallback((raw: unknown): EmpType[] => {
+        const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+        const extractType = (value: unknown): string | null => {
+            if (typeof value === 'string') {
+                const t = value.trim()
+                return t.length ? t : null
+            }
+            if (isObject(value)) {
+                const t = (value as Record<string, unknown>).type
+                const et = (value as Record<string, unknown>).employee_type
+                if (typeof t === 'string' && t.trim().length) return t.trim()
+                if (typeof et === 'string' && et.trim().length) return et.trim()
+            }
+            return null
         }
-        if (isObject(value)) {
-            const t = value.type
-            const et = (value as Record<string, unknown>).employee_type
-            if (typeof t === 'string' && t.trim().length) return t.trim()
-            if (typeof et === 'string' && et.trim().length) return et.trim()
-        }
-        return null
-    }
-    const extractRole = (value: unknown): string => (isObject(value) && typeof value.role === 'string' && value.role.trim().length ? value.role.trim() : 'Employee')
-    const normalizeEmployeeTypes = (raw: unknown): EmpType[] => {
+        const extractRole = (value: unknown): string => (isObject(value) && typeof (value as Record<string, unknown>).role === 'string' && ((value as Record<string, unknown>).role as string).trim().length ? ((value as Record<string, unknown>).role as string).trim() : 'Employee')
         if (Array.isArray(raw)) {
             return (raw as unknown[])
                 .map((item) => {
@@ -104,7 +103,7 @@ export default function TableReport({
         }
         const t = extractType(raw)
         return t ? [{ type: t, role: 'Employee' }] : []
-    }
+    }, [])
 
     function ActionsMenu({ emp, onView, onPrint, onAdjustments, menuActiveRef }: { emp: Employees; onView: (e: Employees) => void; onPrint: (e: Employees) => void; onAdjustments: (e: Employees) => void; menuActiveRef: React.MutableRefObject<boolean> }) {
         const [open, setOpen] = React.useState(false)
@@ -306,7 +305,7 @@ export default function TableReport({
                 size: COLUMN_SIZES.actions,
             },
         ],
-        [onView, onPrint, onAdjustments, activeRoles],
+    [onView, onPrint, onAdjustments, normalizeEmployeeTypes],
     )
 
     const [pagination, setPagination] = React.useState<PaginationState>({
@@ -331,12 +330,7 @@ export default function TableReport({
         state: { pagination, sorting },
     })
 
-    React.useEffect(() => {
-        const nextPage = pagination.pageIndex + 1
-        if (nextPage !== currentPage) {
-            onPageChange(nextPage)
-        }
-    }, [pagination.pageIndex, currentPage, onPageChange])
+    // Do not emit page changes from local pagination; parent owns currentPage
 
     return (
         <div className="flex flex-1 flex-col">
@@ -371,10 +365,10 @@ export default function TableReport({
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            Array.from({ length: MAX_ROWS }).map((_, i) => (
+                            Array.from({ length: pagination.pageSize }).map((_, i) => (
                                 <TableRow key={`skeleton-${i}`} style={{ height: ROW_HEIGHT }}>
                                     {columns.map((col) => (
-                                        <TableCell key={col.id} style={{ width: col.size }}>
+                                        <TableCell key={col.id ?? `col-${i}`} style={{ width: col.size }}>
                                             <Skeleton className="h-4 w-full" />
                                         </TableCell>
                                     ))}
@@ -391,10 +385,10 @@ export default function TableReport({
                                         No employees found
                                     </TableCell>
                                 </TableRow>
-                                {Array.from({ length: MAX_ROWS - 1 }).map((_, i) => (
+                                {Array.from({ length: Math.max(0, pagination.pageSize - 1) }).map((_, i) => (
                                     <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
                                         {columns.map((col) => (
-                                            <TableCell key={col.id} />
+                                            <TableCell key={col.id ?? `col-${i}`} />
                                         ))}
                                     </TableRow>
                                 ))}
@@ -435,10 +429,10 @@ export default function TableReport({
                                         ))}
                                     </TableRow>
                                 ))}
-                                {Array.from({ length: Math.max(0, MAX_ROWS - data.length) }).map((_, i) => (
+                                {Array.from({ length: Math.max(0, pagination.pageSize - data.length) }).map((_, i) => (
                                     <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
                                         {columns.map((col) => (
-                                            <TableCell key={col.id} />
+                                            <TableCell key={col.id ?? `col-${i}`} />
                                         ))}
                                     </TableRow>
                                 ))}

@@ -107,7 +107,6 @@ export default function Index({
                 collegeProgram: string
                 othersRole: string
                 perPage: number
-                per_page: number
             }>,
             options: { preserve?: boolean } = {},
         ) => {
@@ -142,7 +141,6 @@ export default function Index({
                     roles: hasFilters ? appliedFilters.roles : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
                     perPage: pageSize,
-                    per_page: pageSize,
                 },
                 { preserve: true },
             )
@@ -180,7 +178,6 @@ export default function Index({
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: applied.collegeProgram || undefined,
                     perPage: pageSize,
-                    per_page: pageSize,
                 },
                 { preserve: true },
             )
@@ -192,7 +189,7 @@ export default function Index({
         const empty = { types: [], statuses: [], roles: [], othersRole: '' }
         setFilters(empty)
         setAppliedFilters(empty)
-        visit({ search: searchTerm || undefined, page: 1, perPage: pageSize, per_page: pageSize }, { preserve: true })
+    visit({ search: searchTerm || undefined, page: 1, perPage: pageSize }, { preserve: true })
     }, [visit, searchTerm, pageSize])
 
     const handlePage = useCallback(
@@ -212,7 +209,6 @@ export default function Index({
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
                     perPage: pageSize,
-                    per_page: pageSize,
                 },
                 { preserve: true },
             )
@@ -333,7 +329,6 @@ export default function Index({
                                     roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
                                     collegeProgram: appliedFilters.collegeProgram || undefined,
                                     perPage: size,
-                                    per_page: size,
                                 },
                                 { preserve: true },
                             )
@@ -350,7 +345,6 @@ export default function Index({
                                 page: currentPage,
                                 collegeProgram: appliedFilters.collegeProgram || undefined,
                                 perPage: pageSize,
-                                per_page: pageSize,
                             })
                         }
                     />

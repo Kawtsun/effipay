@@ -96,7 +96,7 @@ export default function ReportsIndex() {
 
     // --- Data fetching and handlers (from tcc-adjustments) ---
     const visit = useCallback(
-        (params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
+        (params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; perPage: number }>, options: { preserve?: boolean } = {}) => {
             spinnerStart.current = Date.now()
             setLoading(true)
 
@@ -128,7 +128,6 @@ export default function ReportsIndex() {
                     roles: hasFilters ? appliedFilters.roles : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
                     perPage: pageSize,
-                    per_page: pageSize,
                 },
                 { preserve: true },
             )
@@ -164,7 +163,6 @@ export default function ReportsIndex() {
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: applied.collegeProgram || undefined,
                     perPage: pageSize,
-                    per_page: pageSize,
                 },
                 { preserve: true },
             )
@@ -176,7 +174,7 @@ export default function ReportsIndex() {
         const empty = { types: [], statuses: [], roles: [], othersRole: '' }
         setFilters(empty)
         setAppliedFilters(empty)
-        visit({ search: searchTerm || undefined, page: 1, perPage: pageSize, per_page: pageSize }, { preserve: true })
+    visit({ search: searchTerm || undefined, page: 1, perPage: pageSize }, { preserve: true })
     }, [visit, searchTerm, pageSize])
 
     const handlePage = useCallback(
@@ -196,7 +194,6 @@ export default function ReportsIndex() {
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
                     perPage: pageSize,
-                    per_page: pageSize,
                 },
                 { preserve: true },
             )
@@ -299,7 +296,6 @@ export default function ReportsIndex() {
                                     roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
                                     collegeProgram: appliedFilters.collegeProgram || undefined,
                                     perPage: size,
-                                    per_page: size,
                                 },
                                 { preserve: true },
                             )

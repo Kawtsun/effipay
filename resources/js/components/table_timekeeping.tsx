@@ -3,7 +3,7 @@ import { ColumnDef, getCoreRowModel, getSortedRowModel, PaginationState, Sorting
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, Fingerprint, MoreHorizontal } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -46,22 +46,22 @@ export default function TableTimekeeping({
 
     type EmpType = { role: string; type: string }
 
-    const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
-    const extractType = (value: unknown): string | null => {
-        if (typeof value === 'string') {
-            const t = value.trim()
-            return t.length ? t : null
+    const normalizeEmployeeTypes = React.useCallback((raw: unknown): EmpType[] => {
+        const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+        const extractType = (value: unknown): string | null => {
+            if (typeof value === 'string') {
+                const t = value.trim()
+                return t.length ? t : null
+            }
+            if (isObject(value)) {
+                const t = (value as Record<string, unknown>).type
+                const et = (value as Record<string, unknown>).employee_type
+                if (typeof t === 'string' && t.trim().length) return t.trim()
+                if (typeof et === 'string' && et.trim().length) return et.trim()
+            }
+            return null
         }
-        if (isObject(value)) {
-            const t = value.type
-            const et = (value as Record<string, unknown>).employee_type
-            if (typeof t === 'string' && t.trim().length) return t.trim()
-            if (typeof et === 'string' && et.trim().length) return et.trim()
-        }
-        return null
-    }
-    const extractRole = (value: unknown): string => (isObject(value) && typeof value.role === 'string' && value.role.trim().length ? value.role.trim() : 'Employee')
-    const normalizeEmployeeTypes = (raw: unknown): EmpType[] => {
+        const extractRole = (value: unknown): string => (isObject(value) && typeof (value as Record<string, unknown>).role === 'string' && ((value as Record<string, unknown>).role as string).trim().length ? ((value as Record<string, unknown>).role as string).trim() : 'Employee')
         if (Array.isArray(raw)) {
             return (raw as unknown[])
                 .map((item) => {
@@ -74,7 +74,7 @@ export default function TableTimekeeping({
         }
         const t = extractType(raw)
         return t ? [{ type: t, role: 'Employee' }] : []
-    }
+    }, [])
 
     function ActionsMenu({ emp, onView, onBTR, menuActiveRef }: { emp: Employees; onView: (e: Employees) => void; onBTR: (e: Employees) => void; menuActiveRef: React.MutableRefObject<boolean> }) {
         const [open, setOpen] = React.useState(false)
@@ -225,7 +225,7 @@ export default function TableTimekeeping({
                 size: COLUMN_SIZES.actions,
             },
         ],
-        [onView, onBTR],
+    [onView, onBTR, normalizeEmployeeTypes],
     )
 
     const [pagination, setPagination] = React.useState<PaginationState>({
@@ -250,12 +250,7 @@ export default function TableTimekeeping({
         state: { pagination, sorting },
     })
 
-    React.useEffect(() => {
-        const nextPage = pagination.pageIndex + 1
-        if (nextPage !== currentPage) {
-            onPageChange(nextPage)
-        }
-    }, [pagination.pageIndex, currentPage, onPageChange])
+    // Do not emit page changes from local pagination; parent owns currentPage
 
     return (
         <div className="flex flex-1 flex-col">
@@ -283,10 +278,10 @@ export default function TableTimekeeping({
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            Array.from({ length: MAX_ROWS }).map((_, i) => (
+                            Array.from({ length: pagination.pageSize }).map((_, i) => (
                                 <TableRow key={`skeleton-${i}`} style={{ height: ROW_HEIGHT }}>
                                     {columns.map((col) => (
-                                        <TableCell key={col.id} style={{ width: col.size }}>
+                                        <TableCell key={col.id ?? `col-${i}`} style={{ width: col.size }}>
                                             <Skeleton className="h-4 w-full" />
                                         </TableCell>
                                     ))}
@@ -299,10 +294,10 @@ export default function TableTimekeeping({
                                         No employees found
                                     </TableCell>
                                 </TableRow>
-                                {Array.from({ length: MAX_ROWS - 1 }).map((_, i) => (
+                                {Array.from({ length: Math.max(0, pagination.pageSize - 1) }).map((_, i) => (
                                     <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
                                         {columns.map((col) => (
-                                            <TableCell key={col.id} />
+                                            <TableCell key={col.id ?? `col-${i}`} />
                                         ))}
                                     </TableRow>
                                 ))}
@@ -338,10 +333,10 @@ export default function TableTimekeeping({
                                         ))}
                                     </TableRow>
                                 ))}
-                                {Array.from({ length: Math.max(0, MAX_ROWS - data.length) }).map((_, i) => (
+                                {Array.from({ length: Math.max(0, pagination.pageSize - data.length) }).map((_, i) => (
                                     <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
                                         {columns.map((col) => (
-                                            <TableCell key={col.id} />
+                                            <TableCell key={col.id ?? `col-${i}`} />
                                         ))}
                                     </TableRow>
                                 ))}

@@ -59,7 +59,6 @@ export default function TimeKeeping() {
                     const uint8Array = new Uint8Array(buffer)
                     const detected = Encoding.detect(uint8Array)
                     const text = Encoding.convert(uint8Array, {
-                        to: 'UNICODE',
                         from: detected,
                         type: 'string',
                     })
@@ -98,7 +97,6 @@ export default function TimeKeeping() {
                     rows = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[]
                     // Convert Excel serial date numbers to YYYY-MM-DD strings
                     function excelSerialToDate(serial: number) {
-                        // Excel's epoch starts at 1899-12-30
                         const excelEpoch = new Date(Date.UTC(1899, 11, 30))
                         const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000)
                         return date.toISOString().slice(0, 10)
@@ -241,7 +239,7 @@ export default function TimeKeeping() {
 
     // Visit helper
     const visit = useCallback(
-        (params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; perPage: number; per_page: number }>, options: { preserve?: boolean } = {}) => {
+        (params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; perPage: number }>, options: { preserve?: boolean } = {}) => {
             spinnerStart.current = Date.now()
             setLoading(true)
             router.visit(route('time-keeping.index'), {
@@ -273,7 +271,6 @@ export default function TimeKeeping() {
                     roles: appliedFilters.roles.length > 0 ? appliedFilters.roles : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
                     perPage: pageSize,
-                    per_page: pageSize,
                 },
                 { preserve: true },
             )
@@ -312,7 +309,6 @@ export default function TimeKeeping() {
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: (applied as { collegeProgram?: string }).collegeProgram || undefined,
                     perPage: pageSize,
-                    per_page: pageSize,
                 },
                 { preserve: true },
             )
@@ -325,7 +321,7 @@ export default function TimeKeeping() {
         const empty = { types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' }
         setFilters(empty)
         setAppliedFilters(empty)
-        visit({ search: searchTerm || undefined, page: 1, perPage: pageSize, per_page: pageSize }, { preserve: true })
+    visit({ search: searchTerm || undefined, page: 1, perPage: pageSize }, { preserve: true })
     }, [visit, searchTerm, pageSize])
 
     // Pagination
@@ -348,7 +344,6 @@ export default function TimeKeeping() {
                     collegeProgram: appliedFilters.collegeProgram || undefined,
                     // othersRole is now part of the 'roles' array, no need to send separately
                     perPage: pageSize,
-                    per_page: pageSize,
                 },
                 { preserve: true },
             )
@@ -456,8 +451,7 @@ export default function TimeKeeping() {
                                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                                     roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
                                     collegeProgram: appliedFilters.collegeProgram || undefined,
-                                    perPage: size,
-                                    per_page: size,
+                                       perPage: size,
                                 },
                                 { preserve: true },
                             )
