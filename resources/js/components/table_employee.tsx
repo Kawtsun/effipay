@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLef
 import { Link } from '@inertiajs/react'
 
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -165,7 +166,6 @@ export default function TableEmployee({
     onDelete,
     editHrefFor,
 }: TableEmployeeProps) {
-    const density: 'comfortable' | 'compact' = 'compact'
     const stickyId = true
     const [isAnimating, setIsAnimating] = React.useState(false)
 
@@ -186,9 +186,20 @@ export default function TableEmployee({
                 accessorKey: 'id',
                 header: ({ column }) => (
                     <div className="px-2">
-                        <Button variant="ghost" size="sm" className="data-[state=open]:bg-accent -ml-2 h-8 px-2" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="data-[state=open]:bg-accent -ml-2 h-8 px-2"
+                            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                        >
                             <span className="text-xs font-semibold uppercase tracking-wide">Employee ID</span>
-                            {column.getIsSorted() === 'desc' ? <ArrowDown className="ml-2 h-4 w-4" /> : column.getIsSorted() === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowUpDown className="ml-2 h-4 w-4" />}
+                            {column.getIsSorted() === 'desc' ? (
+                                <ArrowDown className="ml-2 h-4 w-4" />
+                            ) : column.getIsSorted() === 'asc' ? (
+                                <ArrowUp className="ml-2 h-4 w-4" />
+                            ) : (
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                            )}
                         </Button>
                     </div>
                 ),
@@ -200,13 +211,31 @@ export default function TableEmployee({
                 accessorFn: (row) => formatFullName(row.last_name, row.first_name, row.middle_name).toLowerCase(),
                 header: ({ column }) => (
                     <div className="px-2">
-                        <Button variant="ghost" size="sm" className="data-[state=open]:bg-accent -ml-2 h-8 px-2" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="data-[state=open]:bg-accent -ml-2 h-8 px-2"
+                            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                        >
                             <span className="text-xs font-semibold uppercase tracking-wide">Employee Name</span>
-                            {column.getIsSorted() === 'desc' ? <ArrowDown className="ml-2 h-4 w-4" /> : column.getIsSorted() === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowUpDown className="ml-2 h-4 w-4" />}
+                            {column.getIsSorted() === 'desc' ? (
+                                <ArrowDown className="ml-2 h-4 w-4" />
+                            ) : column.getIsSorted() === 'asc' ? (
+                                <ArrowUp className="ml-2 h-4 w-4" />
+                            ) : (
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                            )}
                         </Button>
                     </div>
                 ),
-                cell: ({ row }) => <span className="inline-block font-medium text-foreground">{formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}</span>,
+                cell: ({ row }) => (
+                    <span
+                        className="inline-block truncate max-w-full align-middle font-medium text-foreground"
+                        title={formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}
+                    >
+                        {formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}
+                    </span>
+                ),
                 size: COLUMN_SIZES.name,
             },
             {
@@ -226,9 +255,20 @@ export default function TableEmployee({
                 accessorKey: 'employee_status',
                 header: ({ column }) => (
                     <div className="px-2">
-                        <Button variant="ghost" size="sm" className="data-[state=open]:bg-accent -ml-2 h-8 px-2" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="data-[state=open]:bg-accent -ml-2 h-8 px-2"
+                            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                        >
                             <span className="text-xs font-semibold uppercase tracking-wide">Status</span>
-                            {column.getIsSorted() === 'desc' ? <ArrowDown className="ml-2 h-4 w-4" /> : column.getIsSorted() === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowUpDown className="ml-2 h-4 w-4" />}
+                            {column.getIsSorted() === 'desc' ? (
+                                <ArrowDown className="ml-2 h-4 w-4" />
+                            ) : column.getIsSorted() === 'asc' ? (
+                                <ArrowUp className="ml-2 h-4 w-4" />
+                            ) : (
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                            )}
                         </Button>
                     </div>
                 ),
@@ -295,12 +335,22 @@ export default function TableEmployee({
                         <Spinner className="h-10 w-10 text-primary animate-spin-slow" />
                     </div>
                 )}
-                <Table className="select-none w-full min-w-[900px] text-sm" style={{ tableLayout: 'fixed', width: '100%' }}>
+                {/* Desktop / Tablet table */}
+                <div className="hidden md:block">
+                <Table className="w-full select-none text-sm" style={{ tableLayout: 'fixed', width: '100%' }}>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id} className="bg-muted/50/80 backdrop-blur-sm sticky top-0 z-[1]">
                                 {headerGroup.headers.map((header, idx) => (
-                                    <TableHead key={header.id} className={cn('h-11 whitespace-nowrap text-muted-foreground/90', stickyId && idx === 0 ? 'sticky left-0 z-[2] bg-muted/50/80 backdrop-blur-sm' : '')} style={{ width: header.getSize() || undefined }}>
+                                    <TableHead
+                                        key={header.id}
+                                        className={cn('h-11 whitespace-nowrap text-muted-foreground/90', stickyId && idx === 0 ? 'sticky left-0 z-[2] bg-muted/50/80 backdrop-blur-sm' : '')}
+                                        style={
+                                            header.column.id === 'id' || header.column.id === 'actions'
+                                                ? { width: header.getSize() || undefined }
+                                                : undefined
+                                        }
+                                    >
                                         {header.isPlaceholder ? null : typeof header.column.columnDef.header === 'function' ? header.column.columnDef.header(header.getContext()) : header.column.columnDef.header}
                                     </TableHead>
                                 ))}
@@ -310,9 +360,9 @@ export default function TableEmployee({
                     <TableBody>
                         {loading ? (
                             Array.from({ length: pagination.pageSize }).map((_, i) => (
-                                <TableRow key={`skeleton-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
+                                        <TableRow key={`skeleton-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
                                     {columns.map((col) => (
-                                        <TableCell key={col.id ?? `col-${i}`} className={cn('py-0', ROW_HEIGHT_CLASS)} style={{ width: col.size }}>
+                                            <TableCell key={col.id ?? `col-${i}`} className={cn('py-0 overflow-hidden', ROW_HEIGHT_CLASS)}>
                                             <Skeleton className="h-4 w-full" />
                                         </TableCell>
                                     ))}
@@ -326,11 +376,11 @@ export default function TableEmployee({
                                     </TableCell>
                                 </TableRow>
                                 {Array.from({ length: Math.max(0, pagination.pageSize - 1) }).map((_, i) => (
-                                    <TableRow key={`empty-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
-                                        {columns.map((col) => (
-                                            <TableCell key={col.id ?? `col-${i}`} className={cn('py-0', ROW_HEIGHT_CLASS)} />
-                                        ))}
-                                    </TableRow>
+                                     <TableRow key={`empty-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
+                                         {columns.map((col) => (
+                                             <TableCell key={col.id ?? `col-${i}`} className={cn('py-0 overflow-hidden', ROW_HEIGHT_CLASS)} />
+                                         ))}
+                                     </TableRow>
                                 ))}
                             </>
                         ) : (
@@ -356,8 +406,12 @@ export default function TableEmployee({
                                         {row.getVisibleCells().map((cell, idx) => (
                                             <TableCell
                                                 key={cell.id}
-                                                className={cn('py-0 px-4', ROW_HEIGHT_CLASS, idx === 0 ? (stickyId ? 'sticky left-0 z-[1] bg-inherit' : '') : '')}
-                                                style={{ width: cell.column.getSize() || undefined }}
+                                                className={cn('py-0 px-4 overflow-hidden min-w-0', ROW_HEIGHT_CLASS, idx === 0 ? (stickyId ? 'sticky left-0 z-[1] bg-inherit' : '') : '')}
+                                                style={
+                                                    cell.column.id === 'id' || cell.column.id === 'actions'
+                                                        ? { width: cell.column.getSize() || undefined }
+                                                        : undefined
+                                                }
                                             >
                                                 {typeof cell.column.columnDef.cell === 'function' ? cell.column.columnDef.cell(cell.getContext()) : cell.column.columnDef.cell}
                                             </TableCell>
@@ -367,7 +421,7 @@ export default function TableEmployee({
                                 {Array.from({ length: Math.max(0, pagination.pageSize - data.length) }).map((_, i) => (
                                     <TableRow key={`empty-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
                                         {columns.map((col) => (
-                                            <TableCell key={col.id ?? `col-${i}`} className={cn('py-0', ROW_HEIGHT_CLASS)} />
+                                            <TableCell key={col.id ?? `col-${i}`} className={cn('py-0 overflow-hidden', ROW_HEIGHT_CLASS)} />
                                         ))}
                                     </TableRow>
                                 ))}
@@ -375,6 +429,97 @@ export default function TableEmployee({
                         )}
                     </TableBody>
                 </Table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="md:hidden">
+                    {loading ? (
+                        <div className="space-y-3 p-3">
+                            {Array.from({ length: pagination.pageSize }).map((_, i) => (
+                                <Card key={`card-skel-${i}`} className="p-3">
+                                    <CardHeader className="p-0">
+                                        <div className="flex items-center justify-between">
+                                            <Skeleton className="h-4 w-40" />
+                                            <Skeleton className="h-8 w-8 rounded-full" />
+                                        </div>
+                                        <CardDescription>
+                                            <Skeleton className="mt-2 h-4 w-24" />
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-0 mt-3">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <Skeleton className="h-6 w-full" />
+                                            <Skeleton className="h-6 w-full" />
+                                        </div>
+                                        <div className="mt-2">
+                                            <Skeleton className="h-6 w-1/2" />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : data.length === 0 ? (
+                        <div className="p-6 text-center text-muted-foreground">No employees found</div>
+                    ) : (
+                        <div className="space-y-3 p-3">
+                            {table.getRowModel().rows.map((row) => (
+                                <Card
+                                    key={`card-${row.id}`}
+                                    className="focus:outline-none"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => {
+                                        if (menuActiveRef.current) return
+                                        onView(row.original)
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            if (menuActiveRef.current) return
+                                            onView(row.original)
+                                        }
+                                    }}
+                                >
+                                    <CardHeader className="pb-2">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <CardTitle className="text-base leading-tight truncate" title={formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}>
+                                                    {formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}
+                                                </CardTitle>
+                                                <CardDescription className="mt-1">ID: {row.original.id}</CardDescription>
+                                            </div>
+                                            <div className="shrink-0">
+                                                <ActionsMenu emp={row.original} onView={onView} onDelete={onDelete} editHrefFor={editHrefFor} menuActiveRef={menuActiveRef} />
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-0 pb-3">
+                                        <div className="grid grid-cols-1 gap-2">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-xs text-muted-foreground">Employee Type</span>
+                                                <div className="min-w-0 max-w-[60%] truncate text-right">
+                                                    <EmployeeTypesBadges employeeTypes={normalizeEmployeeTypes(row.original.employee_types as unknown)} variant="plain" compact />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-xs text-muted-foreground">Status</span>
+                                                <div className="min-w-0 max-w-[60%] truncate text-right">
+                                                    <StatusBadge status={row.original.employee_status} />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-xs text-muted-foreground">Roles</span>
+                                                <div className="min-w-0 max-w-[60%] truncate text-right">
+                                                    <RolesTableBadge roles={(row.original.roles ? row.original.roles.split(',').map(r=>r.trim()).filter(Boolean) : [])} college_program={row.original.college_program} compact />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="mt-4 flex min-h-[56px] items-center justify-between rounded-md border bg-card px-3 py-2 text-sm">

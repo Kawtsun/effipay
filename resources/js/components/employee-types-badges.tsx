@@ -20,7 +20,7 @@ interface EmployeeTypesBadgesProps {
 const EmployeeTypeBadge: React.FC<{ employeeType: EmployeeType; className?: string; variant?: Variant }> = ({ employeeType, className, variant = 'plain' }) => {
     if (variant === 'text') {
         return (
-            <span className={cn('text-xs capitalize text-slate-600 dark:text-slate-300', className)}>
+            <span className={cn('text-xs capitalize text-slate-600 dark:text-slate-300 truncate max-w-full', className)} title={employeeType.type}>
                 {employeeType.type}
             </span>
         )
@@ -30,12 +30,13 @@ const EmployeeTypeBadge: React.FC<{ employeeType: EmployeeType; className?: stri
     return (
         <div
             className={cn(
-                'inline-flex items-center gap-x-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium',
+                'inline-flex max-w-full items-center gap-x-1.5 whitespace-nowrap overflow-hidden rounded-full border px-2.5 py-1 text-xs font-medium',
                 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700',
                 className
             )}
+            title={employeeType.type}
         >
-            <span className="capitalize">{employeeType.type}</span>
+            <span className="capitalize truncate">{employeeType.type}</span>
         </div>
     )
 }
