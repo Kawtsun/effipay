@@ -114,7 +114,7 @@ export default function EmployeeFilter({
           {activeCount > 0 && (
             <Badge
               variant="secondary"
-              className="absolute -top-2 -right-2 bg-green-600 text-white text-[10px] px-1.5 py-0.5 rounded-full"
+              className="absolute -top-2 -right-2 bg-primary text-white text-[10px] px-1.5 py-0.5 rounded-full"
             >
               {activeCount}
             </Badge>
@@ -123,9 +123,9 @@ export default function EmployeeFilter({
       </PopoverTrigger>
 
 
-      <PopoverContent className="w-64 p-0 flex flex-col h-[480px]">
+      <PopoverContent className="w-76 p-0 flex flex-col h-[500px]">
         <FilterScrollArea className="flex-1 p-4 space-y-5">
-          <div>
+          <div className="my-2">
             <h4 className="text-sm font-semibold mb-1 select-none">Employee Type</h4>
             <p className="text-xs text-muted-foreground mb-2 select-none">
               Select one or more types to filter by employment classification.
@@ -142,7 +142,7 @@ export default function EmployeeFilter({
             ))}
           </div>
 
-          <div>
+          <div className="my-2">
             <h4 className="text-sm font-semibold mb-1 select-none">Employee Status</h4>
             <p className="text-xs text-muted-foreground mb-2 select-none">
               Filter employees by their current work status.
@@ -170,7 +170,7 @@ export default function EmployeeFilter({
             ))}
           </div>
 
-          <div>
+          <div className="my-2">
             <h4 className="text-sm font-semibold mb-1 select-none">Roles</h4>
             <p className="text-xs text-muted-foreground mb-2 select-none">
               Filter by employee roles.

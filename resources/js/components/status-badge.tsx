@@ -1,36 +1,27 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
+type Variant = 'plain' | 'text'
+
 interface StatusBadgeProps {
     status: string
     className?: string
+    variant?: Variant // default: 'plain'; set to 'text' for text-only
 }
 
-const statusStyles: { [key: string]: string } = {
-    active: 'text-green-800 bg-green-100 dark:text-green-300 dark:bg-green-900/50',
-    'paid leave': 'text-yellow-800 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900/50',
-    'maternity leave': 'text-yellow-800 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900/50',
-    'sick leave': 'text-yellow-800 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900/50',
-    'study leave': 'text-yellow-800 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900/50',
-    default: 'text-slate-800 bg-slate-100 dark:text-slate-300 dark:bg-slate-700',
-}
+// Use a single subdued style for all statuses to minimize visual weight
+const baseSubduedClass =
+    'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700'
 
-const getStatusStyle = (status: string): string => {
-    return statusStyles[status.toLowerCase()] || statusStyles.default
-}
-
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+export function StatusBadge({ status, className, variant = 'plain' }: StatusBadgeProps) {
     if (!status) return null
 
+    if (variant === 'text') {
+        return <span className={cn('text-xs capitalize text-slate-600 dark:text-slate-300', className)}>{status}</span>
+    }
+
     return (
-        <div
-            className={cn(
-                'inline-flex items-center gap-x-2 rounded-full px-2.5 py-1 text-xs font-semibold',
-                getStatusStyle(status),
-                className
-            )}
-        >
-            <div className="h-2 w-2 rounded-full bg-current" />
+        <div className={cn(baseSubduedClass, className)}>
             <span className="capitalize">{status}</span>
         </div>
     )

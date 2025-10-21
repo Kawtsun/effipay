@@ -47,7 +47,7 @@ const RoleBadge: React.FC<RoleBadgeProps> = ({ role, className, program }) => {
             )}
         >
             {style.icon}
-            <span className="capitalize">{role}</span>
+            <span className="capitalize truncate max-w-[12rem]">{role}</span>
             {program && <span className="font-bold">[{program}]</span>}
         </div>
     )
@@ -56,9 +56,10 @@ const RoleBadge: React.FC<RoleBadgeProps> = ({ role, className, program }) => {
 interface RolesTableBadgeProps {
     roles: string[]
     college_program?: string
+    compact?: boolean // when true, remove extra outer padding for table usage
 }
 
-export function RolesTableBadge({ roles, college_program }: RolesTableBadgeProps) {
+export function RolesTableBadge({ roles, college_program, compact = false }: RolesTableBadgeProps) {
     if (!roles || roles.length === 0) {
         return <div className="px-4 py-2 text-muted-foreground">Not Assigned</div>
     }
@@ -84,7 +85,7 @@ export function RolesTableBadge({ roles, college_program }: RolesTableBadgeProps
     }
 
     const badgeContent = (
-        <span className="inline-flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 max-w-full overflow-hidden">
             <RoleBadge role={mainRole} program={isMainRoleCollegeInstructor ? displayProgram : undefined} />
             {additionalRolesCount > 0 && (
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
@@ -98,11 +99,11 @@ export function RolesTableBadge({ roles, college_program }: RolesTableBadgeProps
     const hasSingleCollegeInstructorRole = sortedRoles.length === 1 && isMainRoleCollegeInstructor && !!college_program
 
     if (!hasMultipleRoles && !hasSingleCollegeInstructorRole) {
-        return <div className="min-w-[160px] px-4 py-2">{badgeContent}</div>
+        return <div className={cn(compact ? 'px-0 py-0 min-w-0' : 'min-w-[160px] px-4 py-2')}>{badgeContent}</div>
     }
 
     return (
-        <div className="min-w-[160px] px-4 py-2">
+        <div className={cn(compact ? 'px-0 py-0 min-w-0' : 'min-w-[160px] px-4 py-2')}>
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
@@ -112,7 +113,7 @@ export function RolesTableBadge({ roles, college_program }: RolesTableBadgeProps
                         side="top"
                         className="max-w-md rounded-xl border bg-card/80 p-3 text-card-foreground shadow-lg backdrop-blur-lg"
                     >
-                        <div className="flex flex-col items-start gap-2">
+                        <div className="flex flex-col items-start gap-2 max-w-[75vw] md:max-w-md">
                             <p className="mb-1 text-sm font-semibold">{hasMultipleRoles ? 'All Roles' : 'Role Details'}</p>
                             {sortedRoles.map((role) => {
                                 const isCollegeInstructor = role.toLowerCase() === 'college instructor';

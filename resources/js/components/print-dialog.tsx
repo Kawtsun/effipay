@@ -411,7 +411,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                     <FileText className="w-4 h-4" />
                                     {loadingPayslip ? 'Loading Payslip...' : 'Print Payslip'}
                                 </Button>
-                                <Button className="w-full flex items-center gap-2 justify-center" variant="default" onClick={handlePrintBTR} disabled={!selectedMonth || loadingBTR}>
+                                <Button className="w-full flex items-center gap-2 justify-center" variant="outline" onClick={handlePrintBTR} disabled={!selectedMonth || loadingBTR}>
                                     <Printer className="w-4 h-4" />
                                     {loadingBTR ? 'Loading BTR...' : 'Print BTR'}
                                 </Button>

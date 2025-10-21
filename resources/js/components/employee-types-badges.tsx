@@ -1,63 +1,49 @@
 import * as React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { Briefcase, Clock, ClipboardList, User } from 'lucide-react'
 
 interface EmployeeType {
     role: string
     type: string
 }
 
+type Variant = 'plain' | 'text'
+
 interface EmployeeTypesBadgesProps {
     employeeTypes: EmployeeType[]
+    variant?: Variant // default: 'plain' (subdued look); set to 'text' for text-only
+    compact?: boolean // when true, remove outer padding/min-width for tight table rows
 }
 
-const typeStyles: { [key: string]: { icon: React.ReactNode; className: string } } = {
-    regular: {
-        icon: <Briefcase size={12} />,
-        className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
-    },
-    'full time': {
-        icon: <Briefcase size={12} />,
-        className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
-    },
-    'part time': {
-        icon: <Clock size={12} />,
-        className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300',
-    },
-    provisionary: {
-        icon: <ClipboardList size={12} />,
-        className: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
-    },
-    default: {
-        icon: <User size={12} />,
-        className: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
-    },
-}
+// Removed per-type style mapping to keep a subdued, consistent look
 
-const getTypeStyle = (type: string) => {
-    const lowerType = type.toLowerCase()
-    return typeStyles[lowerType] || typeStyles.default
-}
+const EmployeeTypeBadge: React.FC<{ employeeType: EmployeeType; className?: string; variant?: Variant }> = ({ employeeType, className, variant = 'plain' }) => {
+    if (variant === 'text') {
+        return (
+            <span className={cn('text-xs capitalize text-slate-600 dark:text-slate-300 truncate max-w-full', className)} title={employeeType.type}>
+                {employeeType.type}
+            </span>
+        )
+    }
 
-const EmployeeTypeBadge: React.FC<{ employeeType: EmployeeType; className?: string }> = ({ employeeType, className }) => {
-    const style = getTypeStyle(employeeType.type)
+    // Subdued, neutral badge (no per-type colors or icons)
     return (
         <div
             className={cn(
-                'inline-flex items-center gap-x-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold',
-                style.className,
+                'inline-flex max-w-full items-center gap-x-1.5 whitespace-nowrap overflow-hidden rounded-full border px-2.5 py-1 text-xs font-medium',
+                'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700',
                 className
             )}
+            title={employeeType.type}
         >
-            {style.icon}
-            <span className="capitalize">{employeeType.type}</span>
+            <span className="capitalize truncate">{employeeType.type}</span>
         </div>
     )
 }
 
-export function EmployeeTypesBadges({ employeeTypes }: EmployeeTypesBadgesProps) {
+export function EmployeeTypesBadges({ employeeTypes, variant = 'plain', compact = false }: EmployeeTypesBadgesProps) {
     if (!Array.isArray(employeeTypes) || employeeTypes.length === 0) {
+        // Keep this low emphasis as well
         return <div className="px-4 py-2 text-muted-foreground">Not Assigned</div>
     }
 
@@ -66,9 +52,14 @@ export function EmployeeTypesBadges({ employeeTypes }: EmployeeTypesBadgesProps)
 
     const badgeContent = (
         <span className="inline-flex items-center gap-1.5">
-            <EmployeeTypeBadge employeeType={mainType} />
+            <EmployeeTypeBadge employeeType={mainType} variant={variant} />
             {additionalTypesCount > 0 && (
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                <div className={cn(
+                    'flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold',
+                    variant === 'text'
+                        ? 'text-slate-500 dark:text-slate-400'
+                        : 'bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700'
+                )}>
                     +{additionalTypesCount}
                 </div>
             )}
@@ -76,11 +67,11 @@ export function EmployeeTypesBadges({ employeeTypes }: EmployeeTypesBadgesProps)
     )
 
     if (employeeTypes.length <= 1) {
-        return <div className="min-w-[160px] px-4 py-2">{badgeContent}</div>
+        return <div className={cn(compact ? 'px-0 py-0 min-w-0' : 'min-w-[160px] px-4 py-2')}>{badgeContent}</div>
     }
 
     return (
-        <div className="min-w-[160px] px-4 py-2">
+        <div className={cn(compact ? 'px-0 py-0 min-w-0' : 'min-w-[160px] px-4 py-2')}>
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
@@ -95,7 +86,7 @@ export function EmployeeTypesBadges({ employeeTypes }: EmployeeTypesBadgesProps)
                             {employeeTypes.map((type, index) => {
                                 return (
                                     <div key={index} className="flex items-center gap-2">
-                                        <EmployeeTypeBadge employeeType={type} />
+                                        <EmployeeTypeBadge employeeType={type} variant={variant} />
                                         <span className="text-xs capitalize text-muted-foreground">{type.role}</span>
                                     </div>
                                 )

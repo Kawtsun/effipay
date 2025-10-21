@@ -10,7 +10,7 @@ interface FilterScrollAreaProps {
 export default function FilterScrollArea({ children, className = '', style }: FilterScrollAreaProps) {
   return (
     <ScrollArea
-      className={`h-[400px] max-h-[400px] rounded-md ${className}`}
+      className={`h-[500px] max-h-[500px] rounded-md ${className}`}
       style={style}
       type="auto"
     >

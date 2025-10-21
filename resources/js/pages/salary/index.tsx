@@ -5,6 +5,7 @@ import { EmployeeType } from '@/components/employee-type'
 import { EmployeeSalaryEdit } from '@/components/employee-salary-edit'
 import { type BreadcrumbItem } from '@/types'
 import { Wallet, Pencil, Calculator, Lightbulb, TrendingUp } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -155,25 +156,30 @@ export default function Index() {
                   onValueChange={setSelectedMonth}
                   placeholder="Select payroll month"
                 />
-                <Button
-                  onClick={handleRunPayroll}
-                  disabled={!selectedMonth || isRunningPayroll}
-                  className="flex items-center gap-2"
-                >
-                  <Calculator className="w-4 h-4" />
-                  {isRunningPayroll ? 'Running...' : 'Run Payroll'}
-                </Button>
-              </div>
 
-              {/* 13th Month Button */}
+                {/* 13th Month Button */}
               <Button
                 onClick={() => setIsThirteenthMonthDialogOpen(true)}
                 variant="secondary"
-                className="flex items-center gap-2 transition-transform duration-150 hover:scale-[1.03]"
+                className="flex items-center gap-2"
               >
                 <TrendingUp className="w-4 h-4" />
                 13th Month Pay
               </Button>
+                <Button
+                  onClick={handleRunPayroll}
+                  disabled={!selectedMonth || isRunningPayroll}
+                  className="flex items-center gap-2"
+                  aria-busy={isRunningPayroll}
+                >
+                  {isRunningPayroll ? (
+                    <Spinner />
+                  ) : (
+                    <Calculator className="w-4 h-4" />
+                  )}
+                  {isRunningPayroll ? 'Running...' : 'Run Payroll'}
+                </Button>
+              </div>
 
             </div>
           </div>

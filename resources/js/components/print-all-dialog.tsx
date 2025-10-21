@@ -60,7 +60,192 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
   const [batchBTRError, setBatchBTRError] = useState<string | null>(null);
 
   const handlePrintPayslipAll = async () => {
-    // ... (existing implementation)
+    setLoadingBatchPayslips(true);
+    setBatchPayslipError(null);
+    try {
+      // 1. Fetch all employees
+      const empRes = await fetch('/api/employees/all');
+      let empResult;
+      try {
+        empResult = await empRes.json();
+      } catch (jsonErr) {
+        setBatchPayslipError('Failed to parse employees response.');
+        console.error('Failed to parse employees response:', jsonErr);
+  setLoadingBatchPayslips(false);
+        return;
+      }
+      if (!empResult.success || !Array.isArray(empResult.employees)) {
+        setBatchPayslipError('Failed to fetch employees. Response: ' + JSON.stringify(empResult));
+        console.error('Failed to fetch employees:', empResult);
+  setLoadingBatchPayslips(false);
+        return;
+      }
+      const employees = empResult.employees;
+      // 2. For each employee, fetch payslip data AND timekeeping summary for the selected month
+      const payslipDataArr = await Promise.all(
+        employees.map(async (emp: {
+          id: number;
+          first_name: string;
+          middle_name: string;
+          last_name: string;
+          roles?: string;
+          work_hours_per_day?: number;
+        }, idx: number) => {
+          try {
+            // Fetch payslip
+            const res = await fetch(`/api/payroll/payslip?employee_id=${emp.id}&month=${selectedMonth}`);
+            let result;
+            try {
+              result = await res.json();
+            } catch (jsonErr) {
+              console.error(`Failed to parse payslip for employee ${emp.id}:`, jsonErr);
+              return null;
+            }
+            if (!result.success || !result.payslip) {
+              console.error(`No payslip for employee ${emp.id}:`, result);
+              return null;
+            }
+            // Fetch timekeeping summary (for hours/rate/OT, etc.)
+            let summary = null;
+            try {
+              const summaryRes = await fetch(`/timekeeping/employee/monthly-summary?employee_id=${emp.id}&month=${selectedMonth}`);
+              const summaryJson = await summaryRes.json();
+              if (summaryJson.success) summary = summaryJson;
+            } catch (summaryErr) {
+              console.error(`Failed to fetch timekeeping summary for employee ${emp.id}:`, summaryErr);
+            }
+            // Fetch timekeeping records for numHours calculation
+            let btrRecords = [];
+            try {
+              const btrRes = await fetch(`/api/timekeeping/records?employee_id=${emp.id}&month=${selectedMonth}`);
+              const btrJson = await btrRes.json();
+              if (btrJson.success && Array.isArray(btrJson.records)) {
+                btrRecords = btrJson.records;
+              }
+            } catch (btrErr) {
+              // ignore
+            }
+            // Calculate numHours (match single print logic)
+            let numHours = 0;
+            const isCollege = (emp.roles || '').toLowerCase().includes('college');
+            if (summary) {
+              if (isCollege && typeof summary.total_hours === 'number') {
+                numHours = summary.total_hours;
+              } else {
+                let totalWorkedHours = 0;
+                if (Array.isArray(btrRecords) && emp.work_hours_per_day) {
+                  const attendedShifts = btrRecords.filter(
+                    (rec: any) => (rec.clock_in && rec.clock_in !== '-') || (rec.clock_out && rec.clock_out !== '-')
+                  ).length;
+                  totalWorkedHours = attendedShifts * emp.work_hours_per_day;
+                }
+                numHours = totalWorkedHours
+                  - (Number(summary.tardiness ?? 0))
+                  - (Number(summary.undertime ?? 0))
+                  - (Number(summary.absences ?? 0))
+                  + (Number(summary.overtime ?? 0));
+                if (numHours < 0) numHours = 0;
+              }
+            }
+            // Get college_rate from payslip
+            const collegeRate = result.payslip.college_rate ?? 0;
+            // Compose merged earnings (match single print logic)
+            const mergedEarnings = {
+              monthlySalary: result.payslip.base_salary,
+              numHours: isCollege ? numHours : undefined,
+              ratePerHour: isCollege ? (result.payslip.college_rate ?? 0) : (summary?.rate_per_hour ?? result.payslip.rate_per_hour ?? result.payslip.ratePerHour),
+              collegeRate: result.payslip.college_rate ?? 0,
+              collegeGSP: isCollege && typeof numHours === 'number' && Number(result.payslip.college_rate ?? 0) > 0
+                ? parseFloat((numHours * Number(result.payslip.college_rate)).toFixed(2))
+                : undefined,
+              honorarium: result.payslip.honorarium,
+              tardiness: summary?.tardiness ?? result.payslip.tardiness,
+              tardinessAmount: summary?.tardiness !== undefined && isCollege
+                ? parseFloat(((Number(summary.tardiness) || 0) * Number(result.payslip.college_rate ?? 0)).toFixed(2))
+                : (result.payslip.tardiness_amount ?? result.payslip.tardinessAmount),
+              undertime: summary?.undertime ?? result.payslip.undertime,
+              undertimeAmount: summary?.undertime !== undefined && isCollege
+                ? parseFloat(((Number(summary.undertime) || 0) * Number(result.payslip.college_rate ?? 0)).toFixed(2))
+                : (result.payslip.undertime_amount ?? result.payslip.undertimeAmount),
+              absences: summary?.absences ?? result.payslip.absences,
+              absencesAmount: summary?.absences !== undefined && isCollege
+                ? parseFloat(((Number(summary.absences) || 0) * Number(result.payslip.college_rate ?? 0)).toFixed(2))
+                : (result.payslip.absences_amount ?? result.payslip.absencesAmount),
+              overtime: summary?.overtime ?? result.payslip.overtime,
+              overtime_hours: result.payslip.overtime_hours,
+              overtime_pay_total: summary?.overtime_pay_total ?? result.payslip.overtime_pay,
+              overtime_count_weekdays: summary?.overtime_count_weekdays ?? 0,
+              overtime_count_weekends: summary?.overtime_count_weekends ?? 0,
+              gross_pay: summary?.gross_pay ?? result.payslip.gross_pay,
+              net_pay: result.payslip.net_pay,
+              adjustment: result.payslip.adjustment,
+              overload: result.payslip.overload,
+            };
+            return {
+              employeeName: (formatFullName(emp.last_name, emp.first_name, emp.middle_name)),
+              role: emp.roles || '-',
+              payPeriod: selectedMonth,
+              earnings: mergedEarnings,
+              deductions: {
+                sss: result.payslip.sss,
+                philhealth: result.payslip.philhealth,
+                pagibig: result.payslip.pag_ibig,
+                withholdingTax: result.payslip.withholding_tax,
+                sssSalaryLoan: result.payslip.sss_salary_loan,
+                sssCalamityLoan: result.payslip.sss_calamity_loan,
+                pagibigMultiLoan: result.payslip.pagibig_multi_loan,
+                pagibigCalamityLoan: result.payslip.pagibig_calamity_loan,
+                peraaCon: result.payslip.peraa_con,
+                tuition: result.payslip.tuition,
+                chinaBank: result.payslip.china_bank,
+                tea: result.payslip.tea,
+              },
+              totalDeductions: result.payslip.total_deductions,
+            };
+          } catch (err) {
+            console.error(`Error fetching payslip for employee ${emp.id}:`, err);
+            return null;
+          }
+        })
+      );
+      // Filter out nulls (failed fetches)
+      const filtered = payslipDataArr.filter(Boolean);
+      if (filtered.length === 0) {
+        toast.error('No payroll data found for the selected month.');
+        setLoadingBatchPayslips(false);
+        return;
+      }
+      // Immediately generate and open PDF blob or download
+  // Removed: setGeneratingPDF (unused)
+      try {
+        const doc = <PayslipBatchTemplate payslips={filtered} />;
+        const asPdf = pdf(doc);
+        const blob = await asPdf.toBlob();
+        const url = URL.createObjectURL(blob);
+        if (AUTO_DOWNLOAD) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Payslip_All_${sanitizeFile(selectedMonth)}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+        } else {
+          window.open(url, '_blank');
+        }
+      } catch {
+        setBatchPayslipError('Failed to generate PDF.');
+      } finally {
+  // Removed: setGeneratingPDF (unused)
+      }
+    } catch (err) {
+      setBatchPayslipError('An error occurred while fetching payslip data. ' + (err instanceof Error ? err.message : ''));
+      console.error('Batch payslip fetch error:', err);
+    } finally {
+    setLoadingBatchPayslips(false);
+    }
   };
 
   const handlePrintBTRAll = async () => {
@@ -242,7 +427,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
                 {batchBTRError && (
                   <div className="text-xs text-red-500 text-center w-full">{batchBTRError}</div>
                 )}
-                <Button className="w-full flex items-center gap-2 justify-center" variant="default" onClick={handlePrintBTRAll} disabled={!selectedMonth || loadingBatchBTRs}>
+                <Button className="w-full flex items-center gap-2 justify-center" variant="outline" onClick={handlePrintBTRAll} disabled={!selectedMonth || loadingBatchBTRs}>
                   <Printer className="w-4 h-4" />
                   {loadingBatchBTRs ? 'Loading...' : 'Print All BTRs'}
                 </Button>

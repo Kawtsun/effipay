@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -31,6 +32,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
@@ -39,6 +41,7 @@ import { formatFullName } from '@/utils/formatFullName'
 import { EmployeeTypesBadges } from './employee-types-badges'
 import { RolesTableBadge } from './roles-table-badge'
 import { StatusBadge } from './status-badge'
+import { COLUMN_SIZES } from '@/constants/tableColumnSizes'
 
 type TableReportProps = {
     data: Employees[]
@@ -49,12 +52,13 @@ type TableReportProps = {
     onPageSizeChange?: (pageSize: number) => void
     onView: (emp: Employees) => void
     onPrint: (emp: Employees) => void
-    onAdjustments: (emp: Employees) => void // Added from tcc-adjustments
+    onAdjustments: (emp: Employees) => void
     activeRoles?: string[]
 }
 
 const MAX_ROWS = 10
 const ROW_HEIGHT = 53
+const ROW_HEIGHT_CLASS = 'h-[53px]'
 
 export default function TableReport({
     data,
@@ -66,11 +70,109 @@ export default function TableReport({
     onView,
     onPrint,
     onAdjustments,
-    activeRoles = [],
 }: TableReportProps) {
-    const density: 'comfortable' | 'compact' = 'compact'
     const stickyId = true
     const [isAnimating, setIsAnimating] = React.useState(false)
+
+    type EmpType = { role: string; type: string }
+
+    const normalizeEmployeeTypes = React.useCallback((raw: unknown): EmpType[] => {
+        const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+        const extractType = (value: unknown): string | null => {
+            if (typeof value === 'string') {
+                const t = value.trim()
+                return t.length ? t : null
+            }
+            if (isObject(value)) {
+                const t = (value as Record<string, unknown>).type
+                const et = (value as Record<string, unknown>).employee_type
+                if (typeof t === 'string' && t.trim().length) return t.trim()
+                if (typeof et === 'string' && et.trim().length) return et.trim()
+            }
+            return null
+        }
+        const extractRole = (value: unknown): string => (isObject(value) && typeof (value as Record<string, unknown>).role === 'string' && ((value as Record<string, unknown>).role as string).trim().length ? ((value as Record<string, unknown>).role as string).trim() : 'Employee')
+        if (Array.isArray(raw)) {
+            return (raw as unknown[])
+                .map((item) => {
+                    const type = extractType(item)
+                    if (!type) return null
+                    const role = extractRole(item)
+                    return { type, role }
+                })
+                .filter((v): v is EmpType => v !== null)
+        }
+        const t = extractType(raw)
+        return t ? [{ type: t, role: 'Employee' }] : []
+    }, [])
+
+    function ActionsMenu({ emp, onView, onPrint, onAdjustments, menuActiveRef }: { emp: Employees; onView: (e: Employees) => void; onPrint: (e: Employees) => void; onAdjustments: (e: Employees) => void; menuActiveRef: React.MutableRefObject<boolean> }) {
+        const [open, setOpen] = React.useState(false)
+        const handleOpenChange = (next: boolean) => {
+            menuActiveRef.current = next
+            setOpen(next)
+        }
+        return (
+            <DropdownMenu open={open} onOpenChange={handleOpenChange} modal={false}>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 p-0"
+                        aria-label="Actions"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                    >
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem
+                        onSelect={(e) => {
+                            e.preventDefault()
+                            menuActiveRef.current = true
+                            setOpen(false)
+                            setTimeout(() => {
+                                onView(emp)
+                                menuActiveRef.current = false
+                            }, 0)
+                        }}
+                    >
+                        <Eye className="mr-2 h-4 w-4" /> View
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        onSelect={(e) => {
+                            e.preventDefault()
+                            menuActiveRef.current = true
+                            setOpen(false)
+                            setTimeout(() => {
+                                onPrint(emp)
+                                menuActiveRef.current = false
+                            }, 0)
+                        }}
+                    >
+                        <Printer className="mr-2 h-4 w-4" /> Print
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                        onSelect={(e) => {
+                            e.preventDefault()
+                            menuActiveRef.current = true
+                            setOpen(false)
+                            setTimeout(() => {
+                                onAdjustments(emp)
+                                menuActiveRef.current = false
+                            }, 0)
+                        }}
+                    >
+                        <Pencil className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        )
+    }
 
     React.useEffect(() => {
         if (!loading) {
@@ -80,6 +182,8 @@ export default function TableReport({
             setIsAnimating(false)
         }
     }, [loading])
+
+    const menuActiveRef = React.useRef(false)
 
     const columns = React.useMemo<ColumnDef<Employees>[]>(
         () => [
@@ -104,8 +208,8 @@ export default function TableReport({
                         </Button>
                     </div>
                 ),
-                cell: ({ row }) => <div className="px-4 py-2">{row.original.id}</div>,
-                size: 120,
+                cell: ({ row }) => <span className="inline-block px-1">{row.original.id}</span>,
+                size: COLUMN_SIZES.id,
             },
             {
                 id: 'name',
@@ -130,18 +234,22 @@ export default function TableReport({
                     </div>
                 ),
                 cell: ({ row }) => (
-                    <div className="px-4 py-2 font-medium text-foreground">
+                    <span className="inline-block font-medium text-foreground">
                         {formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}
-                    </div>
+                    </span>
                 ),
-                size: 400,
+                size: COLUMN_SIZES.name,
             },
             {
                 id: 'employee_types',
                 accessorFn: (row) => row.employee_types,
                 header: () => <div className="px-4 text-xs font-semibold uppercase tracking-wide">Employee Type</div>,
-                cell: ({ row }) => <EmployeeTypesBadges employeeTypes={row.original.employee_types} />,
-                size: 200,
+                cell: ({ row }) => {
+                    const raw = row.original.employee_types as unknown
+                    const normalized = Array.isArray(raw) ? normalizeEmployeeTypes(raw) : normalizeEmployeeTypes(typeof raw === 'string' ? raw.split(',') : raw)
+                    return <EmployeeTypesBadges employeeTypes={normalized} variant="plain" compact />
+                },
+                size: COLUMN_SIZES.employee_types,
                 enableSorting: false,
             },
             {
@@ -165,12 +273,8 @@ export default function TableReport({
                         </Button>
                     </div>
                 ),
-                cell: ({ row }) => (
-                    <div className="px-4 py-2">
-                        <StatusBadge status={row.original.employee_status} />
-                    </div>
-                ),
-                size: 180,
+                cell: ({ row }) => <StatusBadge status={row.original.employee_status} />,
+                size: COLUMN_SIZES.employee_status,
             },
             {
                 id: 'roles',
@@ -178,9 +282,9 @@ export default function TableReport({
                 header: () => <div className="px-4 text-xs font-semibold uppercase tracking-wide">Roles</div>,
                 cell: ({ row }) => {
                     const roles = row.original.roles ? row.original.roles.split(',').map((r) => r.trim()).filter(Boolean) : []
-                    return <RolesTableBadge roles={roles} college_program={row.original.college_program} activeRoles={activeRoles} />
+                    return <RolesTableBadge roles={roles} college_program={row.original.college_program} compact />
                 },
-                size: 250,
+                size: COLUMN_SIZES.roles,
                 enableSorting: false,
             },
             {
@@ -191,44 +295,14 @@ export default function TableReport({
                     const emp = row.original
                     return (
                         <div className="whitespace-nowrap px-4 py-2 text-right">
-                            {/* Desktop actions */}
-                            <div className="hidden md:flex justify-end items-center gap-2">
-                                <Button variant="ghost" onClick={() => onAdjustments(emp)}>
-                                    <Pencil/>
-                                </Button>
-                                <Button variant="secondary" onClick={() => onView(emp)}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View
-                                </Button>
-                                <Button onClick={() => onPrint(emp)}>
-                                    <Printer className="mr-2 h-4 w-4" />
-                                    Print
-                                </Button>
-                            </div>
-                            {/* Mobile actions */}
-                            <div className="md:hidden flex justify-end">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-                                            <span className="sr-only">Open menu</span>
-                                            <MoreHorizontal />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                        <DropdownMenuItem onClick={() => onAdjustments(emp)}>Adjustments</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onView(emp)}>View</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onPrint(emp)}>Print</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
+                            <ActionsMenu emp={emp} onView={onView} onPrint={onPrint} onAdjustments={onAdjustments} menuActiveRef={menuActiveRef} />
                         </div>
                     )
                 },
-                size: 220,
+                size: COLUMN_SIZES.actions,
             },
         ],
-        [onView, onPrint, onAdjustments, activeRoles],
+    [onView, onPrint, onAdjustments, normalizeEmployeeTypes],
     )
 
     const [pagination, setPagination] = React.useState<PaginationState>({
@@ -253,12 +327,7 @@ export default function TableReport({
         state: { pagination, sorting },
     })
 
-    React.useEffect(() => {
-        const nextPage = table.getState().pagination.pageIndex + 1
-        if (nextPage !== currentPage) {
-            onPageChange(nextPage)
-        }
-    }, [table.getState().pagination.pageIndex])
+    // Do not emit page changes from local pagination; parent owns currentPage
 
     return (
         <div className="flex flex-1 flex-col">
@@ -268,94 +337,204 @@ export default function TableReport({
                         <Spinner className="h-10 w-10 animate-spin-slow text-primary" />
                     </div>
                 )}
-                <Table className="w-full min-w-[900px] select-none text-sm" style={{ tableLayout: 'fixed', width: '100%' }}>
-                    <TableHeader>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id} className="sticky top-0 z-[1] bg-muted/50/80 backdrop-blur-sm">
-                                {headerGroup.headers.map((header, idx) => (
-                                    <TableHead
-                                        key={header.id}
-                                        className={cn(
-                                            'h-11 whitespace-nowrap text-muted-foreground/90',
-                                            stickyId && idx === 0 ? 'sticky left-0 z-[2] bg-muted/50/80 backdrop-blur-sm' : ''
-                                        )}
-                                        style={{ width: header.getSize() || undefined }}
-                                    >
-                                        {header.isPlaceholder
-                                            ? null
-                                            : typeof header.column.columnDef.header === 'function'
-                                            ? header.column.columnDef.header(header.getContext())
-                                            : header.column.columnDef.header}
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
-                        {loading ? (
-                            Array.from({ length: MAX_ROWS }).map((_, i) => (
-                                <TableRow key={`skeleton-${i}`} style={{ height: ROW_HEIGHT }}>
-                                    {columns.map((col) => (
-                                        <TableCell key={col.id} style={{ width: col.size }}>
-                                            <Skeleton className="h-4 w-full" />
-                                        </TableCell>
+                {/* Desktop / Tablet table */}
+                <div className="hidden md:block">
+                    <Table className="w-full select-none text-sm" style={{ tableLayout: 'fixed', width: '100%' }}>
+                        <TableHeader>
+                            {table.getHeaderGroups().map((headerGroup) => (
+                                <TableRow key={headerGroup.id} className="sticky top-0 z-[1] bg-muted/50/80 backdrop-blur-sm">
+                                    {headerGroup.headers.map((header, idx) => (
+                                        <TableHead
+                                            key={header.id}
+                                            className={cn(
+                                                'h-11 whitespace-nowrap text-muted-foreground/90',
+                                                stickyId && idx === 0 ? 'sticky left-0 z-[2] bg-muted/50/80 backdrop-blur-sm' : ''
+                                            )}
+                                            style={
+                                                header.column.id === 'id' || header.column.id === 'actions'
+                                                    ? { width: header.getSize() || undefined }
+                                                    : undefined
+                                            }
+                                        >
+                                            {header.isPlaceholder
+                                                ? null
+                                                : typeof header.column.columnDef.header === 'function'
+                                                ? header.column.columnDef.header(header.getContext())
+                                                : header.column.columnDef.header}
+                                        </TableHead>
                                     ))}
                                 </TableRow>
-                            ))
-                        ) : data.length === 0 ? (
-                            <>
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={columns.length}
-                                        className="py-10 text-center text-muted-foreground"
-                                        style={{ height: ROW_HEIGHT }}
-                                    >
-                                        No employees found
-                                    </TableCell>
-                                </TableRow>
-                                {Array.from({ length: MAX_ROWS - 1 }).map((_, i) => (
-                                    <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                Array.from({ length: pagination.pageSize }).map((_, i) => (
+                                    <TableRow key={`skeleton-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
                                         {columns.map((col) => (
-                                            <TableCell key={col.id} />
-                                        ))}
-                                    </TableRow>
-                                ))}
-                            </>
-                        ) : (
-                            <>
-                                {table.getRowModel().rows.map((row, index) => (
-                                    <TableRow
-                                        key={row.id}
-                                        className={cn('transition-opacity duration-300', isAnimating ? 'opacity-100' : 'opacity-0')}
-                                        style={{ transitionDelay: `${index * 30}ms` }}
-                                    >
-                                        {row.getVisibleCells().map((cell, idx) => (
-                                            <TableCell
-                                                key={cell.id}
-                                                className={cn(
-                                                    density === 'compact' ? 'py-1.5' : 'py-3',
-                                                    idx === 0 ? cn('pl-4', stickyId ? 'sticky left-0 z-[1] bg-inherit' : '') : ''
-                                                )}
-                                                style={{ width: cell.column.getSize() || undefined }}
-                                            >
-                                                {typeof cell.column.columnDef.cell === 'function'
-                                                    ? cell.column.columnDef.cell(cell.getContext())
-                                                    : cell.column.columnDef.cell}
+                                            <TableCell key={col.id ?? `col-${i}`} className={cn('py-0 overflow-hidden', ROW_HEIGHT_CLASS)}>
+                                                <Skeleton className="h-4 w-full" />
                                             </TableCell>
                                         ))}
                                     </TableRow>
-                                ))}
-                                {Array.from({ length: Math.max(0, MAX_ROWS - data.length) }).map((_, i) => (
-                                    <TableRow key={`empty-${i}`} style={{ height: ROW_HEIGHT }}>
-                                        {columns.map((col) => (
-                                            <TableCell key={col.id} />
-                                        ))}
+                                ))
+                            ) : data.length === 0 ? (
+                                <>
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={columns.length}
+                                            className="py-10 text-center text-muted-foreground"
+                                            style={{ height: ROW_HEIGHT }}
+                                        >
+                                            No employees found
+                                        </TableCell>
                                     </TableRow>
-                                ))}
-                            </>
-                        )}
-                    </TableBody>
-                </Table>
+                                    {Array.from({ length: Math.max(0, pagination.pageSize - 1) }).map((_, i) => (
+                                        <TableRow key={`empty-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
+                                            {columns.map((col) => (
+                                                <TableCell key={col.id ?? `col-${i}`} className={cn('py-0 overflow-hidden', ROW_HEIGHT_CLASS)} />
+                                            ))}
+                                        </TableRow>
+                                    ))}
+                                </>
+                            ) : (
+                                <>
+                                    {table.getRowModel().rows.map((row, index) => (
+                                        <TableRow
+                                            key={row.id}
+                                            className={cn('transition-opacity duration-300 cursor-pointer hover:bg-muted/40', isAnimating ? 'opacity-100' : 'opacity-0')}
+                                            style={{ transitionDelay: `${index * 30}ms` }}
+                                            tabIndex={0}
+                                            onClick={() => {
+                                                if (menuActiveRef.current) return
+                                                onView(row.original)
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault()
+                                                    if (menuActiveRef.current) return
+                                                    onView(row.original)
+                                                }
+                                            }}
+                                        >
+                                            {row.getVisibleCells().map((cell, idx) => (
+                                                <TableCell
+                                                    key={cell.id}
+                                                    className={cn('py-0 px-4 overflow-hidden min-w-0', ROW_HEIGHT_CLASS, idx === 0 ? (stickyId ? 'sticky left-0 z-[1] bg-inherit' : '') : '')}
+                                                    style={
+                                                        cell.column.id === 'id' || cell.column.id === 'actions'
+                                                            ? { width: cell.column.getSize() || undefined }
+                                                            : undefined
+                                                    }
+                                                >
+                                                    {typeof cell.column.columnDef.cell === 'function'
+                                                        ? cell.column.columnDef.cell(cell.getContext())
+                                                        : cell.column.columnDef.cell}
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                    ))}
+                                    {Array.from({ length: Math.max(0, pagination.pageSize - data.length) }).map((_, i) => (
+                                        <TableRow key={`empty-${i}`} className={ROW_HEIGHT_CLASS} style={{ height: ROW_HEIGHT }}>
+                                            {columns.map((col) => (
+                                                <TableCell key={col.id ?? `col-${i}`} className={cn('py-0 overflow-hidden', ROW_HEIGHT_CLASS)} />
+                                            ))}
+                                        </TableRow>
+                                    ))}
+                                </>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="md:hidden">
+                    {loading ? (
+                        <div className="space-y-3 p-3">
+                            {Array.from({ length: pagination.pageSize }).map((_, i) => (
+                                <Card key={`card-skel-${i}`} className="p-3">
+                                    <CardHeader className="p-0">
+                                        <div className="flex items-center justify-between">
+                                            <Skeleton className="h-4 w-40" />
+                                            <Skeleton className="h-8 w-8 rounded-full" />
+                                        </div>
+                                        <CardDescription>
+                                            <Skeleton className="mt-2 h-4 w-24" />
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-0 mt-3">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <Skeleton className="h-6 w-full" />
+                                            <Skeleton className="h-6 w-full" />
+                                        </div>
+                                        <div className="mt-2">
+                                            <Skeleton className="h-6 w-1/2" />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : data.length === 0 ? (
+                        <div className="p-6 text-center text-muted-foreground">No employees found</div>
+                    ) : (
+                        <div className="space-y-3 p-3">
+                            {table.getRowModel().rows.map((row) => (
+                                <Card
+                                    key={`card-${row.id}`}
+                                    className="focus:outline-none"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => {
+                                        if (menuActiveRef.current) return
+                                        onView(row.original)
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            if (menuActiveRef.current) return
+                                            onView(row.original)
+                                        }
+                                    }}
+                                >
+                                    <CardHeader className="pb-2">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <CardTitle className="text-base leading-tight truncate" title={formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}>
+                                                    {formatFullName(row.original.last_name, row.original.first_name, row.original.middle_name)}
+                                                </CardTitle>
+                                                <CardDescription className="mt-1">ID: {row.original.id}</CardDescription>
+                                            </div>
+                                            <div className="shrink-0">
+                                                <ActionsMenu emp={row.original} onView={onView} onPrint={onPrint} onAdjustments={onAdjustments} menuActiveRef={menuActiveRef} />
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-0 pb-3">
+                                        <div className="grid grid-cols-1 gap-2">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-xs text-muted-foreground">Employee Type</span>
+                                                <div className="min-w-0 max-w-[60%] truncate text-right">
+                                                    <EmployeeTypesBadges employeeTypes={normalizeEmployeeTypes(row.original.employee_types as unknown)} variant="plain" compact />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-xs text-muted-foreground">Status</span>
+                                                <div className="min-w-0 max-w-[60%] truncate text-right">
+                                                    <StatusBadge status={row.original.employee_status} />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-xs text-muted-foreground">Roles</span>
+                                                <div className="min-w-0 max-w-[60%] truncate text-right">
+                                                    <RolesTableBadge roles={(row.original.roles ? row.original.roles.split(',').map(r=>r.trim()).filter(Boolean) : [])} college_program={row.original.college_program} compact />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="mt-4 flex min-h-[56px] items-center justify-between rounded-md border bg-card px-3 py-2 text-sm">
