@@ -38,11 +38,12 @@ export function EarningsForm({ form }: EarningsFormProps) {
     const isAdmin = React.useMemo(() => rolesArr.includes('administrator'), [rolesArr]);
     const STANDARD_ROLES = ['administrator', 'college instructor', 'basic education instructor'];
     const isOthers = React.useMemo(() => rolesArr.some(role => !STANDARD_ROLES.includes(role)), [rolesArr]);
+    const isOnlyOthers = isOthers && !(isAdmin || isBasicEdu || isCollege)
     const showBaseSalary = isAdmin || isBasicEdu || isOthers;
-    const isBaseSalaryOptional = isOthers;
+    const isBaseSalaryOptional = !isOthers; 
     const showRatePerHour = isCollege || isBasicEdu;
-    const isRatePerHourOptional = isBasicEdu;
-    const showHonorariumOptional = !isOthers;
+    const isRatePerHourOptional = isBasicEdu && !isCollege;
+    const showHonorariumOptional = !isOthers || (isAdmin && isOthers);
 
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {
         const rawValue = value.replace(/,/g, '');
@@ -99,7 +100,7 @@ export function EarningsForm({ form }: EarningsFormProps) {
     const baseSalaryField = (
         <div className="flex flex-col gap-2">
             <Label htmlFor="base_salary" className="font-semibold flex items-center">
-                Base Salary {!isBaseSalaryOptional && <Asterisk className="h-4 w-4 text-destructive ml-1" />}
+                Base Salary {isBaseSalaryOptional && <Asterisk className="h-4 w-4 text-destructive ml-1" />}
             </Label>
             <div className="relative">
                 <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
@@ -143,7 +144,7 @@ export function EarningsForm({ form }: EarningsFormProps) {
                         </motion.div>
                     ) : (
                         <motion.div key="earning-fields" {...motionProps} className="space-y-6">
-                            {isOthers ? (
+                            {isOnlyOthers ? (
                                 <>
                                     {honorariumField}
                                     {showBaseSalary && baseSalaryField}
