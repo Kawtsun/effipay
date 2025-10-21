@@ -98,7 +98,7 @@ class UpdateEmployeesRequest extends FormRequest
         // Rate per hour rule matching StoreEmployeesRequest
         // Include when College or Basic Education roles are present; required only for College
         $rules['rate_per_hour'] = [
-            Rule::excludeIf(!$isCollege && !$isBasicEdu),
+            Rule::excludeIf(!$isCollege),
             Rule::requiredIf($isCollege),
             'nullable',
             'numeric',
