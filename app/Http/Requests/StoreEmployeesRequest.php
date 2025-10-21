@@ -84,11 +84,13 @@ class StoreEmployeesRequest extends FormRequest
 
         // Your original salary/honorarium logic (unchanged)
         $requiresBaseSalary = $isAdmin || $isBasicEdu;
-        if ($isOthers) {
+        // Make base_salary optional only when the selected roles are "others" exclusively.
+        $isOnlyOthers = $isOthers && !$isAdmin && !$isBasicEdu && !$isCollege;
+        if ($isOnlyOthers) {
             $rules['honorarium'] = 'required|numeric|min:0';
             $rules['base_salary'] = 'nullable|numeric|min:0';
         } else {
-            $rules['honorarium'] = 'nullable|numeric|min:0';
+            $rules['honorarium'] = $isOthers ? 'nullable|numeric|min:0' : 'nullable|numeric|min:0';
             if ($requiresBaseSalary) {
                 $rules['base_salary'] = 'required|numeric|min:0';
             } else {
