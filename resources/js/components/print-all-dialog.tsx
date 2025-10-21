@@ -222,6 +222,25 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
         const asPdf = pdf(doc);
         const blob = await asPdf.toBlob();
         const url = URL.createObjectURL(blob);
+        // Fire-and-forget audit log for batch payslip print
+        try {
+          const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+          fetch('/api/audit/print-log', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': csrf,
+              'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              type: 'payslip',
+              employee_id: null,
+              month: selectedMonth,
+              details: { source: 'PrintAllDialog', employees: filtered.length },
+            }),
+          }).catch(() => {});
+        } catch {}
         if (AUTO_DOWNLOAD) {
           const a = document.createElement('a');
           a.href = url;
@@ -350,9 +369,15 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
         const url = URL.createObjectURL(blob);
         // Fire-and-forget audit log for batch BTR print
         try {
+          const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
           fetch('/api/audit/print-log', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': csrf,
+              'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
             body: JSON.stringify({
               type: 'btr',
               employee_id: null,

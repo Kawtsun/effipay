@@ -275,21 +275,25 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             setLoadingPayslip(false);
         }, 100);
 
-        // Fire-and-forget audit log for payslip print
+        // Fire-and-forget audit log for payslip print (with CSRF)
         try {
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             fetch('/api/audit/print-log', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     type: 'payslip',
                     employee_id: employee?.id,
                     month: selectedMonth,
                     details: { source: 'PrintDialog' },
                 }),
-            });
-        } catch {
-            // ignore audit errors
-        }
+            }).catch(() => {});
+        } catch {}
     };
 
     const handlePrintBTR = async () => {
@@ -359,21 +363,25 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 setLoadingBTR(false);
             }, 100);
 
-            // Fire-and-forget audit log for BTR print
+            // Fire-and-forget audit log for BTR print (with CSRF)
             try {
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 fetch('/api/audit/print-log', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'same-origin',
                     body: JSON.stringify({
                         type: 'btr',
                         employee_id: employee?.id,
                         month: selectedMonth,
                         details: { source: 'PrintDialog' },
                     }),
-                });
-            } catch {
-                // ignore audit errors
-            }
+                }).catch(() => {});
+            } catch {}
         } catch {
             toast.error('Error generating BTR.');
             setLoadingBTR(false);
