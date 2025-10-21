@@ -40,7 +40,7 @@ export function PageContent() {
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.1 } }}
                     >
-                        A thesis system developed to solve a critical business need, built with the <strong className="font-semibold">spirit of teamwork and meticulous engineering</strong>.
+                        A research-based system created to fulfill a pressing organizational requirement, <strong className="font-semibold">constructed with collective dedication and careful design.</strong>.
                     </motion.p>
                 </div>
 
@@ -107,7 +107,7 @@ export function PageContent() {
                                 Academic Affiliation
                             </h3>
                             <p className='text-base text-muted-foreground'>
-                                This project is proudly affiliated with <strong className="font-semibold text-foreground">URS Morong Campus</strong>. Its successful completion serves as a core requirement, showcasing our team's ability to apply advanced theoretical knowledge to practical problem-solving in software development.
+                                This project is proudly connected with <strong className="font-semibold text-foreground">URS Morong Campus</strong>. Its successful completion serves as a academic requirement, highlighting our team's capability to implement advanced theoretical knowledge to practical problem-solving in software development.
                             </p>
                         </motion.div>
 
@@ -122,7 +122,7 @@ export function PageContent() {
                                 Client
                             </h3>
                             <p className='text-base text-muted-foreground'>
-                                We partnered with <strong className="font-semibold text-foreground">Tomas Claudio Colleges</strong> to develop this <strong className="font-semibold text-foreground">Payroll System</strong>. The project directly addresses their need to replace an outdated, error-prone, <strong className="font-semibold text-foreground">Excel-based payroll system</strong> with a robust, modern, and automated solution.
+                                We partnered with <strong className="font-semibold text-foreground">Tomas Claudio Colleges</strong> to develop this <strong className="font-semibold text-foreground">Payroll System</strong>. The project directly addresses their need to replace an manual, error-prone, <strong className="font-semibold text-foreground">Excel-based payroll system</strong> with a reliable, modern, and automated solution.
                             </p>
                         </motion.div>
                     </div>

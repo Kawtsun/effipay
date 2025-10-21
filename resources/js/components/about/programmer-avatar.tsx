@@ -29,5 +29,5 @@ export const programmers = [
     { id: 1, name: 'Kawtsun', imageUrl: 'img/programmers/kita.jpg', initials: 'KA' },
     { id: 2, name: 'Ra Hee', imageUrl: 'img/programmers/ryo.jpg', initials: 'RH' },
     { id: 3, name: 'WinRar', imageUrl: 'img/programmers/bocchi.jpeg', initials: 'WR' },
-    { id: 4, name: 'Nics', imageUrl: 'img/programmers/nijika.jpg', initials: 'NI' },
+    { id: 4, name: 'Nix', imageUrl: 'img/programmers/nijika.jpg', initials: 'NI' },
 ];
