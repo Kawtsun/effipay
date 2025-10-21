@@ -57,5 +57,10 @@ class Employees extends Model
     {
         return $this->hasMany(EmployeeType::class, 'employee_id');
     }
+
+    public function collegeProgramSchedules(): HasMany
+    {
+        return $this->hasMany(EmployeeCollegeProgramSchedule::class, 'employee_id');
+    }
 }
 

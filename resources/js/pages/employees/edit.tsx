@@ -57,8 +57,11 @@ type EmployeeDataFromServer = {
     college_program?: string | null;
     // Older records may store this as a flat array; newer UI uses a per-role map
     work_days?: WorkDayTime[] | Record<string, WorkDayTime[]> | null;
+    college_work_hours_by_program?: Record<string, string> | null;
+    college_work_days_by_program?: Record<string, WorkDayTime[]> | null;
     base_salary?: string | number | null;
     college_rate?: string | number | null;
+    rate_per_hour?: string | number | null;
     honorarium?: string | number | null;
     sss?: string | number | null;
     philhealth?: string | number | null;
@@ -124,11 +127,11 @@ export default function Edit(props: Props) {
         employee_types: employee.employee_types || ({} as Record<string, string>),
         employee_status: toString(employee.employee_status),
         college_program: toString(employee.college_program),
-        work_days: initialWorkDaysByRole,
-        college_work_hours_by_program: {},
-        college_work_days_by_program: {},
+    work_days: initialWorkDaysByRole,
+    college_work_hours_by_program: (employee.college_work_hours_by_program || {}) as Record<string, string>,
+    college_work_days_by_program: (employee.college_work_days_by_program || {}) as Record<string, WorkDayTime[]>,
         base_salary: toString(employee.base_salary),
-        rate_per_hour: toString(employee.college_rate),
+    rate_per_hour: toString(employee.college_rate ?? employee.rate_per_hour),
         honorarium: toString(employee.honorarium),
         sss: toString(employee.sss),
         philhealth: toString(employee.philhealth),

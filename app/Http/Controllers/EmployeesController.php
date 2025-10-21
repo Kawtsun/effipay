@@ -269,7 +269,7 @@ class EmployeesController extends Controller
             $workDaysForInsert = $workDaysCollege;
         }
 
-        DB::transaction(function () use ($employeeData, $employeeTypesData, $workDaysForInsert) {
+        DB::transaction(function () use ($employeeData, $employeeTypesData, $workDaysForInsert, $validatedData) {
             $employee = Employees::create($employeeData);
 
             if (is_array($employeeTypesData)) {
@@ -291,6 +291,25 @@ class EmployeesController extends Controller
                 }
             }
             
+            // Persist college program schedules (per program/day with hours)
+            $daysByProgram = $validatedData['college_work_days_by_program'] ?? [];
+            $hoursByProgram = $validatedData['college_work_hours_by_program'] ?? [];
+            if (is_array($daysByProgram) && is_array($hoursByProgram)) {
+                foreach ($daysByProgram as $code => $days) {
+                    $hours = isset($hoursByProgram[$code]) ? (float)$hoursByProgram[$code] : 0.0;
+                    if (!is_array($days) || count($days) === 0) { continue; }
+                    foreach ($days as $d) {
+                        $label = is_array($d) && isset($d['day']) ? (string)$d['day'] : (is_string($d) ? (string)$d : null);
+                        if (!$label) { continue; }
+                        $employee->collegeProgramSchedules()->create([
+                            'program_code' => $code,
+                            'day' => $label,
+                            'hours_per_day' => $hours > 0 ? $hours : 0,
+                        ]);
+                    }
+                }
+            }
+
             // --- RESTORED AUDIT LOGIC FOR STORE ---
             $username = Auth::user()->username ?? 'system';
             \App\Models\AuditLogs::create([
@@ -312,7 +331,7 @@ class EmployeesController extends Controller
      */
     public function edit(Employees $employee, Request $request)
     {
-        $employee->load(['workDays', 'employeeTypes']);
+    $employee->load(['workDays', 'employeeTypes', 'collegeProgramSchedules']);
 
         $salaryDefaults = Salary::all()->mapWithKeys(fn($row) => [
             $row->employee_type => $row->toArray(),
@@ -320,6 +339,67 @@ class EmployeesController extends Controller
         
         $employeeData = $employee->toArray();
         $employeeData['employee_types'] = $employee->employeeTypes->pluck('type', 'role')->toArray();
+
+        // Ensure college_rate is populated for older records that used rate_per_hour
+        if (!isset($employeeData['college_rate']) || $employeeData['college_rate'] === null || $employeeData['college_rate'] === '') {
+            if (isset($employeeData['rate_per_hour']) && $employeeData['rate_per_hour'] !== '') {
+                $employeeData['college_rate'] = $employeeData['rate_per_hour'];
+            }
+        }
+
+        // Normalize work schedule payload for the edit page
+        // 1) Build per-role map for NON-college roles from time-based entries
+        $rolesRaw = (string)($employeeData['roles'] ?? '');
+        $rolesArr = array_values(array_filter(array_map('trim', explode(',', $rolesRaw))));
+        $nonCollegeRoles = array_values(array_filter($rolesArr, fn ($r) => stripos($r, 'college') === false));
+
+        $timeBasedDays = $employee->workDays
+            ->filter(function ($wd) {
+                return !empty($wd->work_start_time) || !empty($wd->work_end_time);
+            })
+            ->values();
+
+        if (count($nonCollegeRoles) > 0) {
+            $workDaysByRole = [];
+            $timeBasedArray = $timeBasedDays->map(function ($wd) {
+                return [
+                    'day' => $wd->day,
+                    'work_start_time' => $wd->work_start_time,
+                    'work_end_time' => $wd->work_end_time,
+                    'work_hours' => $wd->work_hours,
+                ];
+            })->toArray();
+            foreach ($nonCollegeRoles as $role) {
+                $workDaysByRole[$role] = $timeBasedArray;
+            }
+            $employeeData['work_days'] = $workDaysByRole;
+        }
+
+        // 2) Prefill college program days and hours from the new schedules table when available
+        $programsRaw = (string)($employeeData['college_program'] ?? '');
+        $programCodes = array_values(array_filter(array_map('trim', explode(',', $programsRaw))));
+        if (count($programCodes) > 0) {
+            $daysByProgram = [];
+            $hoursByProgram = [];
+            $byProgram = $employee->collegeProgramSchedules
+                ->groupBy('program_code');
+            foreach ($programCodes as $code) {
+                $rows = $byProgram->get($code);
+                if ($rows && $rows->count() > 0) {
+                    $daysByProgram[$code] = $rows->map(fn($r) => ['day' => $r->day])->values()->toArray();
+                    // hours_per_day is stored per program; use as-is (assumes same hours across its selected days)
+                    // If rows contain varying hours, prefer the first non-zero
+                    $hp = (float)($rows->firstWhere('hours_per_day', '>', 0)->hours_per_day ?? 0);
+                    $hoursByProgram[$code] = $hp > 0 ? (string)$hp : '';
+                }
+            }
+            if (!empty($daysByProgram)) {
+                $employeeData['college_work_days_by_program'] = $daysByProgram;
+            }
+            if (!empty($hoursByProgram)) {
+                $employeeData['college_work_hours_by_program'] = $hoursByProgram;
+            }
+        }
 
         return Inertia::render('employees/edit', [
             'employee' => $employeeData,
@@ -467,7 +547,7 @@ class EmployeesController extends Controller
             $workDaysForInsert = $workDaysCollege;
         }
 
-        DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $workDaysForInsert, $oldData) {
+        DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $workDaysForInsert, $oldData, $validatedData) {
             $employee->update($employeeData);
 
             $employee->employeeTypes()->delete();
@@ -486,6 +566,26 @@ class EmployeesController extends Controller
                             'work_start_time' => $workDay['work_start_time'] ?? null,
                             'work_end_time' => $workDay['work_end_time'] ?? null,
                             'work_hours' => $workDay['work_hours'] ?? null,
+                        ]);
+                    }
+                }
+            }
+
+            // Replace college program schedules with latest data
+            $employee->collegeProgramSchedules()->delete();
+            $daysByProgram = $validatedData['college_work_days_by_program'] ?? [];
+            $hoursByProgram = $validatedData['college_work_hours_by_program'] ?? [];
+            if (is_array($daysByProgram) && is_array($hoursByProgram)) {
+                foreach ($daysByProgram as $code => $days) {
+                    $hours = isset($hoursByProgram[$code]) ? (float)$hoursByProgram[$code] : 0.0;
+                    if (!is_array($days) || count($days) === 0) { continue; }
+                    foreach ($days as $d) {
+                        $label = is_array($d) && isset($d['day']) ? (string)$d['day'] : (is_string($d) ? (string)$d : null);
+                        if (!$label) { continue; }
+                        $employee->collegeProgramSchedules()->create([
+                            'program_code' => $code,
+                            'day' => $label,
+                            'hours_per_day' => $hours > 0 ? $hours : 0,
                         ]);
                     }
                 }
