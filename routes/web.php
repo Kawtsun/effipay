@@ -50,6 +50,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/timekeeping/records', [TimeKeepingController::class, 'getEmployeeRecordsForMonth']);
     // API: Get monthly summary for employee and month (ADD THIS LINE)
     Route::get('/api/timekeeping/monthlySummary', [TimeKeepingController::class, 'monthlySummary']); 
+    // API: Get employees grouped by whether they have timekeeping records in a month
+    Route::get('/api/timekeeping/employees-by-month', [TimeKeepingController::class, 'employeesByMonth']);
 
     // API: Log print actions (payslip/BTR)
     Route::post('/api/audit/print-log', [AuditLogsController::class, 'logPrint'])->name('audit.print-log');

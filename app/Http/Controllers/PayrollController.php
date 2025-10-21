@@ -23,11 +23,17 @@ class PayrollController extends Controller
     public function runPayroll(Request $request)
     {
         $request->validate([
-            'payroll_date' => 'required|date',
+            'payroll_date' => 'required', // we'll normalize below to a real date
         ]);
 
-        // Extract the month (YYYY-MM) from the selected payroll date
-        $payrollDate = Carbon::parse($request->payroll_date);
+        // Normalize incoming date which may be YYYY-MM (month-only)
+        $raw = $request->payroll_date;
+        try {
+            // If month-only, Carbon will still parse to first day of month
+            $payrollDate = Carbon::parse(strval($raw));
+        } catch (\Throwable $e) {
+            return redirect()->back()->withErrors(['message' => 'Invalid payroll date.']);
+        }
         $payrollMonth = $payrollDate->format('Y-m');
 
         // Get all employees
@@ -51,10 +57,24 @@ class PayrollController extends Controller
                 // Already run twice for this month
                 continue;
             }
-            // If already run once, only allow for the other day
-            $existingDates = $existingPayrolls->pluck('payroll_date')->toArray();
-            if (in_array($request->payroll_date, $existingDates)) {
-                continue;
+            // Decide target payroll date for this run:
+            // - If no payroll yet: use 15th of the month
+            // - If one payroll exists: use the last day of the month
+            // - Prevent duplicate same-day entries
+            $firstHalfDate = Carbon::createFromFormat('Y-m-d', $payrollMonth . '-15');
+            $lastDayDate   = Carbon::createFromFormat('Y-m-d', $payrollMonth . '-' . str_pad($payrollDate->endOfMonth()->day, 2, '0', STR_PAD_LEFT));
+            $existingDates = collect($existingPayrolls)->pluck('payroll_date')->map(fn($d) => Carbon::parse($d)->format('Y-m-d'))->toArray();
+            if ($existingPayrolls->count() === 0) {
+                $payrollDateStr = $firstHalfDate->format('Y-m-d');
+            } else {
+                $payrollDateStr = $lastDayDate->format('Y-m-d');
+            }
+            if (in_array($payrollDateStr, $existingDates, true)) {
+                // If computed date collides (edge case), fallback to actual parsed day
+                $payrollDateStr = $payrollDate->format('Y-m-d');
+                if (in_array($payrollDateStr, $existingDates, true)) {
+                    continue; // still duplicate
+                }
             }
 
             // Skip employee if they have no timekeeping data for the month
@@ -181,10 +201,12 @@ class PayrollController extends Controller
             $calamity_loan = !is_null($employee->calamity_loan) ? $employee->calamity_loan : 0;
             $multipurpose_loan = !is_null($employee->multipurpose_loan) ? $employee->multipurpose_loan : 0;
 
-            $total_deductions = $sss + $philhealth + $pag_ibig + $withholding_tax
+            $total_deductions = (
+                $sss + $philhealth + $pag_ibig + $withholding_tax
                 + $sss_salary_loan + $sss_calamity_loan + $pagibig_multi_loan + $pagibig_calamity_loan
-                + $peraa_con + $tuition + $china_bank + $tea; // Honorarium is an earning, not deduction
-            +$salary_loan + $calamity_loan + $multipurpose_loan;
+                + $peraa_con + $tuition + $china_bank + $tea // Honorarium is an earning, not deduction
+                + $salary_loan + $calamity_loan + $multipurpose_loan
+            );
             $net_pay = $gross_pay - $total_deductions;
 
             \Illuminate\Support\Facades\Log::info([
@@ -195,7 +217,7 @@ class PayrollController extends Controller
             $payrollData = [
                 'employee_id' => $employee->id,
                 'month' => $payrollMonth,
-                'payroll_date' => $request->payroll_date,
+                'payroll_date' => $payrollDateStr,
                 'base_salary' => $base_salary,
                 'college_rate' => isset($college_rate) ? $college_rate : null,
                 'honorarium' => $honorarium,
@@ -244,7 +266,7 @@ class PayrollController extends Controller
             } catch (\Throwable $e) {
                 \Log::warning('Failed to write audit log for payroll run: ' . $e->getMessage());
             }
-            return redirect()->back()->with('flash', 'Payroll run successfully for ' . date('F Y', strtotime($request->payroll_date)) . '. Payroll records created: ' . $createdCount);
+            return redirect()->back()->with('flash', 'Payroll run successfully for ' . date('F Y', strtotime($payrollDateStr)) . '. Payroll records created: ' . $createdCount);
         } else {
             return redirect()->back()->with('flash', 'Payroll already run twice for this month.');
         }

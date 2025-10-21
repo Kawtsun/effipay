@@ -924,4 +924,64 @@ class TimeKeepingController extends Controller
             'months' => $tkMonths,
         ]);
     }
+
+    /**
+     * Return employees grouped by whether they have timekeeping records for the given month.
+     * GET /api/timekeeping/employees-by-month?month=YYYY-MM
+     */
+    public function employeesByMonth(Request $request)
+    {
+        $month = $request->query('month');
+        if (!$month || !preg_match('/^\d{4}-\d{2}$/', $month)) {
+            return response()->json(['success' => false, 'error' => 'Invalid or missing month'], 400);
+        }
+        $firstDay = $month . '-01';
+        $lastDay = date('Y-m-t', strtotime($firstDay));
+
+        // Employee IDs that have at least one TK record in the month
+        $withIds = \App\Models\TimeKeeping::whereBetween('date', [$firstDay, $lastDay])
+            ->distinct()
+            ->pluck('employee_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $withSet = array_flip($withIds);
+
+        $employees = \App\Models\Employees::select('id', 'first_name', 'middle_name', 'last_name', 'employee_status', 'roles', 'college_program')->get();
+        $with = [];
+        $without = [];
+        foreach ($employees as $e) {
+            $fullName = trim(
+                trim(($e->last_name ?? '')) . ', ' .
+                trim(($e->first_name ?? '') . ' ' . ($e->middle_name ?? ''))
+            );
+            $item = [
+                'id' => $e->id,
+                'name' => trim(($e->last_name ?? '') . ', ' . ($e->first_name ?? '')),
+                'full_name' => $fullName,
+                'first_name' => $e->first_name,
+                'middle_name' => $e->middle_name,
+                'last_name' => $e->last_name,
+                'employee_status' => $e->employee_status,
+                'roles' => $e->roles,
+                'college_program' => $e->college_program,
+            ];
+            if (isset($withSet[$e->id])) {
+                $with[] = $item;
+            } else {
+                $without[] = $item;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'month' => $month,
+            'with' => $with,
+            'without' => $without,
+            'with_count' => count($with),
+            'without_count' => count($without),
+        ]);
+    }
 }
