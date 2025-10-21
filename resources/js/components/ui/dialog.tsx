@@ -47,18 +47,30 @@ function DialogOverlay({
     }
 
     if (openPicker) {
-      // Dispatch Escape to ask Radix floating components to close themselves.
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      // If a picker is open, close it and prevent the dialog from also
+      // closing on this same click. We prefer clicking the trigger; fallback
+      // to Escape if trigger not found.
+      try {
+        const selectTrigger = document.querySelector('[data-slot="select-trigger"][aria-expanded="true"]') as HTMLElement | null
+        const popoverTrigger = document.querySelector('[data-slot="popover-trigger"][aria-expanded="true"]') as HTMLElement | null
 
-      // Prevent other handlers (including the dialog internals) from processing this event
-      // so that the dialog doesn't also close on the same click.
+        if (selectTrigger) {
+          selectTrigger.click()
+        } else if (popoverTrigger) {
+          popoverTrigger.click()
+        } else {
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+        }
+      } catch (err) {
+        try { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) } catch {}
+      }
+
+      // Prevent the dialog from handling the same click. This ensures only the
+      // picker closes when clicking outside while it's open.
       try {
         const ne = e.nativeEvent as PointerEvent
         if (typeof ne.stopImmediatePropagation === 'function') ne.stopImmediatePropagation()
-      } catch {
-        // ignore
-      }
-
+      } catch {}
       e.preventDefault()
       e.stopPropagation()
       return
