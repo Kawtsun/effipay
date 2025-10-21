@@ -22,25 +22,23 @@ class StoreEmployeesRequest extends FormRequest
      */
     public function rules(): array
     {
-        $rolesArr = array_filter(array_map('trim', explode(',', request('roles', ''))));
+        $rolesArrRaw = array_filter(array_map('trim', explode(',', request('roles', ''))));
+        $rolesArr = array_map('strtolower', $rolesArrRaw);
         $employeeTypes = request('employee_types', []);
 
-        $isAdmin = in_array('administrator', $rolesArr);
-        $isCollege = in_array('college instructor', $rolesArr);
-        $isBasicEdu = in_array('basic education instructor', $rolesArr);
+        // Case-insensitive, substring-based detection for robustness
+        $isAdmin = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'admin')));
+        $isCollege = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'college')));
+        $isBasicEdu = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'basic education')));
 
-        $isOthers = false;
-        foreach ($rolesArr as $role) {
-            if (!in_array($role, ['administrator', 'college instructor', 'basic education instructor'])) {
-                $isOthers = true;
-                break;
-            }
-        }
+        // Any role that isn't admin/basic/college falls under "others"
+        $isOthers = !empty(array_filter($rolesArr, fn ($r) => !str_contains($r, 'admin') && !str_contains($r, 'basic education') && !str_contains($r, 'college')));
         
         $isRetired = in_array('Retired', $employeeTypes, true);
         $contribOptional = $isCollege || $isBasicEdu || $isOthers || $isRetired;
 
-        $without_college = $isAdmin || $isBasicEdu || $isOthers;
+    $without_college = $isAdmin || $isBasicEdu || $isOthers;
+    $hasNonCollegeRole = $without_college; // alias for clarity
         
         $rules = [
             'first_name' => 'required|string|max:255',
@@ -53,7 +51,8 @@ class StoreEmployeesRequest extends FormRequest
             'college_program' => [Rule::requiredIf($isCollege), 'nullable', 'string', 'max:255'],
             
             // Support both flat array and role-based object structure for work_days
-            'work_days' => 'required|array|min:1',
+            // Required only when there are non-college roles (admin/basic/others)
+            'work_days' => [\Illuminate\Validation\Rule::requiredIf($hasNonCollegeRole), 'array'],
             
             // Flat array validation (backward compatibility)
             'work_days.*.day' => 'sometimes|required|string',
