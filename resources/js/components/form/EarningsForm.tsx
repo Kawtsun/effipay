@@ -32,15 +32,26 @@ interface EarningsFormProps {
 export function EarningsForm({ form }: EarningsFormProps) {
     const { data, setData, errors, clearErrors } = form;
 
-    const rolesArr = React.useMemo(() => data.roles.split(',').map(r => r.trim()).filter(Boolean), [data.roles]);
-    const isCollege = React.useMemo(() => rolesArr.includes('college instructor'), [rolesArr]);
-    const isBasicEdu = React.useMemo(() => rolesArr.includes('basic education instructor'), [rolesArr]);
-    const isAdmin = React.useMemo(() => rolesArr.includes('administrator'), [rolesArr]);
-    const STANDARD_ROLES = ['administrator', 'college instructor', 'basic education instructor'];
-    const isOthers = React.useMemo(() => rolesArr.some(role => !STANDARD_ROLES.includes(role)), [rolesArr]);
+    const rolesArr = React.useMemo(() => (data.roles || '').split(',').map((r: string) => r.trim()).filter(Boolean), [data.roles]);
+    // Lower-cased roles for consistent, case-insensitive checks
+    const rolesLower = React.useMemo(() => rolesArr.map((r: string) => String(r).toLowerCase()), [rolesArr]);
+    const isCollege = React.useMemo(() => rolesLower.some((r: string) => r.includes('college')), [rolesLower]);
+    // Detect basic education by matching common variants
+    const isBasicEdu = React.useMemo(
+        () => rolesLower.some((r: string) => r.includes('basic') && r.includes('education') || r.includes('basic-education') || r === 'basic education'),
+        [rolesLower]
+    );
+    // Detect administrator by common substrings/variants
+    const isAdmin = React.useMemo(() => rolesLower.some((r: string) => r.includes('admin') || r.includes('administrator')), [rolesLower]);
+    const STANDARD_ROLES = React.useMemo(() => ['administrator', 'college instructor', 'basic education instructor'], []);
+    const isOthers = React.useMemo(() => rolesLower.some((role: string) => !STANDARD_ROLES.includes(role)), [rolesLower, STANDARD_ROLES]);
     const isOnlyOthers = isOthers && !(isAdmin || isBasicEdu || isCollege)
     const showBaseSalary = isAdmin || isBasicEdu || isOthers;
-    const isBaseSalaryOptional = !isOthers; 
+    // Base salary is required when Administrator or Basic Education roles are present.
+    const isBaseSalaryRequired = isAdmin || isBasicEdu;
+    // Base salary is optional only when the selected role is 'others' and
+    // there are no administrator or basic education roles selected.
+    // (isBaseSalaryOptional is not used directly; compute inline where needed if needed later)
     const showRatePerHour = isCollege || isBasicEdu;
     const isRatePerHourOptional = isBasicEdu && !isCollege;
     const showHonorariumOptional = !isOthers || (isAdmin && isOthers);
@@ -99,8 +110,8 @@ export function EarningsForm({ form }: EarningsFormProps) {
 
     const baseSalaryField = (
         <div className="flex flex-col gap-2">
-            <Label htmlFor="base_salary" className="font-semibold flex items-center">
-                Base Salary {isBaseSalaryOptional && <Asterisk className="h-4 w-4 text-destructive ml-1" />}
+                <Label htmlFor="base_salary" className="font-semibold flex items-center">
+                Base Salary {isBaseSalaryRequired && <Asterisk className="h-4 w-4 text-destructive ml-1" />}
             </Label>
             <div className="relative">
                 <PhilippinePeso className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
@@ -135,7 +146,7 @@ export function EarningsForm({ form }: EarningsFormProps) {
                 <AnimatePresence mode="wait">
                     {rolesArr.length === 0 ? (
                         <motion.div key="no-roles-alert" {...motionProps}>
-                             <Alert>
+                            <Alert>
                                 <Info className="h-4 w-4" />
                                 <AlertDescription>
                                     Please select an employee role first to set their salary and earnings.
