@@ -19,6 +19,7 @@ class Employees extends Model
         'employee_status',
         'roles',
         'college_program',
+    'basic_edu_level',
         'base_salary',
         'college_rate',
         'rate_per_hour',

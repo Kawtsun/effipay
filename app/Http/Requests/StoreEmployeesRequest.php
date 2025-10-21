@@ -49,6 +49,7 @@ class StoreEmployeesRequest extends FormRequest
             'employee_types' => 'required|array',
             'employee_types.*' => ['required', Rule::in(['Regular', 'Provisionary', 'Retired', 'Full Time', 'Part Time'])],
             'college_program' => [Rule::requiredIf($isCollege), 'nullable', 'string', 'max:255'],
+            'basic_education_level' => ['sometimes', 'nullable', 'string', 'max:255'],
             
             // Support both flat array and role-based object structure for work_days
             // Required only when there are non-college roles (admin/basic/others)

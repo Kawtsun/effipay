@@ -27,6 +27,7 @@ type EmployeeFormData = {
     employee_types: Record<string, string>;
     employee_status: string;
     college_program: string;
+    basic_education_level: string;
     // WorkScheduleForm expects a per-role map of days
     work_days: Record<string, WorkDayTime[]>;
     college_work_hours_by_program: Record<string, string>;
@@ -55,6 +56,7 @@ type EmployeeDataFromServer = {
     employee_types?: Record<string, string> | null;
     employee_status?: string | null;
     college_program?: string | null;
+    basic_education_level?: string | null;
     // Older records may store this as a flat array; newer UI uses a per-role map
     work_days?: WorkDayTime[] | Record<string, WorkDayTime[]> | null;
     college_work_hours_by_program?: Record<string, string> | null;
@@ -127,6 +129,7 @@ export default function Edit(props: Props) {
         employee_types: employee.employee_types || ({} as Record<string, string>),
         employee_status: toString(employee.employee_status),
         college_program: toString(employee.college_program),
+        basic_education_level: toString(employee.basic_education_level),
     work_days: initialWorkDaysByRole,
     college_work_hours_by_program: (employee.college_work_hours_by_program || {}) as Record<string, string>,
     college_work_days_by_program: (employee.college_work_days_by_program || {}) as Record<string, WorkDayTime[]>,
@@ -254,6 +257,7 @@ export default function Edit(props: Props) {
                                             employee_types: {},
                                             employee_status: 'Active',
                                             college_program: '',
+                                            basic_education_level: '',
                                             work_days: {},
                                             college_work_hours_by_program: {},
                                             college_work_days_by_program: {},

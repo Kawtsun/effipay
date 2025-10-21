@@ -141,6 +141,12 @@ class EmployeesController extends Controller
         unset($validatedData['employee_types']);
 
         $employeeData = $validatedData;
+
+        // Map frontend basic_education_level to DB column basic_edu_level
+        if (array_key_exists('basic_education_level', $employeeData)) {
+            $employeeData['basic_edu_level'] = $employeeData['basic_education_level'];
+            unset($employeeData['basic_education_level']);
+        }
         
         // Correctly handle the rate_per_hour field before sanitation
         if (isset($employeeData['rate_per_hour'])) {
@@ -337,8 +343,11 @@ class EmployeesController extends Controller
             $row->employee_type => $row->toArray(),
         ]);
         
-        $employeeData = $employee->toArray();
+    $employeeData = $employee->toArray();
         $employeeData['employee_types'] = $employee->employeeTypes->pluck('type', 'role')->toArray();
+
+    // Expose DB column basic_edu_level as basic_education_level for the UI
+    $employeeData['basic_education_level'] = $employeeData['basic_edu_level'] ?? null;
 
         // Ensure college_rate is populated for older records that used rate_per_hour
         if (!isset($employeeData['college_rate']) || $employeeData['college_rate'] === null || $employeeData['college_rate'] === '') {
@@ -419,6 +428,12 @@ class EmployeesController extends Controller
         unset($validatedData['employee_types']);
 
         $employeeData = $validatedData;
+
+        // Map frontend basic_education_level to DB column basic_edu_level
+        if (array_key_exists('basic_education_level', $employeeData)) {
+            $employeeData['basic_edu_level'] = $employeeData['basic_education_level'];
+            unset($employeeData['basic_education_level']);
+        }
         
         // Map rate_per_hour to college_rate then remove it (use array_key_exists so null clears the value)
         if (array_key_exists('rate_per_hour', $employeeData)) {
