@@ -56,14 +56,14 @@ class UpdateEmployeesRequest extends FormRequest
             
             // Flat array validation (backward compatibility)
             'work_days.*.day' => 'sometimes|required|string',
-            'work_days.*.work_start_time' => ['sometimes', 'required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
-            'work_days.*.work_end_time' => ['sometimes', 'required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
+            'work_days.*.work_start_time' => ['sometimes', 'nullable', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
+            'work_days.*.work_end_time' => ['sometimes', 'nullable', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
             
             // Role-based object validation (new structure)
             'work_days.*' => 'sometimes|array',
             'work_days.*.*.day' => 'sometimes|required|string',
-            'work_days.*.*.work_start_time' => ['sometimes', 'required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
-            'work_days.*.*.work_end_time' => ['sometimes', 'required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
+            'work_days.*.*.work_start_time' => ['sometimes', 'nullable', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
+            'work_days.*.*.work_end_time' => ['sometimes', 'nullable', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
             
             // College-specific fields
             'college_work_hours_by_program' => 'sometimes|nullable|array',

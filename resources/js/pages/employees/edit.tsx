@@ -153,29 +153,40 @@ export default function Edit(props: Props) {
 
     // This useEffect hook recalculates SSS and PhilHealth on component load
     // and whenever the base_salary changes.
+    const { base_salary, sss, philhealth } = form.data;
+    const sssPhilInitialRef = React.useRef(true);
     React.useEffect(() => {
-        const baseSalary = parseFloat(form.data.base_salary);
+        const baseSalary = parseFloat(base_salary as string);
         if (!isNaN(baseSalary)) {
             const calculatedSss = calculateSSS(baseSalary);
             const calculatedPhilhealth = calculatePhilHealth(baseSalary);
-            
+
             // Only update if the values are different to prevent unnecessary re-renders
-            if (form.data.sss !== toString(calculatedSss) || form.data.philhealth !== toString(calculatedPhilhealth)) {
-                form.setData({
-                    ...form.data,
-                    sss: toString(calculatedSss),
-                    philhealth: toString(calculatedPhilhealth),
-                });
+            if (sss !== toString(calculatedSss)) {
+                form.setData('sss', toString(calculatedSss));
             }
-        } else if (form.data.sss !== '' || form.data.philhealth !== '') {
-            // Clear SSS and PhilHealth if base salary is not a number
-            form.setData({
-                ...form.data,
-                sss: '',
-                philhealth: '',
-            });
+            if (philhealth !== toString(calculatedPhilhealth)) {
+                form.setData('philhealth', toString(calculatedPhilhealth));
+            }
+        } else {
+            // If base salary is not a number, only clear SSS/PhilHealth when the user
+            // has interacted (i.e. not on the initial mount). This prevents the form
+            // from wiping server-provided values on first render when base_salary is empty.
+            if (!sssPhilInitialRef.current) {
+                if (sss !== '') {
+                    form.setData('sss', '');
+                }
+                if (philhealth !== '') {
+                    form.setData('philhealth', '');
+                }
+            }
         }
-    }, [form, form.data.base_salary]); // The dependency array ensures this runs when base_salary changes
+
+        // After first run, mark as not initial so subsequent base_salary changes can clear
+        if (sssPhilInitialRef.current) {
+            sssPhilInitialRef.current = false;
+        }
+    }, [base_salary, sss, philhealth, form]); // Run when base_salary or related fields change
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -184,10 +195,29 @@ export default function Edit(props: Props) {
             onSuccess: () => {
                 toast.success('Employee updated successfully! ✨');
             },
-            onError: () => {
-                toast.error('Validation Failed 😥', {
-                    description: 'Please review the form for errors highlighted in red.',
-                });
+            onError: (errors) => {
+                // Log the full errors object for debugging
+                console.error('Validation errors from server:', errors);
+                try {
+                    // Make a compact, copyable JSON snippet for quick debugging
+                    const debugJson = JSON.stringify(errors, null, 2);
+                    // Show a short debug toast with a snippet so it's easy to copy
+                    const snippet = debugJson.length > 800 ? debugJson.slice(0, 800) + '... (truncated)' : debugJson;
+                    // Use a separate toast so the human-friendly message remains primary
+                    toast.error('Validation Debug (copy from console or this snippet)', { description: snippet });
+                } catch {
+                    // ignore stringify errors
+                }
+                // Show a short, useful message (pick the first field's first error if available)
+                const firstField = Object.keys(errors || {})[0];
+                const firstMsg = firstField ? (errors[firstField] && errors[firstField][0]) : null;
+                if (firstMsg) {
+                    toast.error('Validation Failed 😥', { description: firstMsg });
+                } else {
+                    toast.error('Validation Failed 😥', {
+                        description: 'Please review the form for errors highlighted in red.',
+                    });
+                }
             },
         });
     };

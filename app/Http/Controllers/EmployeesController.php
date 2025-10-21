@@ -446,15 +446,24 @@ class EmployeesController extends Controller
         unset($employeeData['college_work_hours_by_program']);
         unset($employeeData['college_work_days_by_program']);
 
-        // Sanitize numeric fields to null if they are empty ('' or null) — same list and behavior as store()
+        // Sanitize numeric fields for update:
+        // - If the incoming value is an empty string, treat it as "no change" and remove the key
+        //   so the current DB value is preserved.
+        // - If the incoming value is null, allow null (explicit clear).
         foreach ([
             'base_salary', 'honorarium', 'college_rate',
             'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
             'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 
             'pagibig_calamity_loan', 'peraa_con', 'tuition', 'china_bank', 'tea'
         ] as $field) {
-            if (isset($employeeData[$field]) && ($employeeData[$field] === '' || $employeeData[$field] === null)) {
-                $employeeData[$field] = null;
+            if (array_key_exists($field, $employeeData)) {
+                if ($employeeData[$field] === '') {
+                    // Remove empty-string fields to avoid unintentionally clearing DB values
+                    unset($employeeData[$field]);
+                } elseif ($employeeData[$field] === null) {
+                    // Explicit null should clear the DB value
+                    $employeeData[$field] = null;
+                }
             }
         }
         
