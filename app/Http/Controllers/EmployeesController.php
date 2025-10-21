@@ -164,9 +164,9 @@ class EmployeesController extends Controller
             }
         }
         
-        // Extract and flatten work_days from role-based structure
+    // Extract and flatten work_days from role-based structure
         $workDaysRaw = $validatedData['work_days'] ?? [];
-        $workDaysFlattened = [];
+    $workDaysFlattened = [];
         
         // Handle both flat array and role-based object structure
         if (is_array($workDaysRaw)) {
@@ -201,7 +201,51 @@ class EmployeesController extends Controller
             }
         }
 
-        DB::transaction(function () use ($employeeData, $employeeTypesData, $workDaysFlattened) {
+        // Determine role mix
+        $rolesRaw = (string)($employeeData['roles'] ?? '');
+        $rolesArr = array_map('strtolower', array_filter(array_map('trim', explode(',', $rolesRaw))));
+        $hasNonCollegeRole = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'admin') || str_contains($r, 'basic education') || (!str_contains($r, 'college') && $r !== '')));
+        $hasCollegeRole = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'college')));
+
+        // Build college-only per-day hours when applicable
+        $workDaysCollege = [];
+        if ($hasCollegeRole && !$hasNonCollegeRole) {
+            $daysByProgram = $validatedData['college_work_days_by_program'] ?? [];
+            $hoursByProgram = $validatedData['college_work_hours_by_program'] ?? [];
+            $sumPerDay = [];
+            if (is_array($daysByProgram)) {
+                foreach ($daysByProgram as $code => $days) {
+                    $hours = isset($hoursByProgram[$code]) ? (float)$hoursByProgram[$code] : 0.0;
+                    if ($hours <= 0) { continue; }
+                    if (is_array($days)) {
+                        foreach ($days as $d) {
+                            $label = is_array($d) && isset($d['day']) ? (string)$d['day'] : (is_string($d) ? (string)$d : null);
+                            if (!$label) { continue; }
+                            $dayKey = strtolower($label);
+                            if (!isset($sumPerDay[$dayKey])) {
+                                $sumPerDay[$dayKey] = ['hours' => 0.0, 'label' => $label];
+                            }
+                            $sumPerDay[$dayKey]['hours'] += $hours;
+                        }
+                    }
+                }
+            }
+            foreach ($sumPerDay as $entry) {
+                if (($entry['hours'] ?? 0) > 0) {
+                    $workDaysCollege[] = [
+                        'day' => $entry['label'],
+                        'work_start_time' => null,
+                        'work_end_time' => null,
+                        'work_hours' => round($entry['hours'], 2),
+                    ];
+                }
+            }
+        }
+
+        // Decide which set to insert
+        $workDaysForInsert = $hasNonCollegeRole ? $workDaysFlattened : $workDaysCollege;
+
+        DB::transaction(function () use ($employeeData, $employeeTypesData, $workDaysForInsert) {
             $employee = Employees::create($employeeData);
 
             if (is_array($employeeTypesData)) {
@@ -210,13 +254,14 @@ class EmployeesController extends Controller
                 }
             }
 
-            if (is_array($workDaysFlattened) && count($workDaysFlattened) > 0) {
-                foreach ($workDaysFlattened as $workDay) {
-                    if (isset($workDay['day'], $workDay['work_start_time'], $workDay['work_end_time'])) {
+            if (is_array($workDaysForInsert) && count($workDaysForInsert) > 0) {
+                foreach ($workDaysForInsert as $workDay) {
+                    if (isset($workDay['day'])) {
                         $employee->workDays()->create([
                             'day' => $workDay['day'],
-                            'work_start_time' => $workDay['work_start_time'],
-                            'work_end_time' => $workDay['work_end_time'],
+                            'work_start_time' => $workDay['work_start_time'] ?? null,
+                            'work_end_time' => $workDay['work_end_time'] ?? null,
+                            'work_hours' => $workDay['work_hours'] ?? null,
                         ]);
                     }
                 }
@@ -297,9 +342,9 @@ class EmployeesController extends Controller
         $oldData = $employee->load('employeeTypes', 'workDays')->toArray();
         $oldStatus = $employee->employee_status;
         
-        // Extract and flatten work_days from role-based structure
+    // Extract and flatten work_days from role-based structure
         $workDaysRaw = $validatedData['work_days'] ?? [];
-        $workDaysFlattened = [];
+    $workDaysFlattened = [];
         
         // Handle both flat array and role-based object structure
         if (is_array($workDaysRaw)) {
@@ -334,7 +379,50 @@ class EmployeesController extends Controller
             }
         }
 
-        DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $workDaysFlattened, $oldData) {
+        // Determine role mix
+        $rolesRaw = (string)($employeeData['roles'] ?? '');
+        $rolesArr = array_map('strtolower', array_filter(array_map('trim', explode(',', $rolesRaw))));
+        $hasNonCollegeRole = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'admin') || str_contains($r, 'basic education') || (!str_contains($r, 'college') && $r !== '')));
+        $hasCollegeRole = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'college')));
+
+        // Build college-only per-day hours when applicable
+        $workDaysCollege = [];
+        if ($hasCollegeRole && !$hasNonCollegeRole) {
+            $daysByProgram = $validatedData['college_work_days_by_program'] ?? [];
+            $hoursByProgram = $validatedData['college_work_hours_by_program'] ?? [];
+            $sumPerDay = [];
+            if (is_array($daysByProgram)) {
+                foreach ($daysByProgram as $code => $days) {
+                    $hours = isset($hoursByProgram[$code]) ? (float)$hoursByProgram[$code] : 0.0;
+                    if ($hours <= 0) { continue; }
+                    if (is_array($days)) {
+                        foreach ($days as $d) {
+                            $label = is_array($d) && isset($d['day']) ? (string)$d['day'] : (is_string($d) ? (string)$d : null);
+                            if (!$label) { continue; }
+                            $dayKey = strtolower($label);
+                            if (!isset($sumPerDay[$dayKey])) {
+                                $sumPerDay[$dayKey] = ['hours' => 0.0, 'label' => $label];
+                            }
+                            $sumPerDay[$dayKey]['hours'] += $hours;
+                        }
+                    }
+                }
+            }
+            foreach ($sumPerDay as $entry) {
+                if (($entry['hours'] ?? 0) > 0) {
+                    $workDaysCollege[] = [
+                        'day' => $entry['label'],
+                        'work_start_time' => null,
+                        'work_end_time' => null,
+                        'work_hours' => round($entry['hours'], 2),
+                    ];
+                }
+            }
+        }
+
+        $workDaysForInsert = $hasNonCollegeRole ? $workDaysFlattened : $workDaysCollege;
+
+        DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $workDaysForInsert, $oldData) {
             $employee->update($employeeData);
 
             $employee->employeeTypes()->delete();
@@ -345,13 +433,14 @@ class EmployeesController extends Controller
             }
             
             $employee->workDays()->delete();
-            if (is_array($workDaysFlattened)) {
-                foreach ($workDaysFlattened as $workDay) {
-                    if (isset($workDay['day'], $workDay['work_start_time'], $workDay['work_end_time'])) {
+            if (is_array($workDaysForInsert)) {
+                foreach ($workDaysForInsert as $workDay) {
+                    if (isset($workDay['day'])) {
                         $employee->workDays()->create([
                             'day' => $workDay['day'],
-                            'work_start_time' => $workDay['work_start_time'],
-                            'work_end_time' => $workDay['work_end_time'],
+                            'work_start_time' => $workDay['work_start_time'] ?? null,
+                            'work_end_time' => $workDay['work_end_time'] ?? null,
+                            'work_hours' => $workDay['work_hours'] ?? null,
                         ]);
                     }
                 }

@@ -16,6 +16,7 @@ class WorkDay extends Model
         'day',
         'work_start_time',
         'work_end_time',
+        'work_hours',
     ];
 
     public function employee()
