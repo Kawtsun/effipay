@@ -51,11 +51,25 @@ class UpdateEmployeesRequest extends FormRequest
             'employee_types' => 'required|array',
             'employee_types.*' => ['required', Rule::in(['Regular', 'Provisionary', 'Retired', 'Full Time', 'Part Time'])],
             'college_program' => [Rule::requiredIf($isCollege), 'nullable', 'string', 'max:255'],
+            
+            // Support both flat array and role-based object structure for work_days
             'work_days' => 'required|array|min:1',
-            'work_days.*.day' => 'required|string',
-            // Accept both HH:MM and HH:MM:SS to handle edit forms seeded from DB
-            'work_days.*.work_start_time' => ['required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
-            'work_days.*.work_end_time' => ['required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
+            
+            // Flat array validation (backward compatibility)
+            'work_days.*.day' => 'sometimes|required|string',
+            'work_days.*.work_start_time' => ['sometimes', 'required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
+            'work_days.*.work_end_time' => ['sometimes', 'required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
+            
+            // Role-based object validation (new structure)
+            'work_days.*' => 'sometimes|array',
+            'work_days.*.*.day' => 'sometimes|required|string',
+            'work_days.*.*.work_start_time' => ['sometimes', 'required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
+            'work_days.*.*.work_end_time' => ['sometimes', 'required', 'string', 'regex:/^([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d)?$/'],
+            
+            // College-specific fields
+            'college_work_hours_by_program' => 'sometimes|nullable|array',
+            'college_work_hours_by_program.*' => 'sometimes|nullable|string',
+            'college_work_days_by_program' => 'sometimes|nullable|array',
 
             // Optional fields
             'sss_salary_loan' => 'nullable|numeric',

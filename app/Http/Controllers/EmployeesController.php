@@ -147,6 +147,11 @@ class EmployeesController extends Controller
             unset($employeeData['rate_per_hour']);
         }
         
+        // Remove fields that shouldn't be stored in employees table
+        unset($employeeData['work_days']);
+        unset($employeeData['college_work_hours_by_program']);
+        unset($employeeData['college_work_days_by_program']);
+        
         // Sanitize numeric fields to null if they are empty
         foreach ([
             'base_salary', 'honorarium', 'college_rate',
@@ -159,10 +164,44 @@ class EmployeesController extends Controller
             }
         }
         
-        // Use validated work_days to avoid relying on Request accessor inside closure
-        $workDays = $validatedData['work_days'] ?? [];
+        // Extract and flatten work_days from role-based structure
+        $workDaysRaw = $validatedData['work_days'] ?? [];
+        $workDaysFlattened = [];
+        
+        // Handle both flat array and role-based object structure
+        if (is_array($workDaysRaw)) {
+            // Check if it's a role-based structure (object with role keys)
+            $isRoleBased = false;
+            foreach ($workDaysRaw as $key => $value) {
+                if (is_string($key) && is_array($value)) {
+                    $isRoleBased = true;
+                    break;
+                }
+            }
+            
+            if ($isRoleBased) {
+                // Flatten role-based structure: { "administrator": [...], "college instructor": [...] }
+                foreach ($workDaysRaw as $role => $days) {
+                    if (is_array($days)) {
+                        foreach ($days as $day) {
+                            if (isset($day['day'], $day['work_start_time'], $day['work_end_time'])) {
+                                $workDaysFlattened[] = [
+                                    'day' => $day['day'],
+                                    'work_start_time' => $day['work_start_time'],
+                                    'work_end_time' => $day['work_end_time'],
+                                    'role' => $role, // Optionally store the role
+                                ];
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Already flat array structure
+                $workDaysFlattened = $workDaysRaw;
+            }
+        }
 
-        DB::transaction(function () use ($employeeData, $employeeTypesData, $workDays) {
+        DB::transaction(function () use ($employeeData, $employeeTypesData, $workDaysFlattened) {
             $employee = Employees::create($employeeData);
 
             if (is_array($employeeTypesData)) {
@@ -171,10 +210,14 @@ class EmployeesController extends Controller
                 }
             }
 
-            if (is_array($workDays) && count($workDays) > 0) {
-                foreach ($workDays as $workDay) {
+            if (is_array($workDaysFlattened) && count($workDaysFlattened) > 0) {
+                foreach ($workDaysFlattened as $workDay) {
                     if (isset($workDay['day'], $workDay['work_start_time'], $workDay['work_end_time'])) {
-                        $employee->workDays()->create($workDay);
+                        $employee->workDays()->create([
+                            'day' => $workDay['day'],
+                            'work_start_time' => $workDay['work_start_time'],
+                            'work_end_time' => $workDay['work_end_time'],
+                        ]);
                     }
                 }
             }
@@ -234,6 +277,11 @@ class EmployeesController extends Controller
             unset($employeeData['rate_per_hour']);
         }
 
+        // Remove fields that shouldn't be stored in employees table
+        unset($employeeData['work_days']);
+        unset($employeeData['college_work_hours_by_program']);
+        unset($employeeData['college_work_days_by_program']);
+
         // Sanitize numeric fields to null if they are empty ('' or null) — same list and behavior as store()
         foreach ([
             'base_salary', 'honorarium', 'college_rate',
@@ -249,10 +297,44 @@ class EmployeesController extends Controller
         $oldData = $employee->load('employeeTypes', 'workDays')->toArray();
         $oldStatus = $employee->employee_status;
         
-        // Use validated work_days to avoid relying on Request accessor inside closure
-        $workDays = $validatedData['work_days'] ?? [];
+        // Extract and flatten work_days from role-based structure
+        $workDaysRaw = $validatedData['work_days'] ?? [];
+        $workDaysFlattened = [];
+        
+        // Handle both flat array and role-based object structure
+        if (is_array($workDaysRaw)) {
+            // Check if it's a role-based structure (object with role keys)
+            $isRoleBased = false;
+            foreach ($workDaysRaw as $key => $value) {
+                if (is_string($key) && is_array($value)) {
+                    $isRoleBased = true;
+                    break;
+                }
+            }
+            
+            if ($isRoleBased) {
+                // Flatten role-based structure: { "administrator": [...], "college instructor": [...] }
+                foreach ($workDaysRaw as $role => $days) {
+                    if (is_array($days)) {
+                        foreach ($days as $day) {
+                            if (isset($day['day'], $day['work_start_time'], $day['work_end_time'])) {
+                                $workDaysFlattened[] = [
+                                    'day' => $day['day'],
+                                    'work_start_time' => $day['work_start_time'],
+                                    'work_end_time' => $day['work_end_time'],
+                                    'role' => $role, // Optionally store the role
+                                ];
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Already flat array structure
+                $workDaysFlattened = $workDaysRaw;
+            }
+        }
 
-        DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $workDays, $oldData) {
+        DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $workDaysFlattened, $oldData) {
             $employee->update($employeeData);
 
             $employee->employeeTypes()->delete();
@@ -263,10 +345,14 @@ class EmployeesController extends Controller
             }
             
             $employee->workDays()->delete();
-            if (is_array($workDays)) {
-                foreach ($workDays as $workDay) {
+            if (is_array($workDaysFlattened)) {
+                foreach ($workDaysFlattened as $workDay) {
                     if (isset($workDay['day'], $workDay['work_start_time'], $workDay['work_end_time'])) {
-                        $employee->workDays()->create($workDay);
+                        $employee->workDays()->create([
+                            'day' => $workDay['day'],
+                            'work_start_time' => $workDay['work_start_time'],
+                            'work_end_time' => $workDay['work_end_time'],
+                        ]);
                     }
                 }
             }
