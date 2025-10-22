@@ -44,7 +44,7 @@ export function PageContent() {
                                 animate={{ opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.1 } }}
                             >
                                 Welcome to <span className="font-semibold text-foreground">Effipay</span>, a dedicated payroll management system crafted in partnership with <span className="font-semibold text-foreground">Tomas Claudio Colleges</span> to address the unique needs of educational institutions.<br className="hidden md:block" />
-                                <span className="block mt-4">Our mission is to streamline payroll from start to finish, providing a <span className="text-foreground">secure</span>, <span className="text-foreground">reliable</span>, and <span className="text-foreground">efficient</span> platform for managing employee compensation, tracking work days, and processing payments with confidence.</span>
+                                <span className="block mt-4">Our mission is to streamline payroll from start to finish, providing a <span className="font-semibold text-foreground">secure</span>, <span className=" font-semibold text-foreground">reliable</span>, and <span className="font-semibold text-foreground">efficient</span> platform for managing employee compensation, tracking work days, and processing payments with confidence.</span>
                             </motion.p>
                         </div>
                         <div className="flex justify-center md:justify-end md:items-start md:ml-8">
