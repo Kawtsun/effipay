@@ -55,7 +55,7 @@ export function PageContent() {
 
                 {/* --- Team Section --- */}
                 <div className="my-24">
-                    <h2 className="mb-14 text-center text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl" style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
+                    <h2 className="mb-14 text-center text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl">
                         Meet the Developers
                     </h2>
                     <div className="grid grid-cols-2 justify-items-center gap-x-6 gap-y-12 sm:gap-x-10 md:grid-cols-4">
@@ -73,7 +73,6 @@ export function PageContent() {
                 <div className="mt-28 border-t border-border pt-16 text-left">
                     <motion.h2
                         className="mb-10 text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl"
-                        style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
@@ -82,7 +81,7 @@ export function PageContent() {
                         Project Objective
                     </motion.h2>
 
-                    <motion.p className="mt-2 mb-12 text-lg font-light leading-relaxed text-zinc-700 md:text-xl md:leading-8" style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }} variants={itemVariants} initial="hidden" animate="visible" custom={6}>
+                    <motion.p className="mt-2 mb-12 text-lg font-light leading-relaxed text-zinc-700 md:text-xl md:leading-8" variants={itemVariants} initial="hidden" animate="visible" custom={6}>
                         Developed as our thesis project for the Bachelor of Science in Computer Science, this system demonstrates our commitment to bridging academic theory and real-world application. Our goal was to design and implement a robust solution tailored to a client's specific needs.
                     </motion.p>
 
