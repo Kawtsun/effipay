@@ -4,10 +4,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 interface ProgrammerAvatarProps {
     imageUrl: string;
     name: string;
+    fullName: string;
     initials: string;
 }
 
-export function ProgrammerAvatar({ imageUrl, name, initials }: ProgrammerAvatarProps) {
+export function ProgrammerAvatar({ imageUrl, name, initials, fullName }: ProgrammerAvatarProps) {
     return (
         // Cleaned up hover effect: subtle lift only (no border)
         <div className="flex flex-col items-center space-y-3 transition-transform duration-300 hover:scale-[1.03] cursor-pointer">
@@ -18,7 +19,7 @@ export function ProgrammerAvatar({ imageUrl, name, initials }: ProgrammerAvatarP
             </Avatar>
             <div className="text-center">
                 {/* Removed 'Developer' text */}
-                <p className="text-lg font-semibold text-foreground">{name}</p>
+                <p className="text-lg font-semibold text-foreground">{name} <br /> <span className='text-muted-foreground text-sm'>{fullName}</span></p>
             </div>
         </div>
     );
@@ -26,8 +27,8 @@ export function ProgrammerAvatar({ imageUrl, name, initials }: ProgrammerAvatarP
 
 // Data List (Reverted initials for a cleaner look)
 export const programmers = [
-    { id: 1, name: 'Kawtsun', imageUrl: 'img/programmers/kita.jpg', initials: 'KA' },
-    { id: 2, name: 'Ra Hee', imageUrl: 'img/programmers/ryo.jpg', initials: 'RH' },
-    { id: 3, name: 'WinRar', imageUrl: 'img/programmers/bocchi.jpeg', initials: 'WR' },
-    { id: 4, name: 'Nics', imageUrl: 'img/programmers/nijika.jpg', initials: 'NI' },
+    { id: 1, name: 'Kawtsun', imageUrl: 'img/programmers/kita.jpg', initials: 'KA' , fullName: 'Morpheus Joshua Francisco'},
+    { id: 2, name: 'Ra Hee', imageUrl: 'img/programmers/ryo.jpg', initials: 'RH', fullName: 'Isaac Rossdale Dizon' },
+    { id: 3, name: 'WinRar', imageUrl: 'img/programmers/bocchi.jpeg', initials: 'WR', fullName: 'Arwin Paul Vilaga' },
+    { id: 4, name: 'Nix', imageUrl: 'img/programmers/nijika.jpg', initials: 'NI', fullName: 'Nicolle Tañega' },
 ];
