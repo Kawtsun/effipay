@@ -61,7 +61,7 @@ export function PageContent() {
                     <div className="grid grid-cols-2 justify-items-center gap-x-6 gap-y-12 sm:gap-x-10 md:grid-cols-4">
                         {programmers.map((programmer, index) => (
                             <motion.div key={programmer.id} variants={itemVariants} initial="hidden" animate="visible" custom={index}>
-                                <ProgrammerAvatar name={programmer.name} imageUrl={programmer.imageUrl} initials={programmer.initials} />
+                                <ProgrammerAvatar name={programmer.name} imageUrl={programmer.imageUrl} initials={programmer.initials} fullName={programmer.fullName} />
                             </motion.div>
                         ))}
                     </div>
