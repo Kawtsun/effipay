@@ -36,7 +36,7 @@ function formatTime12Hour(time?: string): string {
   return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
 }
 
-function getDurationText(start: string, end: string): string {
+function getDurationText(start: string, end: string, breakMinutes = 60): string {
   if (!start || !end) return "-";
   const [startHour, startMinute] = start.split(":").map(Number);
   const [endHour, endMinute] = end.split(":").map(Number);
@@ -45,7 +45,7 @@ function getDurationText(start: string, end: string): string {
   const endMinutes = endHour * 60 + endMinute;
   let actualWorkMinutes = endMinutes - startMinutes;
   if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-  const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
+  const totalMinutes = Math.max(1, actualWorkMinutes - breakMinutes); // minus break
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   if (hours === 0 && minutes === 0) return "-";
@@ -54,19 +54,18 @@ function getDurationText(start: string, end: string): string {
   return `${hours} hour${hours > 1 ? 's' : ''} and ${minutes} minutes`;
 }
 
-
-export function EmployeeScheduleBadges({ workDays, initiallyOpen = false, variant = 'chips', compact = false }: { workDays: WorkDayTime[]; initiallyOpen?: boolean; variant?: 'chips' | 'list'; compact?: boolean }) {
+export function EmployeeScheduleBadges({ workDays, initiallyOpen = false, variant = 'chips', compact = false, breakMinutes = 60 }: { workDays: WorkDayTime[]; initiallyOpen?: boolean; variant?: 'chips' | 'list'; compact?: boolean; breakMinutes?: number }) {
   const [show, setShow] = useState<boolean>(initiallyOpen);
   const panelId = useId();
-  // Color palette for badges (Mon-Sun)
+  // Color palette for badges (Mon-Sun) with dark-mode support
   const colors = [
-    "bg-blue-100 text-blue-800 border-blue-300",
-    "bg-green-100 text-green-800 border-green-300",
-    "bg-yellow-100 text-yellow-800 border-yellow-300",
-    "bg-orange-100 text-orange-800 border-orange-300",
-    "bg-purple-100 text-purple-800 border-purple-300",
-    "bg-pink-100 text-pink-800 border-pink-300",
-    "bg-gray-100 text-gray-800 border-gray-300",
+    "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-400/30",
+    "bg-green-100 text-green-800 border-green-300 dark:bg-green-500/15 dark:text-green-300 dark:border-green-400/30",
+    "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-500/15 dark:text-yellow-300 dark:border-yellow-400/30",
+    "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-400/30",
+    "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-400/30",
+    "bg-pink-100 text-pink-800 border-pink-300 dark:bg-pink-500/15 dark:text-pink-300 dark:border-pink-400/30",
+    "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-500/15 dark:text-gray-300 dark:border-gray-400/30",
   ];
   // Sort by weekday order for a consistent display
   const sorted = useMemo(() => {
@@ -101,6 +100,7 @@ export function EmployeeScheduleBadges({ workDays, initiallyOpen = false, varian
         {show && (
           <motion.div
             id={panelId}
+            role="list"
             className={`flex ${variant === 'chips' ? 'flex-wrap' : 'flex-col'} ${compact ? 'gap-1.5' : 'gap-2'}`}
             initial={{ opacity: 0, y: -8, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
@@ -121,14 +121,15 @@ export function EmployeeScheduleBadges({ workDays, initiallyOpen = false, varian
                   transition={{ delay: idx * 0.03, type: "spring", stiffness: 280, damping: 22 }}
                 >
                   <Badge
+                    role="listitem"
                     variant="outline"
-                    title={`${DAY_LABELS[wd.day] || wd.day}: ${formatTime12Hour(wd.work_start_time)} - ${formatTime12Hour(wd.work_end_time)} (${getDurationText(wd.work_start_time, wd.work_end_time)})`}
+                    title={`${DAY_LABELS[wd.day] || wd.day}: ${formatTime12Hour(wd.work_start_time)} - ${formatTime12Hour(wd.work_end_time)} (${getDurationText(wd.work_start_time, wd.work_end_time, breakMinutes)})`}
                     className={`px-2.5 py-1 text-[11px] font-medium border ${colorClass} ${minW} justify-start flex items-center`}
                   >
                     <span className="font-semibold mr-1 whitespace-nowrap">{DAY_LABELS[wd.day] || wd.day}:</span>
                     <Clock className="w-3.5 h-3.5 mr-1 opacity-70" />
                     <span className="whitespace-nowrap">{formatTime12Hour(wd.work_start_time)} - {formatTime12Hour(wd.work_end_time)}</span>
-                    <span className="ml-2 text-[10px] text-muted-foreground whitespace-nowrap">({getDurationText(wd.work_start_time, wd.work_end_time)})</span>
+                    <span className="ml-2 text-[10px] text-muted-foreground whitespace-nowrap">({getDurationText(wd.work_start_time, wd.work_end_time, breakMinutes)})</span>
                   </Badge>
                 </motion.div>
               );
