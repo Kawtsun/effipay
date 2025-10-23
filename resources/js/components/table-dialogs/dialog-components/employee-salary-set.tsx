@@ -1,7 +1,7 @@
 import React from "react";
 import type { Employees } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Banknote, HandCoins, Wallet, ReceiptText } from "lucide-react";
+import { Banknote, HandCoins, Wallet, ReceiptText, CheckCircle } from "lucide-react";
 
 type Props = {
 	employee: Employees;
@@ -86,15 +86,27 @@ export default function EmployeeSalarySet({ employee }: Props) {
 					</div>
 
 					<div className="mt-1.5">
-						<FieldRow label="SSS" value={formatMoney(employee.sss)} />
-						<FieldRow label="PhilHealth" value={formatMoney(employee.philhealth)} />
+						{/* Booleans: always enabled for now, show checkmark like create/edit */}
+						<div className="flex items-center justify-between gap-4 py-1.5">
+							<span className="text-xs text-muted-foreground">SSS</span>
+							<span className="inline-flex items-center text-xs font-medium text-green-600">
+								<CheckCircle className="h-4 w-4 mr-1" /> Enabled
+							</span>
+						</div>
+						<div className="flex items-center justify-between gap-4 py-1.5">
+							<span className="text-xs text-muted-foreground">PhilHealth</span>
+							<span className="inline-flex items-center text-xs font-medium text-green-600">
+								<CheckCircle className="h-4 w-4 mr-1" /> Enabled
+							</span>
+						</div>
 						<FieldRow label="Pag-IBIG" value={formatMoney(employee.pag_ibig)} />
-						{typeof employee.withholding_tax !== "undefined" && (
-							<FieldRow label="Withholding Tax" value={formatMoney(employee.withholding_tax)} />
-						)}
-						{typeof employee.peraa_con !== "undefined" && (
-							<FieldRow label="PERAA Contribution" value={formatMoney(employee.peraa_con)} />
-						)}
+						{/* Required boolean: always enabled */}
+						<div className="flex items-center justify-between gap-4 py-1.5">
+							<span className="text-xs text-muted-foreground">Withholding Tax</span>
+							<span className="inline-flex items-center text-xs font-medium text-green-600">
+								<CheckCircle className="h-4 w-4 mr-1" /> Enabled
+							</span>
+						</div>
 					</div>
 				</CardContent>
 			</Card>
