@@ -1,7 +1,8 @@
 import React from "react";
 import type { Employees } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Banknote, HandCoins, Wallet, ReceiptText, CheckCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Banknote, HandCoins, Wallet, ReceiptText, CheckCircle, Info } from "lucide-react";
 
 type Props = {
 	employee: Employees;
@@ -16,11 +17,43 @@ function formatMoney(value: unknown): string {
 	return `₱${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function FieldRow({ label, value }: { label: string; value: React.ReactNode }) {
+function FieldRow({ label, value, checked }: { label: string; value: React.ReactNode; checked?: boolean }) {
 	return (
 		<div className="flex items-center justify-between gap-4 py-1.5">
-			<span className="text-xs text-muted-foreground">{label}</span>
+			<span className={`inline-flex items-center text-xs ${checked ? "font-semibold text-green-600" : "text-muted-foreground"}`}>
+				{checked ? <CheckCircle className="h-4 w-4 mr-1" /> : null}
+				{label}
+			</span>
 			<span className="text-sm font-medium tabular-nums">{value}</span>
+		</div>
+	);
+}
+
+function BoolRow({ label, tooltip }: { label: string; tooltip?: string }) {
+	return (
+		<div className="flex items-center justify-between gap-4 py-1.5">
+			<div className="flex items-center gap-2">
+				<span className="inline-flex items-center text-xs font-semibold text-green-600">
+					<CheckCircle className="h-4 w-4 mr-1" /> {label}
+				</span>
+				{tooltip ? (
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<button
+								type="button"
+								aria-label={`${label} info`}
+								className="text-muted-foreground"
+							>
+								<Info className="h-4 w-4" />
+							</button>
+						</TooltipTrigger>
+						<TooltipContent>
+							<p>{tooltip}</p>
+						</TooltipContent>
+					</Tooltip>
+				) : null}
+			</div>
+			<span className="text-sm font-medium tabular-nums"></span>
 		</div>
 	);
 }
@@ -86,27 +119,21 @@ export default function EmployeeSalarySet({ employee }: Props) {
 					</div>
 
 					<div className="mt-1.5">
-						{/* Booleans: always enabled for now, show checkmark like create/edit */}
-						<div className="flex items-center justify-between gap-4 py-1.5">
-							<span className="text-xs text-muted-foreground">SSS</span>
-							<span className="inline-flex items-center text-xs font-medium text-green-600">
-								<CheckCircle className="h-4 w-4 mr-1" /> Enabled
-							</span>
-						</div>
-						<div className="flex items-center justify-between gap-4 py-1.5">
-							<span className="text-xs text-muted-foreground">PhilHealth</span>
-							<span className="inline-flex items-center text-xs font-medium text-green-600">
-								<CheckCircle className="h-4 w-4 mr-1" /> Enabled
-							</span>
-						</div>
-						<FieldRow label="Pag-IBIG" value={formatMoney(employee.pag_ibig)} />
-						{/* Required boolean: always enabled */}
-						<div className="flex items-center justify-between gap-4 py-1.5">
-							<span className="text-xs text-muted-foreground">Withholding Tax</span>
-							<span className="inline-flex items-center text-xs font-medium text-green-600">
-								<CheckCircle className="h-4 w-4 mr-1" /> Enabled
-							</span>
-						</div>
+						{/* Match create/edit: green check with info tooltip, no numeric value */}
+						<BoolRow label="SSS Contribution" tooltip="SSS contribution will be calculated after running the payroll." />
+						<BoolRow label="PhilHealth Contribution" tooltip="PhilHealth contribution will be calculated after running the payroll." />
+						{(() => {
+							const pagibig = readOptionalNumber(employee, "pag_ibig");
+							return (
+								<FieldRow
+									label="Pag-IBIG"
+									value={formatMoney(employee.pag_ibig)}
+									checked={typeof pagibig !== "undefined" && pagibig > 0}
+								/>
+							);
+						})()}
+						{/* Required boolean */}
+						<BoolRow label="Withholding Tax" tooltip="Withholding Tax contribution will be calculated after running the payroll." />
 					</div>
 				</CardContent>
 			</Card>
