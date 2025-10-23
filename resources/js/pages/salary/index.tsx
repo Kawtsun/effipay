@@ -174,6 +174,34 @@ export default function Index() {
       setLoadingTkLists(false)
     }
   }
+
+  // Lightweight fetch used only to validate if DB looks reset (won't touch state)
+  const fetchTkListsForCheck = async (month: string): Promise<{ with: EmpLite[]; without: EmpLite[] } | null> => {
+    const norm = normalizeMonth(month)
+    if (!norm || !/^\d{4}-\d{2}$/.test(norm)) { return null }
+    try {
+      const res = await fetch(`/api/timekeeping/employees-by-month?month=${encodeURIComponent(norm)}`)
+      if (res.ok) {
+        const data = await res.json()
+        return { with: (data.with || []) as EmpLite[], without: (data.without || []) as EmpLite[] }
+      }
+    } catch {}
+    return null
+  }
+
+  // Check if selected month exists in processed payroll months on server
+  const isMonthProcessed = async (month: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/payroll/processed-months')
+      if (!res.ok) return false
+      const data = await res.json()
+      const list: string[] = Array.isArray(data?.months) ? data.months : []
+      const norm = normalizeMonth(month)
+      return list.includes(norm)
+    } catch {
+      return false
+    }
+  }
   // Build Others Roles options from current lists
   const othersRolesOptions = useMemo(() => {
     const standard = ['administrator', 'college instructor', 'basic education instructor']
@@ -261,7 +289,9 @@ export default function Index() {
     return roles.split(',').map(r => r.trim()).filter(Boolean)
   }
 
-  // On month change: show the cached snapshot (from the last Run Payroll) if present; otherwise keep gated
+  // On month change: show the cached snapshot (from the last Run Payroll) if present; otherwise keep gated.
+  // Additionally, validate in the background: if the server reports no employees for the month (likely DB reset),
+  // clear the snapshot so stale data isn't shown.
   useEffect(() => {
     if (!selectedMonth) { setTkLists(null); setHasCategorized(false); return }
     setActiveTab('with-tk')
@@ -269,6 +299,16 @@ export default function Index() {
     if (snap) {
       setHasCategorized(true)
       setTkLists(snap)
+      // Background validation: if server has no data OR month isn't processed, clear stale snapshot
+      ;(async () => {
+        const [live, processed] = await Promise.all([fetchTkListsForCheck(selectedMonth), isMonthProcessed(selectedMonth)])
+        const noEmployees = !!live && (live.with.length === 0 && live.without.length === 0)
+        if (!processed || noEmployees) {
+          try { sessionStorage.removeItem(snapshotKey(selectedMonth)); sessionStorage.removeItem(hasRunFlagKey(selectedMonth)); } catch {}
+          setHasCategorized(false)
+          setTkLists(null)
+        }
+      })()
     } else {
       setHasCategorized(false)
       setTkLists(null)
