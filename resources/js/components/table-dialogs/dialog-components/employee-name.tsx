@@ -11,7 +11,7 @@ export type EmployeeNameProps = {
     showId?: boolean;
 };
 
-export function EmployeeName({ employee, as = "h3", className = "text-xl font-extrabold", showId = true }: EmployeeNameProps) {
+export function EmployeeName({ employee, as = "h3", className = "text-xl font-extrabold mt-2 mb-4", showId = true }: EmployeeNameProps) {
     const text = `${showId ? `#${employee.id} - ` : ""}${formatFullName(employee.last_name, employee.first_name, employee.middle_name)}`;
     return React.createElement(as, { className }, text);
 }

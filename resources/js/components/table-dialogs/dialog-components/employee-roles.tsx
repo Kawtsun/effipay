@@ -61,22 +61,27 @@ export default function EmployeeRolesList({ roles, collegeProgram, className = "
     const items = all.map((r) => {
         if (r.toLowerCase() === "college instructor" && programs.length) {
             const badgeLabel = `${r} [${programs.join(", ")}]`;
-            const details = programs.map((p) => `${p}: ${getProgramLabel(p)}`).join("  •  ");
-            return { badgeLabel, details };
+            const detailItems = programs.map((p) => ({ code: p, label: getProgramLabel(p) }));
+            return { badgeLabel, detailItems } as const;
         }
-        return { badgeLabel: r };
+        return { badgeLabel: r } as const;
     });
 
     return (
         <div className={(compact ? "px-0 py-0 " : "px-4 py-2 ") + (className || "") }>
             <div className={`flex flex-col ${compact ? 'gap-1' : 'gap-1.5'}`}>
                 {items.map((item, idx) => (
-                    <div key={`${item.badgeLabel}-${idx}`} className="flex items-center flex-wrap gap-2">
+                    <div key={`${item.badgeLabel}-${idx}`} className="flex items-center flex-wrap gap-x-2 gap-y-1">
                         <RoleBadge label={item.badgeLabel} />
-                        {item.details && (
-                            <span className="text-xs text-muted-foreground whitespace-pre-line">
-                                {item.details}
-                            </span>
+                        {"detailItems" in item && item.detailItems && item.detailItems.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground min-w-0">
+                                {item.detailItems.map((d, i) => (
+                                    <React.Fragment key={d.code}>
+                                        {i > 0 && <span className="opacity-60">•</span>}
+                                        <span className="break-words">{d.code}: {d.label}</span>
+                                    </React.Fragment>
+                                ))}
+                            </div>
                         )}
                     </div>
                 ))}
