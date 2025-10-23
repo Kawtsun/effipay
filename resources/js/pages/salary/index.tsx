@@ -250,7 +250,7 @@ export default function Index() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">Payroll</h1>
-                <p className="text-muted-foreground">Set default salary values by employee type and run payroll.</p>
+                <p className="text-muted-foreground">Run a Payroll and track your employees</p>
               </div>
             </div>
 
