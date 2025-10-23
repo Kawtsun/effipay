@@ -59,6 +59,10 @@ export interface Employees {
     pag_ibig: number;
     college_program?: string;
     withholding_tax: number;
+    sss_salary_loan?: number;
+    sss_calamity_loan?: number;
+    pagibig_multi_loan?: number;
+    pagibig_calamity_loan?: number;
     work_hours_per_day: number;
     work_start_time: string;
     work_end_time: string;
@@ -75,8 +79,7 @@ export interface Employees {
     total_deductions?: number;
     net_pay?: number;
     per_payroll?: number;
-    salary_loan?: number;
-    peraa_con?: number;
+    tuition?: number;
     china_bank?: number;
     tea?: number;
     calamity_loan?: number;

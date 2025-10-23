@@ -158,16 +158,21 @@ export default function EmployeeSalarySet({ employee }: Props) {
 					</div>
 
 					<div className="mt-1.5">
-						{/* Some datasets use salary_loan; forms may store SSS Salary Loan */}
-						{typeof employee.salary_loan !== "undefined" && (
-							<FieldRow label="Salary Loan" value={formatMoney(employee.salary_loan)} />
-						)}
-						{typeof employee.calamity_loan !== "undefined" && (
-							<FieldRow label="Calamity Loan" value={formatMoney(employee.calamity_loan)} />
-						)}
-						{typeof employee.multipurpose_loan !== "undefined" && (
-							<FieldRow label="Multipurpose Loan" value={formatMoney(employee.multipurpose_loan)} />
-						)}
+                        {typeof employee.sss_salary_loan !== "undefined" && (
+                            <FieldRow label="SSS Salary Loan" value={formatMoney(employee.sss_salary_loan)} />
+                        )}
+
+                        {typeof employee.sss_calamity_loan !== "undefined" && (
+                            <FieldRow label="SSS Calamity Loan" value={formatMoney(employee.sss_calamity_loan)} />
+                        )}
+
+                        {typeof employee.pagibig_multi_loan!== "undefined" && (
+                            <FieldRow label="Pagibig Multi Loan" value={formatMoney(employee.pagibig_multi_loan)} />
+                        )}
+
+                        {typeof employee.pagibig_calamity_loan!== "undefined" && (
+                            <FieldRow label="Pagibig Calamity Loan" value={formatMoney(employee.pagibig_calamity_loan)} />
+                        )}
 					</div>
 				</CardContent>
 			</Card>
@@ -187,15 +192,9 @@ export default function EmployeeSalarySet({ employee }: Props) {
 					</div>
 
 					<div className="mt-1.5">
-						{/* Some records may track tuition; show if present */}
-						{(() => {
-							const tuition = readOptionalNumber(employee, "tuition");
-							return typeof tuition !== "undefined" ? (
-								<FieldRow label="Tuition" value={formatMoney(tuition)} />
-							) : null;
-						})()}
-						{typeof employee.peraa_con !== "undefined" && (
-							<FieldRow label="PERAA" value={formatMoney(employee.peraa_con)} />
+
+						{typeof employee.tuition !== "undefined" && (
+							<FieldRow label="Tuition" value={formatMoney(employee.tuition)} />
 						)}
 						{typeof employee.china_bank !== "undefined" && (
 							<FieldRow label="China Bank" value={formatMoney(employee.china_bank)} />
