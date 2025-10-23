@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { Employees } from "@/types";
 import { EmployeeName } from "./dialog-components/employee-name";
 import GeneralInformation from "./dialog-components/general-information";
+import EmployeeSalarySet from "./dialog-components/employee-salary-set";
 import DialogScrollArea from "@/components/dialog-scroll-area";
 
 type Props = {
@@ -21,18 +22,22 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
 	return (
 		<Dialog open={!!employee} onOpenChange={(open) => !open && onClose()}>
 			{!!employee && (
-				<DialogContent className="max-w-6xl max-h-[90vh] w-full px-8 py-6 z-[100]">
+				<DialogContent className="max-w-6xl h-[85vh] w-full px-8 py-6 z-[100] flex flex-col min-h-0 overflow-hidden">
 					<DialogHeader>
 						<DialogTitle className="text-2xl font-bold">
 							Employee Details
 						</DialogTitle>
 					</DialogHeader>
 
-                    <EmployeeName employee={employee} />
+					{/* Sticky summary header */}
+					<EmployeeName employee={employee} />
 
 					{/* Scrollable content */}
-					<DialogScrollArea>
-						<GeneralInformation employee={employee} />
+					<DialogScrollArea className="mt-4">
+						<div className="space-y-6">
+							<GeneralInformation employee={employee} />
+							<EmployeeSalarySet employee={employee} />
+						</div>
 					</DialogScrollArea>
 
 					<DialogFooter className="mt-6">
