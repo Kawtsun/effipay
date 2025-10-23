@@ -2,7 +2,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarDays, ChevronDown, Clock } from "lucide-react";
+import { ChevronDown, Clock } from "lucide-react";
 import React, { useId, useMemo, useState } from "react";
 
 export type WorkDayTime = {
@@ -92,7 +92,6 @@ export function EmployeeScheduleBadges({ workDays, initiallyOpen = false, varian
           aria-label={`Toggle schedule (${count})`}
         >
           <span className="sr-only">Toggle schedule</span>
-          <CalendarDays className="w-4 h-4" />
           <span className="text-xs">{show ? 'Hide' : 'Show'}</span>
           <span className="text-[10px] text-muted-foreground">({count})</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${show ? 'rotate-180' : ''}`} />

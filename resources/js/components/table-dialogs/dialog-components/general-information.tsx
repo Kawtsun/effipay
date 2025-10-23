@@ -4,6 +4,8 @@ import { EmployeeTypesList } from "./employee-types";
 import EmployeeRolesList from "./employee-roles";
 import { EmployeeScheduleBadges } from "@/components/employee-schedule-badges";
 import { StatusBadge } from "@/components/status-badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tags, BadgeCheck, UserCog, CalendarDays } from "lucide-react";
 
 // reserved for future fields
 
@@ -13,35 +15,80 @@ type Props = {
 
 export default function GeneralInformation({ employee }: Props) {
 	return (
-		<div className="space-y-3">
-			<h4 className="font-semibold text-base border-b pb-2">General Information</h4>
+		<Card>
+			<CardHeader className="pb-3">
+				<CardTitle className="font-semibold text-base leading-tight">General Information</CardTitle>
+				<CardDescription className="text-xs">Key employment details at a glance</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-5">
+				{/* Row 1: Types + Status */}
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+					{/* Types */}
+					<div className="space-y-2">
+						<div className="flex items-center gap-2 text-xs text-muted-foreground">
+							<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
+								<Tags className="h-3.5 w-3.5" />
+							</span>
+							<span>Employee Types</span>
+						</div>
+						<div>
+							{employee.employee_types ? (
+								<EmployeeTypesList employeeTypes={employee.employee_types} compact />
+							) : (
+								<div className="text-xs text-muted-foreground">No employee types</div>
+							)}
+						</div>
+					</div>
 
-			{/* Compact, aligned layout: Types + Status row; Roles row; Schedule row */}
-			<div className="grid grid-cols-12 gap-4">
-				{/* Types */}
-				<div className="col-span-12 md:col-span-6">
-					<div className="text-xs text-muted-foreground mb-1">Employee Types</div>
-					<EmployeeTypesList employeeTypes={employee.employee_types} compact />
-				</div>
-				{/* Status */}
-				<div className="col-span-12 md:col-span-6">
-					<div className="text-xs text-muted-foreground mb-1">Status</div>
-					<div className="flex items-center gap-2">
-						<StatusBadge status={employee.employee_status} />
+					{/* Status */}
+					<div className="space-y-2">
+						<div className="flex items-center gap-2 text-xs text-muted-foreground">
+							<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
+								<BadgeCheck className="h-3.5 w-3.5" />
+							</span>
+							<span>Status</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<StatusBadge status={employee.employee_status} />
+						</div>
 					</div>
 				</div>
+
 				{/* Roles */}
-				<div className="col-span-12">
-					<div className="text-xs text-muted-foreground mb-1">Roles</div>
-					<EmployeeRolesList roles={employee.roles} collegeProgram={employee.college_program} compact />
+				<div className="space-y-2">
+					<div className="flex items-center gap-2 text-xs text-muted-foreground">
+						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
+							<UserCog className="h-3.5 w-3.5" />
+						</span>
+						<span>Roles</span>
+					</div>
+					<div>
+						{employee.roles ? (
+							<EmployeeRolesList roles={employee.roles} collegeProgram={employee.college_program} compact />
+						) : (
+							<div className="text-xs text-muted-foreground">No roles assigned</div>
+						)}
+					</div>
 				</div>
+
 				{/* Schedule */}
-				<div className="col-span-12">
-					<div className="text-xs text-muted-foreground mb-1">Schedule</div>
-					<EmployeeScheduleBadges workDays={employee.work_days || []} />
+				<div className="space-y-2">
+					<div className="flex items-center gap-2 text-xs text-muted-foreground">
+						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
+							<CalendarDays className="h-3.5 w-3.5" />
+						</span>
+						<span>Schedule</span>
+					</div>
+					<div>
+						{Array.isArray(employee.work_days) && employee.work_days.length > 0 ? (
+							<EmployeeScheduleBadges workDays={employee.work_days} />
+						) : (
+							<div className="text-xs text-muted-foreground">No schedule assigned</div>
+						)}
+					</div>
 				</div>
-			</div>
-		</div>
+			</CardContent>
+		</Card>
 	);
 }
 
