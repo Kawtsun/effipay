@@ -35,12 +35,38 @@ export default function Index() {
   const [isRunningPayroll, setIsRunningPayroll] = useState(false)
   const [isThirteenthMonthDialogOpen, setIsThirteenthMonthDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'with-tk' | 'without-tk'>('with-tk')
+  // Only categorize (split into With/Without TK) after payroll is run for the selected month
+  const [hasCategorized, setHasCategorized] = useState(false)
   // Filters (share the same shape as EmployeeFilter)
   type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string[]; othersRole?: string }
   const [filters, setFilters] = useState<FilterState>({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
   const [searchTerm, setSearchTerm] = useState('')
   const hasRoleFilters = filters.roles.length > 0
   const hasAnyFilters = hasRoleFilters || (searchTerm.trim().length > 0)
+
+  // Persist categorization per month within the current session so it remains after navigation.
+  const hasRunFlagKey = (m: string) => `salary.hasRun.${m}`
+  const getHasRunFlag = (m: string) => {
+    try { return sessionStorage.getItem(hasRunFlagKey(m)) === '1' } catch { return false }
+  }
+  const setHasRunFlag = (m: string, v: boolean) => {
+    try { if (m) sessionStorage.setItem(hasRunFlagKey(m), v ? '1' : '0') } catch {}
+  }
+
+  // Snapshot helpers so importing TK won't affect Payroll until next run
+  const snapshotKey = (m: string) => `salary.snapshot.${m}`
+  const getSnapshot = (m: string): { with: EmpLite[]; without: EmpLite[] } | null => {
+    try {
+      const raw = sessionStorage.getItem(snapshotKey(m))
+      return raw ? (JSON.parse(raw) as { with: EmpLite[]; without: EmpLite[] }) : null
+    } catch {
+      return null
+    }
+  }
+  const setSnapshot = (m: string, data: { with: EmpLite[]; without: EmpLite[] }) => {
+    try { if (m) sessionStorage.setItem(snapshotKey(m), JSON.stringify(data)) } catch {}
+  }
+
 
   // Normalize input like YYYY-MM or YYYY-MM-DD to YYYY-MM
   const normalizeMonth = (val: string): string => {
@@ -100,17 +126,25 @@ export default function Index() {
       return
     }
     setIsRunningPayroll(true)
+    setHasCategorized(false)
+    setTkLists(null)
     router.post(
       route('payroll.run'),
       { payroll_date: selectedMonth },
       {
-        preserveState: false,
+        // Keep current component alive so we can fetch categorized data immediately
+        preserveState: true,
+        preserveScroll: true,
         onSuccess: () => {
           // After running payroll, refresh the timekeeping lists and focus the tab
           setActiveTab('with-tk')
-          // Trigger list reload by resetting to same value to force effect; or call loader directly
-          // We'll call the loader directly via a helper
-          void loadTkLists(selectedMonth)
+          setHasCategorized(true)
+          setHasRunFlag(selectedMonth, true)
+          // Fetch categorized lists now and cache a snapshot for this session
+          ;(async () => {
+            const lists = await loadTkLists(selectedMonth)
+            if (lists) setSnapshot(selectedMonth, lists)
+          })()
         },
         onFinish: () => setIsRunningPayroll(false),
       }
@@ -118,20 +152,24 @@ export default function Index() {
   }, [selectedMonth])
 
   // Helper to fetch employees with/without timekeeping
-  const loadTkLists = async (month: string) => {
+  const loadTkLists = async (month: string): Promise<{ with: EmpLite[]; without: EmpLite[] } | null> => {
     const norm = normalizeMonth(month)
-    if (!norm || !/^\d{4}-\d{2}$/.test(norm)) { setTkLists(null); return }
+    if (!norm || !/^\d{4}-\d{2}$/.test(norm)) { setTkLists(null); return null }
     setLoadingTkLists(true)
     try {
       const res = await fetch(`/api/timekeeping/employees-by-month?month=${encodeURIComponent(norm)}`)
       if (res.ok) {
         const data = await res.json()
-        setTkLists({ with: data.with || [], without: data.without || [] })
+        const lists = { with: (data.with || []) as EmpLite[], without: (data.without || []) as EmpLite[] }
+        setTkLists(lists)
+        return lists
       } else {
         setTkLists({ with: [], without: [] })
+        return { with: [], without: [] }
       }
     } catch {
       setTkLists({ with: [], without: [] })
+      return { with: [], without: [] }
     } finally {
       setLoadingTkLists(false)
     }
@@ -223,11 +261,18 @@ export default function Index() {
     return roles.split(',').map(r => r.trim()).filter(Boolean)
   }
 
-  // Fetch employees with/without timekeeping for the selected month
+  // On month change: show the cached snapshot (from the last Run Payroll) if present; otherwise keep gated
   useEffect(() => {
-    if (!selectedMonth) { setTkLists(null); return }
+    if (!selectedMonth) { setTkLists(null); setHasCategorized(false); return }
     setActiveTab('with-tk')
-    void loadTkLists(selectedMonth)
+    const snap = getSnapshot(selectedMonth)
+    if (snap) {
+      setHasCategorized(true)
+      setTkLists(snap)
+    } else {
+      setHasCategorized(false)
+      setTkLists(null)
+    }
   }, [selectedMonth])
 
   const breadcrumbs: BreadcrumbItem[] = [
@@ -301,11 +346,11 @@ export default function Index() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
               <TabsList>
-                <TabsTrigger value="with-tk" disabled={!selectedMonth}>
-                  {`With Timekeeping records${selectedMonth && tkLists ? ` (${tkLists.with?.length || 0})` : ''}`}
+                <TabsTrigger value="with-tk" disabled={!selectedMonth || !hasCategorized}>
+                  {`With Timekeeping records${selectedMonth && hasCategorized && tkLists ? ` (${tkLists.with?.length || 0})` : ''}`}
                 </TabsTrigger>
-                <TabsTrigger value="without-tk" disabled={!selectedMonth}>
-                  {`Without Timekeeping records${selectedMonth && tkLists ? ` (${tkLists.without?.length || 0})` : ''}`}
+                <TabsTrigger value="without-tk" disabled={!selectedMonth || !hasCategorized}>
+                  {`Without Timekeeping records${selectedMonth && hasCategorized && tkLists ? ` (${tkLists.without?.length || 0})` : ''}`}
                 </TabsTrigger>
               </TabsList>
               {/* Search + Filter beside the tabs */}
@@ -330,6 +375,8 @@ export default function Index() {
             <TabsContent value="with-tk">
               {!selectedMonth ? (
                 <div className="text-sm text-muted-foreground">Select a payroll month above to view employees.</div>
+              ) : !hasCategorized ? (
+                <div className="text-sm text-muted-foreground">Run Payroll for the selected month to categorize employees into With/Without Timekeeping tabs.</div>
               ) : loadingTkLists ? (
                 <div className="text-sm text-muted-foreground">Loading…</div>
               ) : (
@@ -351,6 +398,8 @@ export default function Index() {
             <TabsContent value="without-tk">
               {!selectedMonth ? (
                 <div className="text-sm text-muted-foreground">Select a payroll month above to view employees.</div>
+              ) : !hasCategorized ? (
+                <div className="text-sm text-muted-foreground">Run Payroll for the selected month to categorize employees into With/Without Timekeeping tabs.</div>
               ) : loadingTkLists ? (
                 <div className="text-sm text-muted-foreground">Loading…</div>
               ) : (
