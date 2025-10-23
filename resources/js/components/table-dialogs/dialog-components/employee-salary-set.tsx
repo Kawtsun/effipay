@@ -2,19 +2,24 @@ import React from "react";
 import type { Employees } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Banknote, HandCoins, Wallet, ReceiptText, CheckCircle, Info } from "lucide-react";
+import { Banknote, HandCoins, Wallet, ReceiptText, CheckCircle, Info, PhilippinePeso } from "lucide-react";
 
 type Props = {
 	employee: Employees;
 };
 
-// Fallback-safe currency formatter
-function formatMoney(value: unknown): string {
+// Fallback-safe currency formatter using Philippine Peso icon
+function formatMoney(value: unknown): React.ReactNode {
 	if (value === null || value === undefined) return "—";
 	const num = typeof value === "string" ? parseFloat(value) : (value as number);
 	if (Number.isNaN(num)) return "—";
-	// Keep PHP peso styling without assuming locale
-	return `₱${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+	const amount = num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+	return (
+		<span className="inline-flex items-center gap-1">
+			<PhilippinePeso className="h-3.5 w-3.5" />
+			{amount}
+		</span>
+	);
 }
 
 function FieldRow({ label, value, checked }: { label: string; value: React.ReactNode; checked?: boolean }) {
