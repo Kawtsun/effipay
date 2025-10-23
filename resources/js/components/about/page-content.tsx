@@ -39,7 +39,7 @@ export function PageContent() {
                                 About the Project
                             </motion.h1>
                             <motion.p
-                                className="max-w-2xl text-lg font-light leading-relaxed text-zinc-600 md:text-xl md:leading-8"
+                                className="max-w-2xl text-lg font-light leading-relaxed text-muted-foreground md:text-xl md:leading-8"
                                 initial={{ opacity: 0, y: 15 }}
                                 animate={{ opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.1 } }}
                             >
@@ -81,7 +81,7 @@ export function PageContent() {
                         Project Objective
                     </motion.h2>
 
-                    <motion.p className="mt-2 mb-12 text-lg font-light leading-relaxed text-zinc-700 md:text-xl md:leading-8" variants={itemVariants} initial="hidden" animate="visible" custom={6}>
+                    <motion.p className="mt-2 mb-12 text-lg font-light leading-relaxed text-muted-foreground md:text-xl md:leading-8" variants={itemVariants} initial="hidden" animate="visible" custom={6}>
                         Developed as our thesis project for the Bachelor of Science in Computer Science, this system demonstrates our commitment to bridging academic theory and real-world application. Our goal was to design and implement a robust solution tailored to a client's specific needs.
                     </motion.p>
 
@@ -101,10 +101,10 @@ export function PageContent() {
                                 <img src="/img/urs_logo.png" alt="URS Logo" className="w-10 h-10 rounded-full object-contain" />
                             </div>
                             <div className='space-y-2'>
-                                <p className="text-base font-light leading-relaxed text-zinc-600">
+                                <p className="text-base font-light leading-relaxed text-muted-foreground">
                                     This system is a thesis project by students of the Bachelor of Science in Computer Science program at the <span className='font-semibold text-foreground'>University of Rizal System, Morong Campus</span>.
                                 </p>
-                                <p className="text-base font-light leading-relaxed text-zinc-600">
+                                <p className="text-base font-light leading-relaxed text-muted-foreground">
                                     It fulfills a core requirement of the BSCS curriculum, challenging us to apply our academic and technical skills to develop a solution for a real-world client.
                                 </p>
                             </div>
@@ -123,7 +123,7 @@ export function PageContent() {
                                 </h3>
                                 <img src="/img/tcc_logo2.jpg" alt="Client Logo" className="w-10 h-10 rounded-full object-cover border border-border" />
                             </div>
-                            <p className="text-base font-light leading-relaxed text-zinc-600">
+                            <p className="text-base font-light leading-relaxed text-muted-foreground">
                                 Our client, <span className='font-semibold text-foreground'>Tomas Claudio Colleges</span>, required a modern solution for payroll management. Effipay was developed specifically for them, providing a web-based platform to automate complex calculations, reduce manual work, and ensure operational efficiency.
                             </p>
                         </motion.div>
@@ -142,7 +142,7 @@ export function PageContent() {
                         </motion.div>
 
                         <motion.p
-                            className="mt-6 max-w-2xl text-center text-base italic text-zinc-500"
+                            className="mt-6 max-w-2xl text-center text-base italic text-muted-foreground"
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0, transition: { duration: 0.6, delay: 1.0 } }}
                         >
