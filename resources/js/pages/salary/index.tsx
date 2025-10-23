@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/app-layout'
 import { type BreadcrumbItem } from '@/types'
 import { Wallet, Calculator, TrendingUp } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 // shadcn Card imports
@@ -14,6 +14,9 @@ import { PayrollMonthPicker } from '@/components/ui/payroll-month-picker'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { RolesTableBadge } from '@/components/roles-table-badge'
 import { ScrollableCardGrid } from '../../components/scrollable-card-grid'
+import PayrollFilterButton from '../../components/payroll-filter-button'
+import { cn } from '@/lib/utils'
+import PayrollSearch from '../../components/payroll-search'
 
 type FlashObject = { type: string; message: string };
 type PageProps = {
@@ -32,6 +35,12 @@ export default function Index() {
   const [isRunningPayroll, setIsRunningPayroll] = useState(false)
   const [isThirteenthMonthDialogOpen, setIsThirteenthMonthDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'with-tk' | 'without-tk'>('with-tk')
+  // Filters (share the same shape as EmployeeFilter)
+  type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string[]; othersRole?: string }
+  const [filters, setFilters] = useState<FilterState>({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
+  const [searchTerm, setSearchTerm] = useState('')
+  const hasRoleFilters = filters.roles.length > 0
+  const hasAnyFilters = hasRoleFilters || (searchTerm.trim().length > 0)
 
   // Normalize input like YYYY-MM or YYYY-MM-DD to YYYY-MM
   const normalizeMonth = (val: string): string => {
@@ -127,6 +136,86 @@ export default function Index() {
       setLoadingTkLists(false)
     }
   }
+  // Build Others Roles options from current lists
+  const othersRolesOptions = useMemo(() => {
+    const standard = ['administrator', 'college instructor', 'basic education instructor']
+    const all: string[] = []
+    const pushRoles = (val?: string | string[]) => {
+      if (!val) return
+      const arr = Array.isArray(val) ? val : String(val).split(',')
+      for (const r of arr) {
+        const t = r.trim().toLowerCase()
+        if (t && !all.includes(t)) all.push(t)
+      }
+    }
+    if (tkLists) {
+      tkLists.with.forEach(e => pushRoles(e.roles as unknown as string))
+      tkLists.without.forEach(e => pushRoles(e.roles as unknown as string))
+    }
+    const custom = all.filter(r => !standard.includes(r))
+    return custom.map(r => ({ value: r, label: r.replace(/\b\w/g, c => c.toUpperCase()) }))
+  }, [tkLists])
+
+  // Apply filters locally to a list of employees
+  const applyFilters = useCallback((list: EmpLite[]) => {
+    if (!hasAnyFilters) return list
+    const standard = ['administrator', 'college instructor', 'basic education instructor']
+    const selTypes = new Set(filters.types)
+    // Status filter disabled; ignore
+    const selRoles = new Set(filters.roles.map(r => r.toLowerCase()))
+    const selCollege = new Set((filters.collegeProgram || []).map(cp => cp.toString()))
+    const othersRole = (filters.othersRole || '').toLowerCase()
+
+    return list.filter(emp => {
+      // Search term on name fields (case-insensitive)
+      const q = searchTerm.trim().toLowerCase()
+      if (q) {
+        const name = `${emp.full_name || ''} ${emp.name || ''} ${emp.first_name || ''} ${emp.middle_name || ''} ${emp.last_name || ''}`.toLowerCase()
+        if (!name.includes(q)) return false
+      }
+      // Status filter removed per requirement
+      // Roles filter
+      if (selRoles.size > 0) {
+        const rolesArr = Array.isArray(emp.roles)
+          ? (emp.roles as string[])
+          : String(emp.roles || '')
+              .split(',')
+              .map(r => r.trim().toLowerCase())
+
+        let roleMatch = false
+        for (const r of selRoles) {
+          if (r === 'others') {
+            // If specific othersRole chosen, must include it
+            if (othersRole) {
+              if (rolesArr.includes(othersRole)) roleMatch = true
+            } else {
+              // Otherwise, any role not in standard roles
+              if (rolesArr.some(rr => !standard.includes(rr))) roleMatch = true
+            }
+          } else if (rolesArr.includes(r)) {
+            roleMatch = true
+          }
+        }
+        if (!roleMatch) return false
+
+        // College program filter when college instructor selected
+        if (selRoles.has('college instructor') && selCollege.size > 0) {
+          const cp = String(emp.college_program || '')
+          if (!selCollege.has(cp)) return false
+        }
+      }
+
+      // Employee Type filter (no-op for now unless data present)
+      if (selTypes.size > 0) {
+        // EmpLite currently doesn't include employee_types; skip matching.
+      }
+      return true
+    })
+  }, [filters, hasAnyFilters, searchTerm])
+
+  // Derived filtered lists for display and counts
+  const filteredWith = useMemo(() => (tkLists ? applyFilters(tkLists.with) : []), [tkLists, applyFilters])
+  const filteredWithout = useMemo(() => (tkLists ? applyFilters(tkLists.without) : []), [tkLists, applyFilters])
   // Parse roles into an array for the RolesTableBadge
   const rolesToArray = (roles?: string | string[]): string[] => {
     if (!roles) return []
@@ -142,7 +231,7 @@ export default function Index() {
   }, [selectedMonth])
 
   const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Salary Management', href: route('salary.index') },
+  { title: 'Payroll', href: route('salary.index') },
   ]
 
   // Removed Earnings/Deductions sections
@@ -150,7 +239,7 @@ export default function Index() {
 
   return (
     <>
-      <Head title="Salary Management" />
+  <Head title="Payroll" />
       <AppLayout breadcrumbs={breadcrumbs}>
         <div className="py-6 px-8 space-y-6">
           {/* HEADER */}
@@ -160,7 +249,7 @@ export default function Index() {
                 <Wallet className="h-6 w-6 text-primary dark:text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Salary Management</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Payroll</h1>
                 <p className="text-muted-foreground">Set default salary values by employee type and run payroll.</p>
               </div>
             </div>
@@ -210,6 +299,7 @@ export default function Index() {
           {/* Tabs: Timekeeping-based groups */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'with-tk' | 'without-tk')} className="w-full">
             <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
               <TabsList>
                 <TabsTrigger value="with-tk" disabled={!selectedMonth}>
                   {`With Timekeeping records${selectedMonth && tkLists ? ` (${tkLists.with?.length || 0})` : ''}`}
@@ -218,6 +308,22 @@ export default function Index() {
                   {`Without Timekeeping records${selectedMonth && tkLists ? ` (${tkLists.without?.length || 0})` : ''}`}
                 </TabsTrigger>
               </TabsList>
+              {/* Search + Filter beside the tabs */}
+              <PayrollSearch value={searchTerm} onChange={setSearchTerm} />
+              <PayrollFilterButton value={filters} onChange={setFilters} othersRoles={othersRolesOptions} />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFilters({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
+                  setSearchTerm('')
+                }}
+                disabled={!hasAnyFilters}
+              >
+                Clear
+              </Button>
+              </div>
+              {/* Removed active filters preview per request */}
             </div>
 
             {/* Employees WITH timekeeping records */}
@@ -228,9 +334,9 @@ export default function Index() {
                 <div className="text-sm text-muted-foreground">Loading…</div>
               ) : (
                 <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">{tkLists?.with?.length || 0} employee(s) with timekeeping in {normalizeMonth(selectedMonth)}</div>
+                  <div className="text-sm text-muted-foreground">{filteredWith.length} employee(s) with timekeeping in {normalizeMonth(selectedMonth)}</div>
                   <ScrollableCardGrid height={340}>
-                    {(tkLists?.with || []).map(emp => (
+                    {filteredWith.map(emp => (
                       <Card key={emp.id} className="p-3 border border-slate-300 dark:border-slate-700 shadow-sm min-h-[92px]">
                         <div className="text-sm font-medium mb-1">{emp.full_name || emp.name || `Employee #${emp.id}`}</div>
                         <RolesTableBadge roles={rolesToArray(emp.roles)} college_program={emp.college_program} compact />
@@ -249,9 +355,9 @@ export default function Index() {
                 <div className="text-sm text-muted-foreground">Loading…</div>
               ) : (
                 <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">{tkLists?.without?.length || 0} employee(s) without timekeeping in {normalizeMonth(selectedMonth)}</div>
+                  <div className="text-sm text-muted-foreground">{filteredWithout.length} employee(s) without timekeeping in {normalizeMonth(selectedMonth)}</div>
                   <ScrollableCardGrid height={340}>
-                    {(tkLists?.without || []).map(emp => (
+                    {filteredWithout.map(emp => (
                       <Card key={emp.id} className="p-3 border border-slate-300 dark:border-slate-700 shadow-sm min-h-[92px]">
                         <div className="text-sm font-medium mb-1">{emp.full_name || emp.name || `Employee #${emp.id}`}</div>
                         <RolesTableBadge roles={rolesToArray(emp.roles)} college_program={emp.college_program} compact />

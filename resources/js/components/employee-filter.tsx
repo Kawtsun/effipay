@@ -30,6 +30,9 @@ interface Props {
   othersRole?: string // NEW
   othersRoles?: Array<{ value: string; label: string }> // Available others roles
   onChange: (filters: FilterState) => void
+  hideTypes?: boolean
+  hideStatuses?: boolean
+  compact?: boolean
 }
 
 const employee_type = [
@@ -48,6 +51,9 @@ export default function EmployeeFilter({
   othersRole: selectedOthersRole = '', // NEW
   othersRoles = [], // NEW
   onChange,
+  hideTypes = false,
+  hideStatuses = false,
+  compact = false,
 }: Props) {
   const [open, setOpen] = useState(false)
 
@@ -103,7 +109,7 @@ export default function EmployeeFilter({
     onChange({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
     setOpen(false)
   }
-  const activeCount = selectedTypes.length + selectedStatuses.length + selectedRoles.length
+  const activeCount = (hideTypes ? 0 : selectedTypes.length) + (hideStatuses ? 0 : selectedStatuses.length) + selectedRoles.length
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -123,8 +129,9 @@ export default function EmployeeFilter({
       </PopoverTrigger>
 
 
-      <PopoverContent className="w-76 p-0 flex flex-col h-[500px]">
+      <PopoverContent className={`${compact ? 'w-64 h-[360px]' : 'w-76 h-[500px]'} p-0 flex flex-col`}>
         <FilterScrollArea className="flex-1 p-4 space-y-5">
+          {!hideTypes && (
           <div className="my-2">
             <h4 className="text-sm font-semibold mb-1 select-none">Employee Type</h4>
             <p className="text-xs text-muted-foreground mb-2 select-none">
@@ -141,7 +148,9 @@ export default function EmployeeFilter({
               </label>
             ))}
           </div>
+          )}
 
+          {!hideStatuses && (
           <div className="my-2">
             <h4 className="text-sm font-semibold mb-1 select-none">Employee Status</h4>
             <p className="text-xs text-muted-foreground mb-2 select-none">
@@ -169,6 +178,7 @@ export default function EmployeeFilter({
               </label>
             ))}
           </div>
+          )}
 
           <div className="my-2">
             <h4 className="text-sm font-semibold mb-1 select-none">Roles</h4>
