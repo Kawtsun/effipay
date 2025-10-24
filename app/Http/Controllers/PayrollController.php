@@ -101,9 +101,9 @@ class PayrollController extends Controller
                 }
                 $honorarium = !is_null($employee->honorarium) ? floatval($employee->honorarium) : 0;
 
-                // Statutory contributions: always use the current value from the employee record (even if 0)
-                $sss = $employee->sss;
-                $philhealth = $employee->philhealth;
+                // Statutory contributions: initialize numeric variables and read flags
+                $sss = 0.0;
+                $philhealth = 0.0;
                 $pag_ibig = $employee->pag_ibig;
                 $withholding_tax = $employee->withholding_tax;
 
@@ -120,6 +120,14 @@ class PayrollController extends Controller
 
                 // For record-keeping, set base_salary to employee's base_salary or 0 (not used in calculation)
                 $base_salary = !is_null($employee->base_salary) ? $employee->base_salary : 0;
+
+                // Compute SSS/PhilHealth amounts based on gross_pay and employee flags.
+                if (!empty($employee->sss)) {
+                    $sss = round($gross_pay * config('payroll.sss_rate', 0.045), 2);
+                }
+                if (!empty($employee->philhealth)) {
+                    $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2);
+                }
             } else {
                 // Use all calculated values from timekeeping summary (default logic)
                 $workHoursPerDay = $employee->work_hours_per_day ?? 8;
@@ -150,9 +158,19 @@ class PayrollController extends Controller
                     2
                 );
 
-                $sss = $employee->sss;
-                $philhealth = $employee->philhealth;
+                // Statutory contributions: compute numeric amounts based on flags
+                $sss = 0.0;
+                $philhealth = 0.0;
                 $pag_ibig = $employee->pag_ibig;
+                $withholding_tax = 0.0;
+
+                if (!empty($employee->sss)) {
+                    $sss = round($gross_pay * config('payroll.sss_rate', 0.045), 2);
+                }
+                if (!empty($employee->philhealth)) {
+                    $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2);
+                }
+
                 $withholding_tax = $gross_pay > 0 ? (function ($gross_pay, $sss, $pag_ibig, $philhealth) {
                     $totalComp = $gross_pay - ($sss + $pag_ibig + $philhealth);
                     if ($totalComp <= 20832) return 0;
@@ -204,8 +222,10 @@ class PayrollController extends Controller
                 'undertime' => $undertime,
                 'absences' => $absences,
                 'gross_pay' => $gross_pay,
-                'sss' => $sss,
-                'philhealth' => $philhealth,
+                // Store NULL in the payroll record if the employee did not opt-in
+                // for SSS/PhilHealth so the frontend can render a "-".
+                'sss' => !empty($employee->sss) ? $sss : null,
+                'philhealth' => !empty($employee->philhealth) ? $philhealth : null,
                 'pag_ibig' => $pag_ibig,
                 'withholding_tax' => $withholding_tax,
                 'sss_salary_loan' => $sss_salary_loan,

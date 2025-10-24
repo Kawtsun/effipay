@@ -6,6 +6,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
+{
     /**
      * The Artisan commands provided by your application.
      *
@@ -13,8 +14,9 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         \App\Console\Commands\AddEmployeeStatusHistory::class,
+        \App\Console\Commands\BackfillEmployeeContributionFlags::class,
     ];
-{
+
     protected function schedule(Schedule $schedule): void
     {
         // Run at 1am on January 1st every year

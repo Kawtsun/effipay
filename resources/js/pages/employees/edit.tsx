@@ -16,7 +16,8 @@ import { OtherDeductionsForm } from '@/components/form/OtherDeductionsForm';
 import { type WorkDayTime } from '@/components/work-days-selector';
 import { type BreadcrumbItem } from '@/types';
 import { formatFullName } from '@/utils/formatFullName';
-import { calculateSSS, calculatePhilHealth } from '@/utils/salaryFormulas'; // Import the calculation functions
+// Note: SSS/PhilHealth calculation is intentionally not run on the Edit page.
+// These contributions are computed during payroll processing.
 
 // --- DATA TYPES ---
 type EmployeeFormData = {
@@ -27,6 +28,7 @@ type EmployeeFormData = {
     employee_types: Record<string, string>;
     employee_status: string;
     college_program: string;
+    basic_education_level: string;
     // WorkScheduleForm expects a per-role map of days
     work_days: Record<string, WorkDayTime[]>;
     college_work_hours_by_program: Record<string, string>;
@@ -34,8 +36,9 @@ type EmployeeFormData = {
     base_salary: string;
     rate_per_hour: string;
     honorarium: string;
-    sss: string;
-    philhealth: string;
+    sss: boolean;
+    philhealth: boolean;
+    withholding_tax: boolean;
     pag_ibig: string;
     sss_salary_loan: string;
     sss_calamity_loan: string;
@@ -55,13 +58,18 @@ type EmployeeDataFromServer = {
     employee_types?: Record<string, string> | null;
     employee_status?: string | null;
     college_program?: string | null;
+    basic_education_level?: string | null;
     // Older records may store this as a flat array; newer UI uses a per-role map
     work_days?: WorkDayTime[] | Record<string, WorkDayTime[]> | null;
+    college_work_hours_by_program?: Record<string, string> | null;
+    college_work_days_by_program?: Record<string, WorkDayTime[]> | null;
     base_salary?: string | number | null;
     college_rate?: string | number | null;
+    rate_per_hour?: string | number | null;
     honorarium?: string | number | null;
-    sss?: string | number | null;
-    philhealth?: string | number | null;
+    sss?: string | number | boolean | null;
+    philhealth?: string | number | boolean | null;
+    withholding_tax?: string | number | boolean | null;
     pag_ibig?: string | number | null;
     sss_salary_loan?: string | number | null;
     sss_calamity_loan?: string | number | null;
@@ -106,11 +114,30 @@ export default function Edit(props: Props) {
         if (rolesArr.length === 1) {
             return { [rolesArr[0]]: arr };
         }
-        if (rolesArr.length > 1 && arr.length > 0) {
+        // When server returns a legacy flat array for work_days and multiple roles exist,
+        // avoid assigning the same array to every role (this causes the merged schedule bug).
+        // Distribute the existing days across the non-college roles in a round-robin
+        // manner so each role receives a subset of days instead of one role receiving
+        // everything (heuristic to deal with legacy rows that lack role metadata).
+        if (arr.length > 0) {
+            const nonCollegeRoles = rolesArr.filter((r) => !/college/i.test(r));
+            const targetRoles = nonCollegeRoles.length ? nonCollegeRoles : rolesArr;
             const map: Record<string, WorkDayTime[]> = {};
-            rolesArr.forEach(role => {
-                map[role] = arr;
-            });
+            const n = targetRoles.length;
+            const len = arr.length;
+            const base = Math.floor(len / n);
+            const rem = len % n;
+            let index = 0;
+            for (let r = 0; r < n; r++) {
+                const chunkSize = base + (r < rem ? 1 : 0);
+                const role = targetRoles[r];
+                if (chunkSize <= 0) {
+                    map[role] = [];
+                    continue;
+                }
+                map[role] = arr.slice(index, index + chunkSize);
+                index += chunkSize;
+            }
             return map;
         }
         return {};
@@ -124,14 +151,18 @@ export default function Edit(props: Props) {
         employee_types: employee.employee_types || ({} as Record<string, string>),
         employee_status: toString(employee.employee_status),
         college_program: toString(employee.college_program),
-        work_days: initialWorkDaysByRole,
-        college_work_hours_by_program: {},
-        college_work_days_by_program: {},
+        basic_education_level: toString(employee.basic_education_level),
+    work_days: initialWorkDaysByRole,
+    college_work_hours_by_program: (employee.college_work_hours_by_program || {}) as Record<string, string>,
+    college_work_days_by_program: (employee.college_work_days_by_program || {}) as Record<string, WorkDayTime[]>,
         base_salary: toString(employee.base_salary),
-        rate_per_hour: toString(employee.college_rate),
+    rate_per_hour: toString(employee.college_rate ?? employee.rate_per_hour),
         honorarium: toString(employee.honorarium),
-        sss: toString(employee.sss),
-        philhealth: toString(employee.philhealth),
+            sss: !!employee.sss,
+            philhealth: !!employee.philhealth,
+            // Withholding tax is enforced as enabled for all employees by schema and business rule
+            // Initialize the form value to true so the UI reflects the DB default
+            withholding_tax: true,
         pag_ibig: toString(employee.pag_ibig),
         sss_salary_loan: toString(employee.sss_salary_loan),
         sss_calamity_loan: toString(employee.sss_calamity_loan),
@@ -145,43 +176,59 @@ export default function Edit(props: Props) {
     // Token to signal children to reset their local UI state (mirrors create page behavior)
     const [resetToken, setResetToken] = React.useState(0);
 
-    // This useEffect hook recalculates SSS and PhilHealth on component load
-    // and whenever the base_salary changes.
-    React.useEffect(() => {
-        const baseSalary = parseFloat(form.data.base_salary);
-        if (!isNaN(baseSalary)) {
-            const calculatedSss = calculateSSS(baseSalary);
-            const calculatedPhilhealth = calculatePhilHealth(baseSalary);
-            
-            // Only update if the values are different to prevent unnecessary re-renders
-            if (form.data.sss !== toString(calculatedSss) || form.data.philhealth !== toString(calculatedPhilhealth)) {
-                form.setData({
-                    ...form.data,
-                    sss: toString(calculatedSss),
-                    philhealth: toString(calculatedPhilhealth),
-                });
-            }
-        } else if (form.data.sss !== '' || form.data.philhealth !== '') {
-            // Clear SSS and PhilHealth if base salary is not a number
-            form.setData({
-                ...form.data,
-                sss: '',
-                philhealth: '',
-            });
-        }
-    }, [form, form.data.base_salary]); // The dependency array ensures this runs when base_salary changes
+    // Note: SSS and PhilHealth contributions are not computed on the Edit page.
+    // They are calculated during payroll processing (like withholding tax). The
+    // edit form will display persisted values from the server and will not auto-
+    // overwrite them based on base salary or role changes.
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Normalize numeric fields to plain numeric strings (no commas) before submit.
+        // useForm.setData mutates the internal form data used by form.put.
+        const numericFields = [
+            'base_salary', 'honorarium', 'college_rate',
+            'pag_ibig',
+            'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan',
+            'pagibig_calamity_loan', 'peraa_con', 'tuition', 'china_bank', 'tea'
+        ];
+
+        for (const field of numericFields) {
+            const val = (form.data as any)[field];
+            if (val !== undefined && val !== null && typeof val === 'string') {
+                // Remove any formatting commas before sending to server
+                form.setData(field as any, val.replace(/,/g, ''));
+            }
+        }
+
         form.put(route('employees.update', employee.id), {
             preserveScroll: true,
             onSuccess: () => {
                 toast.success('Employee updated successfully! ✨');
             },
-            onError: () => {
-                toast.error('Validation Failed 😥', {
-                    description: 'Please review the form for errors highlighted in red.',
-                });
+            onError: (errors) => {
+                // Log the full errors object for debugging
+                console.error('Validation errors from server:', errors);
+                try {
+                    // Make a compact, copyable JSON snippet for quick debugging
+                    const debugJson = JSON.stringify(errors, null, 2);
+                    // Show a short debug toast with a snippet so it's easy to copy
+                    const snippet = debugJson.length > 800 ? debugJson.slice(0, 800) + '... (truncated)' : debugJson;
+                    // Use a separate toast so the human-friendly message remains primary
+                    toast.error('Validation Debug (copy from console or this snippet)', { description: snippet });
+                } catch {
+                    // ignore stringify errors
+                }
+                // Show a short, useful message (pick the first field's first error if available)
+                const firstField = Object.keys(errors || {})[0];
+                const firstMsg = firstField ? (errors[firstField] && errors[firstField][0]) : null;
+                if (firstMsg) {
+                    toast.error('Validation Failed 😥', { description: firstMsg });
+                } else {
+                    toast.error('Validation Failed 😥', {
+                        description: 'Please review the form for errors highlighted in red.',
+                    });
+                }
             },
         });
     };
@@ -251,14 +298,17 @@ export default function Edit(props: Props) {
                                             employee_types: {},
                                             employee_status: 'Active',
                                             college_program: '',
+                                            basic_education_level: '',
                                             work_days: {},
                                             college_work_hours_by_program: {},
                                             college_work_days_by_program: {},
                                             base_salary: '',
                                             rate_per_hour: '',
                                             honorarium: '',
-                                            sss: '',
-                                            philhealth: '',
+                                            sss: false,
+                                            philhealth: false,
+                                            // Reset still ensures withholding tax is enabled by default
+                                            withholding_tax: true,
                                             pag_ibig: '',
                                             sss_salary_loan: '',
                                             sss_calamity_loan: '',

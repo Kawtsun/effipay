@@ -21,8 +21,8 @@ function formatWithCommas(value: string | number): string {
 type EmployeeFormData = {
     roles: string;
     base_salary: string;
-    sss: string;
-    philhealth: string;
+    sss: boolean;
+    philhealth: boolean;
     pag_ibig: string;
     [key: string]: any;
 };
@@ -40,40 +40,45 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
         data.roles.split(',').map((r: string) => r.trim()).includes('administrator'),
         [data.roles]
     );
-    const [showSSS, setShowSSS] = React.useState(isAdmin);
-    const [showPhilhealth, setShowPhilhealth] = React.useState(isAdmin);
-    const [showPagibig, setShowPagibig] = React.useState(isAdmin);
+    // Initialize toggles to true if the user is admin OR the employee already has the flag set.
+    const [showSSS, setShowSSS] = React.useState(() => isAdmin || !!data.sss);
+    const [showPhilhealth, setShowPhilhealth] = React.useState(() => isAdmin || !!data.philhealth);
+    const [showPagibig, setShowPagibig] = React.useState(() => isAdmin || !!data.pag_ibig);
 
+    // React to role changes or server-provided values. Keep the toggle shown if either
+    // the user is admin or the stored employee value indicates the contribution is enabled.
     React.useEffect(() => {
-        setShowSSS(isAdmin);
-        setShowPhilhealth(isAdmin);
-        setShowPagibig(isAdmin);
-    }, [isAdmin]);
+        setShowSSS(isAdmin || !!data.sss);
+        setShowPhilhealth(isAdmin || !!data.philhealth);
+        setShowPagibig(isAdmin || !!data.pag_ibig);
+    }, [isAdmin, data.sss, data.philhealth, data.pag_ibig]);
 
     // Reset all UI toggles and local validation state when parent triggers reset
     React.useEffect(() => {
         if (resetToken === undefined) return;
-        setShowSSS(isAdmin);
-        setShowPhilhealth(isAdmin);
-        setShowPagibig(isAdmin);
+        // After a parent reset, the form data will have been cleared; reflect that
+        // but keep contributions visible for admins.
+        setShowSSS(isAdmin || !!data.sss);
+        setShowPhilhealth(isAdmin || !!data.philhealth);
+        setShowPagibig(isAdmin || !!data.pag_ibig);
         setPagIbigError(null);
-    }, [resetToken, isAdmin]);
+    }, [resetToken, isAdmin, data.sss, data.philhealth, data.pag_ibig]);
 
     // Effects to clear fields when they are hidden
     React.useEffect(() => {
         if (!showSSS) {
-            setData('sss', '');
-        } else if (showSSS && data.sss === '') {
-            setData('sss', '0'); // Set to a placeholder value when added
+            setData('sss', false);
+        } else if (showSSS && !data.sss) {
+            setData('sss', true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSSS]);
 
     React.useEffect(() => {
         if (!showPhilhealth) {
-            setData('philhealth', '');
-        } else if (showPhilhealth && data.philhealth === '') {
-            setData('philhealth', '0'); // Set to a placeholder value when added
+            setData('philhealth', false);
+        } else if (showPhilhealth && !data.philhealth) {
+            setData('philhealth', true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showPhilhealth]);
