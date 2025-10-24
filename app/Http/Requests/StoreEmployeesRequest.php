@@ -120,6 +120,18 @@ class StoreEmployeesRequest extends FormRequest
             $rules['pag_ibig'] = 'sometimes|nullable|numeric|min:200|max:2500';
         }
 
+        // If the employee is a college instructor, ensure any program that has
+        // assigned days also has a corresponding hours value of at least 1.
+        $programDays = request('college_work_days_by_program', []);
+        if (is_array($programDays)) {
+            foreach ($programDays as $code => $days) {
+                if (is_array($days) && count($days) > 0) {
+                    // Require at least 1 hour for this program when days exist
+                    $rules['college_work_hours_by_program.' . $code] = ['required', 'numeric', 'min:1'];
+                }
+            }
+        }
+
         return $rules;
     }
 }
