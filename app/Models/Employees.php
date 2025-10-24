@@ -51,6 +51,11 @@ class Employees extends Model
         return $this->hasMany(WorkDay::class, 'employee_id');
     }
 
+    public function roleWorkDays(): HasMany
+    {
+        return $this->hasMany(\App\Models\RoleWorkDay::class, 'employee_id');
+    }
+
     /**
      * Get the employee types for the employee.
      */

@@ -111,11 +111,30 @@ export default function Edit(props: Props) {
         if (rolesArr.length === 1) {
             return { [rolesArr[0]]: arr };
         }
-        if (rolesArr.length > 1 && arr.length > 0) {
+        // When server returns a legacy flat array for work_days and multiple roles exist,
+        // avoid assigning the same array to every role (this causes the merged schedule bug).
+        // Distribute the existing days across the non-college roles in a round-robin
+        // manner so each role receives a subset of days instead of one role receiving
+        // everything (heuristic to deal with legacy rows that lack role metadata).
+        if (arr.length > 0) {
+            const nonCollegeRoles = rolesArr.filter((r) => !/college/i.test(r));
+            const targetRoles = nonCollegeRoles.length ? nonCollegeRoles : rolesArr;
             const map: Record<string, WorkDayTime[]> = {};
-            rolesArr.forEach(role => {
-                map[role] = arr;
-            });
+            const n = targetRoles.length;
+            const len = arr.length;
+            const base = Math.floor(len / n);
+            const rem = len % n;
+            let index = 0;
+            for (let r = 0; r < n; r++) {
+                const chunkSize = base + (r < rem ? 1 : 0);
+                const role = targetRoles[r];
+                if (chunkSize <= 0) {
+                    map[role] = [];
+                    continue;
+                }
+                map[role] = arr.slice(index, index + chunkSize);
+                index += chunkSize;
+            }
             return map;
         }
         return {};

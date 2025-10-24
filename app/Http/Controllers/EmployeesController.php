@@ -286,7 +286,18 @@ class EmployeesController extends Controller
 
             if (is_array($workDaysForInsert) && count($workDaysForInsert) > 0) {
                 foreach ($workDaysForInsert as $workDay) {
-                    if (isset($workDay['day'])) {
+                    if (!isset($workDay['day'])) continue;
+                    // If the workDay includes a role, persist to role_work_days. Otherwise
+                    // fall back to legacy work_days table for backward compatibility.
+                    if (!empty($workDay['role'])) {
+                        $employee->roleWorkDays()->create([
+                            'role' => $workDay['role'],
+                            'day' => $workDay['day'],
+                            'work_start_time' => $workDay['work_start_time'] ?? null,
+                            'work_end_time' => $workDay['work_end_time'] ?? null,
+                            'work_hours' => $workDay['work_hours'] ?? null,
+                        ]);
+                    } else {
                         $employee->workDays()->create([
                             'day' => $workDay['day'],
                             'work_start_time' => $workDay['work_start_time'] ?? null,
@@ -337,7 +348,7 @@ class EmployeesController extends Controller
      */
     public function edit(Employees $employee, Request $request)
     {
-    $employee->load(['workDays', 'employeeTypes', 'collegeProgramSchedules']);
+    $employee->load(['workDays', 'roleWorkDays', 'employeeTypes', 'collegeProgramSchedules']);
 
         $salaryDefaults = Salary::all()->mapWithKeys(fn($row) => [
             $row->employee_type => $row->toArray(),
@@ -369,7 +380,23 @@ class EmployeesController extends Controller
             ->values();
 
         if (count($nonCollegeRoles) > 0) {
-            $workDaysByRole = [];
+            // First, collect any schedules already stored in the new role_work_days table
+            // and map them by role so they take precedence.
+            $map = [];
+            foreach ($employee->roleWorkDays as $rwd) {
+                $role = $rwd->role ?? 'other';
+                if (!isset($map[$role])) $map[$role] = [];
+                $map[$role][] = [
+                    'day' => $rwd->day,
+                    'work_start_time' => $rwd->work_start_time,
+                    'work_end_time' => $rwd->work_end_time,
+                    'work_hours' => $rwd->work_hours,
+                ];
+            }
+
+            // Next, any legacy time-based rows (in work_days) that weren't saved with
+            // a role should be merged in using contiguous chunking and only assigned
+            // for roles that don't already have entries for those days.
             $timeBasedArray = $timeBasedDays->map(function ($wd) {
                 return [
                     'day' => $wd->day,
@@ -378,10 +405,37 @@ class EmployeesController extends Controller
                     'work_hours' => $wd->work_hours,
                 ];
             })->toArray();
-            foreach ($nonCollegeRoles as $role) {
-                $workDaysByRole[$role] = $timeBasedArray;
+
+            // Remove any days already present via roleWorkDays to avoid duplicates
+            $existingDays = [];
+            foreach ($map as $role => $days) {
+                foreach ($days as $d) {
+                    $existingDays[strtolower($d['day'])] = true;
+                }
             }
-            $employeeData['work_days'] = $workDaysByRole;
+            $legacyToAssign = array_values(array_filter($timeBasedArray, function ($d) use ($existingDays) {
+                return !isset($existingDays[strtolower($d['day'])]);
+            }));
+
+            if (count($legacyToAssign) > 0) {
+                $countRoles = count($nonCollegeRoles);
+                $total = count($legacyToAssign);
+                $base = intdiv($total, $countRoles);
+                $rem = $total % $countRoles;
+                $index = 0;
+                for ($r = 0; $r < $countRoles; $r++) {
+                    $chunkSize = $base + ($r < $rem ? 1 : 0);
+                    $role = $nonCollegeRoles[$r];
+                    if (!isset($map[$role])) $map[$role] = [];
+                    if ($chunkSize > 0) {
+                        $slice = array_slice($legacyToAssign, $index, $chunkSize);
+                        foreach ($slice as $s) $map[$role][] = $s;
+                        $index += $chunkSize;
+                    }
+                }
+            }
+
+            $employeeData['work_days'] = $map;
         }
 
         // 2) Prefill college program days and hours from the new schedules table when available
@@ -581,10 +635,21 @@ class EmployeesController extends Controller
                 }
             }
             
+            // Clear both legacy work_days and new role_work_days, then re-insert as appropriate
             $employee->workDays()->delete();
+            $employee->roleWorkDays()->delete();
             if (is_array($workDaysForInsert)) {
                 foreach ($workDaysForInsert as $workDay) {
-                    if (isset($workDay['day'])) {
+                    if (!isset($workDay['day'])) continue;
+                    if (!empty($workDay['role'])) {
+                        $employee->roleWorkDays()->create([
+                            'role' => $workDay['role'],
+                            'day' => $workDay['day'],
+                            'work_start_time' => $workDay['work_start_time'] ?? null,
+                            'work_end_time' => $workDay['work_end_time'] ?? null,
+                            'work_hours' => $workDay['work_hours'] ?? null,
+                        ]);
+                    } else {
                         $employee->workDays()->create([
                             'day' => $workDay['day'],
                             'work_start_time' => $workDay['work_start_time'] ?? null,
