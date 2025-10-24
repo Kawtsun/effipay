@@ -22,7 +22,7 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
 	return (
 		<Dialog open={!!employee} onOpenChange={(open) => !open && onClose()}>
 			{!!employee && (
-				<DialogContent className="max-w-6xl h-[90vh] w-full px-8 py-6 z-[100] flex flex-col min-h-0 overflow-hidden">
+				<DialogContent className="max-w-6xl h-[85vh] w-full px-8 py-6 z-[100] flex flex-col min-h-0 overflow-hidden">
 					<DialogHeader>
 						<DialogTitle className="text-2xl font-bold">
 							Employee Details

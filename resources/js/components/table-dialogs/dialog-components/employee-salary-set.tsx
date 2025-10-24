@@ -48,6 +48,9 @@ function BoolRow({ label, tooltip }: { label: string; tooltip?: string }) {
 								type="button"
 								aria-label={`${label} info`}
 								className="text-muted-foreground"
+								// Prevent initial auto-focus from Dialog focusing this control (which would open the tooltip)
+								tabIndex={-1}
+								onFocus={(e) => e.currentTarget.blur()}
 							>
 								<Info className="h-4 w-4" />
 							</button>
