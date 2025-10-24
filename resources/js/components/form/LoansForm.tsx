@@ -48,11 +48,58 @@ export function LoansForm({ form, resetToken }: LoansFormProps) {
         setShowPagibigCalamity(false);
     }, [resetToken]);
 
-    // Your original useEffects (unchanged)
-    React.useEffect(() => { if (!showSssSalary) setData('sss_salary_loan', ''); }, [showSssSalary, setData]);
-    React.useEffect(() => { if (!showSssCalamity) setData('sss_calamity_loan', ''); }, [showSssCalamity, setData]);
-    React.useEffect(() => { if (!showPagibigMulti) setData('pagibig_multi_loan', ''); }, [showPagibigMulti, setData]);
-    React.useEffect(() => { if (!showPagibigCalamity) setData('pagibig_calamity_loan', ''); }, [showPagibigCalamity, setData]);
+    // Initialize toggles based on existing form data when editing an employee.
+    // If the employee already has loan values in the database, show the
+    // corresponding inputs so the user can see and edit them.
+    React.useEffect(() => {
+        try {
+            const present = (v: unknown) => v !== null && v !== undefined && String(v).trim() !== '';
+            if (present(data.sss_salary_loan)) setShowSssSalary(true);
+            if (present(data.sss_calamity_loan)) setShowSssCalamity(true);
+            if (present(data.pagibig_multi_loan)) setShowPagibigMulti(true);
+            if (present(data.pagibig_calamity_loan)) setShowPagibigCalamity(true);
+        } catch (err) {
+            // Non-fatal — if data isn't available yet, ignore and allow user to toggle manually
+        }
+        // Run only on mount
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Clear effects: only clear a field when its visibility is toggled from
+    // true -> false after initial mount. This avoids a race where the mount
+    // initialization (which sets toggles based on existing data) runs and the
+    // clear effects — which also run on mount — wipe the server-provided values.
+    const prevSssSalaryRef = React.useRef(showSssSalary);
+    React.useEffect(() => {
+        if (prevSssSalaryRef.current && !showSssSalary) {
+            setData('sss_salary_loan', '');
+        }
+        prevSssSalaryRef.current = showSssSalary;
+    }, [showSssSalary, setData]);
+
+    const prevSssCalRef = React.useRef(showSssCalamity);
+    React.useEffect(() => {
+        if (prevSssCalRef.current && !showSssCalamity) {
+            setData('sss_calamity_loan', '');
+        }
+        prevSssCalRef.current = showSssCalamity;
+    }, [showSssCalamity, setData]);
+
+    const prevPagibigMultiRef = React.useRef(showPagibigMulti);
+    React.useEffect(() => {
+        if (prevPagibigMultiRef.current && !showPagibigMulti) {
+            setData('pagibig_multi_loan', '');
+        }
+        prevPagibigMultiRef.current = showPagibigMulti;
+    }, [showPagibigMulti, setData]);
+
+    const prevPagibigCalRef = React.useRef(showPagibigCalamity);
+    React.useEffect(() => {
+        if (prevPagibigCalRef.current && !showPagibigCalamity) {
+            setData('pagibig_calamity_loan', '');
+        }
+        prevPagibigCalRef.current = showPagibigCalamity;
+    }, [showPagibigCalamity, setData]);
 
     // Updated handler to allow negative numbers
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {

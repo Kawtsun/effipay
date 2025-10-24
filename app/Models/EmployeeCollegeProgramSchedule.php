@@ -4,23 +4,22 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class WorkDay extends Model
+class EmployeeCollegeProgramSchedule extends Model
 {
     use HasFactory;
 
-    protected $table = 'work_days';
+    protected $table = 'employee_college_program_schedules';
 
     protected $fillable = [
         'employee_id',
-        'role',
+        'program_code',
         'day',
-        'work_start_time',
-        'work_end_time',
-        'work_hours',
+        'hours_per_day',
     ];
 
-    public function employee()
+    public function employee(): BelongsTo
     {
         return $this->belongsTo(Employees::class, 'employee_id');
     }
