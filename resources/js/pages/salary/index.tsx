@@ -37,6 +37,8 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState<'with-tk' | 'without-tk'>('with-tk')
   // Only categorize (split into With/Without TK) after payroll is run for the selected month
   const [hasCategorized, setHasCategorized] = useState(false)
+  // Track how categorization was triggered: 'snapshot' | 'payroll' | 'import' | null
+  const [categorizeSource, setCategorizeSource] = useState<null | 'snapshot' | 'payroll' | 'import'>(null)
   // Filters (share the same shape as EmployeeFilter)
   type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string[]; othersRole?: string }
   const [filters, setFilters] = useState<FilterState>({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
@@ -53,19 +55,12 @@ export default function Index() {
     try { if (m) sessionStorage.setItem(hasRunFlagKey(m), v ? '1' : '0') } catch {}
   }
 
-  // Snapshot helpers so importing TK won't affect Payroll until next run
-  const snapshotKey = (m: string) => `salary.snapshot.${m}`
-  const getSnapshot = (m: string): { with: EmpLite[]; without: EmpLite[] } | null => {
-    try {
-      const raw = sessionStorage.getItem(snapshotKey(m))
-      return raw ? (JSON.parse(raw) as { with: EmpLite[]; without: EmpLite[] }) : null
-    } catch {
-      return null
-    }
-  }
-  const setSnapshot = (m: string, data: { with: EmpLite[]; without: EmpLite[] }) => {
-    try { if (m) sessionStorage.setItem(snapshotKey(m), JSON.stringify(data)) } catch {}
-  }
+  // Removed snapshot caching to avoid stale UI; we now always fetch live lists when allowed.
+
+  // Import flag helpers: remember that a timekeeping import occurred so we can auto-categorize
+  const importFlagKey = (m: string) => `salary.imported.${m}`
+  const getImportFlag = (m: string) => { try { return sessionStorage.getItem(importFlagKey(m)) === '1' } catch { return false } }
+  const setImportFlag = (m: string, v: boolean) => { try { if (m) sessionStorage.setItem(importFlagKey(m), v ? '1' : '0') } catch {} }
 
 
   // Normalize input like YYYY-MM or YYYY-MM-DD to YYYY-MM
@@ -139,11 +134,11 @@ export default function Index() {
           // After running payroll, refresh the timekeeping lists and focus the tab
           setActiveTab('with-tk')
           setHasCategorized(true)
+          setCategorizeSource('payroll')
           setHasRunFlag(selectedMonth, true)
-          // Fetch categorized lists now and cache a snapshot for this session
+          // Fetch categorized lists now
           ;(async () => {
             const lists = await loadTkLists(selectedMonth)
-            if (lists) setSnapshot(selectedMonth, lists)
           })()
         },
         onFinish: () => setIsRunningPayroll(false),
@@ -175,19 +170,7 @@ export default function Index() {
     }
   }
 
-  // Lightweight fetch used only to validate if DB looks reset (won't touch state)
-  const fetchTkListsForCheck = async (month: string): Promise<{ with: EmpLite[]; without: EmpLite[] } | null> => {
-    const norm = normalizeMonth(month)
-    if (!norm || !/^\d{4}-\d{2}$/.test(norm)) { return null }
-    try {
-      const res = await fetch(`/api/timekeeping/employees-by-month?month=${encodeURIComponent(norm)}`)
-      if (res.ok) {
-        const data = await res.json()
-        return { with: (data.with || []) as EmpLite[], without: (data.without || []) as EmpLite[] }
-      }
-    } catch {}
-    return null
-  }
+  // Removed background-only validation fetch; gating now relies on server 'processed months'.
 
   // Check if selected month exists in processed payroll months on server
   const isMonthProcessed = async (month: string): Promise<boolean> => {
@@ -289,30 +272,49 @@ export default function Index() {
     return roles.split(',').map(r => r.trim()).filter(Boolean)
   }
 
-  // On month change: show the cached snapshot (from the last Run Payroll) if present; otherwise keep gated.
-  // Additionally, validate in the background: if the server reports no employees for the month (likely DB reset),
-  // clear the snapshot so stale data isn't shown.
+  // On month change: if the month is processed (server) or an import occurred for this month, fetch live lists; otherwise keep gated.
   useEffect(() => {
     if (!selectedMonth) { setTkLists(null); setHasCategorized(false); return }
     setActiveTab('with-tk')
-    const snap = getSnapshot(selectedMonth)
-    if (snap) {
+    // If a recent timekeeping import happened for this month, auto-categorize from live data
+    const imported = getImportFlag(selectedMonth)
+    if (imported) {
       setHasCategorized(true)
-      setTkLists(snap)
-      // Background validation: if server has no data OR month isn't processed, clear stale snapshot
-      ;(async () => {
-        const [live, processed] = await Promise.all([fetchTkListsForCheck(selectedMonth), isMonthProcessed(selectedMonth)])
-        const noEmployees = !!live && (live.with.length === 0 && live.without.length === 0)
-        if (!processed || noEmployees) {
-          try { sessionStorage.removeItem(snapshotKey(selectedMonth)); sessionStorage.removeItem(hasRunFlagKey(selectedMonth)); } catch {}
-          setHasCategorized(false)
-          setTkLists(null)
-        }
-      })()
-    } else {
-      setHasCategorized(false)
-      setTkLists(null)
+      setCategorizeSource('import')
+      void loadTkLists(selectedMonth)
+      return
     }
+    // Otherwise, if server reports the month is processed, fetch live lists.
+    ;(async () => {
+      const processed = await isMonthProcessed(selectedMonth)
+      if (processed) {
+        setHasCategorized(true)
+        setCategorizeSource('payroll')
+        void loadTkLists(selectedMonth)
+      } else {
+        setHasCategorized(false)
+        setCategorizeSource(null)
+        setTkLists(null)
+      }
+    })()
+  }, [selectedMonth])
+
+  // Listen for timekeeping imports and auto-categorize for the current month
+  useEffect(() => {
+    const onImported = (e: Event) => {
+      if (!selectedMonth) return
+      const detail = (e as CustomEvent).detail || {}
+      const months: string[] = Array.isArray(detail?.months) ? detail.months : []
+      const normSel = normalizeMonth(selectedMonth)
+      // If event includes months, only react when it contains the selected month
+      if (months.length > 0 && !months.includes(normSel)) return
+      setImportFlag(normSel, true)
+      setHasCategorized(true)
+      setCategorizeSource('import')
+      void loadTkLists(normSel)
+    }
+    window.addEventListener('timekeeping:imported', onImported)
+    return () => window.removeEventListener('timekeeping:imported', onImported)
   }, [selectedMonth])
 
   const breadcrumbs: BreadcrumbItem[] = [
