@@ -259,15 +259,41 @@ class EmployeesSeeder extends Seeder
                 ],
             ];
             $selectedWorkDays = $workDayOptions[array_rand($workDayOptions)];
-            foreach ($selectedWorkDays as $workDay) {
-                DB::table('work_days')->insert([
-                    'employee_id' => $employee->id,
-                    'day' => $workDay['day'],
-                    'work_start_time' => $workDay['work_start_time'],
-                    'work_end_time' => $workDay['work_end_time'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            // Support multiple roles: split by comma and create per-role schedule rows
+            $rolesList = array_values(array_filter(array_map('trim', explode(',', (string) $roles))));
+            if (empty($rolesList)) { $rolesList = [null]; }
+
+            foreach ($rolesList as $roleForDay) {
+                $isCollegeRole = is_string($roleForDay) && stripos($roleForDay, 'college') !== false;
+
+                if ($isCollegeRole) {
+                    // For college roles, use employee_college_program_schedules instead of work_days
+                    // Ensure we have a program; fall back to a random one if somehow null
+                    $programCode = $collegeProgram ?: (fake()->randomElement($collegePrograms));
+                    foreach ($selectedWorkDays as $workDay) {
+                        DB::table('employee_college_program_schedules')->insert([
+                            'employee_id' => $employee->id,
+                            'program_code' => $programCode,
+                            'day' => $workDay['day'],
+                            'hours_per_day' => $workHoursPerDay,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                } else {
+                    // Non-college roles go to work_days with the role column populated
+                    foreach ($selectedWorkDays as $workDay) {
+                        DB::table('work_days')->insert([
+                            'employee_id' => $employee->id,
+                            'role' => $roleForDay,
+                            'day' => $workDay['day'],
+                            'work_start_time' => $workDay['work_start_time'],
+                            'work_end_time' => $workDay['work_end_time'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
             }
         }
     }

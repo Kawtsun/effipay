@@ -64,10 +64,8 @@ class Employees extends Model
         return $this->hasMany(WorkDay::class, 'employee_id');
     }
 
-    public function roleWorkDays(): HasMany
-    {
-        return $this->hasMany(\App\Models\RoleWorkDay::class, 'employee_id');
-    }
+    // Note: role-based schedules are stored in work_days with a 'role' column.
+    // The previous roleWorkDays() relation has been removed.
 
     /**
      * Get the employee types for the employee.

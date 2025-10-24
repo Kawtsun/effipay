@@ -13,6 +13,7 @@ class WorkDay extends Model
 
     protected $fillable = [
         'employee_id',
+        'role',
         'day',
         'work_start_time',
         'work_end_time',
