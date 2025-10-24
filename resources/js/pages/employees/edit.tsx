@@ -36,8 +36,9 @@ type EmployeeFormData = {
     base_salary: string;
     rate_per_hour: string;
     honorarium: string;
-    sss: string;
-    philhealth: string;
+    sss: boolean;
+    philhealth: boolean;
+    withholding_tax: boolean;
     pag_ibig: string;
     sss_salary_loan: string;
     sss_calamity_loan: string;
@@ -66,8 +67,9 @@ type EmployeeDataFromServer = {
     college_rate?: string | number | null;
     rate_per_hour?: string | number | null;
     honorarium?: string | number | null;
-    sss?: string | number | null;
-    philhealth?: string | number | null;
+    sss?: string | number | boolean | null;
+    philhealth?: string | number | boolean | null;
+    withholding_tax?: string | number | boolean | null;
     pag_ibig?: string | number | null;
     sss_salary_loan?: string | number | null;
     sss_calamity_loan?: string | number | null;
@@ -156,8 +158,9 @@ export default function Edit(props: Props) {
         base_salary: toString(employee.base_salary),
     rate_per_hour: toString(employee.college_rate ?? employee.rate_per_hour),
         honorarium: toString(employee.honorarium),
-        sss: toString(employee.sss),
-        philhealth: toString(employee.philhealth),
+            sss: !!employee.sss,
+            philhealth: !!employee.philhealth,
+            withholding_tax: !!(employee.withholding_tax),
         pag_ibig: toString(employee.pag_ibig),
         sss_salary_loan: toString(employee.sss_salary_loan),
         sss_calamity_loan: toString(employee.sss_calamity_loan),
@@ -183,7 +186,7 @@ export default function Edit(props: Props) {
         // useForm.setData mutates the internal form data used by form.put.
         const numericFields = [
             'base_salary', 'honorarium', 'college_rate',
-            'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
+            'pag_ibig',
             'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan',
             'pagibig_calamity_loan', 'peraa_con', 'tuition', 'china_bank', 'tea'
         ];
@@ -300,8 +303,9 @@ export default function Edit(props: Props) {
                                             base_salary: '',
                                             rate_per_hour: '',
                                             honorarium: '',
-                                            sss: '',
-                                            philhealth: '',
+                                            sss: false,
+                                            philhealth: false,
+                                            withholding_tax: false,
                                             pag_ibig: '',
                                             sss_salary_loan: '',
                                             sss_calamity_loan: '',

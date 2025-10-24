@@ -111,12 +111,14 @@ class StoreEmployeesRequest extends FormRequest
         
         // Your original contribution logic (unchanged)
         if ($isAdmin) {
-            $rules['sss'] = 'required|numeric|min:0';
-            $rules['philhealth'] = 'required|numeric|min:0';
+            // Admins must have SSS and PhilHealth checkboxes set (boolean true/false)
+            $rules['sss'] = 'required|boolean';
+            $rules['philhealth'] = 'required|boolean';
             $rules['pag_ibig'] = 'required|numeric|min:200|max:2500';
         } else {
-            $rules['sss'] = 'sometimes|nullable|numeric|min:0';
-            $rules['philhealth'] = 'sometimes|nullable|numeric|min:0';
+            // For non-admins these are optional flags
+            $rules['sss'] = 'sometimes|nullable|boolean';
+            $rules['philhealth'] = 'sometimes|nullable|boolean';
             $rules['pag_ibig'] = 'sometimes|nullable|numeric|min:200|max:2500';
         }
 

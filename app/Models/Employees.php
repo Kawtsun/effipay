@@ -41,6 +41,12 @@ class Employees extends Model
         'honorarium',
     ];
 
+    protected $casts = [
+        'sss' => 'boolean',
+        'philhealth' => 'boolean',
+        'withholding_tax' => 'boolean',
+    ];
+
     public function payrolls(): HasMany
     {
         return $this->hasMany(Payroll::class);

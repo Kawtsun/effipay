@@ -21,8 +21,8 @@ function formatWithCommas(value: string | number): string {
 type EmployeeFormData = {
     roles: string;
     base_salary: string;
-    sss: string;
-    philhealth: string;
+    sss: boolean;
+    philhealth: boolean;
     pag_ibig: string;
     [key: string]: any;
 };
@@ -62,18 +62,18 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
     // Effects to clear fields when they are hidden
     React.useEffect(() => {
         if (!showSSS) {
-            setData('sss', '');
-        } else if (showSSS && data.sss === '') {
-            setData('sss', '0'); // Set to a placeholder value when added
+            setData('sss', false);
+        } else if (showSSS && !data.sss) {
+            setData('sss', true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSSS]);
 
     React.useEffect(() => {
         if (!showPhilhealth) {
-            setData('philhealth', '');
-        } else if (showPhilhealth && data.philhealth === '') {
-            setData('philhealth', '0'); // Set to a placeholder value when added
+            setData('philhealth', false);
+        } else if (showPhilhealth && !data.philhealth) {
+            setData('philhealth', true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showPhilhealth]);

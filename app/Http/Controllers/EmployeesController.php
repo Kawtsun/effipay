@@ -162,7 +162,7 @@ class EmployeesController extends Controller
         // Sanitize numeric fields to null if they are empty
         foreach ([
             'base_salary', 'honorarium', 'college_rate',
-            'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
+            'pag_ibig',
             'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 
             'pagibig_calamity_loan', 'peraa_con', 'tuition', 'china_bank', 'tea'
         ] as $field) {
@@ -538,7 +538,7 @@ class EmployeesController extends Controller
         // - If the incoming value is null, allow null (explicit clear).
         foreach ([
             'base_salary', 'honorarium', 'college_rate',
-            'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
+            'pag_ibig',
             'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan', 
             'pagibig_calamity_loan', 'peraa_con', 'tuition', 'china_bank', 'tea'
         ] as $field) {
