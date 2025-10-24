@@ -158,21 +158,49 @@ export default function EmployeeSalarySet({ employee }: Props) {
 					</div>
 
 					<div className="mt-1.5">
-                        {typeof employee.sss_salary_loan !== "undefined" && (
-                            <FieldRow label="SSS Salary Loan" value={formatMoney(employee.sss_salary_loan)} />
-                        )}
+						{(() => {
+							const val = readOptionalNumber(employee, "sss_salary_loan");
+							return (
+								<FieldRow
+									label="SSS Salary Loan"
+									value={formatMoney(employee.sss_salary_loan)}
+									checked={typeof val !== "undefined" && val > 0}
+								/>
+							);
+						})()}
 
-                        {typeof employee.sss_calamity_loan !== "undefined" && (
-                            <FieldRow label="SSS Calamity Loan" value={formatMoney(employee.sss_calamity_loan)} />
-                        )}
+						{(() => {
+							const val = readOptionalNumber(employee, "sss_calamity_loan");
+							return (
+								<FieldRow
+									label="SSS Calamity Loan"
+									value={formatMoney(employee.sss_calamity_loan)}
+									checked={typeof val !== "undefined" && val > 0}
+								/>
+							);
+						})()}
 
-                        {typeof employee.pagibig_multi_loan!== "undefined" && (
-                            <FieldRow label="Pagibig Multi Loan" value={formatMoney(employee.pagibig_multi_loan)} />
-                        )}
+						{(() => {
+							const val = readOptionalNumber(employee, "pagibig_multi_loan");
+							return (
+								<FieldRow
+									label="Pagibig Multi Loan"
+									value={formatMoney(employee.pagibig_multi_loan)}
+									checked={typeof val !== "undefined" && val > 0}
+								/>
+							);
+						})()}
 
-                        {typeof employee.pagibig_calamity_loan!== "undefined" && (
-                            <FieldRow label="Pagibig Calamity Loan" value={formatMoney(employee.pagibig_calamity_loan)} />
-                        )}
+						{(() => {
+							const val = readOptionalNumber(employee, "pagibig_calamity_loan");
+							return (
+								<FieldRow
+									label="Pagibig Calamity Loan"
+									value={formatMoney(employee.pagibig_calamity_loan)}
+									checked={typeof val !== "undefined" && val > 0}
+								/>
+							);
+						})()}
 					</div>
 				</CardContent>
 			</Card>
