@@ -45,10 +45,42 @@ export function OtherDeductionsForm({ form, resetToken }: OtherDeductionsFormPro
         setShowTea(false);
     }, [resetToken]);
 
-    // Effects to clear individual deduction data when they are hidden
-    React.useEffect(() => { if (!showTuition) setData('tuition', ''); }, [showTuition, setData]);
-    React.useEffect(() => { if (!showChinaBank) setData('china_bank', ''); }, [showChinaBank, setData]);
-    React.useEffect(() => { if (!showTea) setData('tea', ''); }, [showTea, setData]);
+    // Initialize toggles based on existing form data when editing an employee.
+    // If the employee already has deduction values in the database, show the
+    // corresponding inputs so the user can see and edit them.
+    React.useEffect(() => {
+        try {
+            const present = (v: unknown) => v !== null && v !== undefined && String(v).trim() !== '';
+            if (present(data.tuition)) setShowTuition(true);
+            if (present(data.china_bank)) setShowChinaBank(true);
+            if (present(data.tea)) setShowTea(true);
+        } catch (err) {
+            // Ignore if data isn't ready yet
+        }
+        // Run only on mount
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Effects to clear individual deduction data when they are hidden.
+    // Use previous-value refs to avoid clearing server-provided values during
+    // the initial mount (the toggles are initialized from form data on mount).
+    const prevTuitionRef = React.useRef(showTuition);
+    React.useEffect(() => {
+        if (prevTuitionRef.current && !showTuition) setData('tuition', '');
+        prevTuitionRef.current = showTuition;
+    }, [showTuition, setData]);
+
+    const prevChinaRef = React.useRef(showChinaBank);
+    React.useEffect(() => {
+        if (prevChinaRef.current && !showChinaBank) setData('china_bank', '');
+        prevChinaRef.current = showChinaBank;
+    }, [showChinaBank, setData]);
+
+    const prevTeaRef = React.useRef(showTea);
+    React.useEffect(() => {
+        if (prevTeaRef.current && !showTea) setData('tea', '');
+        prevTeaRef.current = showTea;
+    }, [showTea, setData]);
 
     // Handler for numeric inputs that allows negative values
     const handleNumericChange = (field: keyof EmployeeFormData, value: string) => {

@@ -190,6 +190,24 @@ export default function Edit(props: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Normalize numeric fields to plain numeric strings (no commas) before submit.
+        // useForm.setData mutates the internal form data used by form.put.
+        const numericFields = [
+            'base_salary', 'honorarium', 'college_rate',
+            'sss', 'philhealth', 'pag_ibig', 'withholding_tax',
+            'sss_salary_loan', 'sss_calamity_loan', 'pagibig_multi_loan',
+            'pagibig_calamity_loan', 'peraa_con', 'tuition', 'china_bank', 'tea'
+        ];
+
+        for (const field of numericFields) {
+            const val = (form.data as any)[field];
+            if (val !== undefined && val !== null && typeof val === 'string') {
+                // Remove any formatting commas before sending to server
+                form.setData(field as any, val.replace(/,/g, ''));
+            }
+        }
+
         form.put(route('employees.update', employee.id), {
             preserveScroll: true,
             onSuccess: () => {
