@@ -16,7 +16,8 @@ import { OtherDeductionsForm } from '@/components/form/OtherDeductionsForm';
 import { type WorkDayTime } from '@/components/work-days-selector';
 import { type BreadcrumbItem } from '@/types';
 import { formatFullName } from '@/utils/formatFullName';
-import { calculateSSS, calculatePhilHealth } from '@/utils/salaryFormulas'; // Import the calculation functions
+// Note: SSS/PhilHealth calculation is intentionally not run on the Edit page.
+// These contributions are computed during payroll processing.
 
 // --- DATA TYPES ---
 type EmployeeFormData = {
@@ -170,42 +171,10 @@ export default function Edit(props: Props) {
     // Token to signal children to reset their local UI state (mirrors create page behavior)
     const [resetToken, setResetToken] = React.useState(0);
 
-    // This useEffect hook recalculates SSS and PhilHealth on component load
-    // and whenever the base_salary changes.
-    const { base_salary, sss, philhealth } = form.data;
-    const sssPhilInitialRef = React.useRef(true);
-    React.useEffect(() => {
-        const baseSalary = parseFloat(base_salary as string);
-        if (!isNaN(baseSalary)) {
-            const calculatedSss = calculateSSS(baseSalary);
-            const calculatedPhilhealth = calculatePhilHealth(baseSalary);
-
-            // Only update if the values are different to prevent unnecessary re-renders
-            if (sss !== toString(calculatedSss)) {
-                form.setData('sss', toString(calculatedSss));
-            }
-            if (philhealth !== toString(calculatedPhilhealth)) {
-                form.setData('philhealth', toString(calculatedPhilhealth));
-            }
-        } else {
-            // If base salary is not a number, only clear SSS/PhilHealth when the user
-            // has interacted (i.e. not on the initial mount). This prevents the form
-            // from wiping server-provided values on first render when base_salary is empty.
-            if (!sssPhilInitialRef.current) {
-                if (sss !== '') {
-                    form.setData('sss', '');
-                }
-                if (philhealth !== '') {
-                    form.setData('philhealth', '');
-                }
-            }
-        }
-
-        // After first run, mark as not initial so subsequent base_salary changes can clear
-        if (sssPhilInitialRef.current) {
-            sssPhilInitialRef.current = false;
-        }
-    }, [base_salary, sss, philhealth, form]); // Run when base_salary or related fields change
+    // Note: SSS and PhilHealth contributions are not computed on the Edit page.
+    // They are calculated during payroll processing (like withholding tax). The
+    // edit form will display persisted values from the server and will not auto-
+    // overwrite them based on base salary or role changes.
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
