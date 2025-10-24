@@ -221,15 +221,36 @@ export default function EmployeeSalarySet({ employee }: Props) {
 
 					<div className="mt-1.5">
 
-						{typeof employee.tuition !== "undefined" && (
-							<FieldRow label="Tuition" value={formatMoney(employee.tuition)} />
-						)}
-						{typeof employee.china_bank !== "undefined" && (
-							<FieldRow label="China Bank" value={formatMoney(employee.china_bank)} />
-						)}
-						{typeof employee.tea !== "undefined" && (
-							<FieldRow label="TEA" value={formatMoney(employee.tea)} />
-						)}
+						{(() => {
+							const val = readOptionalNumber(employee, "tuition");
+							return (
+								<FieldRow
+									label="Tuition"
+									value={formatMoney(employee.tuition)}
+									checked={typeof val !== "undefined" && val > 0}
+								/>
+							);
+						})()}
+						{(() => {
+							const val = readOptionalNumber(employee, "china_bank");
+							return (
+								<FieldRow
+									label="China Bank"
+									value={formatMoney(employee.china_bank)}
+									checked={typeof val !== "undefined" && val > 0}
+								/>
+							);
+						})()}
+						{(() => {
+							const val = readOptionalNumber(employee, "tea");
+							return (
+								<FieldRow
+									label="TEA"
+									value={formatMoney(employee.tea)}
+									checked={typeof val !== "undefined" && val > 0}
+								/>
+							);
+						})()}
 					</div>
 				</CardContent>
 			</Card>
