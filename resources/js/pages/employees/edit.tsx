@@ -160,7 +160,9 @@ export default function Edit(props: Props) {
         honorarium: toString(employee.honorarium),
             sss: !!employee.sss,
             philhealth: !!employee.philhealth,
-            withholding_tax: !!(employee.withholding_tax),
+            // Withholding tax is enforced as enabled for all employees by schema and business rule
+            // Initialize the form value to true so the UI reflects the DB default
+            withholding_tax: true,
         pag_ibig: toString(employee.pag_ibig),
         sss_salary_loan: toString(employee.sss_salary_loan),
         sss_calamity_loan: toString(employee.sss_calamity_loan),
@@ -305,7 +307,8 @@ export default function Edit(props: Props) {
                                             honorarium: '',
                                             sss: false,
                                             philhealth: false,
-                                            withholding_tax: false,
+                                            // Reset still ensures withholding tax is enabled by default
+                                            withholding_tax: true,
                                             pag_ibig: '',
                                             sss_salary_loan: '',
                                             sss_calamity_loan: '',

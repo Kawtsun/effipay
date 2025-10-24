@@ -47,6 +47,13 @@ class Employees extends Model
         'withholding_tax' => 'boolean',
     ];
 
+    /**
+     * Default attribute values for new models.
+     */
+    protected $attributes = [
+        'withholding_tax' => true,
+    ];
+
     public function payrolls(): HasMany
     {
         return $this->hasMany(Payroll::class);
