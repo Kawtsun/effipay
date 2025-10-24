@@ -285,19 +285,46 @@ class EmployeesController extends Controller
             }
 
             if (is_array($workDaysForInsert) && count($workDaysForInsert) > 0) {
+                // Normalize current roles declared on the employee so we only persist
+                // schedules for roles that are actually assigned to the employee.
+                $currentRolesRaw = (string)($employeeData['roles'] ?? '');
+                $currentRoles = array_map('strtolower', array_map('trim', explode(',', $currentRolesRaw)));
+
                 foreach ($workDaysForInsert as $workDay) {
                     if (!isset($workDay['day'])) continue;
-                    // If the workDay includes a role, persist to role_work_days. Otherwise
-                    // fall back to legacy work_days table for backward compatibility.
-                    if (!empty($workDay['role'])) {
-                        $employee->roleWorkDays()->create([
-                            'role' => $workDay['role'],
-                            'day' => $workDay['day'],
-                            'work_start_time' => $workDay['work_start_time'] ?? null,
-                            'work_end_time' => $workDay['work_end_time'] ?? null,
-                            'work_hours' => $workDay['work_hours'] ?? null,
-                        ]);
+
+                    // If a role is provided on the workDay, only persist it when the
+                    // role is present in the currentRoles list. This prevents stale
+                    // schedules from previous roles being re-inserted when the role
+                    // has been removed from the employee.
+                    $wdRole = isset($workDay['role']) ? strtolower(trim($workDay['role'])) : null;
+                    if ($wdRole !== null && $wdRole !== '') {
+                        if (!in_array($wdRole, $currentRoles, true)) {
+                            // Skip persisting schedules for roles no longer assigned.
+                            continue;
+                        }
+
+                        // Only persist to role_work_days when the role is a non-college role.
+                        if (stripos($wdRole, 'college') === false) {
+                            $employee->roleWorkDays()->create([
+                                'role' => $workDay['role'],
+                                'day' => $workDay['day'],
+                                'work_start_time' => $workDay['work_start_time'] ?? null,
+                                'work_end_time' => $workDay['work_end_time'] ?? null,
+                                'work_hours' => $workDay['work_hours'] ?? null,
+                            ]);
+                        } else {
+                            // Persist college role entries to legacy table for now (they are
+                            // also handled in college_program_schedules).
+                            $employee->workDays()->create([
+                                'day' => $workDay['day'],
+                                'work_start_time' => $workDay['work_start_time'] ?? null,
+                                'work_end_time' => $workDay['work_end_time'] ?? null,
+                                'work_hours' => $workDay['work_hours'] ?? null,
+                            ]);
+                        }
                     } else {
+                        // Untagged entries go to legacy table
                         $employee->workDays()->create([
                             'day' => $workDay['day'],
                             'work_start_time' => $workDay['work_start_time'] ?? null,
@@ -385,6 +412,11 @@ class EmployeesController extends Controller
             $map = [];
             foreach ($employee->roleWorkDays as $rwd) {
                 $role = $rwd->role ?? 'other';
+                // Ignore any role_work_days that reference college roles — college
+                // schedules are stored separately in college_program_schedules.
+                if (stripos($role, 'college') !== false) {
+                    continue;
+                }
                 if (!isset($map[$role])) $map[$role] = [];
                 $map[$role][] = [
                     'day' => $rwd->day,
@@ -657,6 +689,17 @@ class EmployeesController extends Controller
                             'work_hours' => $workDay['work_hours'] ?? null,
                         ]);
                     }
+                }
+            }
+
+            // Ensure there are no leftover role_work_days for roles that are no
+            // longer assigned to the employee. This is defensive cleanup in case
+            // the incoming payload still contained stale entries.
+            $currentRolesRaw = (string)($employeeData['roles'] ?? '');
+            $currentRoles = array_map('strtolower', array_map('trim', explode(',', $currentRolesRaw)));
+            foreach ($employee->roleWorkDays as $rwd) {
+                if (!in_array(strtolower(trim($rwd->role)), $currentRoles, true)) {
+                    $rwd->delete();
                 }
             }
 
