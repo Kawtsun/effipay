@@ -27,7 +27,7 @@ export default function GeneralInformation({ employee }: Props) {
 					<div className="space-y-2">
 						<div className="flex items-center gap-2 text-xs text-muted-foreground">
 							<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-								<Tags className="h-3.5 w-3.5" />
+								<Tags className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
 							</span>
 							<span>Employee Types</span>
 						</div>
@@ -44,7 +44,7 @@ export default function GeneralInformation({ employee }: Props) {
 					<div className="space-y-2">
 						<div className="flex items-center gap-2 text-xs text-muted-foreground">
 							<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-								<BadgeCheck className="h-3.5 w-3.5" />
+								<BadgeCheck className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
 							</span>
 							<span>Status</span>
 						</div>
@@ -58,7 +58,7 @@ export default function GeneralInformation({ employee }: Props) {
 				<div className="space-y-2">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<UserCog className="h-3.5 w-3.5" />
+							<UserCog className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Roles</span>
 					</div>
@@ -75,7 +75,7 @@ export default function GeneralInformation({ employee }: Props) {
 				<div className="space-y-2">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<CalendarDays className="h-3.5 w-3.5" />
+							<CalendarDays className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Schedule</span>
 					</div>

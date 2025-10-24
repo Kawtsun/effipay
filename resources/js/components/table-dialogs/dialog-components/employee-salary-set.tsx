@@ -85,7 +85,7 @@ export default function EmployeeSalarySet({ employee }: Props) {
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<Wallet className="h-3.5 w-3.5" />
+							<Wallet className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Compensation</span>
 					</div>
@@ -118,7 +118,7 @@ export default function EmployeeSalarySet({ employee }: Props) {
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<Banknote className="h-3.5 w-3.5" />
+							<Banknote className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Contributions</span>
 					</div>
@@ -152,7 +152,7 @@ export default function EmployeeSalarySet({ employee }: Props) {
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<HandCoins className="h-3.5 w-3.5" />
+							<HandCoins className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Loans</span>
 					</div>
@@ -214,7 +214,7 @@ export default function EmployeeSalarySet({ employee }: Props) {
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<ReceiptText className="h-3.5 w-3.5" />
+							<ReceiptText className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Deductions</span>
 					</div>
