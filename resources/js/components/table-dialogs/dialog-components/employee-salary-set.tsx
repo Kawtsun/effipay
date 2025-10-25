@@ -34,12 +34,12 @@ function FieldRow({ label, value, checked }: { label: string; value: React.React
 	);
 }
 
-function BoolRow({ label, tooltip }: { label: string; tooltip?: string }) {
+function BoolRow({ label, tooltip, value }: { label: string; tooltip?: string; value?: boolean }) {
 	return (
 		<div className="flex items-center justify-between gap-4 py-1.5">
 			<div className="flex items-center gap-2">
-				<span className="inline-flex items-center text-xs font-semibold text-green-600">
-					<CheckCircle className="h-4 w-4 mr-1" /> {label}
+				<span className={`inline-flex items-center text-xs ${value ? "font-semibold text-green-600" : "text-muted-foreground"}`}>
+					{value ? <CheckCircle className="h-4 w-4 mr-1" /> : null} {label}
 				</span>
 				{tooltip ? (
 					<Tooltip>
@@ -127,9 +127,9 @@ export default function EmployeeSalarySet({ employee }: Props) {
 					</div>
 
 					<div className="mt-1.5">
-						{/* Match create/edit: green check with info tooltip, no numeric value */}
-						<BoolRow label="SSS Contribution" tooltip="SSS contribution will be calculated after running the payroll." />
-						<BoolRow label="PhilHealth Contribution" tooltip="PhilHealth contribution will be calculated after running the payroll." />
+						{/* Show boolean/tinyint flags from DB */}
+						<BoolRow label="SSS Contribution" value={!!employee.sss} tooltip="SSS contribution will be calculated after running the payroll." />
+						<BoolRow label="PhilHealth Contribution" value={!!employee.philhealth} tooltip="PhilHealth contribution will be calculated after running the payroll." />
 						{(() => {
 							const pagibig = readOptionalNumber(employee, "pag_ibig");
 							return (
@@ -140,8 +140,8 @@ export default function EmployeeSalarySet({ employee }: Props) {
 								/>
 							);
 						})()}
-						{/* Required boolean */}
-						<BoolRow label="Withholding Tax" tooltip="Withholding Tax contribution will be calculated after running the payroll." />
+						{/* Withholding tax is boolean now (tinyint) */}
+						<BoolRow label="Withholding Tax" value={!!employee.withholding_tax} tooltip="Withholding Tax contribution will be calculated after running the payroll." />
 					</div>
 				</CardContent>
 			</Card>
