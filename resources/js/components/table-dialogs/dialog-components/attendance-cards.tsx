@@ -1,7 +1,8 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnimatePresence, motion } from "framer-motion";
-import { PhilippinePeso } from "lucide-react";
+import { PhilippinePeso, Clock3 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 type MetricValue = number | null | undefined;
 
@@ -10,6 +11,8 @@ type Metrics = {
 	undertime?: MetricValue;
 	overtime?: MetricValue;
 	absences?: MetricValue;
+	// Provided by TimeKeepingDataProvider for month aggregate
+	total_hours?: MetricValue;
 	// Optional overtime breakdown and rates for computing peso values
 	overtime_count_weekdays?: MetricValue;
 	overtime_count_weekends?: MetricValue;
@@ -201,6 +204,15 @@ export default function AttendanceCards({ metrics, isEmpty, title = "Attendance"
 								</Card>
 							</motion.div>
 						))}
+				</div>
+
+				{/* Total hours summary */}
+				<div className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
+					<span>Total hours this month:</span>
+					<Badge variant="secondary" className="flex items-center gap-1.5">
+						<Clock3 className="h-3.5 w-3.5" />
+						<span className="font-medium tabular-nums">{formatHours(metrics.total_hours, isEmpty)}</span>
+					</Badge>
 				</div>
 			</CardContent>
 		</Card>

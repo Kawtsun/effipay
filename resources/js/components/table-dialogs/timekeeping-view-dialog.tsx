@@ -60,6 +60,7 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
                                                     undertime: computed?.undertime,
                                                     overtime: computed?.overtime,
                                                     absences: computed?.absences,
+                                                    total_hours: computed?.total_hours,
                                                     overtime_count_weekdays: computed?.overtime_count_weekdays,
                                                     overtime_count_weekends: computed?.overtime_count_weekends,
                                                     rate_per_hour: computed?.rate_per_hour,
