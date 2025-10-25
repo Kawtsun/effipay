@@ -3,6 +3,7 @@ import type { Employees } from "@/types";
 import { EmployeeTypesList } from "./employee-types";
 import EmployeeRolesList from "./employee-roles";
 import { EmployeeScheduleBadges } from "@/components/employee-schedule-badges";
+import type { WorkDayTime } from "@/components/employee-schedule-badges";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tags, BadgeCheck, UserCog, CalendarDays } from "lucide-react";
@@ -14,6 +15,13 @@ type Props = {
 };
 
 export default function GeneralInformation({ employee }: Props) {
+	// Safely read optional schedule fields that may not be present on the Employees type
+	const workDays: WorkDayTime[] = (
+		(employee as unknown as { work_days?: WorkDayTime[] }).work_days ?? []
+	);
+	const collegeSchedules = (
+		(employee as unknown as { college_schedules?: Array<{ day: string; hours_per_day: number; program_code?: string }>|Record<string, Array<{ day: string; hours_per_day: number; program_code?: string }>> }).college_schedules ?? []
+	);
 	return (
 		<Card>
 			<CardHeader className="pb-3">
@@ -80,11 +88,7 @@ export default function GeneralInformation({ employee }: Props) {
 						<span>Schedule</span>
 					</div>
 					<div>
-						{Array.isArray(employee.work_days) && employee.work_days.length > 0 ? (
-							<EmployeeScheduleBadges workDays={employee.work_days} />
-						) : (
-							<div className="text-xs text-muted-foreground">No schedule assigned</div>
-						)}
+						<EmployeeScheduleBadges workDays={workDays} collegeSchedules={collegeSchedules} />
 					</div>
 				</div>
 			</CardContent>

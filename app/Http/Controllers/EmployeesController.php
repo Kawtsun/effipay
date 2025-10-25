@@ -76,8 +76,8 @@ class EmployeesController extends Controller
 
         $perPage = (int) ($request->input('perPage', 10));
 
-        // Eager load the relationships
-        $employees = $query->with(['workDays', 'employeeTypes'])->paginate($perPage)->withQueryString();
+    // Eager load the relationships
+    $employees = $query->with(['workDays', 'employeeTypes', 'collegeProgramSchedules'])->paginate($perPage)->withQueryString();
 
         // Transform the paginated items
         $employees->getCollection()->transform(function ($emp) {
@@ -94,6 +94,33 @@ class EmployeesController extends Controller
             unset($emp->employeeTypes);
             // Assign the newly formatted array
             $emp->employee_types = $employeeTypesArray;
+
+            // Map workDays relation to a simple array for the UI
+            $emp->work_days = $emp->workDays
+                ? $emp->workDays->map(function ($wd) {
+                    return [
+                        'day' => (string) $wd->day,
+                        'work_start_time' => $wd->work_start_time,
+                        'work_end_time' => $wd->work_end_time,
+                        'work_hours' => $wd->work_hours,
+                        'role' => $wd->role,
+                    ];
+                })->values()->toArray()
+                : [];
+
+            // Expose raw college schedules (program/day with hours) for the UI badges to aggregate
+            if ($emp->relationLoaded('collegeProgramSchedules')) {
+                $emp->college_schedules = $emp->collegeProgramSchedules
+                    ->map(fn ($row) => [
+                        'program_code' => (string) $row->program_code,
+                        'day' => (string) $row->day,
+                        'hours_per_day' => (float) $row->hours_per_day,
+                    ])->values()->toArray();
+            } else {
+                $emp->college_schedules = [];
+            }
+
+            unset($emp->workDays, $emp->collegeProgramSchedules);
 
             return $emp;
         });
@@ -252,8 +279,9 @@ class EmployeesController extends Controller
 
         // Decide which set to insert
         if ($hasNonCollegeRole && $hasCollegeRole) {
-            // Merge: keep time-based rows, inject work_hours from college per matching day,
-            // and add any extra college-only days as rows with null times + hours.
+            // Merge: keep time-based rows, inject work_hours from college per matching day only.
+            // Do NOT create new placeholder rows for college-only days; those live exclusively
+            // in employee_college_program_schedules and are rendered separately in the UI.
             $byDay = [];
             foreach ($workDaysFlattened as $wd) {
                 $key = strtolower($wd['day'] ?? '');
@@ -264,15 +292,15 @@ class EmployeesController extends Controller
                 if ($key === '') { continue; }
                 if (isset($byDay[$key])) {
                     $byDay[$key]['work_hours'] = $cd['work_hours'] ?? null;
-                } else {
-                    $byDay[$key] = $cd;
                 }
             }
             $workDaysForInsert = array_values($byDay);
         } elseif ($hasNonCollegeRole) {
             $workDaysForInsert = $workDaysFlattened;
         } else {
-            $workDaysForInsert = $workDaysCollege;
+            // College-only schedules should not create rows in work_days.
+            // Store them solely in employee_college_program_schedules.
+            $workDaysForInsert = [];
         }
 
     DB::transaction(function () use ($employeeData, $employeeTypesData, $workDaysForInsert, $validatedData) {
@@ -625,6 +653,8 @@ class EmployeesController extends Controller
         }
 
         if ($hasNonCollegeRole && $hasCollegeRole) {
+            // Merge: keep time-based rows, inject college hours only where a matching
+            // non-college day exists. Do not create placeholder rows for college-only days.
             $byDay = [];
             foreach ($workDaysFlattened as $wd) {
                 $key = strtolower($wd['day'] ?? '');
@@ -635,15 +665,15 @@ class EmployeesController extends Controller
                 if ($key === '') { continue; }
                 if (isset($byDay[$key])) {
                     $byDay[$key]['work_hours'] = $cd['work_hours'] ?? null;
-                } else {
-                    $byDay[$key] = $cd;
                 }
             }
             $workDaysForInsert = array_values($byDay);
         } elseif ($hasNonCollegeRole) {
             $workDaysForInsert = $workDaysFlattened;
         } else {
-            $workDaysForInsert = $workDaysCollege;
+            // College-only schedules are stored only in employee_college_program_schedules
+            // and should not create rows in work_days.
+            $workDaysForInsert = [];
         }
 
         DB::transaction(function () use ($employee, $employeeData, $employeeTypesData, $workDaysForInsert, $oldData, $validatedData) {
