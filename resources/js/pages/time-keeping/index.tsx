@@ -7,7 +7,7 @@ import Encoding from 'encoding-japanese'
 // import EmployeePagination from '@/components/employee-pagination';
 import TableTimekeeping from '@/components/table_timekeeping'
 import EmployeeSearch from '@/components/employee-search'
-import TimeKeepingViewDialog from '@/components/timekeeping-view-dialog'
+import TimeKeepingViewDialog from '@/components/table-dialogs/timekeeping-view-dialog'
 import BTRDialog from '@/components/btr-dialog'
 import { Button } from '@/components/ui/button'
 

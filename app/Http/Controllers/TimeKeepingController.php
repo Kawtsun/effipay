@@ -254,7 +254,8 @@ class TimeKeepingController extends Controller
         if ($perPage <= 0) {
             $perPage = 10;
         }
-        $employees = $query->with('workDays')->paginate($perPage)->withQueryString();
+    // Eager-load workDays, employeeTypes, and college program schedules to mirror EmployeesController
+    $employees = $query->with(['workDays', 'employeeTypes', 'collegeProgramSchedules'])->paginate($perPage)->withQueryString();
 
         $employees->getCollection()->transform(function ($emp) {
             // ** THE FIX IS HERE **
@@ -271,6 +272,8 @@ class TimeKeepingController extends Controller
             // Assign the newly formatted array
             $emp->employee_types = $employeeTypesArray;
 
+            // Leave relations on the model for the next mapping stage where we compute
+            // additional timekeeping metrics; we'll shape work_days and college_schedules there.
             return $emp;
         });
 
@@ -487,14 +490,28 @@ class TimeKeepingController extends Controller
                 'absences' => $absences,
                 'rate_per_day' => $rate_per_day,
                 'rate_per_hour' => $rate_per_hour,
-                'work_days' => $emp->workDays ? $emp->workDays->map(function ($wd) {
-                    return [
-                        'id' => $wd->id,
-                        'day' => $wd->day,
-                        'work_start_time' => $wd->work_start_time,
-                        'work_end_time' => $wd->work_end_time,
-                    ];
-                })->toArray() : [],
+                // Mirror EmployeesController: expose work_days with role and work_hours, and
+                // expose college_schedules (program/day with hours) for UI badge aggregation.
+                'work_days' => $emp->workDays
+                    ? $emp->workDays->map(function ($wd) {
+                        return [
+                            'day' => (string) $wd->day,
+                            'work_start_time' => $wd->work_start_time,
+                            'work_end_time' => $wd->work_end_time,
+                            'work_hours' => $wd->work_hours,
+                            'role' => $wd->role,
+                        ];
+                    })->values()->toArray()
+                    : [],
+                'college_schedules' => $emp->relationLoaded('collegeProgramSchedules') && $emp->collegeProgramSchedules
+                    ? $emp->collegeProgramSchedules->map(function ($row) {
+                        return [
+                            'program_code' => (string) $row->program_code,
+                            'day' => (string) $row->day,
+                            'hours_per_day' => (float) $row->hours_per_day,
+                        ];
+                    })->values()->toArray()
+                    : [],
             ];
         }, $employees->items());
 
