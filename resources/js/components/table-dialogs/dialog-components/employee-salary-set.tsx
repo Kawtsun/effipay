@@ -81,14 +81,14 @@ export default function EmployeeSalarySet({ employee }: Props) {
 		<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 			{/* Compensation */}
 			<Card>
-				<CardHeader className="pb-3">
+				<CardHeader>
 					<CardTitle className="font-semibold text-base leading-tight">Salary & Compensation</CardTitle>
 					<CardDescription className="text-xs">Base pay and other earnings</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<Wallet className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
+						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+							<Wallet className="h-4 w-4 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Compensation</span>
 					</div>
@@ -114,14 +114,14 @@ export default function EmployeeSalarySet({ employee }: Props) {
 
 			{/* Statutory Contributions */}
 			<Card>
-				<CardHeader className="pb-3">
+				<CardHeader>
 					<CardTitle className="font-semibold text-base leading-tight">Statutory Contributions</CardTitle>
 					<CardDescription className="text-xs">Government-mandated contributions</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<Banknote className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
+						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+							<Banknote className="h-4 w-4 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Contributions</span>
 					</div>
@@ -148,14 +148,14 @@ export default function EmployeeSalarySet({ employee }: Props) {
 
 			{/* Loans */}
 			<Card>
-				<CardHeader className="pb-3">
+				<CardHeader>
 					<CardTitle className="font-semibold text-base leading-tight">Loans</CardTitle>
 					<CardDescription className="text-xs">Active salary and emergency loans</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<HandCoins className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
+						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+							<HandCoins className="h-4 w-4 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Loans</span>
 					</div>
@@ -210,14 +210,14 @@ export default function EmployeeSalarySet({ employee }: Props) {
 
 			{/* Other Deductions */}
 			<Card>
-				<CardHeader className="pb-3">
+				<CardHeader>
 					<CardTitle className="font-semibold text-base leading-tight">Other Deductions</CardTitle>
 					<CardDescription className="text-xs">Recurring non-statutory deductions</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<ReceiptText className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
+						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+							<ReceiptText className="h-4 w-4 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Deductions</span>
 					</div>

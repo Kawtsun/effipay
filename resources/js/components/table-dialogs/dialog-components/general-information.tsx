@@ -34,11 +34,12 @@ export default function GeneralInformation({ employee }: Props) {
 					{/* Types */}
 					<div className="space-y-2">
 						<div className="flex items-center gap-2 text-xs text-muted-foreground">
-							<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-								<Tags className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
+							<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20 ">
+								<Tags className="h-4 w-4 text-primary dark:text-primary-foreground" />
 							</span>
 							<span>Employee Types</span>
 						</div>
+						{/* bg-primary/10 dark:bg-primary p-3 rounded-full border border-primary/20 */}
 						<div>
 							{employee.employee_types ? (
 								<EmployeeTypesList employeeTypes={employee.employee_types} compact />
@@ -51,8 +52,8 @@ export default function GeneralInformation({ employee }: Props) {
 					{/* Status */}
 					<div className="space-y-2">
 						<div className="flex items-center gap-2 text-xs text-muted-foreground">
-							<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-								<BadgeCheck className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
+							<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+								<BadgeCheck className="h-4 w-4 text-primary dark:text-primary-foreground" />
 							</span>
 							<span>Status</span>
 						</div>
@@ -65,8 +66,8 @@ export default function GeneralInformation({ employee }: Props) {
 				{/* Roles */}
 				<div className="space-y-2">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<UserCog className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
+						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+							<UserCog className="h-4 w-4 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Roles</span>
 					</div>
@@ -82,8 +83,8 @@ export default function GeneralInformation({ employee }: Props) {
 				{/* Schedule */}
 				<div className="space-y-2">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						<span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-muted/50">
-							<CalendarDays className="h-3.5 w-3.5 text-primary dark:text-primary-foreground" />
+						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+							<CalendarDays className="h-4 w-4 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Schedule</span>
 					</div>
