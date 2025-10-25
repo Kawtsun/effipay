@@ -11,6 +11,9 @@ import type { Employees } from "@/types";
 import { EmployeeName } from "./dialog-components/employee-name";
 import GeneralInformation from "./dialog-components/general-information";
 import DialogScrollArea from "@/components/dialog-scroll-area";
+import { TimeKeepingDataProvider } from "./dialog-components/timekeeping-data-provider";
+import { MonthRangePicker } from "../ui/month-range-picker";
+import AttendanceCards from "./dialog-components/attendance-cards";
 
 type Props = {
     employee: Employees | null;
@@ -22,25 +25,54 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
         <Dialog open={!!employee} onOpenChange={(open) => !open && onClose()}>
             {!!employee && (
                 <DialogContent className="max-w-6xl h-[85vh] w-full px-8 py-6 z-[100] flex flex-col min-h-0 overflow-hidden">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-bold">
-                            Employee Details
-                        </DialogTitle>
-                    </DialogHeader>
+                    <TimeKeepingDataProvider employee={employee}>
+                        {({ selectedMonth, availableMonths, handleMonthChange, records, computed }) => (
+                            <>
+                                <DialogHeader>
+                                    <DialogTitle className="text-2xl font-bold">
+                                        Employee Details
+                                    </DialogTitle>
+                                </DialogHeader>
 
-                    {/* Sticky summary header */}
-                    <EmployeeName employee={employee} />
+                                {/* Sticky summary header */}
+                                <EmployeeName employee={employee} />
 
-                    {/* Scrollable content */}
-                    <DialogScrollArea className="mt-4">
-                        <div className="space-y-6">
-                            <GeneralInformation employee={employee} />
-                        </div>
-                    </DialogScrollArea>
+                                {/* Scrollable content */}
+                                <DialogScrollArea className="mt-4">
+                                    <div className="space-y-8">
+                                        <GeneralInformation employee={employee} />
 
-                    <DialogFooter className="mt-6">
-                        <Button onClick={onClose}>Close</Button>
-                    </DialogFooter>
+                                        {/* Time Keeping Data */}
+                                        <div className="pt-2">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h4 className="font-semibold text-lg">Time Keeping Data</h4>
+                                                <MonthRangePicker
+                                                    value={selectedMonth}
+                                                    onValueChange={handleMonthChange}
+                                                    placeholder="Select month"
+                                                    className="w-56 min-w-0 px-2 py-1 text-sm"
+                                                    availableMonths={availableMonths}
+                                                />
+                                            </div>
+                                            <AttendanceCards
+                                                metrics={{
+                                                    tardiness: computed?.tardiness,
+                                                    undertime: computed?.undertime,
+                                                    overtime: computed?.overtime,
+                                                    absences: computed?.absences,
+                                                }}
+                                                isEmpty={(records?.length ?? 0) === 0}
+                                            />
+                                        </div>
+                                    </div>
+                                </DialogScrollArea>
+
+                                <DialogFooter className="mt-6">
+                                    <Button onClick={onClose}>Close</Button>
+                                </DialogFooter>
+                            </>
+                        )}
+                    </TimeKeepingDataProvider>
                 </DialogContent>
             )}
         </Dialog>
