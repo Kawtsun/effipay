@@ -60,7 +60,14 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
                                                     undertime: computed?.undertime,
                                                     overtime: computed?.overtime,
                                                     absences: computed?.absences,
+                                                    overtime_count_weekdays: computed?.overtime_count_weekdays,
+                                                    overtime_count_weekends: computed?.overtime_count_weekends,
+                                                    rate_per_hour: computed?.rate_per_hour,
+                                                    college_rate: computed?.college_rate,
                                                 }}
+                                                ratePerHour={computed?.rate_per_hour}
+                                                collegeRate={computed?.college_rate}
+                                                isCollegeInstructor={String(employee.roles || '').toLowerCase().includes('college instructor')}
                                                 isEmpty={(records?.length ?? 0) === 0}
                                             />
                                         </div>

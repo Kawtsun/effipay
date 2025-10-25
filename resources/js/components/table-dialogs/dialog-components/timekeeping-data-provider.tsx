@@ -1,5 +1,6 @@
 import React from "react";
 import type { Employees } from "@/types";
+import type { WorkDayTime } from "@/components/employee-schedule-badges";
 
 export type TimeKeepingMetrics = {
   tardiness: number;
@@ -9,6 +10,10 @@ export type TimeKeepingMetrics = {
   overtime_count_weekdays: number;
   overtime_count_weekends: number;
   total_hours: number;
+  // Added pay context so UI can compute peso values consistently
+  rate_per_hour?: number;
+  rate_per_day?: number;
+  college_rate?: number;
 };
 
 export type ObservanceMap = Record<string, { type?: string; start_time?: string }>;
@@ -130,9 +135,9 @@ export function TimeKeepingDataProvider({
       work_hours?: number | null;
       role?: string | null;
     };
-    const workDaysRaw: unknown = (employee as unknown as { work_days?: unknown }).work_days;
+    const workDaysRaw: unknown = (employee as { work_days?: WorkDayTime[] | unknown }).work_days;
     const workDays: WorkDay[] = Array.isArray(workDaysRaw)
-      ? (workDaysRaw as Array<Record<string, unknown>>).map((wd) => ({
+      ? (workDaysRaw as Array<WorkDayTime>).map((wd) => ({
           day: String(wd?.day ?? ""),
           work_start_time: (wd?.work_start_time as string | null | undefined) ?? undefined,
           work_end_time: (wd?.work_end_time as string | null | undefined) ?? undefined,
@@ -212,7 +217,7 @@ export function TimeKeepingDataProvider({
     if (!y || !m) return null;
     const daysInMonth = new Date(y, m, 0).getDate();
 
-    let tardMin = 0;
+  let tardMin = 0;
     let underMin = 0;
     let absentMin = 0;
     let otMin = 0;
@@ -310,6 +315,29 @@ export function TimeKeepingDataProvider({
     }
 
     const toH = (min: number) => Number((min / 60).toFixed(2));
+
+    // --- Compute rate context ---
+    // Estimate standard hours/day from schedule map if available, else fallback to 8
+    const schedDurations = Object.values(schedByCode).map((s) => s.durationMin);
+    const avgDurationMin = schedDurations.length > 0 ? (schedDurations.reduce((a, b) => a + b, 0) / schedDurations.length) : (8 * 60);
+    const hoursPerDay = Math.max(1, Number((avgDurationMin / 60).toFixed(2)));
+
+    const rolesStr = String(employee.roles ?? "").toLowerCase();
+    const isCollege = rolesStr.includes("college instructor");
+
+    const baseSalary = Number(employee.base_salary ?? 0) || 0;
+    const honorarium = Number((employee as Employees).honorarium ?? 0) || 0;
+    const collegeRate = employee.college_rate !== undefined && employee.college_rate !== null
+      ? Number(employee.college_rate)
+      : undefined;
+
+    // Use monthly base + honorarium for non-college staff
+    const monthlyForNonCollege = baseSalary + honorarium;
+    const ratePerDay = isCollege ? undefined : Number(((monthlyForNonCollege * 12) / 288).toFixed(2));
+    const ratePerHour = isCollege
+      ? (collegeRate ?? 0)
+      : Number(((ratePerDay ?? 0) / (hoursPerDay || 8)).toFixed(2));
+
     return {
       tardiness: toH(tardMin),
       undertime: toH(underMin),
@@ -318,6 +346,9 @@ export function TimeKeepingDataProvider({
       overtime_count_weekdays: toH(otWeekdayMin),
       overtime_count_weekends: toH(otWeekendMin),
       total_hours: toH(totalWorkedMin),
+      rate_per_hour: ratePerHour,
+      rate_per_day: ratePerDay,
+      college_rate: collegeRate,
     };
   }, [employee, records, selectedMonth, observanceMap]);
 
@@ -354,4 +385,42 @@ export function formatNumberWithCommasAndFixed(num: number | string, decimals = 
   const n = typeof num === "string" ? Number(num) : num;
   if (isNaN(n)) return "-";
   return n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+// Helper exported for callers that need a standalone hourly-rate computation
+export function computeRatePerHourForEmployee(employee: Employees | null): number {
+  if (!employee) return 0;
+  const rolesStr = String(employee.roles ?? "").toLowerCase();
+  const isCollege = rolesStr.includes("college instructor");
+  if (isCollege) {
+    return Number(employee.college_rate ?? 0) || 0;
+  }
+  const baseSalary = Number(employee.base_salary ?? 0) || 0;
+  const honorarium = Number(employee.honorarium ?? 0) || 0;
+  const monthly = baseSalary + honorarium;
+  const ratePerDay = (monthly * 12) / 288;
+  // Try to infer hours per day from the first valid work_day; fallback to 8
+  const wd: WorkDayTime[] = Array.isArray(employee.work_days) ? employee.work_days! : [];
+  const hmToMin = (t?: string) => {
+    if (!t) return NaN;
+    const parts = t.split(":");
+    if (parts.length < 2) return NaN;
+    const h = Number(parts[0]);
+    const m = Number(parts[1]);
+    if (Number.isNaN(h) || Number.isNaN(m)) return NaN;
+    return h * 60 + m;
+  };
+  let hoursPerDay = 8;
+  for (const w of wd) {
+    const start = hmToMin(w.work_start_time || undefined);
+    const end = hmToMin(w.work_end_time || undefined);
+    if (!Number.isNaN(start) && !Number.isNaN(end)) {
+      let d = end - start;
+      if (d <= 0) d += 24 * 60; // overnight
+      const durationMin = Math.max(0, d - 60);
+      hoursPerDay = Math.max(1, Math.round((durationMin / 60) * 100) / 100);
+      break;
+    }
+  }
+  return Number(((ratePerDay) / (hoursPerDay || 8)).toFixed(2));
 }
