@@ -27,7 +27,7 @@ function toTitleCase(s: string) {
 
 function DayOfWeek({ dateStr }: { dateStr: string }) {
 	const d = new Date(`${dateStr}T00:00:00`);
-	const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+	const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 	return <span>{days[d.getDay()]}</span>;
 }
 
@@ -44,7 +44,7 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 					<TableRow>
 						<TableHead className="w-[140px]">Date</TableHead>
 						<TableHead className="w-[80px]">Day</TableHead>
-						<TableHead className="min-w-[160px]">Label</TableHead>
+						<TableHead className="min-w-[160px]"><span className="sr-only">Label</span></TableHead>
 						<TableHead className="w-[140px]">Time In</TableHead>
 						<TableHead className="w-[140px]">Time Out</TableHead>
 					</TableRow>
@@ -91,9 +91,7 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 									<TableCell>
 										{pretty ? (
 											<Badge variant="outline" className="capitalize">{pretty}</Badge>
-										) : (
-											<span className="text-muted-foreground">—</span>
-										)}
+										) : null}
 									</TableCell>
 									  <TableCell>{formatTime12Hour(tin ?? undefined)}</TableCell>
 									  <TableCell>{formatTime12Hour(tout ?? undefined)}</TableCell>
