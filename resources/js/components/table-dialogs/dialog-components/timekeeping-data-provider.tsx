@@ -54,6 +54,11 @@ export function TimeKeepingDataProvider({
   const [records, setRecords] = React.useState<Array<Record<string, unknown>>>([]);
   // Observances map keyed by YYYY-MM-DD
   const [observanceMap, setObservanceMap] = React.useState<ObservanceMap>({});
+  // Minimal monthly summary rates (used for college fallback)
+  const [summaryRates, setSummaryRates] = React.useState<{
+    rate_per_hour?: number;
+    college_rate?: number;
+  } | null>(null);
 
   const recordsMinLoadingTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -117,6 +122,35 @@ export function TimeKeepingDataProvider({
   React.useEffect(() => {
     if (employee) fetchAvailableMonths();
   }, [employee, fetchAvailableMonths]);
+
+  // Fetch monthly summary (for college rate fallback parity with old dialog)
+  React.useEffect(() => {
+    if (!employee || !selectedMonth) {
+      setSummaryRates(null);
+      return;
+    }
+    try {
+      const url = typeof route === 'function'
+        ? route("timekeeping.employee.monthly-summary", { employee_id: employee.id, month: selectedMonth })
+        : `/timekeeping/employee/${employee.id}/monthly-summary?month=${encodeURIComponent(selectedMonth)}`;
+      fetch(url)
+        .then((r) => r.json())
+        .then((res) => {
+          if (res && res.success) {
+            const rh = typeof res.rate_per_hour === 'number' ? res.rate_per_hour
+              : (typeof res.rate_per_hour === 'string' && res.rate_per_hour !== '' ? Number(res.rate_per_hour) : undefined);
+            const cr = typeof res.college_rate === 'number' ? res.college_rate
+              : (typeof res.college_rate === 'string' && res.college_rate !== '' ? Number(res.college_rate) : undefined);
+            setSummaryRates({ rate_per_hour: rh, college_rate: cr });
+          } else {
+            setSummaryRates(null);
+          }
+        })
+        .catch(() => setSummaryRates(null));
+    } catch {
+      setSummaryRates(null);
+    }
+  }, [employee, selectedMonth]);
 
   const handleMonthChange = (month: string) => {
     if (month !== selectedMonth) {
@@ -316,27 +350,34 @@ export function TimeKeepingDataProvider({
 
     const toH = (min: number) => Number((min / 60).toFixed(2));
 
-    // --- Compute rate context ---
-    // Estimate standard hours/day from schedule map if available, else fallback to 8
+    // --- Compute rate context (align with old TimeKeepingViewDialog/backend) ---
+    // Prefer explicit employee.work_hours_per_day; fallback to schedule-derived average; else 8
     const schedDurations = Object.values(schedByCode).map((s) => s.durationMin);
     const avgDurationMin = schedDurations.length > 0 ? (schedDurations.reduce((a, b) => a + b, 0) / schedDurations.length) : (8 * 60);
-    const hoursPerDay = Math.max(1, Number((avgDurationMin / 60).toFixed(2)));
+    const inferredHoursPerDay = Math.max(1, Number((avgDurationMin / 60).toFixed(2)));
+    const workHoursPerDayField = Number((employee as Employees).work_hours_per_day ?? NaN);
+    const hoursPerDay = Number.isFinite(workHoursPerDayField) && workHoursPerDayField > 0 ? workHoursPerDayField : inferredHoursPerDay;
 
     const rolesStr = String(employee.roles ?? "").toLowerCase();
     const isCollege = rolesStr.includes("college instructor");
 
     const baseSalary = Number(employee.base_salary ?? 0) || 0;
-    const honorarium = Number((employee as Employees).honorarium ?? 0) || 0;
-    const collegeRate = employee.college_rate !== undefined && employee.college_rate !== null
-      ? Number(employee.college_rate)
-      : undefined;
+    // Resolve college rate: employee.college_rate -> summary.college_rate -> summary.rate_per_hour
+    const collegeRate = (() => {
+      const fromEmp = employee.college_rate !== undefined && employee.college_rate !== null ? Number(employee.college_rate) : undefined;
+      if (typeof fromEmp === 'number' && Number.isFinite(fromEmp) && fromEmp > 0) return fromEmp;
+      const fromSummaryCR = Number(summaryRates?.college_rate ?? NaN);
+      if (Number.isFinite(fromSummaryCR) && fromSummaryCR > 0) return fromSummaryCR;
+      const fromSummaryRH = Number(summaryRates?.rate_per_hour ?? NaN);
+      if (Number.isFinite(fromSummaryRH) && fromSummaryRH > 0) return fromSummaryRH;
+      return undefined;
+    })();
 
-    // Use monthly base + honorarium for non-college staff
-    const monthlyForNonCollege = baseSalary + honorarium;
-    const ratePerDay = isCollege ? undefined : Number(((monthlyForNonCollege * 12) / 288).toFixed(2));
+    // IMPORTANT: For non-college, exclude honorarium in rate_per_day to match old logic/backend
+    const ratePerDay = isCollege ? undefined : Number(((baseSalary * 12) / 288).toFixed(2));
     const ratePerHour = isCollege
       ? (collegeRate ?? 0)
-      : Number(((ratePerDay ?? 0) / (hoursPerDay || 8)).toFixed(2));
+      : Number((((ratePerDay ?? 0)) / (hoursPerDay || 8)).toFixed(2));
 
     return {
       tardiness: toH(tardMin),
@@ -350,7 +391,7 @@ export function TimeKeepingDataProvider({
       rate_per_day: ratePerDay,
       college_rate: collegeRate,
     };
-  }, [employee, records, selectedMonth, observanceMap]);
+  }, [employee, records, selectedMonth, observanceMap, summaryRates]);
 
   return (
     <>{children({

@@ -69,6 +69,7 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
                                                 ratePerHour={computed?.rate_per_hour}
                                                 collegeRate={computed?.college_rate}
                                                 isCollegeInstructor={String(employee.roles || '').toLowerCase().includes('college instructor')}
+                                                rolesText={employee.roles as unknown as string}
                                                 isEmpty={(records?.length ?? 0) === 0}
                                             />
                                         </div>

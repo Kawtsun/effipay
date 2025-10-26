@@ -1,8 +1,9 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnimatePresence, motion } from "framer-motion";
-import { PhilippinePeso, Clock3 } from "lucide-react";
+import { PhilippinePeso, Clock3, CircleHelp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type MetricValue = number | null | undefined;
 
@@ -33,6 +34,8 @@ type Props = {
 	collegeRate?: number;
 	/** Whether the current employee is a college instructor; controls which rate is used. */
 	isCollegeInstructor?: boolean;
+	/** Roles string to show in tooltip. */
+	rolesText?: string | null;
 };
 
 function formatHours(val: MetricValue, isEmpty?: boolean): string {
@@ -41,7 +44,7 @@ function formatHours(val: MetricValue, isEmpty?: boolean): string {
 	return `${Number(val).toFixed(2)} hr(s)`;
 }
 
-export default function AttendanceCards({ metrics, isEmpty, title = "Attendance", className, ratePerHour, collegeRate, isCollegeInstructor }: Props) {
+export default function AttendanceCards({ metrics, isEmpty, title = "Attendance", className, ratePerHour, collegeRate, isCollegeInstructor, rolesText }: Props) {
 		function formatAmount(val: number): string {
 			return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 		}
@@ -55,14 +58,44 @@ export default function AttendanceCards({ metrics, isEmpty, title = "Attendance"
 
 		const [hoveredKey, setHoveredKey] = React.useState<string | null>(null);
 
+		const rolesTooltip = React.useMemo(() => {
+			const r = (rolesText ?? '').toString();
+			if (!r) return null;
+			// Normalize delimiters to line breaks for nicer display
+			return r
+				.split(/[,\n]+/)
+				.map((s) => s.trim())
+				.filter(Boolean);
+		}, [rolesText]);
+
+		const rolesTooltipText = React.useMemo(() => {
+			if (!rolesTooltip || rolesTooltip.length === 0) return null;
+			const toTitleCase = (s: string) => s.toLowerCase().replace(/\b\w/g, (ch) => ch.toUpperCase());
+			return rolesTooltip.map(toTitleCase).join(", ");
+		}, [rolesTooltip]);
+
 		const hourlyRate = React.useMemo(() => {
 			const isCollege = typeof isCollegeInstructor === 'boolean' ? isCollegeInstructor : undefined;
-			const rateNonCollege = typeof ratePerHour === 'number' ? ratePerHour : Number(metrics.rate_per_hour ?? NaN);
-			const rateCollegeLocal = typeof collegeRate === 'number' ? collegeRate : Number(metrics.college_rate ?? NaN);
-			if (isCollege === true) return Number.isFinite(rateCollegeLocal) ? rateCollegeLocal : 0;
-			if (isCollege === false) return Number.isFinite(rateNonCollege) ? rateNonCollege : 0;
-			if (Number.isFinite(rateCollegeLocal) && (rateCollegeLocal as number) > 0) return rateCollegeLocal as number;
-			return Number.isFinite(rateNonCollege) ? (rateNonCollege as number) : 0;
+			// Prefer explicit props; fallback to metrics
+			const rateFromMetrics = Number(metrics.rate_per_hour ?? NaN);
+			const rateFromProp = typeof ratePerHour === 'number' ? ratePerHour : NaN;
+			const rateNonCollegeOrGeneral = Number.isFinite(rateFromProp) ? rateFromProp : rateFromMetrics;
+			const rateCollegeLocalProp = typeof collegeRate === 'number' ? collegeRate : NaN;
+			const rateCollegeLocalMetric = Number(metrics.college_rate ?? NaN);
+			const rateCollegeResolved = Number.isFinite(rateCollegeLocalProp) ? rateCollegeLocalProp : rateCollegeLocalMetric;
+
+			// If explicitly college, use college rate when valid; otherwise fall back to general rate_per_hour
+			if (isCollege === true) {
+				if (Number.isFinite(rateCollegeResolved) && rateCollegeResolved > 0) return rateCollegeResolved;
+				return Number.isFinite(rateNonCollegeOrGeneral) ? rateNonCollegeOrGeneral : 0;
+			}
+			// If explicitly non-college, use general/non-college rate
+			if (isCollege === false) {
+				return Number.isFinite(rateNonCollegeOrGeneral) ? rateNonCollegeOrGeneral : 0;
+			}
+			// Unknown role: prefer a positive college rate if available, else general rate
+			if (Number.isFinite(rateCollegeResolved) && rateCollegeResolved > 0) return rateCollegeResolved;
+			return Number.isFinite(rateNonCollegeOrGeneral) ? rateNonCollegeOrGeneral : 0;
 		}, [isCollegeInstructor, ratePerHour, collegeRate, metrics.rate_per_hour, metrics.college_rate]);
 
     const overtimeWeekdays = Number(metrics.overtime_count_weekdays ?? NaN);
@@ -207,12 +240,39 @@ export default function AttendanceCards({ metrics, isEmpty, title = "Attendance"
 				</div>
 
 				{/* Total hours summary */}
-				<div className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
-					<span>Total hours this month:</span>
-					<Badge variant="secondary" className="flex items-center gap-1.5">
-						<Clock3 className="h-3.5 w-3.5" />
-						<span className="font-medium tabular-nums">{formatHours(metrics.total_hours, isEmpty)}</span>
-					</Badge>
+				<div className="mt-4 text-sm text-muted-foreground flex items-center gap-6 flex-wrap">
+					{/* Rate per hour */}
+					<div className="flex items-center gap-2">
+						<span className="flex items-center gap-1">Rate per hour:
+							{rolesTooltip && rolesTooltip.length > 0 && (
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button type="button" aria-label="View roles used for this rate" className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-none">
+											<CircleHelp className="h-3.5 w-3.5" />
+										</button>
+									</TooltipTrigger>
+									<TooltipContent>
+										<div className="max-w-xs whitespace-pre-wrap">{rolesTooltipText}</div>
+									</TooltipContent>
+								</Tooltip>
+							)}
+						</span>
+						<Badge variant="secondary" className="flex items-center gap-1.5">
+							<PhilippinePeso className="h-3.5 w-3.5" />
+							<span className="font-medium tabular-nums">
+								{!Number.isFinite(hourlyRate) || hourlyRate <= 0 ? "-" : formatAmount(hourlyRate)}
+							</span>
+						</Badge>
+					</div>
+
+					{/* Total hours */}
+					<div className="flex items-center gap-2">
+						<span>Total hours this month:</span>
+						<Badge variant="secondary" className="flex items-center gap-1.5">
+							<Clock3 className="h-3.5 w-3.5" />
+							<span className="font-medium tabular-nums">{formatHours(metrics.total_hours, isEmpty)}</span>
+						</Badge>
+					</div>
 				</div>
 			</CardContent>
 		</Card>
