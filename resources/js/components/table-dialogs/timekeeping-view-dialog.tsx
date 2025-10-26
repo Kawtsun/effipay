@@ -20,7 +20,7 @@ type Props = {
     onClose: () => void;
 };
 
-export default function EmployeeViewDialog({ employee, onClose }: Props) {
+export default function TimekeepingViewDialog({ employee, onClose }: Props) {
     return (
         <Dialog open={!!employee} onOpenChange={(open) => !open && onClose()}>
             {!!employee && (
@@ -30,7 +30,7 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
                             <>
                                 <DialogHeader>
                                     <DialogTitle className="text-2xl font-bold">
-                                        Employee Details
+                                        Timekeeping Details
                                     </DialogTitle>
                                 </DialogHeader>
 
