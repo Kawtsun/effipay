@@ -1,8 +1,9 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
 import { PhilippinePeso, Clock3, CircleHelp } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+// Note: Summary badges are custom-styled divs to perfectly match skeleton sizing
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type MetricValue = number | null | undefined;
@@ -25,6 +26,8 @@ type Props = {
 	metrics: Metrics;
 	/** When true, shows '-' for all values (e.g., no records this month). */
 	isEmpty?: boolean;
+	/** When true, shows loading skeletons for the whole card (e.g., initial load or month change). */
+	isLoading?: boolean;
 	/** Optional title for the wrapper card. */
 	title?: string;
 	className?: string;
@@ -44,7 +47,7 @@ function formatHours(val: MetricValue, isEmpty?: boolean): string {
 	return `${Number(val).toFixed(2)} hr(s)`;
 }
 
-export default function AttendanceCards({ metrics, isEmpty, title = "Attendance", className, ratePerHour, collegeRate, isCollegeInstructor, rolesText }: Props) {
+export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "Attendance", className, ratePerHour, collegeRate, isCollegeInstructor, rolesText }: Props) {
 		function formatAmount(val: number): string {
 			return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 		}
@@ -180,100 +183,192 @@ export default function AttendanceCards({ metrics, isEmpty, title = "Attendance"
 
 	const valueVariants = {
 		initial: { opacity: 0, y: 4 },
-		animate: { opacity: 1, y: 0, transition: { duration: 0.12 } },
+		animate: { opacity: 1, y: 0, transition: { duration: 0.16 } },
 		exit: { opacity: 0, y: -4, transition: { duration: 0.12 } },
 	};
+
+	// Entrance animation for content after skeleton
+	const containerVariants = {
+		hidden: { opacity: 0, y: 6 },
+		show: {
+			opacity: 1, y: 0,
+			transition: { staggerChildren: 0.08, delayChildren: 0.05, when: "beforeChildren" },
+		},
+	};
+
+	const itemVariants = {
+		hidden: { opacity: 0, y: 8 },
+		show: { opacity: 1, y: 0, transition: { duration: 0.28 } },
+	};
+
+	// Combine hover and entrance variants for cards
+	const cardVariants = { ...cardHover, ...itemVariants } as const;
+
+	// Header (title) entrance after skeleton
+	const headerVariants = {
+		hidden: { opacity: 0, y: 4 },
+		show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+	} as const;
+
+	// Ensure skeleton shows on first paint to avoid flash of content before parent toggles loading
+	const [mounted, setMounted] = React.useState(false);
+	React.useEffect(() => { setMounted(true); }, []);
+	const shouldSkeleton = Boolean(isLoading || !mounted);
 
 	return (
 		<Card className={className}>
 			<CardHeader className="pb-4">
-				<CardTitle className="text-lg font-semibold">{title}</CardTitle>
+				<AnimatePresence mode="wait" initial={false}>
+					{shouldSkeleton ? (
+						<motion.div key="header-skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-6 w-32">
+							<Skeleton className="h-6 w-full" />
+						</motion.div>
+					) : (
+						<motion.div key="header-title" variants={headerVariants} initial="hidden" animate="show" exit="hidden" className="h-6 w-32 overflow-hidden">
+							<CardTitle className="text-lg font-semibold leading-6 truncate">{title}</CardTitle>
+						</motion.div>
+					)}
+				</AnimatePresence>
 			</CardHeader>
 			<CardContent>
-					<div className="grid grid-cols-4 gap-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-						{cards.map((c) => (
-							<motion.div
-								key={c.key}
-								initial="initial"
-								whileHover="hover"
-								variants={cardHover}
-								onHoverStart={() => setHoveredKey(c.key)}
-								onHoverEnd={() => setHoveredKey((k) => (k === c.key ? null : k))}
-								className="rounded-xl"
-							>
-								<Card className={`transition-colors ${c.ring} ${c.bg}`}>
-									<CardHeader className="pb-2">
-										<div className={`text-sm font-medium ${c.text}`}>{c.label}</div>
-									</CardHeader>
-									<CardContent>
-										<div className={`relative text-2xl font-semibold ${c.valueText} h-8 leading-8 whitespace-nowrap tabular-nums`}> 
-											<AnimatePresence mode="wait" initial={false}>
-												{hoveredKey === c.key ? (
-													<motion.span
-														key="money"
-														variants={valueVariants}
-														initial="initial"
-														animate="animate"
-														exit="exit"
-														className="absolute inset-0 flex items-center"
-													>
-														{c.money}
-													</motion.span>
-												) : (
-													<motion.span
-														key="value"
-														variants={valueVariants}
-														initial="initial"
-														animate="animate"
-														exit="exit"
-														className="absolute inset-0 flex items-center"
-													>
-														{c.value}
-													</motion.span>
-												)}
-											</AnimatePresence>
-										</div>
-									</CardContent>
-								</Card>
+				<AnimatePresence mode="wait" initial={false}>
+					{shouldSkeleton ? (
+						// Skeleton state (match layout to avoid jumps)
+						<motion.div
+							key="skeleton"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							className="space-y-4"
+						>
+							<div className="grid grid-cols-4 gap-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
+								{cards.map((c) => (
+									<Card key={c.key} className={`transition-colors ${c.ring} ${c.bg}`}>
+										<CardHeader className="pb-2">
+											<Skeleton className="h-4 w-24" />
+										</CardHeader>
+										<CardContent>
+											<div className={`relative text-2xl font-semibold ${c.valueText} h-8 leading-8 whitespace-nowrap tabular-nums w-[140px] overflow-hidden`}>
+												<div className="absolute inset-0 flex items-center">
+													<Skeleton className="h-6 w-[140px]" />
+												</div>
+											</div>
+										</CardContent>
+									</Card>
+								))}
+							</div>
+
+							<div className="mt-4 text-sm text-muted-foreground flex items-center gap-6 flex-wrap">
+								<div className="flex items-center gap-1">
+									<div className="inline-flex items-center w-[120px]">
+										<Skeleton className="h-4 w-full" />
+									</div>
+									<div className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md w-[112px] bg-secondary/60">
+										<Skeleton className="h-3.5 w-3.5 rounded-sm" />
+										<Skeleton className="h-3 w-[64px]" />
+									</div>
+								</div>
+								<div className="flex items-center gap-1">
+									<div className="inline-flex items-center w-[168px]">
+										<Skeleton className="h-4 w-full" />
+									</div>
+									<div className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md w-[136px] bg-secondary/60">
+										<Skeleton className="h-3.5 w-3.5 rounded-sm" />
+										<Skeleton className="h-3 w-[84px]" />
+									</div>
+								</div>
+							</div>
+						</motion.div>
+					) : (
+						// Content state
+						<motion.div key="content" variants={containerVariants} initial="hidden" animate="show" className="space-y-4">
+							<div className="grid grid-cols-4 gap-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
+								{cards.map((c) => (
+									<motion.div
+										key={c.key}
+										variants={cardVariants}
+										layout
+										whileHover="hover"
+										onHoverStart={() => setHoveredKey(c.key)}
+										onHoverEnd={() => setHoveredKey((k) => (k === c.key ? null : k))}
+										className="rounded-xl"
+									>
+										<Card className={`transition-colors ${c.ring} ${c.bg}`}>
+											<CardHeader className="pb-2">
+												<div className={`text-sm font-medium ${c.text}`}>{c.label}</div>
+											</CardHeader>
+											<CardContent>
+												<div className={`relative text-2xl font-semibold ${c.valueText} h-8 leading-8 whitespace-nowrap tabular-nums w-[140px] overflow-hidden`}>
+													<AnimatePresence mode="wait" initial={false}>
+														{hoveredKey === c.key ? (
+															<motion.span
+																key="money"
+																variants={valueVariants}
+																initial="initial"
+																animate="animate"
+																exit="exit"
+																className="absolute inset-0 flex items-center"
+															>
+																{c.money}
+															</motion.span>
+														) : (
+															<motion.span
+																key="value"
+																variants={valueVariants}
+																initial="initial"
+																animate="animate"
+																exit="exit"
+																className="absolute inset-0 flex items-center"
+															>
+																{c.value}
+															</motion.span>
+														)}
+													</AnimatePresence>
+												</div>
+											</CardContent>
+										</Card>
+									</motion.div>
+								))}
+							</div>
+
+							{/* Total hours summary */}
+							<motion.div className="mt-4 text-sm text-muted-foreground flex items-center gap-6 flex-wrap" variants={itemVariants} layout>
+								{/* Rate per hour */}
+								<div className="flex items-center gap-1">
+									<span className="inline-flex items-center gap-1 w-[120px] leading-6">Rate per hour:
+										{rolesTooltip && rolesTooltip.length > 0 && (
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<button type="button" aria-label="View roles used for this rate" className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-none">
+														<CircleHelp className="h-3.5 w-3.5" />
+													</button>
+												</TooltipTrigger>
+												<TooltipContent>
+													<div className="max-w-xs whitespace-pre-wrap">{rolesTooltipText}</div>
+												</TooltipContent>
+											</Tooltip>
+										)}
+									</span>
+									<div className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md w-[112px] bg-secondary/60">
+										<PhilippinePeso className="h-3.5 w-3.5" />
+										<span className="font-medium tabular-nums text-foreground/90">
+											{!Number.isFinite(hourlyRate) || hourlyRate <= 0 ? "-" : formatAmount(hourlyRate)}
+										</span>
+									</div>
+								</div>
+
+								{/* Total hours */}
+								<div className="flex items-center gap-1">
+									<span className="inline-flex items-center w-[168px] leading-6">Total hours this month:</span>
+									<div className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md w-[136px] bg-secondary/60">
+										<Clock3 className="h-3.5 w-3.5" />
+										<span className="font-medium tabular-nums text-foreground/90">{formatHours(metrics.total_hours, isEmpty)}</span>
+									</div>
+								</div>
 							</motion.div>
-						))}
-				</div>
-
-				{/* Total hours summary */}
-				<div className="mt-4 text-sm text-muted-foreground flex items-center gap-6 flex-wrap">
-					{/* Rate per hour */}
-					<div className="flex items-center gap-2">
-						<span className="flex items-center gap-1">Rate per hour:
-							{rolesTooltip && rolesTooltip.length > 0 && (
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<button type="button" aria-label="View roles used for this rate" className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-none">
-											<CircleHelp className="h-3.5 w-3.5" />
-										</button>
-									</TooltipTrigger>
-									<TooltipContent>
-										<div className="max-w-xs whitespace-pre-wrap">{rolesTooltipText}</div>
-									</TooltipContent>
-								</Tooltip>
-							)}
-						</span>
-						<Badge variant="secondary" className="flex items-center gap-1.5">
-							<PhilippinePeso className="h-3.5 w-3.5" />
-							<span className="font-medium tabular-nums">
-								{!Number.isFinite(hourlyRate) || hourlyRate <= 0 ? "-" : formatAmount(hourlyRate)}
-							</span>
-						</Badge>
-					</div>
-
-					{/* Total hours */}
-					<div className="flex items-center gap-2">
-						<span>Total hours this month:</span>
-						<Badge variant="secondary" className="flex items-center gap-1.5">
-							<Clock3 className="h-3.5 w-3.5" />
-							<span className="font-medium tabular-nums">{formatHours(metrics.total_hours, isEmpty)}</span>
-						</Badge>
-					</div>
-				</div>
+						</motion.div>
+					)}
+				</AnimatePresence>
 			</CardContent>
 		</Card>
 	);

@@ -26,7 +26,7 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
             {!!employee && (
                 <DialogContent className="max-w-6xl h-[85vh] w-full px-8 py-6 z-[100] flex flex-col min-h-0 overflow-hidden">
                     <TimeKeepingDataProvider employee={employee}>
-                        {({ selectedMonth, availableMonths, handleMonthChange, records, computed }) => (
+                        {({ selectedMonth, availableMonths, handleMonthChange, records, computed, isLoading }) => (
                             <>
                                 <DialogHeader>
                                     <DialogTitle className="text-2xl font-bold">
@@ -71,6 +71,7 @@ export default function EmployeeViewDialog({ employee, onClose }: Props) {
                                                 isCollegeInstructor={String(employee.roles || '').toLowerCase().includes('college instructor')}
                                                 rolesText={employee.roles as unknown as string}
                                                 isEmpty={(records?.length ?? 0) === 0}
+                                                isLoading={isLoading}
                                             />
                                         </div>
                                     </div>

@@ -25,6 +25,7 @@ export type TimeKeepingDataRenderProps = {
   records: Array<Record<string, unknown>>;
   observanceMap: ObservanceMap;
   computed: TimeKeepingMetrics | null;
+  isLoading: boolean;
   handleMonthChange: (month: string) => void;
   setSelectedMonth: React.Dispatch<React.SetStateAction<string>>;
   setPendingMonth: React.Dispatch<React.SetStateAction<string>>;
@@ -60,13 +61,18 @@ export function TimeKeepingDataProvider({
     college_rate?: number;
   } | null>(null);
 
-  const recordsMinLoadingTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  // Loading flags for skeleton control
+  const [recordsLoading, setRecordsLoading] = React.useState(false);
+  const [observancesLoading, setObservancesLoading] = React.useState(false);
+  const [summaryLoading, setSummaryLoading] = React.useState(false);
+  const [displayLoading, setDisplayLoading] = React.useState(false);
+  const loadingStartRef = React.useRef<number | null>(null);
+  const MIN_SKELETON_MS = 400;
 
   // Fetch records for employee + month
   React.useEffect(() => {
     if (!employee || !selectedMonth) return;
-    if (recordsMinLoadingTimeout.current) clearTimeout(recordsMinLoadingTimeout.current);
-    recordsMinLoadingTimeout.current = setTimeout(() => {}, 400);
+    setRecordsLoading(true);
 
     fetch(`/api/timekeeping/records?employee_id=${employee.id}&month=${selectedMonth}`)
       .then((res) => res.json())
@@ -77,13 +83,15 @@ export function TimeKeepingDataProvider({
           setRecords([]);
         }
       })
-      .catch(() => setRecords([]));
+      .catch(() => setRecords([]))
+      .finally(() => setRecordsLoading(false));
   }, [employee, selectedMonth]);
 
   // Fetch observances and reduce to a map for the selectedMonth
   React.useEffect(() => {
     if (!selectedMonth) return;
     (async () => {
+      setObservancesLoading(true);
       try {
         const res = await fetch("/observances");
         const payload = await res.json();
@@ -98,6 +106,8 @@ export function TimeKeepingDataProvider({
       } catch (e) {
         console.error("Failed to fetch observances", e);
         setObservanceMap({});
+      } finally {
+        setObservancesLoading(false);
       }
     })();
   }, [selectedMonth]);
@@ -129,6 +139,7 @@ export function TimeKeepingDataProvider({
       setSummaryRates(null);
       return;
     }
+    setSummaryLoading(true);
     try {
       const url = typeof route === 'function'
         ? route("timekeeping.employee.monthly-summary", { employee_id: employee.id, month: selectedMonth })
@@ -146,9 +157,11 @@ export function TimeKeepingDataProvider({
             setSummaryRates(null);
           }
         })
-        .catch(() => setSummaryRates(null));
+        .catch(() => setSummaryRates(null))
+        .finally(() => setSummaryLoading(false));
     } catch {
       setSummaryRates(null);
+      setSummaryLoading(false);
     }
   }, [employee, selectedMonth]);
 
@@ -158,6 +171,36 @@ export function TimeKeepingDataProvider({
       setPendingMonth(month);
     }
   };
+
+  // Manage displayed skeleton with a small minimum duration to prevent flicker
+  const anyBackendLoading = !selectedMonth || recordsLoading || observancesLoading || summaryLoading;
+  React.useEffect(() => {
+    if (anyBackendLoading) {
+      if (!displayLoading) {
+        loadingStartRef.current = performance.now();
+        setDisplayLoading(true);
+      }
+      return;
+    }
+    // If loading just finished, ensure minimum display time
+    const startedAt = loadingStartRef.current;
+    if (startedAt == null) {
+      setDisplayLoading(false);
+      return;
+    }
+    const elapsed = performance.now() - startedAt;
+    if (elapsed >= MIN_SKELETON_MS) {
+      setDisplayLoading(false);
+      loadingStartRef.current = null;
+    } else {
+      const remaining = MIN_SKELETON_MS - elapsed;
+      const t = setTimeout(() => {
+        setDisplayLoading(false);
+        loadingStartRef.current = null;
+      }, remaining);
+      return () => clearTimeout(t);
+    }
+  }, [anyBackendLoading, displayLoading]);
 
   // ---------- Compute metrics from BTR + schedule ----------
   const computed: TimeKeepingMetrics | null = React.useMemo(() => {
@@ -401,6 +444,7 @@ export function TimeKeepingDataProvider({
       records,
       observanceMap,
       computed,
+      isLoading: displayLoading,
       handleMonthChange,
       setSelectedMonth,
       setPendingMonth,
