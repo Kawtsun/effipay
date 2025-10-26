@@ -1,4 +1,5 @@
 import React from "react";
+import { Badge } from "@/components/ui/badge";
 
 type EmployeeType = { role?: string; type: string };
 
@@ -39,15 +40,13 @@ function normalizeTypes(input?: unknown, text?: string | null): EmployeeType[] {
 
 function TypeBadge({ type }: { type: EmployeeType }) {
     return (
-        <div
-            className={
-                "inline-flex max-w-full items-center gap-x-1.5 whitespace-nowrap overflow-hidden rounded-full border px-2.5 py-1 text-xs font-medium " +
-                "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700"
-            }
+        <Badge
+            variant="outline"
+            className="max-w-full truncate capitalize"
             title={type.type}
         >
-            <span className="capitalize truncate">{type.type}</span>
-        </div>
+            {type.type}
+        </Badge>
     );
 }
 

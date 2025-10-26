@@ -16,7 +16,7 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:
-          "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+          "rounded-full px-2.5 py-1 text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         info:
           "border-transparent bg-blue-600 text-white",
         purple:
@@ -25,6 +25,9 @@ const badgeVariants = cva(
           "border-transparent bg-orange-500 text-white",
         success:
           "border-transparent bg-green-600 text-white",
+        // Subdued/plain pill to match StatusBadge/employee type plain badges
+        subdued:
+          "rounded-full px-2.5 py-1 bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700 [&>svg]:size-3 gap-1",
       },
     },
     defaultVariants: {

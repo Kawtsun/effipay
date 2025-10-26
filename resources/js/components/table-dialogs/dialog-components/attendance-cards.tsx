@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { PhilippinePeso, Clock3, CircleHelp } from "lucide-react";
 // Note: Summary badges are custom-styled divs to perfectly match skeleton sizing
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 type MetricValue = number | null | undefined;
 
@@ -351,20 +352,24 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 											</Tooltip>
 										)}
 									</span>
-									<div className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md w-[112px] bg-secondary/60">
-										<PhilippinePeso className="h-3.5 w-3.5" />
-										<span className="font-medium tabular-nums text-foreground/90">
-											{!Number.isFinite(hourlyRate) || hourlyRate <= 0 ? "-" : formatAmount(hourlyRate)}
-										</span>
+									<div className="inline-flex items-center">
+										<Badge variant="outline" className="w-full justify-center">
+											<PhilippinePeso />
+											<span className="font-medium tabular-nums text-foreground/90">
+												{!Number.isFinite(hourlyRate) || hourlyRate <= 0 ? "-" : formatAmount(hourlyRate)}
+											</span>
+										</Badge>
 									</div>
 								</div>
 
 								{/* Total hours */}
 								<div className="flex items-center gap-1">
 									<span className="inline-flex items-center w-[168px] leading-6">Total hours this month:</span>
-									<div className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md w-[136px] bg-secondary/60">
-										<Clock3 className="h-3.5 w-3.5" />
-										<span className="font-medium tabular-nums text-foreground/90">{formatHours(metrics.total_hours, isEmpty)}</span>
+									<div className="inline-flex items-center">
+										<Badge variant="outline" className="w-full justify-center">
+											<Clock3 />
+											<span className="font-medium tabular-nums text-foreground/90">{formatHours(metrics.total_hours, isEmpty)}</span>
+										</Badge>
 									</div>
 								</div>
 							</motion.div>
