@@ -134,6 +134,50 @@ export default function TimeKeeping() {
                 })
             }
         }, 1500)
+        // Extract YYYY-MM months from imported rows
+        function extractMonths(rows: Record<string, unknown>[]): string[] {
+            const months = new Set<string>()
+            const dateKeys = new Set<string>(['date', 'Date', 'DATE'])
+            for (const row of rows) {
+                // Find a date-like field
+                let val: unknown = undefined
+                for (const key of Object.keys(row)) {
+                    if (dateKeys.has(key)) { val = row[key]; break }
+                }
+                if (!val && 'ClockIn' in row && typeof row['ClockIn'] === 'string') {
+                    // If your files encode date in another column, extend here as needed
+                    // For now, skip
+                }
+                if (typeof val === 'string' && val.trim()) {
+                    // Try parse common formats
+                    let iso = ''
+                    const s = val.trim()
+                    // YYYY-MM-DD
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) iso = s
+                    // MM/DD/YYYY
+                    else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+                        const [m, d, y] = s.split('/')
+                        iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+                    }
+                    // DD/MM/YYYY
+                    else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+                        const [d, m, y] = s.split('/')
+                        iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+                    }
+                    // Fallback: Date.parse
+                    else {
+                        const t = Date.parse(s)
+                        if (!Number.isNaN(t)) iso = new Date(t).toISOString().slice(0,10)
+                    }
+                    if (iso) {
+                        const m = iso.slice(0,7)
+                        if (/^\d{4}-\d{2}$/.test(m)) months.add(m)
+                    }
+                }
+            }
+            return Array.from(months)
+        }
+
         function sendImport(rows: Record<string, unknown>[], fileName: string, toastId: string | number) {
             fetch('/time-keeping/import', {
                 method: 'POST',
@@ -163,6 +207,15 @@ export default function TimeKeeping() {
 
                     if (response.ok) {
                         toast.success(`Successfully imported: ${fileName}`, { id: `success-${Date.now()}`, duration: 1000 })
+                        // Persist imported months so Payroll can detect it even if not open
+                        const months = extractMonths(rows)
+                        try {
+                            for (const m of months) {
+                                sessionStorage.setItem(`salary.imported.${m}`, '1')
+                            }
+                        } catch {}
+                        // Notify other pages (e.g., Payroll) that a new timekeeping import occurred including months
+                        try { window.dispatchEvent(new CustomEvent('timekeeping:imported', { detail: { fileName, months, at: Date.now() } })) } catch {}
                         router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] })
                     } else {
                         let errorMsg = 'Import failed.'

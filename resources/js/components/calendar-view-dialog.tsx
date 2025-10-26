@@ -1,4 +1,3 @@
-import { usePage } from '@inertiajs/react';
 import { CalendarCarousel } from "./calendar-carousel";
 import DialogScrollArea from "./dialog-scroll-area";
 
@@ -22,7 +21,7 @@ interface CalendarViewDialogProps {
 }
 
 export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDialogProps) {
-  const { csrfToken } = usePage().props as { csrfToken: string };
+  const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
   // Store both date and is_automated for each observance
   const [markedDates, setMarkedDates] = useState<string[]>([]);
@@ -129,19 +128,23 @@ export function CalendarViewDialog({ open, onClose, onAddEvent }: CalendarViewDi
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRF-TOKEN": document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '',
+          "X-CSRF-TOKEN": csrfToken,
         },
         body: JSON.stringify({ add: [...addObjects, ...updates], remove: removedDates }),
       });
         if (res.ok) {
-          let msg = '';
-          if (addedDates.length > 0 && removedDates.length > 0) {
-            msg = `Saved: ${addedDates.length} date${addedDates.length > 1 ? 's' : ''} added, ${removedDates.length} date${removedDates.length > 1 ? 's' : ''} removed.`;
-          } else if (addedDates.length > 0) {
-            msg = `Saved: ${addedDates.length} holiday/suspension date${addedDates.length > 1 ? 's' : ''} added.`;
-          } else if (removedDates.length > 0) {
-            msg = `Saved: ${removedDates.length} holiday/suspension date${removedDates.length > 1 ? 's' : ''} removed.`;
+          // Build a success message that accounts for adds, removes, and updates
+          const parts: string[] = [];
+          if (addedDates.length > 0) {
+            parts.push(`${addedDates.length} holiday/suspension date${addedDates.length > 1 ? 's' : ''} added`);
           }
+          if (removedDates.length > 0) {
+            parts.push(`${removedDates.length} holiday/suspension date${removedDates.length > 1 ? 's' : ''} removed`);
+          }
+          if (updates.length > 0) {
+            parts.push(`${updates.length} date${updates.length > 1 ? 's' : ''} updated`);
+          }
+          const msg = parts.length ? `Saved: ${parts.join(', ')}.` : '';
           if (msg) toast.success(msg);
             // Update local originals/marked and observances with server-returned created items
             const json = await res.json();

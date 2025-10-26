@@ -32,7 +32,7 @@ class ObservanceController extends Controller
         $created = [];
         $removed = [];
 
-        // Add new observances (manual entries always is_automated = false)
+        // Add or update observances (manual entries always is_automated = false)
         if (!empty($data['add'])) {
             foreach ($data['add'] as $item) {
                 // support string date (backwards compatible) or object { date, label, type, start_time }
@@ -50,7 +50,9 @@ class ObservanceController extends Controller
                     continue;
                 }
                 if (!$date) continue;
-                $created[] = Observance::updateOrCreate(
+                // Determine if this is an update vs. a create for audit phrasing
+                $existing = Observance::where('date', $date)->first();
+                $model = Observance::updateOrCreate(
                     ['date' => $date],
                     [
                         'label' => $label,
@@ -59,13 +61,14 @@ class ObservanceController extends Controller
                         'start_time' => $start_time,
                     ]
                 );
+                $created[] = $model;
 
-                // Audit log: added calendar event
+                // Audit log: added vs updated calendar event
                 try {
                     $username = \Illuminate\Support\Facades\Auth::user()->username ?? 'system';
                     \App\Models\AuditLogs::create([
                         'username'    => $username,
-                        'action'      => 'add calendar event',
+                        'action'      => $existing ? 'updated calendar event' : 'add calendar event',
                         'name'        => $label ?? ($type ?? 'observance'),
                         'entity_type' => 'observance',
                         'entity_id'   => null,
