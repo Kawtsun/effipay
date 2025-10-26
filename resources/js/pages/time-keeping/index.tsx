@@ -8,7 +8,7 @@ import Encoding from 'encoding-japanese'
 import TableTimekeeping from '@/components/table_timekeeping'
 import EmployeeSearch from '@/components/employee-search'
 import TimeKeepingViewDialog from '@/components/table-dialogs/timekeeping-view-dialog'
-import BTRDialog from '@/components/btr-dialog'
+import BTRViewDialog from '@/components/table-dialogs/btr-view-dialog'
 import { Button } from '@/components/ui/button'
 
 import AppLayout from '@/layouts/app-layout'
@@ -463,7 +463,7 @@ export default function TimeKeeping() {
             </div>
             {/* Floating Modal for Late/Early Departures */}
             {selectedEmployee && <TimeKeepingViewDialog employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />}
-            {selectedBtrEmployee && <BTRDialog employee={selectedBtrEmployee} onClose={() => setSelectedBtrEmployee(null)} />}
+            {selectedBtrEmployee && <BTRViewDialog employee={selectedBtrEmployee} onClose={() => setSelectedBtrEmployee(null)} />}
             <CalendarViewDialog open={calendarOpen} onClose={() => setCalendarOpen(false)} />
         </AppLayout>
     )
