@@ -230,7 +230,7 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 					)}
 				</AnimatePresence>
 			</CardHeader>
-			<CardContent>
+			<CardContent className="min-h-48">
 				<AnimatePresence mode="wait" initial={false}>
 					{shouldSkeleton ? (
 						// Skeleton state (match layout to avoid jumps)
@@ -243,18 +243,20 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 						>
 							<div className="grid grid-cols-4 gap-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
 								{cards.map((c) => (
-									<Card key={c.key} className={`transition-colors ${c.ring} ${c.bg}`}>
-										<CardHeader className="pb-2">
-											<Skeleton className="h-4 w-24" />
-										</CardHeader>
-										<CardContent>
-											<div className={`relative text-2xl font-semibold ${c.valueText} h-8 leading-8 whitespace-nowrap tabular-nums w-[140px] overflow-hidden`}>
-												<div className="absolute inset-0 flex items-center">
-													<Skeleton className="h-6 w-[140px]" />
+									<div key={c.key} className="rounded-xl">
+										<Card className={`transition-colors ${c.ring} ${c.bg}`}>
+											<CardHeader className="pb-2">
+												<Skeleton className="h-4 w-24" />
+											</CardHeader>
+											<CardContent>
+												<div className={`relative text-2xl font-semibold ${c.valueText} h-8 leading-8 whitespace-nowrap tabular-nums w-[140px] overflow-hidden`}>
+													<div className="absolute inset-0 flex items-center">
+														<Skeleton className="h-6" />
+													</div>
 												</div>
-											</div>
-										</CardContent>
-									</Card>
+											</CardContent>
+										</Card>
+									</div>
 								))}
 							</div>
 
@@ -298,7 +300,7 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 												<div className={`text-sm font-medium ${c.text}`}>{c.label}</div>
 											</CardHeader>
 											<CardContent>
-												<div className={`relative text-2xl font-semibold ${c.valueText} h-8 leading-8 whitespace-nowrap tabular-nums w-[140px] overflow-hidden`}>
+												<div className={`relative text-2xl font-semibold ${c.valueText} h-8 leading-8 whitespace-nowrap tabular-nums`}>
 													<AnimatePresence mode="wait" initial={false}>
 														{hoveredKey === c.key ? (
 															<motion.span
