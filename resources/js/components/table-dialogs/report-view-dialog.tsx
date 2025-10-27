@@ -12,6 +12,7 @@ import { EmployeeName } from "./dialog-components/employee-name";
 import GeneralInformation from "./dialog-components/general-information";
 import DialogScrollArea from "@/components/dialog-scroll-area";
 import { ReportDataProvider } from "./dialog-components/report-data-provider";
+import ReportCards from "./dialog-components/report-cards";
 
 type Props = {
     employee: Employees | null;
@@ -23,7 +24,7 @@ export default function ReportViewDialog({ employee, onClose }: Props) {
         <Dialog open={!!employee} onOpenChange={(open) => !open && onClose()}>
             {!!employee && (
                 <ReportDataProvider employee={employee}>
-                    {() => (
+                    {(provider) => (
                         <DialogContent className="max-w-6xl h-[85vh] w-full px-8 py-6 z-[100] flex flex-col min-h-0 overflow-hidden">
                             <DialogHeader>
                                 <DialogTitle className="text-2xl font-bold">
@@ -38,6 +39,15 @@ export default function ReportViewDialog({ employee, onClose }: Props) {
                             <DialogScrollArea className="mt-4">
                                 <div className="space-y-6">
                                     <GeneralInformation employee={employee} />
+                                    <ReportCards
+                                        className="mt-2"
+                                        selectedMonth={provider.selectedMonth}
+                                        availableMonths={provider.availableMonths}
+                                        onMonthChange={provider.handleMonthChange}
+                                        getSummaryCardAmount={provider.getSummaryCardAmount}
+                                        getSummaryCardHours={provider.getSummaryCardHours}
+                                        selectedPayroll={provider.selectedPayroll}
+                                    />
                                 </div>
                             </DialogScrollArea>
 

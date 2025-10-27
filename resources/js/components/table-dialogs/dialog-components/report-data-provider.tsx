@@ -64,6 +64,7 @@ export interface ReportDataRenderProps {
 
   // Computed helpers
   getSummaryCardAmount: (type: "tardiness" | "undertime" | "overtime" | "absences") => string;
+  getSummaryCardHours: (type: "tardiness" | "undertime" | "overtime" | "absences") => string;
 
   // Loading flags
   loading: boolean;     // true while backend fetch or min skeleton
@@ -314,6 +315,59 @@ export function ReportDataProvider({
 
   const loading = loadingPayroll || minLoading;
 
+  // Helper to return hour counts for the summary cards (used for hover swap in UI)
+  const getSummaryCardHours = React.useCallback((type: "tardiness" | "undertime" | "overtime" | "absences") => {
+    if (!hasPayroll) return "-";
+    if (type === "overtime") {
+      let weekdayOvertime = 0;
+      let weekendOvertime = 0;
+      if (isCollegeInstructorPayroll && selectedPayroll) {
+        weekdayOvertime = Number(selectedPayroll.overtime_count_weekdays ?? 0);
+        weekendOvertime = Number(selectedPayroll.overtime_count_weekends ?? 0);
+        if ((weekdayOvertime + weekendOvertime) === 0 && timekeepingSummary) {
+          weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
+          weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
+        }
+      } else if (timekeepingSummary) {
+        weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
+        weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
+      }
+      const total = (weekdayOvertime || 0) + (weekendOvertime || 0);
+      return Number.isFinite(total) ? `${total.toFixed(2)} hr(s)` : "-";
+    }
+    if (isCollegeInstructorPayroll && selectedPayroll) {
+      const value = (() => {
+        switch (type) {
+          case "tardiness":
+            return Number(selectedPayroll.tardiness ?? 0);
+          case "undertime":
+            return Number(selectedPayroll.undertime ?? 0);
+          case "absences":
+            return Number(selectedPayroll.absences ?? 0);
+          default:
+            return 0;
+        }
+      })();
+      return Number.isFinite(value) ? `${value.toFixed(2)} hr(s)` : "-";
+    } else if (timekeepingSummary) {
+      const s = timekeepingSummary as EmployeePayrollSummary;
+      const v = (() => {
+        switch (type) {
+          case "tardiness":
+            return Number(s.tardiness ?? 0);
+          case "undertime":
+            return Number(s.undertime ?? 0);
+          case "absences":
+            return Number(s.absences ?? 0);
+          default:
+            return 0;
+        }
+      })();
+      return Number.isFinite(v) ? `${v.toFixed(2)} hr(s)` : "-";
+    }
+    return "-";
+  }, [hasPayroll, isCollegeInstructorPayroll, selectedPayroll, timekeepingSummary]);
+
   return (
     <>{children({
       selectedMonth,
@@ -327,6 +381,7 @@ export function ReportDataProvider({
       hasPayroll,
       isCollegeInstructorPayroll,
       getSummaryCardAmount,
+      getSummaryCardHours,
       loading,
       minLoading,
       otherAdjustments,
