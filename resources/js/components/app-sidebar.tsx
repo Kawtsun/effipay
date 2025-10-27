@@ -14,31 +14,26 @@ const mainNavItems: NavItem[] = [
         href: '/dashboard',
         icon: LayoutDashboard,
     },
-
     {
-    title: 'Payroll',
-        href: '/salary',
+        title: 'Payroll',
+        href: '/payroll',
         icon: Wallet,
     },
-
     {
         title: 'Employees',
         href: '/employees',
         icon: Users,
     },
-
     {
         title: 'Time Keeping',
         href: '/time-keeping',
         icon: Clock,
     },
-
     {
         title: 'Reports',
         href: '/reports',
         icon: ClipboardList,
     },
-
     {
         title: 'Audit Logs',
         href: '/audit-logs',

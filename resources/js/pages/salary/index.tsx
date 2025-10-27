@@ -318,7 +318,7 @@ export default function Index() {
   }, [selectedMonth])
 
   const breadcrumbs: BreadcrumbItem[] = [
-  { title: 'Payroll', href: route('salary.index') },
+  { title: 'Payroll', href: route('payroll.index') },
   ]
 
   // Removed Earnings/Deductions sections

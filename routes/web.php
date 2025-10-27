@@ -87,6 +87,10 @@ Route::middleware('auth')->group(function () {
         'audit-logs'  => AuditLogsController::class,
     ]);
 
+    // Alias the Salary index to a Payroll-friendly route so the tab lives at /payroll
+    // Keep existing 'salary' resource routes for backwards compatibility (e.g., salary.update)
+    Route::get('/payroll', [SalaryController::class, 'index'])->name('payroll.index');
+
 
 
     Route::get('/import-users', [UserController::class, 'showImportForm']);
