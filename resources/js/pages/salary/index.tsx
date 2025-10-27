@@ -386,6 +386,7 @@ export default function Index() {
           {/* Tabs: Timekeeping-based groups */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'with-tk' | 'without-tk')} className="w-full">
             <div className="flex items-center justify-between mb-4">
+              {/* Left: Tabs */}
               <div className="flex items-center gap-2">
               <TabsList>
                 <TabsTrigger value="with-tk" disabled={!selectedMonth || !hasCategorized}>
@@ -395,20 +396,22 @@ export default function Index() {
                   {`Without Timekeeping records${selectedMonth && hasCategorized && tkLists ? ` (${tkLists.without?.length || 0})` : ''}`}
                 </TabsTrigger>
               </TabsList>
-              {/* Search + Filter beside the tabs */}
-              <PayrollSearch value={searchTerm} onChange={setSearchTerm} />
-              <PayrollFilterButton value={filters} onChange={setFilters} othersRoles={othersRolesOptions} />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setFilters({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
-                  setSearchTerm('')
-                }}
-                disabled={!hasAnyFilters}
-              >
-                Clear
-              </Button>
+              </div>
+              {/* Right: Search + Filter + Clear */}
+              <div className="flex items-center gap-2">
+                <PayrollSearch value={searchTerm} onChange={setSearchTerm} />
+                <PayrollFilterButton value={filters} onChange={setFilters} othersRoles={othersRolesOptions} />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilters({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
+                    setSearchTerm('')
+                  }}
+                  disabled={!hasAnyFilters}
+                >
+                  Clear
+                </Button>
               </div>
               {/* Removed active filters preview per request */}
             </div>
