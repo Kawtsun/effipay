@@ -37,26 +37,12 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 	const y = Number(yStr);
 	const m = Number(mStr);
 	const daysInMonth = y && m ? new Date(y, m, 0).getDate() : 0;
+	const MAX_ROWS = 31; // keep table height consistent across 28/30/31-day months
 
 	// Entrance/skeleton behavior consistent with AttendanceCards
 	const [mounted, setMounted] = React.useState(false);
 	React.useEffect(() => { setMounted(true); }, []);
 	const shouldSkeleton = Boolean(isLoading || !mounted);
-
-		// Lock container height between skeleton/content to avoid jumps
-		const wrapperRef = React.useRef<HTMLDivElement | null>(null);
-		const [minHeightPx, setMinHeightPx] = React.useState(0);
-		const estimatedRows = daysInMonth > 0 ? daysInMonth : 8;
-		const estimatedMinHeight = 56 + estimatedRows * 40; // approx header + rows
-		React.useLayoutEffect(() => {
-			const el = wrapperRef.current;
-			if (!el) return;
-			const id = requestAnimationFrame(() => {
-				const h = el.clientHeight || 0;
-				setMinHeightPx((prev) => Math.max(prev, h));
-			});
-			return () => cancelAnimationFrame(id);
-		}, [shouldSkeleton, daysInMonth]);
 
 	// Motion variants copied to match AttendanceCards feel
 	const containerVariants = {
@@ -64,7 +50,7 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 		show: {
 			opacity: 1,
 			y: 0,
-			transition: { staggerChildren: 0.08, delayChildren: 0.05, when: "beforeChildren" },
+			transition: { duration: 0.28, ease: "easeOut", delay: 0.05 },
 		},
 	} as const;
 
@@ -85,17 +71,29 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 		</TableHeader>
 	);
 
-	const realTable = (
+		const realTable = (
 		<div className="w-full">
 			<Table>
 				{tableHeader}
 				<TableBody>
 					{daysInMonth === 0 ? (
 						<TableRow>
-							<TableCell colSpan={5} className="text-muted-foreground">No month selected.</TableCell>
+							<TableCell colSpan={5} className="text-muted-foreground py-2">No month selected.</TableCell>
 						</TableRow>
 					) : (
-						Array.from({ length: daysInMonth }).map((_, idx) => {
+						Array.from({ length: MAX_ROWS }).map((_, idx) => {
+							// Render real rows for existing days; invisible placeholders for the rest to keep height stable
+							if (idx >= daysInMonth) {
+								return (
+									<TableRow key={`ph-${idx}`} className="invisible">
+										<TableCell className="py-2">—</TableCell>
+										<TableCell className="py-2">—</TableCell>
+										<TableCell className="py-2">—</TableCell>
+										<TableCell className="py-2">—</TableCell>
+										<TableCell className="py-2">—</TableCell>
+									</TableRow>
+								);
+							}
 							const day = idx + 1;
 							const dateStr = `${yStr}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 							const rec: TimeRecord | undefined = recordMap[dateStr] ?? records.find(r => (r?.date ?? '').slice(0, 10) === dateStr);
@@ -108,15 +106,15 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 
 							return (
 								<TableRow key={dateStr}>
-									<TableCell>{dateStr}</TableCell>
-									<TableCell><DayOfWeek dateStr={dateStr} /></TableCell>
-									<TableCell>
-										{pretty ? (
-											<Badge variant="outline" className="capitalize">{pretty}</Badge>
-										) : null}
+									<TableCell className="py-2">{dateStr}</TableCell>
+									<TableCell className="py-2"><DayOfWeek dateStr={dateStr} /></TableCell>
+									<TableCell className="py-2">
+									{pretty ? (
+										<Badge variant="outline" className="capitalize">{pretty}</Badge>
+									) : null}
 									</TableCell>
-									<TableCell>{formatTime12Hour(tin ?? undefined)}</TableCell>
-									<TableCell>{formatTime12Hour(tout ?? undefined)}</TableCell>
+									<TableCell className="py-2">{formatTime12Hour(tin ?? undefined)}</TableCell>
+									<TableCell className="py-2">{formatTime12Hour(tout ?? undefined)}</TableCell>
 								</TableRow>
 							);
 						})
@@ -131,18 +129,18 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 			<Table>
 				{tableHeader}
 				<TableBody>
-						{Array.from({ length: daysInMonth > 0 ? daysInMonth : 8 }).map((_, i) => (
+						{Array.from({ length: daysInMonth > 0 ? MAX_ROWS : 8 }).map((_, i) => (
 						<TableRow key={`sk-${i}`}>
-							<TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-								<TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-								<TableCell>
-									<div className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md w-[136px] bg-secondary/60">
+							<TableCell className="py-2"><Skeleton className="h-4 w-[100px]" /></TableCell>
+								<TableCell className="py-2"><Skeleton className="h-4 w-[100px]" /></TableCell>
+								<TableCell className="py-2">
+									<div className="inline-flex items-center gap-1.5 px-2 rounded-md w-[136px] bg-secondary/60">
 										<Skeleton className="h-3.5 w-3.5 rounded-sm" />
 										<Skeleton className="h-3 w-[84px]" />
 									</div>
 								</TableCell>
-							<TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-							<TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+							<TableCell className="py-2"><Skeleton className="h-4 w-[100px]" /></TableCell>
+							<TableCell className="py-2"><Skeleton className="h-4 w-[100px]" /></TableCell>
 						</TableRow>
 					))}
 				</TableBody>
@@ -151,14 +149,26 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 	);
 
 		const animatedContent = (
-			<div ref={wrapperRef} style={{ minHeight: Math.max(minHeightPx, estimatedMinHeight) }} className="relative w-full">
+			<div className="w-full">
 				<AnimatePresence mode="wait" initial={false}>
 					{shouldSkeleton ? (
-						<motion.div key="btr-skeleton" className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+						<motion.div
+							key={`btr-skeleton-${selectedMonth}`}
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0, transition: { duration: 0 } }}
+							transition={{ duration: 0.16 }}
+						>
 							{skeletonTable}
 						</motion.div>
 					) : (
-						<motion.div key="btr-content" className="absolute inset-0" variants={containerVariants} initial="hidden" animate="show" exit="hidden">
+						<motion.div
+							key={`btr-content-${selectedMonth}`}
+							variants={containerVariants}
+							initial="hidden"
+							animate="show"
+							exit={{ opacity: 0, transition: { duration: 0 } }}
+						>
 							{realTable}
 						</motion.div>
 					)}
@@ -172,11 +182,18 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 				<CardHeader className="py-3">
 					<AnimatePresence mode="wait" initial={false}>
 						{shouldSkeleton ? (
-							<motion.div key="hdr-skel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-5 w-28">
+							<motion.div key={`hdr-skel-${selectedMonth}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-5 w-28">
 								<Skeleton className="h-5 w-full" />
 							</motion.div>
 						) : (
-							<motion.div key="hdr-title" variants={headerVariants} initial="hidden" animate="show" exit="hidden" className="h-5 w-28 overflow-hidden">
+							<motion.div
+								key={`hdr-title-${selectedMonth}`}
+								variants={headerVariants}
+								initial="hidden"
+								animate="show"
+								exit={{ opacity: 0, transition: { duration: 0 } }}
+								className="h-5 w-28 overflow-hidden"
+							>
 								<CardTitle className="text-base">Daily Records</CardTitle>
 							</motion.div>
 						)}
