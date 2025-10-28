@@ -10,6 +10,22 @@ import PayslipBatchTemplate from './print-templates/PayslipBatchTemplate';
 import BTRBatchTemplate from './print-templates/BTRBatchTemplate';
 import { FileText, Printer } from 'lucide-react';
 import { Employees } from '@/types';
+import { computeMonthlyMetrics, type ObservanceEntry, type TimeRecordLike } from '@/utils/computeMonthlyMetrics';
+
+// Local type matching BTRBatchTemplate's item shape
+type BTRItem = {
+  employee: Employees;
+  leaveDatesMap: Record<string, string>;
+  employeeName: string;
+  role?: string;
+  payPeriod?: string;
+  records?: any[];
+  totalHours?: number | string;
+  tardiness?: number | string;
+  undertime?: number | string;
+  overtime?: number | string;
+  absences?: number | string;
+};
 
 // Utility to convert a string to Title Case (capitalize each word)
 function toTitleCase(str: string) {
@@ -63,6 +79,15 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
     setLoadingBatchPayslips(true);
     setBatchPayslipError(null);
     try {
+      // Pre-fetch observances once for this month to reuse across employees
+      let observances: ObservanceEntry[] = [];
+      try {
+        const obsRes = await fetch('/observances');
+        const obsJson = await obsRes.json();
+        observances = Array.isArray(obsJson) ? obsJson : (Array.isArray(obsJson?.observances) ? obsJson.observances : []);
+      } catch (e) {
+        observances = [];
+      }
       // 1. Fetch all employees
       const empRes = await fetch('/api/employees/all');
       let empResult;
@@ -125,27 +150,12 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             } catch (btrErr) {
               // ignore
             }
-            // Calculate numHours (match single print logic)
+            // Calculate numHours using the same logic as AttendanceCards
             let numHours = 0;
             const isCollege = (emp.roles || '').toLowerCase().includes('college');
-            if (summary) {
-              if (isCollege && typeof summary.total_hours === 'number') {
-                numHours = summary.total_hours;
-              } else {
-                let totalWorkedHours = 0;
-                if (Array.isArray(btrRecords) && emp.work_hours_per_day) {
-                  const attendedShifts = btrRecords.filter(
-                    (rec: any) => (rec.clock_in && rec.clock_in !== '-') || (rec.clock_out && rec.clock_out !== '-')
-                  ).length;
-                  totalWorkedHours = attendedShifts * emp.work_hours_per_day;
-                }
-                numHours = totalWorkedHours
-                  - (Number(summary.tardiness ?? 0))
-                  - (Number(summary.undertime ?? 0))
-                  - (Number(summary.absences ?? 0))
-                  + (Number(summary.overtime ?? 0));
-                if (numHours < 0) numHours = 0;
-              }
+            if (Array.isArray(btrRecords)) {
+              const metrics = await computeMonthlyMetrics(emp as Employees, selectedMonth, btrRecords, observances);
+              numHours = metrics.total_hours ?? 0;
             }
             // Get college_rate from payslip
             const collegeRate = result.payslip.college_rate ?? 0;
@@ -153,6 +163,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             const mergedEarnings = {
               monthlySalary: result.payslip.base_salary,
               numHours: isCollege ? numHours : undefined,
+              totalHours: isCollege ? numHours : undefined,
               ratePerHour: isCollege ? (result.payslip.college_rate ?? 0) : (summary?.rate_per_hour ?? result.payslip.rate_per_hour ?? result.payslip.ratePerHour),
               collegeRate: result.payslip.college_rate ?? 0,
               collegeGSP: isCollege && typeof numHours === 'number' && Number(result.payslip.college_rate ?? 0) > 0
@@ -308,32 +319,20 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
                 btrJson.records.forEach((rec: any) => { recordMap[rec.date] = rec; });
             }
 
-            const records = allDates.map(dateStr => {
-                const rec = recordMap[dateStr];
-                return {
-                    date: dateStr,
-                    timeIn: rec?.clock_in || rec?.time_in || '-',
-                    timeOut: rec?.clock_out || rec?.time_out || '-',
-                };
-            });
+      const records = allDates.map(dateStr => {
+        const rec = recordMap[dateStr];
+        // Use time_in/time_out keys (and keep compatibility with computeMonthlyMetrics)
+        return {
+          ...(rec || {}),
+          date: dateStr,
+          time_in: rec?.clock_in || rec?.time_in || '-',
+          time_out: rec?.clock_out || rec?.time_out || '-',
+        };
+      });
 
-            const totalHours =
-              typeof summaryJson?.total_hours === 'number'
-                ? summaryJson.total_hours
-                : (() => {
-                    let totalWorkedHours = 0;
-                    if (Array.isArray(records) && emp.work_hours_per_day) {
-                      const attendedShifts = records.filter(
-                        (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
-                      ).length;
-                      totalWorkedHours = attendedShifts * emp.work_hours_per_day;
-                    }
-                    return totalWorkedHours
-                      - (Number(summaryJson?.tardiness ?? 0))
-                      - (Number(summaryJson?.undertime ?? 0))
-                      - (Number(summaryJson?.absences ?? 0))
-                      + (Number(summaryJson?.overtime ?? 0));
-                  })();
+            // Compute total hours using the same logic as AttendanceCards
+            const metrics = await computeMonthlyMetrics(emp as Employees, selectedMonth, records as TimeRecordLike[]);
+            const totalHours = metrics.total_hours ?? 0;
 
             return {
               employee: emp,
@@ -363,7 +362,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
       }
 
       try {
-        const doc = <BTRBatchTemplate btrs={filtered as any[]} />;
+  const doc = <BTRBatchTemplate btrs={filtered as unknown as BTRItem[]} />;
         const asPdf = pdf(doc);
         const blob = await asPdf.toBlob();
         const url = URL.createObjectURL(blob);
@@ -385,7 +384,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               details: { source: 'PrintAllDialog', employees: filtered.length },
             }),
           });
-        } catch {}
+  } catch (e) { void e; }
         if (AUTO_DOWNLOAD) {
           const a = document.createElement('a');
           a.href = url;

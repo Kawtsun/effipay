@@ -16,6 +16,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Printer, FileText } from 'lucide-react';
 import { MonthPicker } from './ui/month-picker';
 import { Employees } from '@/types';
+import { computeMonthlyMetrics } from '@/utils/computeMonthlyMetrics';
 
 interface Payroll {
     payroll_date: string;
@@ -160,6 +161,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
     const { summary: timekeepingSummary } = useEmployeePayroll(employee.id, selectedMonth);
     const [btrRecords, setBtrRecords] = useState<BTRRecord[]>([]);
     const [leaveDatesMap, setLeaveDatesMap] = useState<Record<string, string>>({});
+    const [btrTotalHours, setBtrTotalHours] = useState<number>(0);
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [payrollData, setPayrollData] = useState<PayslipData | null>(null);
     const [showPDF, setShowPDF] = useState<false | 'payslip' | 'btr'>(false);
@@ -216,33 +218,31 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         const result = await response.json();
         let btrRecords: BTRRecord[] = [];
         if (result.success && Array.isArray(result.records) && result.records.length > 0) {
+            // Keep original record fields (clock_in/clock_out or time_in/time_out) and also set normalized time_in/time_out
+            // so computeMonthlyMetrics can parse them correctly.
             btrRecords = result.records.map((rec: Record<string, unknown>) => {
-                const dateObj = new Date(rec.date as string);
+                const dateStr = String(rec.date || '');
+                const dateObj = new Date(dateStr);
                 const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                const time_in = (rec.clock_in as string) || (rec.time_in as string) || '-';
+                const time_out = (rec.clock_out as string) || (rec.time_out as string) || '-';
                 return {
-                    date: rec.date as string,
+                    ...(rec as object),
+                    date: dateStr,
                     dayName,
-                    timeIn: (rec.clock_in as string) || (rec.time_in as string) || '-',
-                    timeOut: (rec.clock_out as string) || (rec.time_out as string) || '-',
-                };
+                    time_in,
+                    time_out,
+                } as unknown as BTRRecord;
             });
         }
-        let numHours = 0;
-        if (timekeepingSummary) {
-            let totalWorkedHours = 0;
-            if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
-                const attendedShifts = btrRecords.filter(
-                    (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
-                ).length;
-                totalWorkedHours = attendedShifts * employee.work_hours_per_day;
-            }
-            numHours = totalWorkedHours
-                - (Number(timekeepingSummary.tardiness ?? 0))
-                - (Number(timekeepingSummary.undertime ?? 0))
-                - (Number(timekeepingSummary.absences ?? 0))
-                + (Number(timekeepingSummary.overtime ?? 0));
-            if (numHours < 0) numHours = 0;
-        }
+        // Compute monthly metrics using the same logic as AttendanceCards
+        const metrics = await computeMonthlyMetrics(employee, selectedMonth, btrRecords);
+        const tardiness = metrics.tardiness ?? 0;
+        const undertime = metrics.undertime ?? 0;
+        const absences = metrics.absences ?? 0;
+        const overtime = metrics.overtime ?? 0;
+        const totalHoursFromSummary = metrics.total_hours ?? 0;
+    const numHours = Number.isFinite(totalHoursFromSummary) ? totalHoursFromSummary : 0;
             setPayrollData({
                 ...data,
                 earnings: {
@@ -252,13 +252,13 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                         ? (data.earnings.collegeRate ?? payrollCollegeRate ?? 0)
                         : (timekeepingSummary?.rate_per_hour ?? 0),
                     collegeRate: data.earnings.collegeRate ?? payrollCollegeRate ?? 0,
-                    tardiness: timekeepingSummary?.tardiness ?? 0,
-                    undertime: timekeepingSummary?.undertime ?? 0,
-                    absences: timekeepingSummary?.absences ?? 0,
-                    overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
-                    overtime: timekeepingSummary?.overtime ?? undefined,
-                    overtime_count_weekdays: timekeepingSummary?.overtime_count_weekdays ?? data.earnings.overtime_count_weekdays ?? 0,
-                    overtime_count_weekends: timekeepingSummary?.overtime_count_weekends ?? data.earnings.overtime_count_weekends ?? 0,
+                    tardiness,
+                    undertime,
+                    absences,
+                    overtime_pay_total: data.earnings?.overtime_pay_total ?? 0,
+                    overtime,
+                    overtime_count_weekdays: data.earnings.overtime_count_weekdays || 0,
+                    overtime_count_weekends: data.earnings.overtime_count_weekends || 0,
                     gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
                     net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
                     adjustment: data.earnings?.adjustment ?? undefined,
@@ -266,7 +266,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                     collegeGSP: data.earnings?.collegeGSP ?? undefined,
                     overload: data.earnings?.overload ?? undefined,
                     totalHours: (employee?.roles && employee.roles.toLowerCase().includes('college'))
-                      ? (timekeepingSummary?.total_hours ? Number(timekeepingSummary.total_hours) : 0)
+                      ? (Number.isFinite(totalHoursFromSummary) ? totalHoursFromSummary : numHours)
                       : (typeof numHours === 'number' ? numHours : (numHours ? Number(numHours) : 0)),
                 },
             });
@@ -293,7 +293,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                     details: { source: 'PrintDialog' },
                 }),
             }).catch(() => {});
-        } catch {}
+    } catch (e) { void e; }
     };
 
     const handlePrintBTR = async () => {
@@ -318,6 +318,9 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             } else {
                 setLeaveDatesMap({});
             }
+            // Compute and store total hours for BTR output (matches AttendanceCards)
+            const metricsBTR = await computeMonthlyMetrics(employee, selectedMonth, btrRecords);
+            setBtrTotalHours(metricsBTR.total_hours ?? 0);
 
             const hasRealTime = btrRecords.some(r => (r.timeIn && r.timeIn !== '-') || (r.timeOut && r.timeOut !== '-'));
             const hasLeaves = summaryJson.success && summaryJson._debug && Object.keys(summaryJson._debug.leave_dates_map).length > 0;
@@ -381,7 +384,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                         details: { source: 'PrintDialog' },
                     }),
                 }).catch(() => {});
-            } catch {}
+            } catch (e) { void e; }
         } catch {
             toast.error('Error generating BTR.');
             setLoadingBTR(false);
@@ -469,24 +472,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             records={btrRecords}
-                                            totalHours={
-                                                typeof timekeepingSummary?.total_hours === 'number'
-                                                    ? timekeepingSummary.total_hours
-                                                    : (() => {
-                                                        let totalWorkedHours = 0;
-                                                        if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
-                                                            const attendedShifts = btrRecords.filter(
-                                                                (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
-                                                            ).length;
-                                                            totalWorkedHours = attendedShifts * employee.work_hours_per_day;
-                                                        }
-                                                        return totalWorkedHours
-                                                            - (Number(timekeepingSummary?.tardiness ?? 0))
-                                                            - (Number(timekeepingSummary?.undertime ?? 0))
-                                                            - (Number(timekeepingSummary?.absences ?? 0))
-                                                            + (Number(timekeepingSummary?.overtime ?? 0));
-                                                    })()
-                                            }
+                                            totalHours={btrTotalHours}
                                             tardiness={timekeepingSummary?.tardiness ?? 0}
                                             undertime={timekeepingSummary?.undertime ?? 0}
                                             overtime={timekeepingSummary?.overtime ?? 0}
