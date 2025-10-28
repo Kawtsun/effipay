@@ -267,19 +267,19 @@ export function EmployeeScheduleBadges({
                         <Badge
                           role="listitem"
                           title={title}
-                          className={`inline-flex items-center gap-x-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold border-0 ${colorClass}`}
+                          className={`inline-flex flex-wrap items-center gap-x-1.5 whitespace-normal break-words max-w-full rounded-full px-2.5 py-1 text-xs font-semibold border-0 ${colorClass}`}
                         >
-                          <Clock className="w-3.5 h-3.5 opacity-70" />
-                          <span className="font-semibold whitespace-nowrap">{DAY_LABELS[wd.day] || wd.day}:</span>
+                          <Clock className="w-3.5 h-3.5 opacity-70 shrink-0" />
+                          <span className="font-semibold shrink-0">{DAY_LABELS[wd.day] || wd.day}:</span>
                           {hasTimes ? (
-                            <>
-                              <span className="whitespace-nowrap">{formatTime12Hour(wd.work_start_time || '')} - {formatTime12Hour(wd.work_end_time || '')}</span>
-                              <span className="text-[10px] text-muted-foreground whitespace-nowrap">({getDurationText(wd.work_start_time || '', wd.work_end_time || '', breakMinutes)})</span>
-                            </>
+                            <span className="flex items-center gap-x-1 whitespace-nowrap">
+                              <span>{formatTime12Hour(wd.work_start_time || '')} - {formatTime12Hour(wd.work_end_time || '')}</span>
+                              <span className="text-[10px] text-muted-foreground">({getDurationText(wd.work_start_time || '', wd.work_end_time || '', breakMinutes)})</span>
+                            </span>
                           ) : (
-                            <>
-                              <span className="whitespace-nowrap">{Number(wd.work_hours || 0)} hour(s)</span>
-                            </>
+                            <span className="flex items-center gap-x-1 whitespace-nowrap">
+                              <span>{Number(wd.work_hours || 0)} hour(s)</span>
+                            </span>
                           )}
                         </Badge>
                       </motion.div>

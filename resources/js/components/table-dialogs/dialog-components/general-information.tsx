@@ -5,7 +5,7 @@ import EmployeeRolesList from "./employee-roles";
 import { EmployeeScheduleBadges } from "@/components/employee-schedule-badges";
 import type { WorkDayTime } from "@/components/employee-schedule-badges";
 import { StatusBadge } from "@/components/status-badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tags, BadgeCheck, UserCog, CalendarDays } from "lucide-react";
 
 // reserved for future fields
@@ -24,72 +24,73 @@ export default function GeneralInformation({ employee }: Props) {
 	);
 	return (
 		<Card>
-			<CardHeader className="pb-3">
-				<CardTitle className="font-semibold text-base leading-tight">General Information</CardTitle>
-				<CardDescription className="text-xs">Key employment details at a glance</CardDescription>
+			<CardHeader className="pb-2">
+				<CardTitle className="text-lg font-semibold leading-6 truncate">General Information</CardTitle>
 			</CardHeader>
-			<CardContent className="space-y-5">
-				{/* Row 1: Types + Status */}
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<CardContent className="pt-0">
+				{/* Compact 4-up grid with subtle separators on lg+ */}
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 lg:[&>div:nth-child(n+2)]:border-l lg:[&>div:nth-child(n+2)]:border-border/50 lg:[&>div:nth-child(n+2)]:pl-6">
 					{/* Types */}
-					<div className="space-y-2">
-						<div className="flex items-center gap-2 text-xs text-muted-foreground">
-							<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20 ">
-								<Tags className="h-4 w-4 text-primary dark:text-primary-foreground" />
+					<div className="min-w-0">
+						<div className="grid grid-cols-[auto,auto,1fr] items-center gap-2 text-xs">
+							<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+								<Tags className="h-3 w-3 text-primary dark:text-primary-foreground" />
 							</span>
-							<span>Employee Types</span>
-						</div>
-						{/* bg-primary/10 dark:bg-primary p-3 rounded-full border border-primary/20 */}
-						<div>
-							{employee.employee_types ? (
-								<EmployeeTypesList employeeTypes={employee.employee_types} compact />
-							) : (
-								<div className="text-xs text-muted-foreground">No employee types</div>
-							)}
+							<span className="shrink-0 text-muted-foreground font-medium">Employee Type</span>
+							<div className="min-w-0 truncate">
+								{employee.employee_types ? (
+									<EmployeeTypesList employeeTypes={employee.employee_types} compact />
+								) : (
+									<span className="text-muted-foreground">None</span>
+								)}
+							</div>
 						</div>
 					</div>
 
 					{/* Status */}
-					<div className="space-y-2">
-						<div className="flex items-center gap-2 text-xs text-muted-foreground">
-							<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
-								<BadgeCheck className="h-4 w-4 text-primary dark:text-primary-foreground" />
+					<div className="min-w-0">
+						<div className="grid grid-cols-[auto,auto,1fr] items-center gap-2 text-xs">
+							<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+								<BadgeCheck className="h-3 w-3 text-primary dark:text-primary-foreground" />
 							</span>
-							<span>Status</span>
+							<span className="shrink-0 text-muted-foreground font-medium">Employee Status</span>
+							<div className="min-w-0 truncate">
+								<StatusBadge status={employee.employee_status} />
+							</div>
 						</div>
-						<div className="flex items-center gap-2">
-							<StatusBadge status={employee.employee_status} />
+					</div>
+
+					{/* Roles */}
+					<div className="min-w-0">
+						<div className="grid grid-cols-[auto,auto,1fr] items-start gap-2 text-xs">
+							<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+								<UserCog className="h-3 w-3 text-primary dark:text-primary-foreground" />
+							</span>
+							<span className="shrink-0 text-muted-foreground font-medium">Employee Role</span>
+							<div className="min-w-0 whitespace-normal break-words pr-1 [&_*]:whitespace-normal [&_*]:break-words [&_*]:flex-wrap [&_*]:min-w-0">
+								{employee.roles ? (
+									<EmployeeRolesList roles={employee.roles} collegeProgram={employee.college_program} compact />
+								) : (
+									<span className="text-muted-foreground">None</span>
+								)}
+							</div>
 						</div>
 					</div>
-				</div>
 
-				{/* Roles */}
-				<div className="space-y-2">
-					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
-							<UserCog className="h-4 w-4 text-primary dark:text-primary-foreground" />
-						</span>
-						<span>Roles</span>
-					</div>
-					<div>
-						{employee.roles ? (
-							<EmployeeRolesList roles={employee.roles} collegeProgram={employee.college_program} compact />
-						) : (
-							<div className="text-xs text-muted-foreground">No roles assigned</div>
-						)}
-					</div>
-				</div>
-
-				{/* Schedule */}
-				<div className="space-y-2">
-					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
-							<CalendarDays className="h-4 w-4 text-primary dark:text-primary-foreground" />
-						</span>
-						<span>Schedule</span>
-					</div>
-					<div>
-						<EmployeeScheduleBadges workDays={workDays} collegeSchedules={collegeSchedules} />
+					{/* Schedule */}
+					<div className="min-w-0">
+							<div className="grid grid-cols-[auto,auto,1fr] items-start gap-2 text-xs">
+							<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
+								<CalendarDays className="h-3 w-3 text-primary dark:text-primary-foreground" />
+							</span>
+							<span className="shrink-0 text-muted-foreground font-medium">Employee Schedule</span>
+								<div className="min-w-0 whitespace-normal break-words pr-1 [&_*]:whitespace-normal [&_*]:break-words [&_*]:flex-wrap [&_*]:min-w-0">
+									{/* Ensure badges don’t get cut off and can wrap to multiple lines */}
+									<div className="w-full max-w-full flex flex-wrap gap-2 items-start">
+										<EmployeeScheduleBadges workDays={workDays} collegeSchedules={collegeSchedules} />
+									</div>
+								</div>
+						</div>
 					</div>
 				</div>
 			</CardContent>
