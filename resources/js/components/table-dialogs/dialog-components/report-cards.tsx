@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnimatePresence, motion } from "framer-motion";
 import { MonthRangePicker } from "../../ui/month-range-picker";
 import { Badge } from "@/components/ui/badge";
-import { PhilippinePeso } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { PhilippinePeso, CircleHelp } from "lucide-react";
 
 type Props = {
 	title?: string;
@@ -258,17 +259,47 @@ export default function ReportCards({
 							</div>
 							<div className="flex items-center justify-between">
 								<span className="text-muted-foreground">College/GSP</span>
-								<Badge variant="outline" className="gap-1">
-									<PhilippinePeso className="h-3.5 w-3.5" />
-									<span className="font-medium tabular-nums">
-										{(() => {
+								<div className="inline-flex items-center gap-2">
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<button
+												type="button"
+												aria-label="View College/GSP calculation"
+												className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-none"
+											>
+												<CircleHelp className="h-3.5 w-3.5" />
+											</button>
+										</TooltipTrigger>
+										<TooltipContent>
+											{(() => {
 												const rate = Number(selectedPayroll?.college_rate ?? NaN);
-											const hours = Number(earnings?.total_hours ?? NaN);
-											if (!Number.isFinite(rate) || !Number.isFinite(hours) || rate <= 0 || hours <= 0) return "0.00";
+												const hours = Number(earnings?.total_hours ?? NaN);
+												if (!Number.isFinite(rate) || !Number.isFinite(hours) || rate <= 0 || hours <= 0) {
+													return <span>No data yet</span>;
+												}
+												return (
+													<div className="whitespace-pre-wrap">
+														{/* <div className="font-medium mb-0.5">Computation</div> */}
+														₱{formatAmountPlain(rate)} × {hours.toFixed(2)} hr(s)
+														{" = "}
+														₱{formatAmountPlain(rate * hours)}
+													</div>
+												);
+											})()}
+										</TooltipContent>
+									</Tooltip>
+									<Badge variant="outline" className="gap-1">
+										<PhilippinePeso className="h-3.5 w-3.5" />
+										<span className="font-medium tabular-nums">
+											{(() => {
+												const rate = Number(selectedPayroll?.college_rate ?? NaN);
+												const hours = Number(earnings?.total_hours ?? NaN);
+												if (!Number.isFinite(rate) || !Number.isFinite(hours) || rate <= 0 || hours <= 0) return "-";
 												return formatAmountPlain(rate * hours);
-										})()}
-									</span>
-								</Badge>
+											})()}
+										</span>
+									</Badge>
+								</div>
 							</div>
 						</div>
 					</section>
