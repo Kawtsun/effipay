@@ -146,11 +146,11 @@ export function OtherDeductionsForm({ form, resetToken }: OtherDeductionsFormPro
             <CardHeader>
                 <div className="flex items-start gap-4">
                     <div className="bg-primary/10 dark:bg-primary p-2 rounded-full">
-                        <Receipt className="h-6 w-6 text-primary dark:text-primary-foreground" />
+                        <MinusCircle className="h-6 w-6 text-primary dark:text-primary-foreground" />
                     </div>
                     <div>
                         <CardTitle>Other Deductions</CardTitle>
-                        <CardDescription>Optionally add other company deductions.</CardDescription>
+                        <CardDescription>Optionally add other deductions.</CardDescription>
                     </div>
                 </div>
             </CardHeader>

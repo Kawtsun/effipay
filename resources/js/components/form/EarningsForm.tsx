@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type UseFormReturn } from '@inertiajs/react';
-import { Landmark, AlertTriangle, Info, Asterisk, PhilippinePeso } from 'lucide-react';
+import { Landmark, AlertTriangle, Info, Asterisk, PhilippinePeso, Banknote } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -134,11 +134,11 @@ export function EarningsForm({ form }: EarningsFormProps) {
             <CardHeader>
                 <div className="flex items-start gap-4">
                     <div className="bg-primary/10 dark:bg-primary p-2 rounded-full">
-                        <Landmark className="h-6 w-6 text-primary dark:text-primary-foreground" />
+                        <Banknote className="h-6 w-6 text-primary dark:text-primary-foreground" />
                     </div>
                     <div>
-                        <CardTitle>Salary & Earnings</CardTitle>
-                        <CardDescription>Define the compensation for this employee.</CardDescription>
+                        <CardTitle>Earnings</CardTitle>
+                        <CardDescription>Define the earnings for this employee.</CardDescription>
                     </div>
                 </div>
             </CardHeader>

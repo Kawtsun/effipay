@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 interface EmployeeType {
@@ -15,8 +16,7 @@ interface EmployeeTypesBadgesProps {
     compact?: boolean // when true, remove outer padding/min-width for tight table rows
 }
 
-// Removed per-type style mapping to keep a subdued, consistent look
-
+// Use shadcn Badge outline to match global badge styling
 const EmployeeTypeBadge: React.FC<{ employeeType: EmployeeType; className?: string; variant?: Variant }> = ({ employeeType, className, variant = 'plain' }) => {
     if (variant === 'text') {
         return (
@@ -26,18 +26,14 @@ const EmployeeTypeBadge: React.FC<{ employeeType: EmployeeType; className?: stri
         )
     }
 
-    // Subdued, neutral badge (no per-type colors or icons)
     return (
-        <div
-            className={cn(
-                'inline-flex max-w-full items-center gap-x-1.5 whitespace-nowrap overflow-hidden rounded-full border px-2.5 py-1 text-xs font-medium',
-                'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700',
-                className
-            )}
+        <Badge
+            variant="outline"
+            className={cn('max-w-full truncate capitalize', className)}
             title={employeeType.type}
         >
-            <span className="capitalize truncate">{employeeType.type}</span>
-        </div>
+            {employeeType.type}
+        </Badge>
     )
 }
 
@@ -54,14 +50,16 @@ export function EmployeeTypesBadges({ employeeTypes, variant = 'plain', compact 
         <span className="inline-flex items-center gap-1.5">
             <EmployeeTypeBadge employeeType={mainType} variant={variant} />
             {additionalTypesCount > 0 && (
-                <div className={cn(
-                    'flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold',
-                    variant === 'text'
-                        ? 'text-slate-500 dark:text-slate-400'
-                        : 'bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700'
-                )}>
-                    +{additionalTypesCount}
-                </div>
+                variant === 'text' ? (
+                    <span className={cn('text-[10px] font-bold text-slate-500 dark:text-slate-400')}>+{additionalTypesCount}</span>
+                ) : (
+                    <Badge
+                        variant="outline"
+                        className="h-6 min-w-6 w-6 px-0 justify-center text-[10px] font-bold"
+                    >
+                        +{additionalTypesCount}
+                    </Badge>
+                )
             )}
         </span>
     )

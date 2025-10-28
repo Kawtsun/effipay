@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import ReportViewDialog from '@/components/report-view-dialog'
+import ReportViewDialog from '@/components/table-dialogs/report-view-dialog'
 import EmployeeFilter from '@/components/employee-filter'
 import EmployeeSearch from '@/components/employee-search'
 import TableReport from '@/components/table_report' // <-- Using the new table component

@@ -1,6 +1,6 @@
 import * as React from 'react';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Wallet, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso, CheckCircle } from 'lucide-react';
+import { Wallet, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso, CheckCircle, ReceiptText } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -171,11 +171,11 @@ export function LoansForm({ form, resetToken }: LoansFormProps) {
             <CardHeader>
                 <div className="flex items-start gap-4">
                     <div className="bg-primary/10 dark:bg-primary p-2 rounded-full">
-                        <Wallet className="h-6 w-6 text-primary dark:text-primary-foreground" />
+                        <ReceiptText className="h-6 w-6 text-primary dark:text-primary-foreground" />
                     </div>
                     <div>
-                        <CardTitle>Loan Deductions</CardTitle>
-                        <CardDescription>Optionally add loan amortization details.</CardDescription>
+                        <CardTitle>Loans</CardTitle>
+                        <CardDescription>Optionally add loan details.</CardDescription>
                     </div>
                 </div>
             </CardHeader>
