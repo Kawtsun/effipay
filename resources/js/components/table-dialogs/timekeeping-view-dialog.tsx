@@ -12,7 +12,6 @@ import { EmployeeName } from "./dialog-components/employee-name";
 import GeneralInformation from "./dialog-components/general-information";
 import DialogScrollArea from "@/components/dialog-scroll-area";
 import { TimeKeepingDataProvider } from "./dialog-components/timekeeping-data-provider";
-import { MonthRangePicker } from "../ui/month-range-picker";
 import AttendanceCards from "./dialog-components/attendance-cards";
 
 type Props = {
@@ -44,16 +43,6 @@ export default function TimekeepingViewDialog({ employee, onClose }: Props) {
 
                                         {/* Time Keeping Data */}
                                         <div className="pt-2">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <h4 className="font-semibold text-lg">Time Keeping Data</h4>
-                                                <MonthRangePicker
-                                                    value={selectedMonth}
-                                                    onValueChange={handleMonthChange}
-                                                    placeholder="Select month"
-                                                    className="w-56 min-w-0 px-2 py-1 text-sm"
-                                                    availableMonths={availableMonths}
-                                                />
-                                            </div>
                                             <AttendanceCards
                                                 metrics={{
                                                     tardiness: computed?.tardiness,
@@ -66,6 +55,9 @@ export default function TimekeepingViewDialog({ employee, onClose }: Props) {
                                                     rate_per_hour: computed?.rate_per_hour,
                                                     college_rate: computed?.college_rate,
                                                 }}
+                                                selectedMonth={selectedMonth}
+                                                availableMonths={availableMonths}
+                                                onMonthChange={handleMonthChange}
                                                 ratePerHour={computed?.rate_per_hour}
                                                 collegeRate={computed?.college_rate}
                                                 isCollegeInstructor={String(employee.roles || '').toLowerCase().includes('college instructor')}

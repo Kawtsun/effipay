@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
 import { PhilippinePeso, Clock3, CircleHelp } from "lucide-react";
 // Note: Summary badges are custom-styled divs to perfectly match skeleton sizing
+import { MonthRangePicker } from "../../ui/month-range-picker";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 
@@ -40,6 +41,10 @@ type Props = {
 	isCollegeInstructor?: boolean;
 	/** Roles string to show in tooltip. */
 	rolesText?: string | null;
+	/** Month selector props (to match ReportCards UX). */
+	selectedMonth: string;
+	availableMonths: string[];
+	onMonthChange: (month: string) => void;
 };
 
 function formatHours(val: MetricValue, isEmpty?: boolean): string {
@@ -48,7 +53,7 @@ function formatHours(val: MetricValue, isEmpty?: boolean): string {
 	return `${Number(val).toFixed(2)} hr(s)`;
 }
 
-export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "Attendance", className, ratePerHour, collegeRate, isCollegeInstructor, rolesText }: Props) {
+export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "Attendance", className, ratePerHour, collegeRate, isCollegeInstructor, rolesText, selectedMonth, availableMonths, onMonthChange }: Props) {
 		function formatAmount(val: number): string {
 			return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 		}
@@ -205,12 +210,6 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 	// Combine hover and entrance variants for cards
 	const cardVariants = { ...cardHover, ...itemVariants } as const;
 
-	// Header (title) entrance after skeleton
-	const headerVariants = {
-		hidden: { opacity: 0, y: 4 },
-		show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
-	} as const;
-
 	// Ensure skeleton shows on first paint to avoid flash of content before parent toggles loading
 	const [mounted, setMounted] = React.useState(false);
 	React.useEffect(() => { setMounted(true); }, []);
@@ -219,17 +218,18 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 	return (
 		<Card className={className}>
 			<CardHeader className="pb-4">
-				<AnimatePresence mode="wait" initial={false}>
-					{shouldSkeleton ? (
-						<motion.div key="header-skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-6 w-32">
-							<Skeleton className="h-6 w-full" />
-						</motion.div>
-					) : (
-						<motion.div key="header-title" variants={headerVariants} initial="hidden" animate="show" exit="hidden" className="h-6 w-32 overflow-hidden">
-							<CardTitle className="text-lg font-semibold leading-6 truncate">{title}</CardTitle>
-						</motion.div>
-					)}
-				</AnimatePresence>
+				<div className="flex items-center justify-between gap-4">
+					<CardTitle className="text-lg font-semibold leading-6 truncate">{title}</CardTitle>
+					<div className="shrink-0">
+						<MonthRangePicker
+							value={selectedMonth}
+							onValueChange={onMonthChange}
+							placeholder="Select month"
+							className="w-56 min-w-0 px-2 py-1 text-sm"
+							availableMonths={availableMonths}
+						/>
+					</div>
+				</div>
 			</CardHeader>
 			<CardContent className="min-h-48">
 				<AnimatePresence mode="wait" initial={false}>
