@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MonthRangePicker } from "../../ui/month-range-picker";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { PhilippinePeso, CircleHelp } from "lucide-react";
+import { PhilippinePeso, CircleHelp, BanknoteArrowUp, Banknote, BanknoteArrowDown, ReceiptText, MinusCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -393,7 +393,10 @@ export default function ReportCards({
 							<div className="mt-6 grid grid-cols-[1fr_auto_1fr_auto_1fr] gap-6 max-[900px]:grid-cols-2 max-[700px]:grid-cols-1">
 								{/* Earnings */}
 								<section>
-									<div className="mb-2 text-sm font-medium text-foreground">Earnings</div>
+									<div className="mb-2 text-sm font-medium text-foreground inline-flex items-center gap-2 whitespace-nowrap">
+										<Banknote className="h-5 w-5 text-primary dark:text-primary-foreground" />
+										Earnings
+									</div>
 									<div className="space-y-2 text-sm">
 										<div className="flex items-center justify-between">
 											<span className="text-muted-foreground whitespace-nowrap">Base Salary</span>
@@ -469,7 +472,10 @@ export default function ReportCards({
 
 								{/* Contributions */}
 								<section>
-									<div className="mb-2 text-sm font-medium text-foreground">Contribution</div>
+									<div className="mb-2 text-sm font-medium text-foreground inline-flex items-center gap-2 whitespace-nowrap">
+										<BanknoteArrowDown className="h-5 w-5 text-primary dark:text-primary-foreground"/>
+										Contribution
+									</div>
 									<div className="space-y-2 text-sm">
 										<div className="flex items-center justify-between">
 											<span className="text-muted-foreground whitespace-nowrap">SSS</span>
@@ -514,7 +520,10 @@ export default function ReportCards({
 
 								{/* Loans + Other Deductions */}
 								<section>
-									<div className="mb-2 text-sm font-medium text-foreground">Loan</div>
+									<div className="mb-2 text-sm font-medium text-foreground inline-flex items-center gap-2 whitespace-nowrap">
+										<ReceiptText className="h-5 w-5 text-primary dark:text-primary-foreground"/>
+										Loan
+									</div>
 									<div className="space-y-2 text-sm">
 										<div className="flex items-center justify-between">
 											<span className="text-muted-foreground whitespace-nowrap">SSS Salary Loan</span>
@@ -547,7 +556,10 @@ export default function ReportCards({
 
 
 										{/* Subsection: Other Deductions */}
-										<div className="mt-3 mb-2 text-sm font-medium text-foreground">Other Deductions</div>
+										<div className="mt-3 mb-2 text-sm font-medium text-foreground inline-flex items-center gap-2 whitespace-nowrap">
+											<MinusCircle className="h-5 w-5 text-primary dark:text-primary-foreground"/>
+											Other Deductions
+										</div>
 										<div className="flex items-center justify-between">
 											<span className="text-muted-foreground whitespace-nowrap">Tuition</span>
 											<Badge variant="outline" className="gap-1">

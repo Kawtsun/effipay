@@ -2,7 +2,7 @@ import React from "react";
 import type { Employees } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Banknote, HandCoins, Wallet, ReceiptText, CheckCircle, Info, PhilippinePeso } from "lucide-react";
+import { Banknote, HandCoins, Wallet, ReceiptText, CheckCircle, Info, PhilippinePeso, BanknoteArrowDown, CircleMinus } from "lucide-react";
 
 type Props = {
 	employee: Employees;
@@ -82,15 +82,15 @@ export default function EmployeeSalarySet({ employee }: Props) {
 			{/* Compensation */}
 			<Card>
 				<CardHeader>
-					<CardTitle className="font-semibold text-base leading-tight">Salary & Compensation</CardTitle>
-					<CardDescription className="text-xs">Base pay and other earnings</CardDescription>
+					<CardTitle className="font-semibold text-base leading-tight">Earnings</CardTitle>
+					<CardDescription className="text-xs">Employee salary earnings</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
-							<Wallet className="h-4 w-4 text-primary dark:text-primary-foreground" />
+							<Banknote className="h-4 w-4 text-primary dark:text-primary-foreground" />
 						</span>
-						<span>Compensation</span>
+						<span>Earnings</span>
 					</div>
 
 					<div className="mt-1.5">
@@ -115,13 +115,13 @@ export default function EmployeeSalarySet({ employee }: Props) {
 			{/* Statutory Contributions */}
 			<Card>
 				<CardHeader>
-					<CardTitle className="font-semibold text-base leading-tight">Statutory Contributions</CardTitle>
+					<CardTitle className="font-semibold text-base leading-tight">Contributions</CardTitle>
 					<CardDescription className="text-xs">Government-mandated contributions</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
-							<Banknote className="h-4 w-4 text-primary dark:text-primary-foreground" />
+							<BanknoteArrowDown className="h-4 w-4 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Contributions</span>
 					</div>
@@ -155,7 +155,7 @@ export default function EmployeeSalarySet({ employee }: Props) {
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
-							<HandCoins className="h-4 w-4 text-primary dark:text-primary-foreground" />
+							<ReceiptText className="h-4 w-4 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Loans</span>
 					</div>
@@ -217,7 +217,7 @@ export default function EmployeeSalarySet({ employee }: Props) {
 				<CardContent className="space-y-1.5">
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 dark:bg-primary border border-primary/20">
-							<ReceiptText className="h-4 w-4 text-primary dark:text-primary-foreground" />
+							<CircleMinus className="h-4 w-4 text-primary dark:text-primary-foreground" />
 						</span>
 						<span>Deductions</span>
 					</div>

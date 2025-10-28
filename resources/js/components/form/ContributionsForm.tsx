@@ -1,6 +1,6 @@
 import * as React from 'react';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { HandCoins, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso, Info, CheckCircle } from 'lucide-react';
+import { HandCoins, AlertTriangle, PlusCircle, MinusCircle, PhilippinePeso, Info, CheckCircle, BanknoteArrowDown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -151,10 +151,10 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
             <CardHeader>
                 <div className="flex items-start gap-4">
                     <div className="bg-primary/10 dark:bg-primary p-2 rounded-full">
-                        <HandCoins className="h-6 w-6 text-primary dark:text-primary-foreground" />
+                        <BanknoteArrowDown className="h-6 w-6 text-primary dark:text-primary-foreground" />
                     </div>
                     <div>
-                        <CardTitle>Statutory Contributions</CardTitle>
+                        <CardTitle>Contributions</CardTitle>
                         <CardDescription>
                             {isAdmin ? "Contributions are required for Administrators." : "Optionally add government-mandated contributions."}
                         </CardDescription>
