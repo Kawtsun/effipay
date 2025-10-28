@@ -41,6 +41,7 @@ export default function ReportViewDialog({ employee, onClose }: Props) {
                                     <GeneralInformation employee={employee} />
                                     <ReportCards
                                         className="mt-2"
+                                        isLoading={provider.loading}
                                         selectedMonth={provider.selectedMonth}
                                         availableMonths={provider.availableMonths}
                                         onMonthChange={provider.handleMonthChange}
