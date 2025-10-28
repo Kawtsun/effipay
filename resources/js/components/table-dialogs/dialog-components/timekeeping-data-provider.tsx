@@ -1,4 +1,5 @@
 import React from "react";
+import { toast } from "sonner";
 import type { Employees } from "@/types";
 import type { WorkDayTime } from "@/components/employee-schedule-badges";
 
@@ -69,6 +70,10 @@ export function TimeKeepingDataProvider({
   const loadingStartRef = React.useRef<number | null>(null);
   const MIN_SKELETON_MS = 400;
 
+  // Toast guards to prevent duplicate notifications
+  const monthsEmptyToastShownRef = React.useRef(false);
+  const monthNoDataToastedRef = React.useRef<Set<string>>(new Set());
+
   // Fetch records for employee + month
   React.useEffect(() => {
     if (!employee || !selectedMonth) return;
@@ -79,11 +84,26 @@ export function TimeKeepingDataProvider({
       .then((data) => {
         if (Array.isArray(data.records)) {
           setRecords(data.records);
+          // Notify once per month if no records returned
+          if (data.records.length === 0 && !monthNoDataToastedRef.current.has(selectedMonth)) {
+            toast.error("No timekeeping data found for this month");
+            monthNoDataToastedRef.current.add(selectedMonth);
+          }
         } else {
           setRecords([]);
+          if (!monthNoDataToastedRef.current.has(selectedMonth)) {
+            toast.error("No timekeeping data found for this month");
+            monthNoDataToastedRef.current.add(selectedMonth);
+          }
         }
       })
-      .catch(() => setRecords([]))
+      .catch(() => {
+        setRecords([]);
+        if (!monthNoDataToastedRef.current.has(selectedMonth)) {
+          toast.error("No timekeeping data found for this month");
+          monthNoDataToastedRef.current.add(selectedMonth);
+        }
+      })
       .finally(() => setRecordsLoading(false));
   }, [employee, selectedMonth]);
 
@@ -122,6 +142,10 @@ export function TimeKeepingDataProvider({
         if (result.months.length > 0 && !selectedMonth) {
           setSelectedMonth(result.months[0]);
           setPendingMonth(result.months[0]);
+        } else if (result.months.length === 0 && !monthsEmptyToastShownRef.current) {
+          // Mirror ReportView behavior when no months are available
+          toast.error("No available months to display.");
+          monthsEmptyToastShownRef.current = true;
         }
       }
     } catch (error) {
@@ -132,6 +156,12 @@ export function TimeKeepingDataProvider({
   React.useEffect(() => {
     if (employee) fetchAvailableMonths();
   }, [employee, fetchAvailableMonths]);
+
+  // Reset toast guards when employee changes
+  React.useEffect(() => {
+    monthsEmptyToastShownRef.current = false;
+    monthNoDataToastedRef.current.clear();
+  }, [employee?.id]);
 
   // Fetch monthly summary (for college rate fallback parity with old dialog)
   React.useEffect(() => {

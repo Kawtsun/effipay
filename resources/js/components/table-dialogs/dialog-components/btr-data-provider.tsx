@@ -1,4 +1,5 @@
 import * as React from "react";
+import { toast } from "sonner";
 import { Employees } from "@/types";
 
 // Public types
@@ -132,6 +133,10 @@ export function BtrDataProvider({
   const [minLoading, setMinLoading] = React.useState(false);
   const minLoadingTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Toast guards to avoid duplicate notifications
+  const monthsEmptyToastShownRef = React.useRef(false);
+  const monthNoDataToastedRef = React.useRef<Set<string>>(new Set());
+
   // Fetch months
   React.useEffect(() => {
     if (!employee) return;
@@ -151,6 +156,10 @@ export function BtrDataProvider({
           } else if (normalized.length === 0) {
             // Fallback to current month when API returns nothing
             setSelectedMonth(normalizeYm(currentYm));
+            if (!monthsEmptyToastShownRef.current) {
+              toast.error("No available months to display.");
+              monthsEmptyToastShownRef.current = true;
+            }
           }
         }
       })
@@ -231,6 +240,10 @@ export function BtrDataProvider({
             return { date, clock_in, clock_out, time_in, time_out } as TimeRecord;
           });
           setRecords(canonical);
+          if (canonical.length === 0 && !monthNoDataToastedRef.current.has(selectedMonth)) {
+            toast.error("No biometric records found for this month");
+            monthNoDataToastedRef.current.add(selectedMonth);
+          }
           // Expose for quick browser debugging
           if (typeof window !== "undefined") {
             const keys = canonical.map((r) => r.date);
@@ -238,6 +251,10 @@ export function BtrDataProvider({
           }
         } else {
           setRecords([]);
+          if (!monthNoDataToastedRef.current.has(selectedMonth)) {
+            toast.error("No biometric records found for this month");
+            monthNoDataToastedRef.current.add(selectedMonth);
+          }
         }
 
         // --- Handle Monthly Summary (for leave dates) ---
@@ -249,6 +266,10 @@ export function BtrDataProvider({
       })
       .catch(() => {
         setRecords([]);
+        if (!monthNoDataToastedRef.current.has(selectedMonth)) {
+          toast.error("No biometric records found for this month");
+          monthNoDataToastedRef.current.add(selectedMonth);
+        }
         setMonthlySummary(null);
       })
       .finally(() => setLoading(false));
@@ -257,6 +278,12 @@ export function BtrDataProvider({
       if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
     };
   }, [employee, selectedMonth]);
+
+  // Reset toast guards when employee changes
+  React.useEffect(() => {
+    monthsEmptyToastShownRef.current = false;
+    monthNoDataToastedRef.current.clear();
+  }, [employee?.id]);
 
   // Derived maps
   const recordMap = React.useMemo(() => {
