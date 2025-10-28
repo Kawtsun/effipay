@@ -47,6 +47,7 @@ export default function ReportViewDialog({ employee, onClose }: Props) {
                                         getSummaryCardAmount={provider.getSummaryCardAmount}
                                         getSummaryCardHours={provider.getSummaryCardHours}
                                         selectedPayroll={provider.selectedPayroll}
+                                        earnings={provider.earnings}
                                     />
                                 </div>
                             </DialogScrollArea>

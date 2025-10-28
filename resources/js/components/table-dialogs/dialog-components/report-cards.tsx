@@ -2,6 +2,8 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnimatePresence, motion } from "framer-motion";
 import { MonthRangePicker } from "../../ui/month-range-picker";
+import { Badge } from "@/components/ui/badge";
+import { PhilippinePeso } from "lucide-react";
 
 type Props = {
 	title?: string;
@@ -19,18 +21,44 @@ type Props = {
 		gross_pay?: number | null;
 		total_deductions?: number | null;
 		net_pay?: number | null;
+		base_salary?: number | null;
+		college_rate?: number | null;
+		honorarium?: number | null;
+		sss?: number | null;
+		philhealth?: number | null;
+		pag_ibig?: number | null;
+		withholding_tax?: number | null;
+		peraa_con?: number | null;
+		sss_salary_loan?: number | null;
+		sss_calamity_loan?: number | null;
+		pagibig_multi_loan?: number | null;
+		pagibig_calamity_loan?: number | null;
+		tuition?: number | null;
+		china_bank?: number | null;
+		tea?: number | null;
 	} | null;
 	monthlyPayrollData?: { payrolls: Array<{ id: number; payroll_date: string }> } | null;
+	earnings?: {
+		base_salary?: number | null;
+		college_rate?: number | null;
+		honorarium?: number | null;
+		total_hours?: number | null;
+	};
 };
 
 function formatAmount(n?: number | null): string {
-	if (n === null || n === undefined || !Number.isFinite(Number(n))) return "-";
-	return `₱${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+	if (n === null || n === undefined || !Number.isFinite(Number(n))) return "0.00";
+	return `${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatAmountPlain(n?: number | null): string {
+	if (n === null || n === undefined || !Number.isFinite(Number(n))) return "0.00";
+	return `${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function halfAmount(n?: number | null): string {
-	if (n === null || n === undefined || !Number.isFinite(Number(n))) return "-";
-	return `₱${Number(n / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+	if (n === null || n === undefined || !Number.isFinite(Number(n))) return "0.00";
+	return `${Number(n / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function ReportCards({
@@ -42,6 +70,7 @@ export default function ReportCards({
 	getSummaryCardAmount,
 	getSummaryCardHours,
 	selectedPayroll,
+	earnings,
 }: Props) {
 	const grossPay = selectedPayroll?.gross_pay ?? null;
 	const totalDeductions = selectedPayroll?.total_deductions ?? null;
@@ -200,7 +229,152 @@ export default function ReportCards({
 						</motion.div>
 					))}
 				</div>
+				{/* Detailed breakdown using compact label + badge rows */}
+				<div className="mt-6 grid grid-cols-3 gap-6 max-[900px]:grid-cols-2 max-[700px]:grid-cols-1">
+					{/* Earnings */}
+					<section>
+						<div className="mb-2 text-sm font-medium text-foreground">Earnings</div>
+						<div className="space-y-2 text-sm">
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Base Salary</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmount(earnings?.base_salary ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+									<span className="text-muted-foreground">Rate per Hour (College)</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+										<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.college_rate ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Honorarium</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+										<span className="font-medium tabular-nums">{formatAmountPlain(earnings?.honorarium ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">College/GSP</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">
+										{(() => {
+												const rate = Number(selectedPayroll?.college_rate ?? NaN);
+											const hours = Number(earnings?.total_hours ?? NaN);
+											if (!Number.isFinite(rate) || !Number.isFinite(hours) || rate <= 0 || hours <= 0) return "0.00";
+												return formatAmountPlain(rate * hours);
+										})()}
+									</span>
+								</Badge>
+							</div>
+						</div>
+					</section>
 
+					{/* Contributions */}
+					<section>
+						<div className="mb-2 text-sm font-medium text-foreground">Contribution</div>
+						<div className="space-y-2 text-sm">
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">SSS</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.sss ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">PhilHealth</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.philhealth ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Pag-IBIG</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.pag_ibig ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Withholding Tax</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.withholding_tax ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">PERAA Contribution</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.peraa_con ?? null)}</span>
+								</Badge>
+							</div>
+						</div>
+					</section>
+
+					{/* Loans + Other Deductions */}
+					<section>
+						<div className="mb-2 text-sm font-medium text-foreground">Loan</div>
+						<div className="space-y-2 text-sm">
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">SSS Salary Loan</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.sss_salary_loan ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">SSS Calamity Loan</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.sss_calamity_loan ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Pag-IBIG Multi-purpose Loan</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.pagibig_multi_loan ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Pag-IBIG Calamity Loan</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.pagibig_calamity_loan ?? null)}</span>
+								</Badge>
+							</div>
+
+
+							{/* Subsection: Other Deductions */}
+							<div className="mt-3 mb-2 text-sm font-medium text-foreground">Other Deductions</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Tuition</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.tuition ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">China Bank</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.china_bank ?? null)}</span>
+								</Badge>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">TEA</span>
+								<Badge variant="outline" className="gap-1">
+									<PhilippinePeso className="h-3.5 w-3.5" />
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.tea ?? null)}</span>
+								</Badge>
+							</div>
+						</div>
+					</section>
+				</div>
 
 			</CardContent>
 		</Card>

@@ -66,6 +66,14 @@ export interface ReportDataRenderProps {
   getSummaryCardAmount: (type: "tardiness" | "undertime" | "overtime" | "absences") => string;
   getSummaryCardHours: (type: "tardiness" | "undertime" | "overtime" | "absences") => string;
 
+  // Earnings block data for UI
+  earnings: {
+    base_salary?: number | null;
+    college_rate?: number | null;
+    honorarium?: number | null;
+    total_hours?: number | null;
+  };
+
   // Loading flags
   loading: boolean;     // true while backend fetch or min skeleton
   minLoading: boolean;  // min skeleton hold flag
@@ -102,6 +110,8 @@ export function ReportDataProvider({
     tardiness?: number;
     undertime?: number;
     absences?: number;
+    college_rate?: number;
+    total_hours?: number;
   }
   const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, pendingMonth) as {
     summary?: EmployeePayrollSummary | null;
@@ -315,6 +325,21 @@ export function ReportDataProvider({
 
   const loading = loadingPayroll || minLoading;
 
+  // Earnings data used by UI (Earnings column in ReportCards)
+  const earnings = React.useMemo(() => {
+    const base_salary = selectedPayroll?.base_salary ?? null;
+    // Use college_rate strictly from payroll table for UI display
+    const college_rate = ((): number | null => {
+      const pr = selectedPayroll?.college_rate;
+      return typeof pr === 'number' ? pr : null;
+    })();
+    const honorarium = selectedPayroll?.honorarium ?? null;
+    const total_hours = (timekeepingSummary && typeof timekeepingSummary.total_hours === 'number')
+      ? timekeepingSummary.total_hours
+      : null;
+    return { base_salary, college_rate, honorarium, total_hours };
+  }, [selectedPayroll, timekeepingSummary]);
+
   // Helper to return hour counts for the summary cards (used for hover swap in UI)
   const getSummaryCardHours = React.useCallback((type: "tardiness" | "undertime" | "overtime" | "absences") => {
     if (!hasPayroll) return "-";
@@ -382,6 +407,7 @@ export function ReportDataProvider({
       isCollegeInstructorPayroll,
       getSummaryCardAmount,
       getSummaryCardHours,
+      earnings,
       loading,
       minLoading,
       otherAdjustments,
