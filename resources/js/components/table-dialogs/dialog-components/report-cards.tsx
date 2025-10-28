@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MonthRangePicker } from "../../ui/month-range-picker";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { PhilippinePeso, CircleHelp, BanknoteArrowUp, Banknote, BanknoteArrowDown, ReceiptText, MinusCircle } from "lucide-react";
+import { PhilippinePeso, CircleHelp, Banknote, BanknoteArrowDown, ReceiptText, MinusCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -227,8 +227,11 @@ export default function ReportCards({
 	const [mounted, setMounted] = React.useState(false);
 	React.useEffect(() => { setMounted(true); }, []);
 	// Consumers can optionally drive loading by passing empty provider state on first load/month switch.
-	// We infer loading conservatively: before mount, show skeleton.
-	const shouldSkeleton = Boolean(isLoading || !mounted);
+	// Additionally, if there are no available months for the MonthRangePicker, keep showing skeleton
+	// to match the AttendanceCards UX in Timekeeping (avoid showing zeroed content without a month).
+	const hasMonths = Array.isArray(availableMonths) && availableMonths.length > 0;
+	// We infer loading conservatively: before mount, show skeleton; also when no months yet.
+	const shouldSkeleton = Boolean(isLoading || !mounted || !hasMonths);
 
 	// Match attendance-cards logic: no measured height lock or buffer
 
