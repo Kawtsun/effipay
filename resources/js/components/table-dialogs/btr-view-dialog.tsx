@@ -12,7 +12,6 @@ import { EmployeeName } from "./dialog-components/employee-name";
 import GeneralInformation from "./dialog-components/general-information";
 import DialogScrollArea from "@/components/dialog-scroll-area";
 import { BtrDataProvider } from "./dialog-components/btr-data-provider";
-import { MonthRangePicker } from "../ui/month-range-picker";
 import BTRTable from "./dialog-components/btr-table";
 
 type Props = {
@@ -44,16 +43,6 @@ export default function BTRViewDialog({ employee, onClose }: Props) {
 
                                         {/* BTR Table */}
                                         <div className="pt-2">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <h4 className="font-semibold text-lg">Biometric Logs</h4>
-                                                <MonthRangePicker
-                                                    value={selectedMonth}
-                                                    onValueChange={(m) => setSelectedMonth(m)}
-                                                    placeholder="Select month"
-                                                    className="w-56 min-w-0 px-2 py-1 text-sm"
-                                                    availableMonths={availableMonths}
-                                                />
-                                            </div>
                                             <BTRTable
                                                 selectedMonth={selectedMonth}
                                                 records={records}
@@ -62,6 +51,8 @@ export default function BTRViewDialog({ employee, onClose }: Props) {
                                                 leaveDatesMap={leaveDatesMap}
                                                 isLoading={isLoading}
                                                 formatTime12Hour={formatTime12Hour}
+                                                availableMonths={availableMonths}
+                                                onMonthChange={(m) => setSelectedMonth(m)}
                                             />
                                         </div>
                                     </div>

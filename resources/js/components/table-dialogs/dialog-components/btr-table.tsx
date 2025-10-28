@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
 import type { TimeRecord } from "./btr-data-provider";
+import { MonthRangePicker } from "@/components/ui/month-range-picker";
 
 type Observance = { type?: string; label?: string; start_time?: string; is_automated?: boolean };
 
@@ -16,6 +17,8 @@ type Props = {
 	leaveDatesMap: Record<string, string>;
 	isLoading: boolean;
 	formatTime12Hour: (t?: string) => string;
+	availableMonths: string[];
+	onMonthChange: (month: string) => void;
 	wrapInCard?: boolean;
 };
 
@@ -32,7 +35,7 @@ function DayOfWeek({ dateStr }: { dateStr: string }) {
 	return <span>{days[d.getDay()]}</span>;
 }
 
-export default function BTRTable({ selectedMonth, records, recordMap, observanceMap, leaveDatesMap, isLoading, formatTime12Hour, wrapInCard = true }: Props) {
+export default function BTRTable({ selectedMonth, records, recordMap, observanceMap, leaveDatesMap, isLoading, formatTime12Hour, availableMonths, onMonthChange, wrapInCard = true }: Props) {
 	const [yStr, mStr] = selectedMonth ? selectedMonth.split("-") : ["", ""];
 	const y = Number(yStr);
 	const m = Number(mStr);
@@ -54,10 +57,7 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 		},
 	} as const;
 
-	const headerVariants = {
-		hidden: { opacity: 0, y: 4 },
-		show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
-	} as const;
+	// Header animations removed – keep static label and selector for consistency
 
 		const tableHeader = (
 		<TableHeader>
@@ -179,25 +179,19 @@ export default function BTRTable({ selectedMonth, records, recordMap, observance
 		if (!wrapInCard) return animatedContent;
 	return (
 		<Card>
-				<CardHeader className="py-3">
-					<AnimatePresence mode="wait" initial={false}>
-						{shouldSkeleton ? (
-							<motion.div key={`hdr-skel-${selectedMonth}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-5 w-28">
-								<Skeleton className="h-5 w-full" />
-							</motion.div>
-						) : (
-							<motion.div
-								key={`hdr-title-${selectedMonth}`}
-								variants={headerVariants}
-								initial="hidden"
-								animate="show"
-								exit={{ opacity: 0, transition: { duration: 0 } }}
-								className="h-5 w-28 overflow-hidden"
-							>
-								<CardTitle className="text-base">Daily Records</CardTitle>
-							</motion.div>
-						)}
-					</AnimatePresence>
+				<CardHeader className="pb-4">
+					<div className="flex items-center justify-between gap-4">
+						<CardTitle className="text-lg font-semibold leading-6 truncate">Daily Records</CardTitle>
+						<div className="shrink-0">
+							<MonthRangePicker
+								value={selectedMonth}
+								onValueChange={onMonthChange}
+								placeholder="Select month"
+								className="w-56 min-w-0 px-2 py-1 text-sm"
+								availableMonths={availableMonths}
+							/>
+						</div>
+					</div>
 				</CardHeader>
 			<CardContent className="pt-2">
 					{animatedContent}
