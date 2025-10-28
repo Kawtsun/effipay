@@ -1,7 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react'
 import AppLayout from '@/layouts/app-layout'
 import { type BreadcrumbItem } from '@/types'
-import { Wallet, Calculator, TrendingUp } from 'lucide-react'
+import { Wallet, Calculator, TrendingUp, Check, AlertCircle } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -136,6 +136,8 @@ export default function Index() {
           setHasCategorized(true)
           setCategorizeSource('payroll')
           setHasRunFlag(selectedMonth, true)
+          // Clear any previous import flag for this month so subsequent navigations prefer payroll
+          setImportFlag(selectedMonth, false)
           // Fetch categorized lists now
           ;(async () => {
             const lists = await loadTkLists(selectedMonth)
@@ -276,20 +278,19 @@ export default function Index() {
   useEffect(() => {
     if (!selectedMonth) { setTkLists(null); setHasCategorized(false); return }
     setActiveTab('with-tk')
-    // If a recent timekeeping import happened for this month, auto-categorize from live data
-    const imported = getImportFlag(selectedMonth)
-    if (imported) {
-      setHasCategorized(true)
-      setCategorizeSource('import')
-      void loadTkLists(selectedMonth)
-      return
-    }
-    // Otherwise, if server reports the month is processed, fetch live lists.
     ;(async () => {
       const processed = await isMonthProcessed(selectedMonth)
       if (processed) {
         setHasCategorized(true)
         setCategorizeSource('payroll')
+        void loadTkLists(selectedMonth)
+        return
+      }
+      // Not processed yet; fall back to import-triggered view if present
+      const imported = getImportFlag(selectedMonth)
+      if (imported) {
+        setHasCategorized(true)
+        setCategorizeSource('import')
         void loadTkLists(selectedMonth)
       } else {
         setHasCategorized(false)
@@ -308,10 +309,20 @@ export default function Index() {
       const normSel = normalizeMonth(selectedMonth)
       // If event includes months, only react when it contains the selected month
       if (months.length > 0 && !months.includes(normSel)) return
-      setImportFlag(normSel, true)
-      setHasCategorized(true)
-      setCategorizeSource('import')
-      void loadTkLists(normSel)
+      ;(async () => {
+        const processed = await isMonthProcessed(normSel)
+        if (processed) {
+          // Keep payroll as the authoritative source for marks/icons
+          setHasCategorized(true)
+          setCategorizeSource('payroll')
+          void loadTkLists(normSel)
+        } else {
+          setImportFlag(normSel, true)
+          setHasCategorized(true)
+          setCategorizeSource('import')
+          void loadTkLists(normSel)
+        }
+      })()
     }
     window.addEventListener('timekeeping:imported', onImported)
     return () => window.removeEventListener('timekeeping:imported', onImported)
@@ -430,7 +441,12 @@ export default function Index() {
                   <ScrollableCardGrid height={340}>
                     {filteredWith.map(emp => (
                       <Card key={emp.id} className="p-3 border border-slate-300 dark:border-slate-700 shadow-sm min-h-[92px]">
-                        <div className="text-sm font-medium mb-1">{emp.full_name || emp.name || `Employee #${emp.id}`}</div>
+                        <div className="mb-1 flex items-center justify-between">
+                          <div className="text-sm font-medium">{emp.full_name || emp.name || `Employee #${emp.id}`}</div>
+                          {categorizeSource === 'payroll' ? (
+                            <Check className="h-4 w-4 text-emerald-600" aria-label="With timekeeping" />
+                          ) : null}
+                        </div>
                         <RolesTableBadge roles={rolesToArray(emp.roles)} college_program={emp.college_program} compact />
                       </Card>
                     ))}
@@ -453,7 +469,12 @@ export default function Index() {
                   <ScrollableCardGrid height={340}>
                     {filteredWithout.map(emp => (
                       <Card key={emp.id} className="p-3 border border-slate-300 dark:border-slate-700 shadow-sm min-h-[92px]">
-                        <div className="text-sm font-medium mb-1">{emp.full_name || emp.name || `Employee #${emp.id}`}</div>
+                        <div className="mb-1 flex items-center justify-between">
+                          <div className="text-sm font-medium">{emp.full_name || emp.name || `Employee #${emp.id}`}</div>
+                          {categorizeSource === 'payroll' ? (
+                            <AlertCircle className="h-4 w-4 text-amber-500" aria-label="Without timekeeping" />
+                          ) : null}
+                        </div>
                         <RolesTableBadge roles={rolesToArray(emp.roles)} college_program={emp.college_program} compact />
                       </Card>
                     ))}
