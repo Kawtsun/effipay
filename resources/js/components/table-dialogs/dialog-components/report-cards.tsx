@@ -66,6 +66,16 @@ function halfAmount(n?: number | null): string {
 	return `${Number(n / 2).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Normalize hour strings like "-", "0", "1.5 hr(s)", "1,234.5" to a two-decimal label
+function formatHoursLabel(s?: string | null): string {
+	const raw = (s ?? "").toString().trim();
+	if (!raw || raw === "-" || raw.toLowerCase() === "n/a") return "0.00 hr(s)";
+	const match = raw.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+	const num = match ? Number(match[0]) : Number(raw);
+	if (!Number.isFinite(num)) return "0.00 hr(s)";
+	return `${num.toFixed(2)} hr(s)`;
+}
+
 export default function ReportCards({
 	title = "Salary & Contributions",
 	className,
@@ -83,9 +93,18 @@ export default function ReportCards({
 	const netPay = selectedPayroll?.net_pay ?? null;
 
 	// Consistent layout and styles with AttendanceCards
+	// Normalize values coming from provider (e.g., "₱ -", "-", "0", "1,234.50").
+	// Always render a 2-decimal string and default to "0.00" when empty/invalid.
 	const stripPeso = (s?: string | null) => {
-		if (!s) return "0.00";
-		return s.toString().replace(/^\s*[₱]\s*/u, "");
+		const raw = (s ?? "").toString();
+		// remove leading peso and trim
+		const cleaned = raw.replace(/^\s*[₱]\s*/u, "").trim();
+		if (cleaned === "" || cleaned === "-" || cleaned.toLowerCase() === "n/a") {
+			return "0.00";
+		}
+		const numeric = Number(cleaned.replace(/,/g, ""));
+		if (!Number.isFinite(numeric)) return "0.00";
+		return numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 	};
 
 	const PesoValue = ({ text }: { text?: string | null }) => (
@@ -99,7 +118,7 @@ export default function ReportCards({
 			key: "tardiness",
 			label: "Tardiness",
 			value: <PesoValue text={getSummaryCardAmount("tardiness")} />,
-			hoverValue: getSummaryCardHours("tardiness"),
+			hoverValue: formatHoursLabel(getSummaryCardHours("tardiness")),
 			bg: "bg-amber-50/80 dark:bg-amber-950/30",
 			ring: "ring-1 ring-amber-200 dark:ring-amber-700/60",
 			text: "text-amber-700 dark:text-amber-300",
@@ -109,7 +128,7 @@ export default function ReportCards({
 			key: "undertime",
 			label: "Undertime",
 			value: <PesoValue text={getSummaryCardAmount("undertime")} />,
-			hoverValue: getSummaryCardHours("undertime"),
+			hoverValue: formatHoursLabel(getSummaryCardHours("undertime")),
 			bg: "bg-rose-50/80 dark:bg-rose-950/30",
 			ring: "ring-1 ring-rose-200 dark:ring-rose-700/60",
 			text: "text-rose-700 dark:text-rose-300",
@@ -119,7 +138,7 @@ export default function ReportCards({
 			key: "overtime",
 			label: "Overtime",
 			value: <PesoValue text={getSummaryCardAmount("overtime")} />,
-			hoverValue: getSummaryCardHours("overtime"),
+			hoverValue: formatHoursLabel(getSummaryCardHours("overtime")),
 			bg: "bg-sky-50/80 dark:bg-sky-950/30",
 			ring: "ring-1 ring-sky-200 dark:ring-sky-700/60",
 			text: "text-sky-700 dark:text-sky-300",
@@ -129,7 +148,7 @@ export default function ReportCards({
 			key: "absences",
 			label: "Absences",
 			value: <PesoValue text={getSummaryCardAmount("absences")} />,
-			hoverValue: getSummaryCardHours("absences"),
+			hoverValue: formatHoursLabel(getSummaryCardHours("absences")),
 			bg: "bg-zinc-50/80 dark:bg-zinc-900/40",
 			ring: "ring-1 ring-zinc-200 dark:ring-zinc-700/60",
 			text: "text-zinc-600 dark:text-zinc-300",

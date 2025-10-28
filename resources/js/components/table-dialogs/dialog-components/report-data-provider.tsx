@@ -260,60 +260,79 @@ export function ReportDataProvider({
       let weekendOvertime = 0;
       if (isCollegeInstructorPayroll && selectedPayroll) {
         rate = Number(selectedPayroll.college_rate ?? 0);
-        weekdayOvertime = Number(selectedPayroll.overtime_count_weekdays ?? 0);
-        weekendOvertime = Number(selectedPayroll.overtime_count_weekends ?? 0);
+        // Match AttendanceCards rounding: use 2-decimal hours before multiplying
+        weekdayOvertime = Number(Number(selectedPayroll.overtime_count_weekdays ?? 0).toFixed(2));
+        weekendOvertime = Number(Number(selectedPayroll.overtime_count_weekends ?? 0).toFixed(2));
         if ((weekdayOvertime + weekendOvertime) === 0 && timekeepingSummary) {
-          weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
-          weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
+          weekdayOvertime = Number(Number(timekeepingSummary.overtime_count_weekdays ?? 0).toFixed(2));
+          weekendOvertime = Number(Number(timekeepingSummary.overtime_count_weekends ?? 0).toFixed(2));
         }
-        const weekdayPay = rate * 0.25 * weekdayOvertime;
-        const weekendPay = rate * 0.30 * weekendOvertime;
+        const rateRounded = Number(Number(rate).toFixed(2));
+        const weekdayPay = rateRounded * 0.25 * weekdayOvertime;
+        const weekendPay = rateRounded * 0.30 * weekendOvertime;
         const overtimePay = weekdayPay + weekendPay;
         return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       } else if (timekeepingSummary) {
         rate = Number(timekeepingSummary.rate_per_hour ?? 0);
-        weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
-        weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
-        const weekdayPay = rate * 0.25 * weekdayOvertime;
-        const weekendPay = rate * 0.30 * weekendOvertime;
+        weekdayOvertime = Number(Number(timekeepingSummary.overtime_count_weekdays ?? 0).toFixed(2));
+        weekendOvertime = Number(Number(timekeepingSummary.overtime_count_weekends ?? 0).toFixed(2));
+        const rateRounded = Number(Number(rate).toFixed(2));
+        const weekdayPay = rateRounded * 0.25 * weekdayOvertime;
+        const weekendPay = rateRounded * 0.30 * weekendOvertime;
         const overtimePay = weekdayPay + weekendPay;
         return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       }
       return "-";
     }
-    if (isCollegeInstructorPayroll && selectedPayroll) {
-      const value = (() => {
-        switch (type) {
-          case "tardiness":
-            return Number(selectedPayroll.tardiness ?? 0);
-          case "undertime":
-            return Number(selectedPayroll.undertime ?? 0);
-          case "absences":
-            return Number(selectedPayroll.absences ?? 0);
-          default:
-            return 0;
-        }
-      })();
-      const rate = selectedPayroll.college_rate ?? 0;
-      return `₱${(value * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    } else if (timekeepingSummary && typeof (timekeepingSummary as EmployeePayrollSummary)[type] === "number" && typeof (timekeepingSummary as EmployeePayrollSummary).rate_per_hour === "number") {
-      const v = (() => {
-        const s = timekeepingSummary as EmployeePayrollSummary;
-        switch (type) {
-          case "tardiness":
-            return Number(s.tardiness ?? 0);
-          case "undertime":
-            return Number(s.undertime ?? 0);
-          case "absences":
-            return Number(s.absences ?? 0);
-          default:
-            return 0;
-        }
-      })();
-      const rate = Number((timekeepingSummary as EmployeePayrollSummary).rate_per_hour) || 0;
-      return `₱${(v * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-    return "-";
+    // For non-overtime metrics, prefer timekeeping summary hours for consistency with AttendanceCards.
+    // Fallback to payroll-stored hours only if timekeeping data is unavailable.
+    const hoursFromTimekeeping = (() => {
+      if (!timekeepingSummary) return NaN;
+      const s = timekeepingSummary as EmployeePayrollSummary;
+      switch (type) {
+        case "tardiness":
+          return Number(s.tardiness ?? NaN);
+        case "undertime":
+          return Number(s.undertime ?? NaN);
+        case "absences":
+          return Number(s.absences ?? NaN);
+        default:
+          return NaN;
+      }
+    })();
+
+    const hours = Number.isFinite(hoursFromTimekeeping)
+      ? hoursFromTimekeeping
+      : (() => {
+          if (!selectedPayroll) return 0;
+          switch (type) {
+            case "tardiness":
+              return Number(selectedPayroll.tardiness ?? 0);
+            case "undertime":
+              return Number(selectedPayroll.undertime ?? 0);
+            case "absences":
+              return Number(selectedPayroll.absences ?? 0);
+            default:
+              return 0;
+          }
+        })();
+
+    // Resolve rate: college instructors use college_rate; otherwise use timekeeping rate_per_hour,
+    // and fall back to payroll.rate_per_hour when provided.
+    const rate = (() => {
+      if (isCollegeInstructorPayroll) {
+        return Number(selectedPayroll?.college_rate ?? 0);
+      }
+      const rFromTK = Number((timekeepingSummary as EmployeePayrollSummary | undefined)?.rate_per_hour ?? NaN);
+      if (Number.isFinite(rFromTK)) return rFromTK;
+      return Number(selectedPayroll?.rate_per_hour ?? 0);
+    })();
+
+    // Match AttendanceCards rounding steps: round hours and rate to 2 decimals before multiply
+    const hoursRounded = Number(Number(hours || 0).toFixed(2));
+    const rateRounded = Number(Number(rate || 0).toFixed(2));
+    const amount = hoursRounded * rateRounded;
+    return `₱${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }, [hasPayroll, isCollegeInstructorPayroll, selectedPayroll, timekeepingSummary]);
 
   const handleMonthChange = (month: string) => {
@@ -360,7 +379,24 @@ export function ReportDataProvider({
       const total = (weekdayOvertime || 0) + (weekendOvertime || 0);
       return Number.isFinite(total) ? `${total.toFixed(2)} hr(s)` : "-";
     }
-    if (isCollegeInstructorPayroll && selectedPayroll) {
+    // Prefer timekeeping summary hours for consistency; fallback to payroll-stored hours
+    if (timekeepingSummary) {
+      const s = timekeepingSummary as EmployeePayrollSummary;
+      const v = (() => {
+        switch (type) {
+          case "tardiness":
+            return Number(s.tardiness ?? NaN);
+          case "undertime":
+            return Number(s.undertime ?? NaN);
+          case "absences":
+            return Number(s.absences ?? NaN);
+          default:
+            return NaN;
+        }
+      })();
+      if (Number.isFinite(v)) return `${v.toFixed(2)} hr(s)`;
+    }
+    if (selectedPayroll) {
       const value = (() => {
         switch (type) {
           case "tardiness":
@@ -374,21 +410,6 @@ export function ReportDataProvider({
         }
       })();
       return Number.isFinite(value) ? `${value.toFixed(2)} hr(s)` : "-";
-    } else if (timekeepingSummary) {
-      const s = timekeepingSummary as EmployeePayrollSummary;
-      const v = (() => {
-        switch (type) {
-          case "tardiness":
-            return Number(s.tardiness ?? 0);
-          case "undertime":
-            return Number(s.undertime ?? 0);
-          case "absences":
-            return Number(s.absences ?? 0);
-          default:
-            return 0;
-        }
-      })();
-      return Number.isFinite(v) ? `${v.toFixed(2)} hr(s)` : "-";
     }
     return "-";
   }, [hasPayroll, isCollegeInstructorPayroll, selectedPayroll, timekeepingSummary]);
