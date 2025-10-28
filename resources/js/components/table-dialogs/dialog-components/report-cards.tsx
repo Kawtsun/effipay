@@ -433,7 +433,7 @@ export default function ReportCards({
 														{(() => {
 															const rate = Number(selectedPayroll?.college_rate ?? NaN);
 															const hours = Number(earnings?.total_hours ?? NaN);
-															if (!Number.isFinite(rate) || !Number.isFinite(hours) || rate <= 0 || hours <= 0) return "-";
+															if (!Number.isFinite(rate) || !Number.isFinite(hours) || rate <= 0 || hours <= 0) return "0.00";
 															return formatAmountPlain(rate * hours);
 														})()}
 													</span>
