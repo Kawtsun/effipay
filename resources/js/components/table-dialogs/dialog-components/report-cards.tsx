@@ -5,6 +5,7 @@ import { MonthRangePicker } from "../../ui/month-range-picker";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PhilippinePeso, CircleHelp } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 type Props = {
 	title?: string;
@@ -78,11 +79,22 @@ export default function ReportCards({
 	const netPay = selectedPayroll?.net_pay ?? null;
 
 	// Consistent layout and styles with AttendanceCards
+	const stripPeso = (s?: string | null) => {
+		if (!s) return "0.00";
+		return s.toString().replace(/^\s*[₱]\s*/u, "");
+	};
+
+	const PesoValue = ({ text }: { text?: string | null }) => (
+		<span className="inline-flex items-center gap-1">
+			<PhilippinePeso className="h-[1.1em] w-[1.1em]" />
+			<span className="tabular-nums">{stripPeso(text)}</span>
+		</span>
+	);
 	const cards = [
 		{
 			key: "tardiness",
 			label: "Tardiness",
-			value: getSummaryCardAmount("tardiness"),
+			value: <PesoValue text={getSummaryCardAmount("tardiness")} />,
 			hoverValue: getSummaryCardHours("tardiness"),
 			bg: "bg-amber-50/80 dark:bg-amber-950/30",
 			ring: "ring-1 ring-amber-200 dark:ring-amber-700/60",
@@ -92,7 +104,7 @@ export default function ReportCards({
 		{
 			key: "undertime",
 			label: "Undertime",
-			value: getSummaryCardAmount("undertime"),
+			value: <PesoValue text={getSummaryCardAmount("undertime")} />,
 			hoverValue: getSummaryCardHours("undertime"),
 			bg: "bg-rose-50/80 dark:bg-rose-950/30",
 			ring: "ring-1 ring-rose-200 dark:ring-rose-700/60",
@@ -102,7 +114,7 @@ export default function ReportCards({
 		{
 			key: "overtime",
 			label: "Overtime",
-			value: getSummaryCardAmount("overtime"),
+			value: <PesoValue text={getSummaryCardAmount("overtime")} />,
 			hoverValue: getSummaryCardHours("overtime"),
 			bg: "bg-sky-50/80 dark:bg-sky-950/30",
 			ring: "ring-1 ring-sky-200 dark:ring-sky-700/60",
@@ -112,7 +124,7 @@ export default function ReportCards({
 		{
 			key: "absences",
 			label: "Absences",
-			value: getSummaryCardAmount("absences"),
+			value: <PesoValue text={getSummaryCardAmount("absences")} />,
 			hoverValue: getSummaryCardHours("absences"),
 			bg: "bg-zinc-50/80 dark:bg-zinc-900/40",
 			ring: "ring-1 ring-zinc-200 dark:ring-zinc-700/60",
@@ -122,8 +134,9 @@ export default function ReportCards({
 		{
 			key: "gross_pay",
 			label: "Gross Pay",
-			value: formatAmount(grossPay),
-			hoverValue: formatAmount(grossPay),
+			value: <PesoValue text={formatAmount(grossPay)} />,
+			// static on hover
+			hoverValue: undefined,
 			bg: "bg-zinc-50/80 dark:bg-zinc-900/40",
 			ring: "ring-1 ring-zinc-200 dark:ring-zinc-700/60",
 			text: "text-zinc-600 dark:text-zinc-300",
@@ -132,8 +145,8 @@ export default function ReportCards({
 		{
 			key: "total_deductions",
 			label: "Total Deductions",
-			value: formatAmount(totalDeductions),
-			hoverValue: formatAmount(totalDeductions),
+			value: <PesoValue text={formatAmount(totalDeductions)} />,
+			hoverValue: undefined,
 			bg: "bg-amber-50/80 dark:bg-amber-950/30",
 			ring: "ring-1 ring-amber-200 dark:ring-amber-700/60",
 			text: "text-amber-700 dark:text-amber-300",
@@ -142,8 +155,8 @@ export default function ReportCards({
 		{
 			key: "net_pay",
 			label: "Net Pay",
-			value: formatAmount(netPay),
-			hoverValue: formatAmount(netPay),
+			value: <PesoValue text={formatAmount(netPay)} />,
+			hoverValue: undefined,
 			bg: "bg-green-50/80 dark:bg-green-950/30",
 			ring: "ring-1 ring-green-200 dark:ring-green-700/60",
 			text: "text-green-700 dark:text-green-300",
@@ -152,8 +165,8 @@ export default function ReportCards({
 		{
 			key: "per_payroll",
 			label: "Per Payroll",
-			value: halfAmount(netPay),
-			hoverValue: halfAmount(netPay),
+			value: <PesoValue text={halfAmount(netPay)} />,
+			hoverValue: undefined,
 			// use the same sky palette as overtime for visual grouping
 			bg: "bg-sky-50/80 dark:bg-sky-950/30",
 			ring: "ring-1 ring-sky-200 dark:ring-sky-700/60",
@@ -231,7 +244,7 @@ export default function ReportCards({
 					))}
 				</div>
 				{/* Detailed breakdown using compact label + badge rows */}
-				<div className="mt-6 grid grid-cols-3 gap-6 max-[900px]:grid-cols-2 max-[700px]:grid-cols-1">
+				<div className="mt-6 grid grid-cols-[1fr_auto_1fr_auto_1fr] gap-6 max-[900px]:grid-cols-2 max-[700px]:grid-cols-1">
 					{/* Earnings */}
 					<section>
 						<div className="mb-2 text-sm font-medium text-foreground">Earnings</div>
@@ -244,17 +257,17 @@ export default function ReportCards({
 								</Badge>
 							</div>
 							<div className="flex items-center justify-between">
-									<span className="text-muted-foreground">Rate per Hour (College)</span>
+								<span className="text-muted-foreground">Rate per Hour (College)</span>
 								<Badge variant="outline" className="gap-1">
 									<PhilippinePeso className="h-3.5 w-3.5" />
-										<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.college_rate ?? null)}</span>
+									<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.college_rate ?? null)}</span>
 								</Badge>
 							</div>
 							<div className="flex items-center justify-between">
 								<span className="text-muted-foreground">Honorarium</span>
 								<Badge variant="outline" className="gap-1">
 									<PhilippinePeso className="h-3.5 w-3.5" />
-										<span className="font-medium tabular-nums">{formatAmountPlain(earnings?.honorarium ?? null)}</span>
+									<span className="font-medium tabular-nums">{formatAmountPlain(earnings?.honorarium ?? null)}</span>
 								</Badge>
 							</div>
 							<div className="flex items-center justify-between">
@@ -304,6 +317,9 @@ export default function ReportCards({
 						</div>
 					</section>
 
+					{/* Vertical separator (hidden on <=900px) */}
+					<Separator orientation="vertical" className="max-[900px]:hidden h-full" />
+
 					{/* Contributions */}
 					<section>
 						<div className="mb-2 text-sm font-medium text-foreground">Contribution</div>
@@ -345,6 +361,9 @@ export default function ReportCards({
 							</div>
 						</div>
 					</section>
+
+					{/* Vertical separator (hidden on <=900px) */}
+					<Separator orientation="vertical" className="max-[900px]:hidden h-full" />
 
 					{/* Loans + Other Deductions */}
 					<section>
