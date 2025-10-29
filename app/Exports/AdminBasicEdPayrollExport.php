@@ -15,6 +15,8 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
 {
     protected $month;
     protected $rows;
+    /** Canonical ordering of basic education levels (kept in sync with frontend) */
+    protected static $BASIC_EDU_LEVELS = ['Elementary', 'High School', 'Senior High School'];
 
     public function __construct($month = null)
     {
@@ -60,6 +62,7 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
             )
             // Also select the raw roles value so we can classify rows for totals, but we'll keep it out of the returned collection
             ->addSelect('employees.roles as roles')
+            ->addSelect('employees.basic_edu_level as basic_edu_level')
             ->get();
 
         // Save full rows (including roles) for totals classification
@@ -71,8 +74,8 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
             return str_contains($roles, 'admin') || str_contains($roles, 'administrator');
         };
 
-        $adminRows = $all->filter($isAdminCallback);
-        $basicRows = $all->reject($isAdminCallback);
+    $adminRows = $all->filter($isAdminCallback);
+    $basicRows = $all->reject($isAdminCallback);
 
         // Map helper for display columns
         $mapDisplay = function ($r) {
@@ -120,7 +123,52 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
 
         // Build display collections with totals inserted between groups
         $adminDisplay = $adminRows->map($mapDisplay);
-        $basicDisplay = $basicRows->map($mapDisplay);
+        // For admin keep the flat display
+        $basicDisplay = collect();
+
+        // Group basic education rows by basic_edu_level for lookup
+        $basicGrouped = $basicRows->groupBy(function ($r) {
+            $lvl = trim((string) ($r->basic_edu_level ?? ''));
+            return $lvl !== '' ? $lvl : 'Unassigned';
+        });
+
+    // Build an ordered list that includes only the canonical levels (we will handle unassigned separately)
+    $levelsOrder = self::$BASIC_EDU_LEVELS;
+
+        // Prepare a prototype empty associative row matching display keys
+        $allKeys = array_merge(['employee_name'], $colKeys);
+        $emptyAssoc = array_combine($allKeys, array_fill(0, count($allKeys), ''));
+
+        // Iterate canonical levels so each level shows a subtotal row even if empty
+        foreach ($levelsOrder as $level) {
+            $rowsForLevel = $basicGrouped->get($level, collect());
+
+            if ($rowsForLevel->isEmpty()) {
+                // Add a blank row above subtotal to match College sheet pattern
+                $basicDisplay->push($emptyAssoc);
+                // Push subtotal with zeros
+                $zeroed = array_combine($colKeys, array_fill(0, count($colKeys), 0.00));
+                $subtotalRow = array_merge(['employee_name' => 'SUBTOTAL FOR ' . $level], $zeroed);
+                $basicDisplay->push($subtotalRow);
+            } else {
+                // Append employee rows then subtotal
+                foreach ($rowsForLevel as $r) {
+                    $basicDisplay->push($mapDisplay($r));
+                }
+                $levelSums = $sumGroup($rowsForLevel);
+                $subtotalRow = array_merge(['employee_name' => 'SUBTOTAL FOR ' . $level], array_combine($colKeys, array_map(function ($v) { return round($v,2); }, array_values($levelSums))));
+                $basicDisplay->push($subtotalRow);
+            }
+        }
+
+        // Append any employees without a basic_edu_level (previously 'Unassigned') but do NOT add a subtotal row for them
+        if ($basicGrouped->has('Unassigned')) {
+            $unassignedRows = $basicGrouped->get('Unassigned', collect());
+            foreach ($unassignedRows as $r) {
+                $basicDisplay->push($mapDisplay($r));
+            }
+            // Do not add a subtotal for unassigned — they will be counted in TOTAL (BASIC ED)
+        }
 
         $adminTotalRow = array_merge(['employee_name' => 'TOTAL (ADMINISTRATOR)'], array_combine($colKeys, array_map(function ($v) { return round($v,2); }, array_values($adminSums))));
         $basicTotalRow = array_merge(['employee_name' => 'TOTAL (BASIC ED)'], array_combine($colKeys, array_map(function ($v) { return round($v,2); }, array_values($basicSums))));
@@ -267,7 +315,26 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                     $grandRowIndex = null;
                     for ($r = 8; $r <= $lastRow; $r++) {
                         $cellA = (string) $sheet->getCell('A' . $r)->getValue();
-                        if ($cellA === 'TOTAL (BASIC ED)') {
+                        if (is_string($cellA) && str_starts_with($cellA, 'SUBTOTAL FOR')) {
+                            // Subtotal style: bold and green background (#B5FDB1)
+                            $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
+                                'font' => ['bold' => true],
+                                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'B5FDB1']],
+                            ]);
+
+                            // Ensure subtotal numeric cells (B..T) are right aligned and formatted
+                            $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                            $sheet->getStyle('B' . $r . ':' . $highestColumn . $r)->getNumberFormat()->setFormatCode('#,##0.00');
+
+                            // Ensure numeric columns B..T are populated with 0 if empty so zeros are visible
+                            foreach (range('B', $highestColumn) as $col) {
+                                $coord = $col . $r;
+                                $val = $sheet->getCell($coord)->getValue();
+                                if ($val === null || $val === '') {
+                                    $sheet->setCellValue($coord, 0);
+                                }
+                            }
+                        } else if ($cellA === 'TOTAL (BASIC ED)') {
                             // Blue fill for basic ed total (#8DB4E2)
                             $sheet->getStyle('A' . $r . ':' . $highestColumn . $r)->applyFromArray([
                                 'fill' => [
