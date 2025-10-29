@@ -475,6 +475,9 @@ class TimeKeepingController extends Controller
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
                 'college_program' => $emp->college_program,
+                // Expose basic education level for dialogs (support both keys used in UI)
+                'basic_edu_level' => $emp->basic_edu_level ?? null,
+                'basic_education_level' => $emp->basic_edu_level ?? null,
                 'work_start_time' => $emp->work_start_time,
                 'work_end_time' => $emp->work_end_time,
                 'work_hours_per_day' => $emp->work_hours_per_day,

@@ -69,7 +69,12 @@ export default function GeneralInformation({ employee }: Props) {
 							<span className="shrink-0 text-muted-foreground font-medium">Employee Role</span>
 							<div className="min-w-0 whitespace-normal break-words pr-1 [&_*]:whitespace-normal [&_*]:break-words [&_*]:flex-wrap [&_*]:min-w-0">
 								{employee.roles ? (
-									<EmployeeRolesList roles={employee.roles} collegeProgram={employee.college_program} compact />
+									<EmployeeRolesList
+										roles={employee.roles}
+										collegeProgram={employee.college_program}
+										basicEducationLevel={(employee as unknown as { basic_education_level?: string | null; basic_edu_level?: string | null }).basic_education_level ?? (employee as unknown as { basic_education_level?: string | null; basic_edu_level?: string | null }).basic_edu_level ?? null}
+										compact
+									/>
 								) : (
 									<span className="text-muted-foreground">None</span>
 								)}

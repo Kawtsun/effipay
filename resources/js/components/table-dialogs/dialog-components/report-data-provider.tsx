@@ -331,11 +331,13 @@ export function ReportDataProvider({
       return typeof pr === 'number' ? pr : null;
     })();
     const honorarium = selectedPayroll?.honorarium ?? null;
-    const total_hours = (timekeepingSummary && typeof timekeepingSummary.total_hours === 'number')
-      ? timekeepingSummary.total_hours
-      : null;
+    // Prefer timekeeping summary hours when available, else fallback computed from BTR to keep College/GSP visible
+    const summaryHoursNum = Number((timekeepingSummary as EmployeePayrollSummary | undefined)?.total_hours ?? NaN);
+    const total_hours = Number.isFinite(summaryHoursNum) && summaryHoursNum > 0
+      ? summaryHoursNum
+      : (fallbackTotalHours ?? null);
     return { base_salary, college_rate, honorarium, total_hours };
-  }, [selectedPayroll, timekeepingSummary]);
+  }, [selectedPayroll, timekeepingSummary, fallbackTotalHours]);
 
   // Helper to return hour counts for the summary cards (used for hover swap in UI)
   const getSummaryCardHours = React.useCallback((type: "tardiness" | "undertime" | "overtime" | "absences") => {
