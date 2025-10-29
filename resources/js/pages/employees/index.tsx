@@ -24,11 +24,11 @@ interface EmployeesProps {
     totalPages: number
     perPage?: number
     search?: string
-    filters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string }
+    filters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; basicEducationLevel?: string }
     othersRoles?: Array<{ value: string; label: string }>
 }
 
-type FilterState = { types: string[]; statuses: string[]; roles: string[]; othersRole?: string }
+type FilterState = { types: string[]; statuses: string[]; roles: string[]; othersRole?: string; basicEducationLevel?: string }
 
 const MIN_SPINNER_MS = 400
 const PAGE_SIZE_STORAGE_KEY = 'employees.table.pageSize'
@@ -44,7 +44,7 @@ export default function Index({
     totalPages,
     search: initialSearch = '',
     filters: initialFilters,
-}: EmployeesProps & { filters: FilterState & { collegeProgram?: string; othersRole?: string } }) {
+}: EmployeesProps & { filters: FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string } }) {
     const { props } = usePage<PageProps>()
     const [open, setOpen] = useState(false)
     const [sel, setSel] = useState<Employees | null>(null)
@@ -62,17 +62,19 @@ export default function Index({
 
     const [searchTerm, setSearchTerm] = useState(initialSearch)
     const toArray = (val: unknown) => (Array.isArray(val) ? val : val ? [val] : [])
-    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
+    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
         othersRole: typeof initialFilters.othersRole !== 'undefined' ? initialFilters.othersRole : '',
+        basicEducationLevel: typeof initialFilters.basicEducationLevel !== 'undefined' ? initialFilters.basicEducationLevel : '',
     })
-    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
+    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
         othersRole: typeof initialFilters.othersRole !== 'undefined' ? initialFilters.othersRole : '',
+        basicEducationLevel: typeof initialFilters.basicEducationLevel !== 'undefined' ? initialFilters.basicEducationLevel : '',
     })
     const hasFilters = appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0 || appliedFilters.roles.length > 0
 
@@ -106,6 +108,7 @@ export default function Index({
                 roles: string[]
                 collegeProgram: string
                 othersRole: string
+                basicEducationLevel: string
                 perPage: number
             }>,
             options: { preserve?: boolean } = {},
@@ -140,6 +143,7 @@ export default function Index({
                     statuses: hasFilters ? appliedFilters.statuses : undefined,
                     roles: hasFilters ? appliedFilters.roles : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                    basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
                     perPage: pageSize,
                 },
                 { preserve: true },
@@ -148,14 +152,19 @@ export default function Index({
         [visit, appliedFilters, hasFilters, pageSize],
     )
 
+    type IncomingFilters = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string | string[]; othersRole?: string; basicEducationLevel?: string | string[] }
     const handleFilterChange = useCallback(
-        (newFilters: FilterState & { collegeProgram?: string | string[]; othersRole?: string }) => {
+        (newFilters: IncomingFilters) => {
             // Normalize collegeProgram to a single string (first selected) for this page's state
             const normalizedCollegeProgram = Array.isArray(newFilters.collegeProgram)
                 ? (newFilters.collegeProgram[0] || '')
                 : (newFilters.collegeProgram || '');
 
-            const nextFilters = { ...newFilters, collegeProgram: normalizedCollegeProgram } as FilterState & { collegeProgram?: string; othersRole?: string };
+            // Normalize basicEducationLevel similarly (first selected)
+            const normalizedBasicEdu = Array.isArray(newFilters.basicEducationLevel)
+                ? (newFilters.basicEducationLevel[0] || '')
+                : (newFilters.basicEducationLevel || '');
+            const nextFilters = { ...newFilters, collegeProgram: normalizedCollegeProgram, basicEducationLevel: normalizedBasicEdu } as FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string };
             setFilters(nextFilters)
 
             const applied = { ...nextFilters }
@@ -177,6 +186,7 @@ export default function Index({
                     statuses: applied.statuses.length ? applied.statuses : undefined,
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: applied.collegeProgram || undefined,
+                    basicEducationLevel: applied.basicEducationLevel || undefined,
                     perPage: pageSize,
                 },
                 { preserve: true },
@@ -186,7 +196,7 @@ export default function Index({
     )
 
     const resetFilters = useCallback(() => {
-        const empty = { types: [], statuses: [], roles: [], othersRole: '' }
+        const empty = { types: [], statuses: [], roles: [], othersRole: '', collegeProgram: '', basicEducationLevel: '' }
         setFilters(empty)
         setAppliedFilters(empty)
     visit({ search: searchTerm || undefined, page: 1, perPage: pageSize }, { preserve: true })
@@ -208,6 +218,7 @@ export default function Index({
                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                            basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
                     perPage: pageSize,
                 },
                 { preserve: true },
@@ -269,6 +280,7 @@ export default function Index({
                                 collegeProgram={filters.collegeProgram ? [filters.collegeProgram] : []}
                                 othersRole={filters.othersRole}
                                 othersRoles={Array.isArray(props.othersRoles) ? props.othersRoles : []}
+                                basicEducationLevel={filters.basicEducationLevel ? [filters.basicEducationLevel] : []}
                                 onChange={(newFilters) => handleFilterChange({ ...filters, ...newFilters })}
                             />
                             <Link
@@ -278,6 +290,7 @@ export default function Index({
                                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                                     roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
                                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                                    basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
                                     othersRole: appliedFilters.othersRole || undefined,
                                     page: currentPage,
                                     perPage: pageSize,
@@ -302,6 +315,9 @@ export default function Index({
                             {appliedFilters.roles.length ? ' ' + appliedFilters.roles.map(capitalizeWords).join(', ') : ' All Roles'}
                             {appliedFilters.roles.includes('college instructor') && appliedFilters.collegeProgram
                                 ? ` / ${' '}${appliedFilters.collegeProgram} - ${getCollegeProgramLabel(appliedFilters.collegeProgram)}`
+                                : ''}
+                            {appliedFilters.roles.includes('basic education instructor') && appliedFilters.basicEducationLevel
+                                ? ` / ${' '}${appliedFilters.basicEducationLevel}`
                                 : ''}
                             {appliedFilters.roles.includes('others') && appliedFilters.othersRole ? ` / ${' '}${capitalizeWords(appliedFilters.othersRole)}` : ''}
                         </div>
@@ -328,6 +344,7 @@ export default function Index({
                                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                                     roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
                                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                                    basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
                                     perPage: size,
                                 },
                                 { preserve: true },
@@ -344,13 +361,14 @@ export default function Index({
                                 roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
                                 page: currentPage,
                                 collegeProgram: appliedFilters.collegeProgram || undefined,
+                                basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
                                 perPage: pageSize,
                             })
                         }
                     />
 
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <EmployeeViewDialog employee={viewing as unknown as any} onClose={() => setViewing(null)} showPayroll={false} />
+                    <EmployeeViewDialog employee={viewing as unknown as any} onClose={() => setViewing(null)} />
                     <EmployeeDelete
                         open={open}
                         setOpen={setOpen}

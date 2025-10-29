@@ -19,7 +19,7 @@ import ExportLedgerDialog from '@/components/export-ledger-dialog'
 export default function ReportsIndex() {
     const page = usePage()
     // --- State and constants ---
-    type FilterState = { types: string[]; statuses: string[]; roles: string[]; othersRole?: string }
+    type FilterState = { types: string[]; statuses: string[]; roles: string[]; othersRole?: string; basicEducationLevel?: string }
     const MIN_SPINNER_MS = 400
 
     // --- Page props and state (from tcc-adjustments) ---
@@ -35,7 +35,7 @@ export default function ReportsIndex() {
         currentPage: number
         totalPages: number
         search: string
-        filters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string }
+        filters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; basicEducationLevel?: string }
         othersRoles?: Array<{ value: string; label: string }>
     }
     const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' }
@@ -96,7 +96,7 @@ export default function ReportsIndex() {
 
     // --- Data fetching and handlers (from tcc-adjustments) ---
     const visit = useCallback(
-        (params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; perPage: number }>, options: { preserve?: boolean } = {}) => {
+    (params: Partial<{ search: string; page: number; category: string; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; basicEducationLevel: string; othersRole: string; perPage: number }>, options: { preserve?: boolean } = {}) => {
             spinnerStart.current = Date.now()
             setLoading(true)
 
@@ -127,6 +127,7 @@ export default function ReportsIndex() {
                     statuses: hasFilters ? appliedFilters.statuses : undefined,
                     roles: hasFilters ? appliedFilters.roles : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                    basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
                     perPage: pageSize,
                 },
                 { preserve: true },
@@ -136,13 +137,18 @@ export default function ReportsIndex() {
     )
 
     const handleFilterChange = useCallback(
-        (newFilters: FilterState & { collegeProgram?: string | string[]; othersRole?: string }) => {
+        (newFilters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string | string[]; basicEducationLevel?: string | string[]; othersRole?: string }) => {
             // Normalize collegeProgram to a single string (first selected)
             const normalizedCollegeProgram = Array.isArray(newFilters.collegeProgram)
                 ? newFilters.collegeProgram[0] || ''
                 : newFilters.collegeProgram || ''
 
-            const applied = { ...newFilters, collegeProgram: normalizedCollegeProgram } as FilterState & { collegeProgram?: string; othersRole?: string }
+            // Normalize basicEducationLevel similarly (first selected)
+            const normalizedBasicEdu = Array.isArray(newFilters.basicEducationLevel)
+                ? newFilters.basicEducationLevel[0] || ''
+                : newFilters.basicEducationLevel || ''
+
+            const applied = { ...newFilters, collegeProgram: normalizedCollegeProgram, basicEducationLevel: normalizedBasicEdu } as FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }
             setFilters(applied)
 
             let rolesToSend = [...applied.roles]
@@ -162,6 +168,7 @@ export default function ReportsIndex() {
                     statuses: applied.statuses.length ? applied.statuses : undefined,
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: applied.collegeProgram || undefined,
+                    basicEducationLevel: applied.basicEducationLevel || undefined,
                     perPage: pageSize,
                 },
                 { preserve: true },
@@ -171,7 +178,7 @@ export default function ReportsIndex() {
     )
 
     const resetFilters = useCallback(() => {
-        const empty = { types: [], statuses: [], roles: [], othersRole: '' }
+        const empty = { types: [], statuses: [], roles: [], collegeProgram: '', basicEducationLevel: '', othersRole: '' }
         setFilters(empty)
         setAppliedFilters(empty)
     visit({ search: searchTerm || undefined, page: 1, perPage: pageSize }, { preserve: true })
@@ -193,6 +200,7 @@ export default function ReportsIndex() {
                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                    basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
                     perPage: pageSize,
                 },
                 { preserve: true },
@@ -251,6 +259,7 @@ export default function ReportsIndex() {
                                 collegeProgram={filters.collegeProgram ? [filters.collegeProgram] : []}
                                 othersRole={filters.othersRole}
                                 othersRoles={Array.isArray(initialOthersRoles) ? initialOthersRoles : []}
+                                basicEducationLevel={filters.basicEducationLevel ? [filters.basicEducationLevel] : []}
                                 onChange={(newFilters) => handleFilterChange({ ...filters, ...newFilters })}
                             />
                             <Button variant="secondary" onClick={() => setPrintAllDialogOpen(true)}>
@@ -271,6 +280,7 @@ export default function ReportsIndex() {
                             {appliedFilters.statuses.length ? ' ' + appliedFilters.statuses.map(capitalizeWords).join(', ') : ' All Statuses'} /
                             {appliedFilters.roles.length ? ' ' + appliedFilters.roles.map(capitalizeWords).join(', ') : ' All Roles'}
                             {appliedFilters.roles.includes('college instructor') && appliedFilters.collegeProgram ? ` / ${' '}${appliedFilters.collegeProgram} - ${getCollegeProgramLabel(appliedFilters.collegeProgram)}` : ''}
+                            {appliedFilters.roles.includes('basic education instructor') && appliedFilters.basicEducationLevel ? ` / ${' '}${appliedFilters.basicEducationLevel}` : ''}
                             {appliedFilters.roles.includes('others') && appliedFilters.othersRole ? ` / ${' '}${capitalizeWords(appliedFilters.othersRole)}` : ''}
                         </div>
                     </div>
@@ -295,6 +305,7 @@ export default function ReportsIndex() {
                                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                                     roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
                                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                                    basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
                                     perPage: size,
                                 },
                                 { preserve: true },
@@ -307,7 +318,7 @@ export default function ReportsIndex() {
                     />
 
                     {/* Dialogs from tcc-adjustments */}
-                    <ReportViewDialog employee={viewing} onClose={() => setViewing(null)} activeRoles={appliedFilters.roles} />
+                    <ReportViewDialog employee={viewing} onClose={() => setViewing(null)} />
                     <PrintDialog open={printDialog.open} onClose={() => setPrintDialog({ open: false, employee: null })} employee={printDialog.employee as Employees | null} />
                     <PrintAllDialog open={printAllDialogOpen} onClose={() => setPrintAllDialogOpen(false)} />
                     <AdjustmentDialog

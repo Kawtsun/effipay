@@ -69,6 +69,14 @@ class ReportsController extends Controller
             $query->where('college_program', $request->collegeProgram);
         }
 
+        // Filter by basic education level if set (only when basic education instructor is selected)
+        if ($request->filled('basicEducationLevel') &&
+            $request->filled('roles') &&
+            is_array($request->roles) &&
+            in_array('basic education instructor', $request->roles)) {
+            $query->where('basic_edu_level', $request->basicEducationLevel);
+        }
+
         // Get available custom roles (others roles)
         $othersRoles = [];
         
@@ -199,6 +207,7 @@ class ReportsController extends Controller
                 'statuses' => (array) $request->input('statuses', []),
                 'roles'    => array_values((array) $request->input('roles', [])),
                 'collegeProgram' => $request->input('collegeProgram', ''),
+                'basicEducationLevel' => $request->input('basicEducationLevel', ''),
                 'othersRole' => '', // No longer a separate filter, reset for frontend state
             ],
         ]);

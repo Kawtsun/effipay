@@ -13,6 +13,8 @@ import OthersRolesRadio from './others-roles-radio';
 import OthersRolesScrollArea from './others-roles-scroll-area';
 import { AnimatePresence, motion } from 'framer-motion';
 import FilterScrollArea from './filter-scroll-area';
+import EmployeeBasicEducationLevel from '@/components/employee-basic-education-level'
+import BasicEducationScrollArea from '@/components/basic-education-scroll-area'
 
 interface FilterState {
   types: string[]
@@ -20,6 +22,7 @@ interface FilterState {
   roles: string[]
   collegeProgram?: string[]
   othersRole?: string // NEW
+  basicEducationLevel?: string[] // NEW
 }
 
 interface Props {
@@ -29,6 +32,7 @@ interface Props {
   collegeProgram?: string[]
   othersRole?: string // NEW
   othersRoles?: Array<{ value: string; label: string }> // Available others roles
+  basicEducationLevel?: string[] // NEW
   onChange: (filters: FilterState) => void
   hideTypes?: boolean
   hideStatuses?: boolean
@@ -50,6 +54,7 @@ export default function EmployeeFilter({
   collegeProgram: selectedCollegeProgram = [],
   othersRole: selectedOthersRole = '', // NEW
   othersRoles = [], // NEW
+  basicEducationLevel: selectedBasicEducationLevel = [], // NEW
   onChange,
   hideTypes = false,
   hideStatuses = false,
@@ -63,6 +68,7 @@ export default function EmployeeFilter({
   const [roles, setRoles] = useState<string[]>(selectedRoles)
   const [collegeProgram, setCollegeProgram] = useState<string[]>(selectedCollegeProgram)
   const [othersRole, setOthersRole] = useState<string>(selectedOthersRole) // NEW
+  const [basicEducationLevel, setBasicEducationLevel] = useState<string[]>(selectedBasicEducationLevel) // NEW
 
   const collegeDeptRef = useRef<HTMLDivElement>(null);
   const othersRolesRef = useRef<HTMLDivElement>(null);
@@ -88,6 +94,10 @@ export default function EmployeeFilter({
     setOthersRole(selectedOthersRole)
   }, [selectedOthersRole])
 
+  useEffect(() => {
+    setBasicEducationLevel(selectedBasicEducationLevel)
+  }, [selectedBasicEducationLevel])
+
   // toggle single value in array
   function toggle(arr: string[], val: string): string[] {
     return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
@@ -95,7 +105,7 @@ export default function EmployeeFilter({
 
   // apply and close
   const handleApply = () => {
-    onChange({ types, statuses, roles, collegeProgram, othersRole })
+    onChange({ types, statuses, roles, collegeProgram, othersRole, basicEducationLevel })
     setOpen(false)
   }
 
@@ -106,7 +116,8 @@ export default function EmployeeFilter({
     setRoles([])
     setCollegeProgram([])
     setOthersRole('')
-    onChange({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
+    setBasicEducationLevel([])
+    onChange({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '', basicEducationLevel: [] })
     setOpen(false)
   }
   const activeCount = (hideTypes ? 0 : selectedTypes.length) + (hideStatuses ? 0 : selectedStatuses.length) + selectedRoles.length
@@ -236,6 +247,26 @@ export default function EmployeeFilter({
                 />
                 Basic Education Instructor
               </label>
+              {/* Basic Education Level radio group, only show if basic education instructor is selected */}
+              <AnimatePresence>
+                {roles.includes('basic education instructor') && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    className="pl-4 mt-2"
+                  >
+                    <div className="text-xs font-semibold mb-1">Basic Education Level</div>
+                    <BasicEducationScrollArea>
+                      <EmployeeBasicEducationLevel
+                        value={basicEducationLevel[0] || ''}
+                        onChange={(val) => setBasicEducationLevel(val ? [val] : [])}
+                      />
+                    </BasicEducationScrollArea>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <label className="flex items-center gap-2 text-sm select-none">
                 <Checkbox
                   checked={roles.includes('others')}

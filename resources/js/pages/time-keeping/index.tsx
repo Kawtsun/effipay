@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react'
-type FilterState = { types: string[]; statuses: string[]; roles: string[] }
+type FilterState = { types: string[]; statuses: string[]; roles: string[]; basicEducationLevel?: string; othersRole?: string; collegeProgram?: string }
 import { getCollegeProgramLabel } from '@/constants/college-programs'
 const MIN_SPINNER_MS = 400
 import EmployeeFilter from '@/components/employee-filter'
@@ -159,9 +159,9 @@ export default function TimeKeeping() {
                         const [m, d, y] = s.split('/')
                         iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
                     }
-                    // DD/MM/YYYY
-                    else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
-                        const [d, m, y] = s.split('/')
+                    // DD-MM-YYYY (alternative with dashes)
+                    else if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(s)) {
+                        const [d, m, y] = s.split('-')
                         iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
                     }
                     // Fallback: Date.parse
@@ -213,9 +213,15 @@ export default function TimeKeeping() {
                             for (const m of months) {
                                 sessionStorage.setItem(`salary.imported.${m}`, '1')
                             }
-                        } catch {}
+                        } catch (e) {
+                            console.warn('Unable to persist imported months to sessionStorage', e)
+                        }
                         // Notify other pages (e.g., Payroll) that a new timekeeping import occurred including months
-                        try { window.dispatchEvent(new CustomEvent('timekeeping:imported', { detail: { fileName, months, at: Date.now() } })) } catch {}
+                        try {
+                            window.dispatchEvent(new CustomEvent('timekeeping:imported', { detail: { fileName, months, at: Date.now() } }))
+                        } catch (e) {
+                            console.warn('Unable to dispatch timekeeping imported event', e)
+                        }
                         router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] })
                     } else {
                         let errorMsg = 'Import failed.'
@@ -259,7 +265,7 @@ export default function TimeKeeping() {
         othersRoles?: Array<{ value: string; label: string }>
     }
 
-    const raw = (initialFiltersRaw || {}) as Partial<FilterState & { collegeProgram?: string; othersRole?: string }>
+    const raw = (initialFiltersRaw || {}) as Partial<FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }>
     const initialFilters: FilterState = {
         types: raw.types ?? [],
         statuses: raw.statuses ?? [],
@@ -267,19 +273,22 @@ export default function TimeKeeping() {
     }
     const initialCollegeProgram = raw.collegeProgram ?? ''
     const initialOthersRole = raw.othersRole ?? ''
+    const initialBasicEducationLevel = raw.basicEducationLevel ?? ''
     const [searchTerm, setSearchTerm] = useState(initialSearch)
     const toArray = (val: unknown) => (Array.isArray(val) ? val : val ? [val] : [])
-    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
+    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: initialCollegeProgram,
         othersRole: initialOthersRole,
+        basicEducationLevel: initialBasicEducationLevel,
     })
-    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string }>({
+    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
         collegeProgram: initialCollegeProgram,
         othersRole: initialOthersRole,
+        basicEducationLevel: initialBasicEducationLevel,
     })
     const [loading, setLoading] = useState(true)
     const spinnerStart = useRef<number>(Date.now())
@@ -292,7 +301,7 @@ export default function TimeKeeping() {
 
     // Visit helper
     const visit = useCallback(
-        (params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; othersRole: string; perPage: number }>, options: { preserve?: boolean } = {}) => {
+    (params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; basicEducationLevel: string; othersRole: string; perPage: number }>, options: { preserve?: boolean } = {}) => {
             spinnerStart.current = Date.now()
             setLoading(true)
             router.visit(route('time-keeping.index'), {
@@ -323,6 +332,7 @@ export default function TimeKeeping() {
                     statuses: appliedFilters.statuses.length > 0 ? appliedFilters.statuses : undefined,
                     roles: appliedFilters.roles.length > 0 ? appliedFilters.roles : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                    basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
                     perPage: pageSize,
                 },
                 { preserve: true },
@@ -333,13 +343,18 @@ export default function TimeKeeping() {
 
     // Filter apply
     const handleFilterChange = useCallback(
-        (newFilters: FilterState & { collegeProgram?: string | string[]; othersRole?: string }) => {
+        (newFilters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string | string[]; basicEducationLevel?: string | string[]; othersRole?: string }) => {
             // Normalize collegeProgram to a single string (first selected)
             const normalizedCollegeProgram = Array.isArray(newFilters.collegeProgram)
                 ? newFilters.collegeProgram[0] || ''
                 : newFilters.collegeProgram || ''
 
-            const applied = { ...newFilters, collegeProgram: normalizedCollegeProgram } as FilterState & { collegeProgram?: string; othersRole?: string }
+            // Normalize basicEducationLevel similarly (first selected)
+            const normalizedBasicEdu = Array.isArray(newFilters.basicEducationLevel)
+                ? newFilters.basicEducationLevel[0] || ''
+                : newFilters.basicEducationLevel || ''
+
+            const applied = { ...newFilters, collegeProgram: normalizedCollegeProgram, basicEducationLevel: normalizedBasicEdu } as FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }
             // Immediately reflect in local UI state
             setFilters(applied)
 
@@ -361,6 +376,7 @@ export default function TimeKeeping() {
                     statuses: applied.statuses.length ? applied.statuses : undefined,
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: (applied as { collegeProgram?: string }).collegeProgram || undefined,
+                    basicEducationLevel: (applied as { basicEducationLevel?: string }).basicEducationLevel || undefined,
                     perPage: pageSize,
                 },
                 { preserve: true },
@@ -371,7 +387,7 @@ export default function TimeKeeping() {
 
     // Reset filters
     const resetFilters = useCallback(() => {
-        const empty = { types: [], statuses: [], roles: [], collegeProgram: '', othersRole: '' }
+        const empty = { types: [], statuses: [], roles: [], collegeProgram: '', basicEducationLevel: '', othersRole: '' }
         setFilters(empty)
         setAppliedFilters(empty)
     visit({ search: searchTerm || undefined, page: 1, perPage: pageSize }, { preserve: true })
@@ -395,6 +411,7 @@ export default function TimeKeeping() {
                     statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
                     roles: rolesToSend.length ? rolesToSend : undefined,
                     collegeProgram: appliedFilters.collegeProgram || undefined,
+                    basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
                     // othersRole is now part of the 'roles' array, no need to send separately
                     perPage: pageSize,
                 },
@@ -454,9 +471,20 @@ export default function TimeKeeping() {
                                 onChange={(newFilters) => {
                                     const cp = Array.isArray(newFilters.collegeProgram)
                                         ? (newFilters.collegeProgram[0] ?? '')
-                                        : (newFilters.collegeProgram as unknown as string) || ''
-                                    handleFilterChange({ ...(filters as any), ...(newFilters as any), collegeProgram: cp })
+                                        : (newFilters.collegeProgram ? newFilters.collegeProgram : '')
+                                    const be = Array.isArray(newFilters.basicEducationLevel)
+                                        ? (newFilters.basicEducationLevel[0] ?? '')
+                                        : (newFilters.basicEducationLevel ? newFilters.basicEducationLevel : '')
+                                    handleFilterChange({
+                                        types: newFilters.types,
+                                        statuses: newFilters.statuses,
+                                        roles: newFilters.roles,
+                                        othersRole: newFilters.othersRole,
+                                        collegeProgram: cp,
+                                        basicEducationLevel: be,
+                                    })
                                 }}
+                                basicEducationLevel={filters.basicEducationLevel ? [filters.basicEducationLevel] : []}
                             />
                             <Button variant="secondary" type="button" onClick={() => setCalendarOpen(true)}>
                                 <Calendar />
@@ -481,6 +509,7 @@ export default function TimeKeeping() {
                             {appliedFilters.statuses.length ? ' ' + appliedFilters.statuses.map(capitalizeWords).join(', ') : ' All Statuses'} /
                             {appliedFilters.roles.length ? ' ' + appliedFilters.roles.map(capitalizeWords).join(', ') : ' All Roles'}
                             {appliedFilters.roles.includes('college instructor') && appliedFilters.collegeProgram ? ` / ${' '}${appliedFilters.collegeProgram} - ${getCollegeProgramLabel(appliedFilters.collegeProgram)}` : ''}
+                            {appliedFilters.roles.includes('basic education instructor') && appliedFilters.basicEducationLevel ? ` / ${' '}${appliedFilters.basicEducationLevel}` : ''}
                             {appliedFilters.roles.includes('others') && appliedFilters.othersRole ? ` / ${' '}${capitalizeWords(appliedFilters.othersRole)}` : ''}
                         </div>
                     </div>
