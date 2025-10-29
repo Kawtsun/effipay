@@ -49,6 +49,10 @@ class PayrollController extends Controller
         }
         $createdCount = 0;
         foreach ($employees as $employee) {
+            // Reset branch-scoped variables per employee to avoid bleed-over between iterations
+            $college_rate = null;
+            $overtime_hours = 0; $tardiness = 0; $undertime = 0; $absences = 0; $overtime_pay = 0;
+            $honorarium = 0; $base_salary = 0; $sss = 0.0; $philhealth = 0.0; $pag_ibig = 0.0; $withholding_tax = 0.0;
 
             $existingPayrolls = \App\Models\Payroll::where('employee_id', $employee->id)
                 ->where('month', $payrollMonth)
@@ -96,11 +100,12 @@ class PayrollController extends Controller
             // Compute monthly metrics using the same logic as Attendance Cards
             $metrics = $this->computeMonthlyMetricsPHP($employee, $payrollMonth);
 
-            // Check if employee is a College Instructor (case-insensitive, substring match)
-            $isCollegeInstructor = false;
-            if (isset($employee->roles) && is_string($employee->roles) && stripos($employee->roles, 'college instructor') !== false) {
-                $isCollegeInstructor = true;
-            }
+            // Determine if college logic should apply:
+            // - Prefer presence of a college_rate value in employees table
+            // - Also consider role text containing 'college' for backward compatibility
+            $hasCollegeRate = isset($employee->college_rate) && $employee->college_rate !== null && floatval($employee->college_rate) > 0;
+            $hasCollegeRoleText = isset($employee->roles) && is_string($employee->roles) && stripos($employee->roles, 'college') !== false;
+            $isCollegeInstructor = $hasCollegeRate || $hasCollegeRoleText;
 
             if ($isCollegeInstructor) {
                 // Use college_rate for all calculations
@@ -240,7 +245,8 @@ class PayrollController extends Controller
                 'month' => $payrollMonth,
                 'payroll_date' => $payrollDateStr,
                 'base_salary' => $base_salary,
-                'college_rate' => isset($college_rate) ? $college_rate : null,
+                // Only set college_rate for college instructors; otherwise force NULL
+                'college_rate' => $isCollegeInstructor ? $college_rate : null,
                 'honorarium' => $honorarium,
                 'overtime' => $overtime_hours,
                 'tardiness' => $tardiness,
@@ -287,7 +293,7 @@ class PayrollController extends Controller
                     'date'        => now('Asia/Manila'),
                 ]);
             } catch (\Throwable $e) {
-                \Log::warning('Failed to write audit log for payroll run: ' . $e->getMessage());
+                Log::warning('Failed to write audit log for payroll run: ' . $e->getMessage());
             }
             return redirect()->back()->with('flash', 'Payroll run successfully for ' . date('F Y', strtotime($payrollDateStr)) . '. Payroll records created: ' . $createdCount);
         } else {
@@ -596,7 +602,7 @@ class PayrollController extends Controller
                 'date'        => now('Asia/Manila'),
             ]);
         } catch (\Throwable $e) {
-            \Log::warning('Failed to write audit log for 13th month pay run: ' . $e->getMessage());
+            Log::warning('Failed to write audit log for 13th month pay run: ' . $e->getMessage());
         }
 
         return redirect()->back()->with('flash', ['message' => '13th Month Pay has been added to the payroll of ' . $payrollDate->format('F d, Y') . ' for ' . $createdCount . ' employees.']);
@@ -820,7 +826,7 @@ class PayrollController extends Controller
                 'date'        => now('Asia/Manila'),
             ]);
         } catch (\Throwable $e) {
-            \Log::warning('Failed to write audit log for payroll export: ' . $e->getMessage());
+            Log::warning('Failed to write audit log for payroll export: ' . $e->getMessage());
         }
 
         // Pass the selected month to your Excel export class
@@ -891,7 +897,7 @@ class PayrollController extends Controller
                 'date'        => now('Asia/Manila'),
             ]);
         } catch (\Throwable $e) {
-            \Log::warning('Failed to write audit log for payroll adjustment: ' . $e->getMessage());
+            Log::warning('Failed to write audit log for payroll adjustment: ' . $e->getMessage());
         }
 
         return response()->json([
