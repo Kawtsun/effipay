@@ -10,6 +10,7 @@ export type TimeKeepingMetrics = {
   absences: number;
   overtime_count_weekdays: number;
   overtime_count_weekends: number;
+  overtime_count_observances: number;
   total_hours: number;
   // Added pay context so UI can compute peso values consistently
   rate_per_hour?: number;
@@ -339,7 +340,9 @@ export function TimeKeepingDataProvider({
       const durationMin = Math.max(0, raw - 60); // minus 1 hour break to match schedule display
       const roleStr = String(wd.role ?? '').toLowerCase();
       const fromCollegeRole = roleStr.includes('college instructor');
-      const codeKey = wd.day;
+      // Normalize weekday key to match codeFromDate mapping (mon..sun)
+      const codeKey = normalizeDayKey(wd.day);
+      if (!codeKey) continue;
       if (!schedByCode[codeKey]) {
         schedByCode[codeKey] = { start, end, durationMin, isCollege: fromCollegeRole };
       } else {
@@ -375,7 +378,9 @@ export function TimeKeepingDataProvider({
             // Keep the time-based duration as-is and store extra college-only duration separately.
             const existing = schedByCode[code];
             existing.extraCollegeDurMin = (existing.extraCollegeDurMin ?? 0) + mins;
-            existing.isCollege = Boolean(existing.isCollege || true);
+            // IMPORTANT: Do NOT flip the time-based schedule to 'college'.
+            // 'isCollege' should only be true when the explicit time-based schedule came from a College Instructor role.
+            // Presence of extra college hours is tracked by 'extraCollegeDurMin' and should not alter isCollege.
           }
         };
         if (Array.isArray(collegeSchedulesRaw)) {
@@ -414,9 +419,10 @@ export function TimeKeepingDataProvider({
   let tardMin = 0;
     let underMin = 0;
     let absentMin = 0;
-    let otMin = 0;
-    let otWeekdayMin = 0;
-    let otWeekendMin = 0;
+  let otMin = 0;
+  let otWeekdayMin = 0;
+  let otWeekendMin = 0;
+  let otObservanceMin = 0;
     let totalWorkedMin = 0;
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -486,13 +492,13 @@ export function TimeKeepingDataProvider({
           continue;
         }
 
-        // WHOLE-DAY: No absences/tardy/undertime; any work counts as overtime (weekend bucket)
+        // WHOLE-DAY: No absences/tardy/undertime; any work counts as overtime (observance is non-working -> double pay bucket)
         if (obsInfo.isWhole) {
           // Whole-day observance: no expectation; full clocked hours are overtime
           if (hasBoth) {
             totalWorkedMin += workedRaw;
             otMin += workedRaw;
-            otWeekendMin += workedRaw;
+            otObservanceMin += workedRaw;
           }
           continue;
         }
@@ -502,7 +508,7 @@ export function TimeKeepingDataProvider({
           if (hasBoth) {
             totalWorkedMin += workedRaw;
             otMin += workedRaw;
-            if (code === 'sat' || code === 'sun') otWeekendMin += workedRaw; else otWeekdayMin += workedRaw;
+            otObservanceMin += workedRaw; // observance treated as double pay bucket
           }
           continue;
         }
@@ -520,7 +526,12 @@ export function TimeKeepingDataProvider({
           continue;
         }
 
-        if (isCollegeOnly || (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > 0))) {
+        // College-dominant expectation rule:
+        // - College-only employees
+        // - OR multi-role days where the time-based schedule is from College, OR the extra college hours exceed the admin span.
+        // In those cases, treat shortfall as Absences (college policy) and suppress tardiness/undertime.
+        // Otherwise (e.g., admin span >= extra college hours), compute regular tardiness/undertime for the admin schedule.
+        if (isCollegeOnly || (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > sched.durationMin))) {
           // College-only: treat shortfall as absence; suppress tardiness/undertime/OT
           const expected = (isCollegeMulti && (sched.extraCollegeDurMin ?? 0) > 0)
             ? Math.max(sched.durationMin, sched.extraCollegeDurMin || 0)
@@ -531,7 +542,7 @@ export function TimeKeepingDataProvider({
           if (!isCollegeOnly) {
             const over = Math.max(0, workedMinusBreak - expected);
             otMin += over;
-            otWeekdayMin += over;
+            if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
           }
           continue;
         }
@@ -551,7 +562,7 @@ export function TimeKeepingDataProvider({
         tardMin += tard;
         underMin += under;
         otMin += over;
-        otWeekdayMin += over;
+        if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
       } else {
         // Not scheduled day (weekend or off)
         if (hasBoth) {
@@ -560,7 +571,7 @@ export function TimeKeepingDataProvider({
           totalWorkedMin += workedMinusBreak;
           if (!isCollegeOnly) {
             otMin += workedMinusBreak;
-            otWeekendMin += workedMinusBreak;
+            if (code === 'sat' || code === 'sun') otWeekendMin += workedMinusBreak; else otWeekdayMin += workedMinusBreak;
           }
         }
       }
@@ -603,6 +614,7 @@ export function TimeKeepingDataProvider({
       absences: toH(absentMin),
       overtime_count_weekdays: toH(otWeekdayMin),
       overtime_count_weekends: toH(otWeekendMin),
+      overtime_count_observances: toH(otObservanceMin),
       total_hours: toH(totalWorkedMin),
       rate_per_hour: ratePerHour,
       rate_per_day: ratePerDay,

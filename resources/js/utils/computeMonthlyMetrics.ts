@@ -18,6 +18,7 @@ export type MonthlyMetrics = {
   absences: number;
   overtime_count_weekdays: number;
   overtime_count_weekends: number;
+  overtime_count_observances: number;
   total_hours: number;
 };
 
@@ -84,6 +85,19 @@ export async function computeMonthlyMetrics(
     work_end_time: wd?.work_end_time || undefined,
   })) : [];
 
+  const normalizeDayKey = (raw?: string | null) => {
+    const s = String(raw ?? '').trim().toLowerCase();
+    if (!s) return '';
+    if (["mon","monday"].includes(s)) return "mon";
+    if (["tue","tuesday"].includes(s)) return "tue";
+    if (["wed","wednesday"].includes(s)) return "wed";
+    if (["thu","thursday"].includes(s)) return "thu";
+    if (["fri","friday"].includes(s)) return "fri";
+    if (["sat","saturday"].includes(s)) return "sat";
+    if (["sun","sunday"].includes(s)) return "sun";
+    return s;
+  };
+
   const schedByCode: Record<string, { start: number; end: number; durationMin: number }> = {};
   for (const wd of workDays) {
     const start = hmToMin(wd.work_start_time || undefined);
@@ -91,7 +105,9 @@ export async function computeMonthlyMetrics(
     if (Number.isNaN(start) || Number.isNaN(end)) continue;
     const raw = diffMin(start, end);
     const durationMin = Math.max(0, raw - 60); // minus 1 hour break
-    schedByCode[wd.day] = { start, end, durationMin };
+    const codeKey = normalizeDayKey(wd.day);
+    if (!codeKey) continue;
+    schedByCode[codeKey] = { start, end, durationMin };
   }
 
   // Map records by date
@@ -130,6 +146,7 @@ export async function computeMonthlyMetrics(
   let otMin = 0;
   let otWeekdayMin = 0;
   let otWeekendMin = 0;
+  let otObservanceMin = 0;
   let totalWorkedMin = 0;
 
   for (let day = 1; day <= daysInMonth; day++) {
@@ -152,7 +169,7 @@ export async function computeMonthlyMetrics(
         totalWorkedMin += workedMinusBreak;
         if (hasBoth) {
           otMin += workedMinusBreak;
-          otWeekendMin += workedMinusBreak;
+          otObservanceMin += workedMinusBreak; // Observance: double pay bucket
         }
         continue;
       }
@@ -176,7 +193,7 @@ export async function computeMonthlyMetrics(
         tardMin += tard;
         underMin += under;
         otMin += over;
-        otWeekdayMin += over;
+        otObservanceMin += over; // Observance: double pay bucket
         continue;
       }
 
@@ -202,7 +219,7 @@ export async function computeMonthlyMetrics(
       tardMin += tard;
       underMin += under;
       otMin += over;
-      otWeekdayMin += over;
+      if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
     } else {
       // Non-scheduled day (weekend/off)
       if (hasBoth) {
@@ -210,7 +227,7 @@ export async function computeMonthlyMetrics(
         const workedMinusBreak = Math.max(0, workedRaw - 60);
         totalWorkedMin += workedMinusBreak;
         otMin += workedMinusBreak;
-        otWeekendMin += workedMinusBreak;
+        if (code === 'sat' || code === 'sun') otWeekendMin += workedMinusBreak; else otWeekdayMin += workedMinusBreak;
       }
     }
   }
@@ -222,6 +239,7 @@ export async function computeMonthlyMetrics(
     absences: toH(absentMin),
     overtime_count_weekdays: toH(otWeekdayMin),
     overtime_count_weekends: toH(otWeekendMin),
+    overtime_count_observances: toH(otObservanceMin),
     total_hours: toH(totalWorkedMin),
   };
 }
