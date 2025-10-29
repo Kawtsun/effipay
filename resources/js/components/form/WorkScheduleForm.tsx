@@ -66,6 +66,7 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
         [nonCollegeRoles]
     );
 
+    /* TEMP: Disable auto-clearing schedules on role/college changes for debugging
     // When roles change, proactively drop any work_days entries that belong to roles
     // which are no longer selected. This prevents old schedules (e.g., Administrator)
     // from being re-submitted after switching to another role (e.g., Basic Education).
@@ -121,6 +122,7 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [rolesArr.join(','), isCollegeRole]);
+    */
 
     // Program list (canonical order) for per-program inputs
     // canonical program order via shared constant
@@ -321,6 +323,7 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                                                         clearErrors(key);
                                                                     }
 
+                                                                    /* TEMP: Disable auto-clearing college hours when program has no days
                                                                     // If no work days remain for this program, also clear its hours and related errors
                                                                     if (!days || days.length === 0) {
                                                                         const hoursMap = {
@@ -335,6 +338,7 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                                                             clearErrors(hoursKey);
                                                                         }
                                                                     }
+                                                                    */
                                                                 }}
                                                                 errors={errors as Record<string, string>}
                                                             />
