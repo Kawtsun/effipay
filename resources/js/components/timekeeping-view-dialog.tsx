@@ -63,12 +63,12 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     // Calculate gross pay including overtime (for display)
     function getOvertimePay() {
         if (!summary) return 0;
-        const isCollegeInstructor = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
-        const ratePerHour = isCollegeInstructor ? Number(summary.college_rate ?? 0) : Number(summary.rate_per_hour ?? 0);
+        // Overtime must use the base-salary derived rate per hour, never the college rate
+        const baseRatePerHour = Number(summary.rate_per_hour ?? 0);
         const weekdayOvertime = Number(summary.overtime_count_weekdays ?? 0);
         const weekendOvertime = Number(summary.overtime_count_weekends ?? 0);
-        const weekdayPay = ratePerHour * 0.25 * weekdayOvertime;
-        const weekendPay = ratePerHour * 0.30 * weekendOvertime;
+        const weekdayPay = baseRatePerHour * 0.25 * weekdayOvertime;
+        const weekendPay = baseRatePerHour * 0.30 * weekendOvertime;
         return weekdayPay + weekendPay;
     }
 

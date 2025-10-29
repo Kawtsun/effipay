@@ -280,12 +280,12 @@ export function ReportDataProvider({
 
       // Non-college hourly rate for deductions and OT
       const nonCollegeRate = (() => {
-        const rTK = Number(tkComputed?.rate_per_hour ?? NaN);
-        if (Number.isFinite(rTK) && rTK > 0) return Number(rTK.toFixed(2));
+        const rSum = Number(timekeepingSummary?.rate_per_hour ?? NaN);
+        if (Number.isFinite(rSum) && rSum > 0) return Number(rSum.toFixed(2));
         const rSP = Number((selectedPayroll as any)?.rate_per_hour ?? NaN);
         if (Number.isFinite(rSP) && rSP > 0) return Number(rSP.toFixed(2));
-        const rTS = Number(timekeepingSummary?.rate_per_hour ?? NaN);
-        return Number.isFinite(rTS) && rTS > 0 ? Number(rTS.toFixed(2)) : 0;
+        const rTK = Number(tkComputed?.rate_per_hour ?? NaN);
+        return Number.isFinite(rTK) && rTK > 0 ? Number(rTK.toFixed(2)) : 0;
       })();
 
       // Overtime pay using the same rule as summary cards
@@ -310,16 +310,16 @@ export function ReportDataProvider({
     const tk = (tkComputed || timekeepingSummary) as (EmployeePayrollSummary | null | undefined);
     const payroll = selectedPayroll;
 
-    // Resolve hourly rate
-    const rate = (() => {
-      const rTK = Number(tk?.rate_per_hour ?? NaN);
-      if (Number.isFinite(rTK) && rTK > 0) return Number(rTK.toFixed(2));
-      if (isCollegeInstructorPayroll) {
-        const rP = Number(payroll?.college_rate ?? NaN);
-        if (Number.isFinite(rP) && rP > 0) return Number(rP.toFixed(2));
-      }
+    // Resolve hourly rate for monetary conversions
+    // IMPORTANT: Overtime must use the base-salary derived rate_per_hour, never the college rate.
+    const baseRatePerHour = (() => {
+      const rSum = Number(timekeepingSummary?.rate_per_hour ?? NaN);
+      if (Number.isFinite(rSum) && rSum > 0) return Number(rSum.toFixed(2));
       const rPH = Number(payroll?.rate_per_hour ?? NaN);
-      return Number.isFinite(rPH) && rPH > 0 ? Number(rPH.toFixed(2)) : 0;
+      if (Number.isFinite(rPH) && rPH > 0) return Number(rPH.toFixed(2));
+      // final fallback: if tkComputed provided a non-college rate (rare), use it
+      const rTK = Number(tkComputed?.rate_per_hour ?? NaN);
+      return Number.isFinite(rTK) && rTK > 0 ? Number(rTK.toFixed(2)) : 0;
     })();
 
     if (type === "overtime") {
@@ -332,9 +332,9 @@ export function ReportDataProvider({
       const observanceOT = Number.isFinite(Number(tk?.overtime_count_observances))
         ? Number(Number(tk?.overtime_count_observances).toFixed(2))
         : Number(Number(payroll?.overtime_count_observances ?? 0).toFixed(2));
-      const weekdayPay = rate * 0.25 * weekdayOT;
-      const weekendPay = rate * 0.30 * weekendOT;
-      const observancePay = rate * 2.00 * observanceOT; // double pay
+      const weekdayPay = baseRatePerHour * 0.25 * weekdayOT;
+      const weekendPay = baseRatePerHour * 0.30 * weekendOT;
+      const observancePay = baseRatePerHour * 2.00 * observanceOT; // double pay
       const overtimePay = weekdayPay + weekendPay + observancePay;
       return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
@@ -356,7 +356,7 @@ export function ReportDataProvider({
       }
       return 0;
     })();
-    const amount = rate * hours;
+    const amount = baseRatePerHour * hours;
     return `₱${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }, [isCollegeInstructorPayroll, selectedPayroll, timekeepingSummary, tkComputed]);
 
