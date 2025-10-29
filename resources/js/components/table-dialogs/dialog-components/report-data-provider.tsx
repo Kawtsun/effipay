@@ -3,6 +3,7 @@ import { Employees } from "@/types";
 import { toast } from "sonner";
 import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { useTimekeepingComputed } from "@/hooks/useTimekeepingComputed";
+import type { TimeRecordLike } from "@/utils/computeMonthlyMetrics";
 
 // Types copied from current Report View Dialog for parity
 export interface PayrollData {
@@ -331,11 +332,19 @@ export function ReportDataProvider({
       return typeof pr === 'number' ? pr : null;
     })();
     const honorarium = selectedPayroll?.honorarium ?? null;
-    const total_hours = (timekeepingSummary && typeof timekeepingSummary.total_hours === 'number')
-      ? timekeepingSummary.total_hours
-      : null;
+    // Prefer computed total hours (same source as Timekeeping view); fall back to summary if needed
+    const total_hours = (() => {
+      const tkH = (tkComputed && typeof (tkComputed as { total_hours?: unknown })?.total_hours === 'number')
+        ? Number((tkComputed as { total_hours?: number }).total_hours)
+        : NaN;
+      if (Number.isFinite(tkH)) return tkH;
+      const sumH = (timekeepingSummary && typeof (timekeepingSummary as { total_hours?: unknown })?.total_hours === 'number')
+        ? Number((timekeepingSummary as { total_hours?: number }).total_hours)
+        : NaN;
+      return Number.isFinite(sumH) ? sumH : null;
+    })();
     return { base_salary, college_rate, honorarium, total_hours };
-  }, [selectedPayroll, timekeepingSummary]);
+  }, [selectedPayroll, timekeepingSummary, tkComputed]);
 
   // Helper to return hour counts for the summary cards (used for hover swap in UI)
   const getSummaryCardHours = React.useCallback((type: "tardiness" | "undertime" | "overtime" | "absences") => {
