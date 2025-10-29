@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Filter } from "lucide-react"
+import { Filter, X } from "lucide-react"
 import { employee_status, leave_statuses } from "./employee-status"
 import { Badge } from "./ui/badge"
 import EmployeeCollegeCheckboxDepartment from './employee-college-checkbox-department';
@@ -73,6 +73,16 @@ export default function EmployeeFilter({
   const collegeDeptRef = useRef<HTMLDivElement>(null);
   const othersRolesRef = useRef<HTMLDivElement>(null);
 
+  // helpers
+  const arraysEqual = (a: string[] = [], b: string[] = []) => a.length === b.length && a.every(x => b.includes(x))
+  const draftChanged =
+    !arraysEqual(types, selectedTypes) ||
+    !arraysEqual(statuses, selectedStatuses) ||
+    !arraysEqual(roles, selectedRoles) ||
+    !arraysEqual(collegeProgram, selectedCollegeProgram) ||
+    (othersRole || '') !== (selectedOthersRole || '') ||
+    !arraysEqual(basicEducationLevel, selectedBasicEducationLevel)
+
   // sync draft when parent resets
   useEffect(() => {
     setTypes(selectedTypes)
@@ -120,7 +130,13 @@ export default function EmployeeFilter({
     onChange({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '', basicEducationLevel: [] })
     setOpen(false)
   }
-  const activeCount = (hideTypes ? 0 : selectedTypes.length) + (hideStatuses ? 0 : selectedStatuses.length) + selectedRoles.length
+  const activeCount =
+    (hideTypes ? 0 : selectedTypes.length) +
+    (hideStatuses ? 0 : selectedStatuses.length) +
+    selectedRoles.length +
+    (selectedCollegeProgram?.length || 0) +
+    (selectedBasicEducationLevel?.length || 0) +
+    (selectedOthersRole ? 1 : 0)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -142,9 +158,72 @@ export default function EmployeeFilter({
 
       <PopoverContent className={`${compact ? 'w-64 h-[360px]' : 'w-76 h-[500px]'} p-0 flex flex-col`}>
         <FilterScrollArea className="flex-1 p-4 space-y-5">
+          {/* Active selections summary chips */}
+          {(types.length > 0 || statuses.length > 0 || roles.length > 0 || collegeProgram.length > 0 || basicEducationLevel.length > 0 || !!othersRole) && (
+            <div className="mb-1">
+              <div className="text-xs text-muted-foreground mb-1 select-none">Selected</div>
+              <div className="flex flex-wrap gap-1.5">
+                {types.map((t) => (
+                  <span key={`t-${t}`} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                    {t}
+                    <button aria-label={`Remove ${t}`} className="opacity-70 hover:opacity-100" onClick={() => setTypes(types.filter(x => x !== t))}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {statuses.map((s) => (
+                  <span key={`s-${s}`} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                    {s}
+                    <button aria-label={`Remove ${s}`} className="opacity-70 hover:opacity-100" onClick={() => setStatuses(statuses.filter(x => x !== s))}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {roles.map((r) => (
+                  <span key={`r-${r}`} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                    {r}
+                    <button aria-label={`Remove ${r}`} className="opacity-70 hover:opacity-100" onClick={() => setRoles(roles.filter(x => x !== r))}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {collegeProgram.map((cp) => (
+                  <span key={`cp-${cp}`} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                    {cp}
+                    <button aria-label={`Remove ${cp}`} className="opacity-70 hover:opacity-100" onClick={() => setCollegeProgram(collegeProgram.filter(x => x !== cp))}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {basicEducationLevel.map((be) => (
+                  <span key={`be-${be}`} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                    {be}
+                    <button aria-label={`Remove ${be}`} className="opacity-70 hover:opacity-100" onClick={() => setBasicEducationLevel([])}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {othersRole && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                    {`Others: ${othersRole}`}
+                    <button aria-label={`Clear others role`} className="opacity-70 hover:opacity-100" onClick={() => setOthersRole('')}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           {!hideTypes && (
           <div className="my-2">
-            <h4 className="text-sm font-semibold mb-1 select-none">Employee Type</h4>
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-sm font-semibold select-none">Employee Type{types.length ? ` (${types.length})` : ''}</h4>
+              <div className="text-[11px] text-muted-foreground flex items-center gap-2 select-none">
+                <button className="hover:underline" onClick={() => setTypes(employee_type.map(e => e.value))}>Select all</button>
+                <span>·</span>
+                <button className="hover:underline" onClick={() => setTypes([])}>Clear</button>
+              </div>
+            </div>
             <p className="text-xs text-muted-foreground mb-2 select-none">
               Select one or more types to filter by employment classification.
             </p>
@@ -163,7 +242,14 @@ export default function EmployeeFilter({
 
           {!hideStatuses && (
           <div className="my-2">
-            <h4 className="text-sm font-semibold mb-1 select-none">Employee Status</h4>
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-sm font-semibold select-none">Employee Status{statuses.length ? ` (${statuses.length})` : ''}</h4>
+              <div className="text-[11px] text-muted-foreground flex items-center gap-2 select-none">
+                <button className="hover:underline" onClick={() => setStatuses([...employee_status.map(e => e.value), ...leave_statuses.map(e => e.value)])}>Select all</button>
+                <span>·</span>
+                <button className="hover:underline" onClick={() => setStatuses([])}>Clear</button>
+              </div>
+            </div>
             <p className="text-xs text-muted-foreground mb-2 select-none">
               Filter employees by their current work status.
             </p>
@@ -192,7 +278,12 @@ export default function EmployeeFilter({
           )}
 
           <div className="my-2">
-            <h4 className="text-sm font-semibold mb-1 select-none">Roles</h4>
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-sm font-semibold select-none">Roles{roles.length ? ` (${roles.length})` : ''}</h4>
+              <div className="text-[11px] text-muted-foreground flex items-center gap-2 select-none">
+                <button className="hover:underline" onClick={() => setRoles([])}>Clear</button>
+              </div>
+            </div>
             <p className="text-xs text-muted-foreground mb-2 select-none">
               Filter by employee roles.
             </p>
@@ -344,7 +435,7 @@ export default function EmployeeFilter({
           <Button variant="ghost" size="sm" onClick={handleReset}>
             Reset
           </Button>
-          <Button size="sm" onClick={handleApply}>
+          <Button size="sm" onClick={handleApply} disabled={!draftChanged}>
             Apply
           </Button>
         </div>
