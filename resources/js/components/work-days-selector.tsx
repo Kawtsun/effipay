@@ -46,21 +46,28 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
     const defaultEnd = '16:00';
 
     const isSelected = (key: string) => value.some(d => d.day === key);
-    const allWeekdays = WEEKDAYS.map(d => d.key);
-    const allWeekends = WEEKENDS.map(d => d.key);
+    // Ensure we always render and operate on a Monday->Sunday sorted copy of the incoming value.
+    const sortedValue = React.useMemo(
+        () => [...value].sort((a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)),
+        [value]
+    );
+
+    const isSelectedSorted = (key: string) => sortedValue.some(d => d.day === key);
+    const allWeekdays = WEEKDAYS; // already keys
+    const allWeekends = WEEKENDS; // already keys
     const allDays = [...allWeekdays, ...allWeekends];
 
-    const areAllWeekdays = WEEKDAYS.every(k => isSelected(k));
-    const areAllWeekends = WEEKENDS.every(k => isSelected(k));
-    const areAllDays = ALL_DAYS.map(d => d.key).every(k => isSelected(k));
+    const areAllWeekdays = WEEKDAYS.every(k => isSelectedSorted(k));
+    const areAllWeekends = WEEKENDS.every(k => isSelectedSorted(k));
+    const areAllDays = ALL_DAYS.map(d => d.key).every(k => isSelectedSorted(k));
 
     // Add or remove a day
     const toggleDay = (key: string) => {
-        if (isSelected(key)) {
-            onChange(value.filter(d => d.day !== key));
+        if (isSelectedSorted(key)) {
+            onChange(sortedValue.filter(d => d.day !== key));
         } else {
             onChange(
-                [...value, { day: key, work_start_time: defaultStart, work_end_time: defaultEnd }].sort(
+                [...sortedValue, { day: key, work_start_time: defaultStart, work_end_time: defaultEnd }].sort(
                     (a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)
                 )
             );
@@ -73,7 +80,7 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
         } else {
             onChange(
                 ALL_DAYS.map(day => {
-                    const found = value.find(d => d.day === day.key);
+                    const found = sortedValue.find(d => d.day === day.key);
                     return found || { day: day.key, work_start_time: defaultStart, work_end_time: defaultEnd };
                 })
             );
@@ -84,9 +91,9 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
         if (areAllWeekdays) {
             onChange(value.filter(d => !WEEKDAYS.includes(d.day)));
         } else {
-            const weekends = value.filter(d => WEEKENDS.includes(d.day));
+            const weekends = sortedValue.filter(d => WEEKENDS.includes(d.day));
             const weekdays = WEEKDAYS.map(day => {
-                const found = value.find(d => d.day === day);
+                const found = sortedValue.find(d => d.day === day);
                 return found || { day, work_start_time: defaultStart, work_end_time: defaultEnd };
             });
             onChange([...weekdays, ...weekends].sort((a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)));
@@ -97,9 +104,9 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
         if (areAllWeekends) {
             onChange(value.filter(d => !WEEKENDS.includes(d.day)));
         } else {
-            const weekdays = value.filter(d => WEEKDAYS.includes(d.day));
+            const weekdays = sortedValue.filter(d => WEEKDAYS.includes(d.day));
             const weekends = WEEKENDS.map(day => {
-                const found = value.find(d => d.day === day);
+                const found = sortedValue.find(d => d.day === day);
                 return found || { day, work_start_time: defaultStart, work_end_time: defaultEnd };
             });
             onChange([...weekdays, ...weekends].sort((a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)));
@@ -108,18 +115,18 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
     const clearAll = () => onChange([]);
 
     // Navigation helpers and time setter for selected day
-    const hasDays = value.length > 0;
-    const currentDay = hasDays ? value[selectedIndex] : undefined;
+    const hasDays = sortedValue.length > 0;
+    const currentDay = hasDays ? sortedValue[selectedIndex] : undefined;
 
     React.useEffect(() => {
-        if (value.length > 0 && selectedIndex >= value.length) {
-            onSelectIndex(value.length - 1);
+        if (sortedValue.length > 0 && selectedIndex >= sortedValue.length) {
+            onSelectIndex(sortedValue.length - 1);
         }
-    }, [value, selectedIndex, onSelectIndex]);
+    }, [sortedValue, selectedIndex, onSelectIndex]);
 
     const setTime = (field: 'work_start_time' | 'work_end_time', time: string) => {
         if (!currentDay) return;
-        onChange(value.map((d, i) => (i === selectedIndex ? { ...d, [field]: time } : d)));
+        onChange(sortedValue.map((d, i) => (i === selectedIndex ? { ...d, [field]: time } : d)));
     };
 
     const formatTime12Hour = (time: string) => {
@@ -205,11 +212,11 @@ export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex
 
                         <Tabs
                             value={currentDay?.day}
-                            onValueChange={day => onSelectIndex(value.findIndex(d => d.day === day))}
+                            onValueChange={day => onSelectIndex(sortedValue.findIndex(d => d.day === day))}
                             className="w-full"
                         >
                             <TabsList>
-                                {value.map(d => (
+                                {sortedValue.map(d => (
                                     <TabsTrigger key={d.day} value={d.day}>
                                         {d.day.toUpperCase()}
                                     </TabsTrigger>
