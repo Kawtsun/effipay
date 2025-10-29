@@ -58,6 +58,7 @@ export interface Employees {
     philhealth: number;
     pag_ibig: number;
     college_program?: string;
+    basic_edu_level?: string;
     withholding_tax: number;
     sss_salary_loan?: number;
     sss_calamity_loan?: number;

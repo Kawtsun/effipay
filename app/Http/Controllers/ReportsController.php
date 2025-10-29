@@ -146,6 +146,9 @@ class ReportsController extends Controller
                 'employee_types' => $emp->employee_types,
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
+                // Expose basic education level for dialogs (support both keys used in UI)
+                'basic_edu_level' => $emp->basic_edu_level ?? null,
+                'basic_education_level' => $emp->basic_edu_level ?? null,
                 'base_salary' => $base_salary,
                 'overtime_pay_total' => $overtime_pay_total,
                 'sss' => $sss,
