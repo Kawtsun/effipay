@@ -118,6 +118,13 @@ class PayrollController extends Controller
                 $weekday_ot = $metrics['overtime_count_weekdays'];
                 $weekend_ot = $metrics['overtime_count_weekends'];
                 $overtime_pay = isset($summaryData['overtime_pay_total']) ? floatval($summaryData['overtime_pay_total']) : 0;
+                // College instructors work by hourly schedule only: they should not have
+                // tardiness, undertime, or overtime adjustments applied to gross pay.
+                // Keep absences, which still reduce pay.
+                $tardiness = 0;
+                $undertime = 0;
+                $overtime_hours = 0;
+                $overtime_pay = 0;
                 // If overtime_pay is zero but hours exist, compute manually (match frontend logic)
                 if ($overtime_pay == 0 && $overtime_hours > 0) {
                     if ($weekday_ot > 0 || $weekend_ot > 0) {
