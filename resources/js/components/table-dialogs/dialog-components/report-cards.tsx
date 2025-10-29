@@ -309,7 +309,7 @@ export default function ReportCards({
 								<section>
 										<Skeleton className="h-5 w-28 mb-2" />
 									<div className="space-y-2">
-										{Array.from({ length: 5 }).map((_, i) => (
+										{Array.from({ length: 4 }).map((_, i) => (
 											<div key={i} className="flex items-center justify-between">
 												<Skeleton className="h-5 w-24" />
 												<div className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md w-[136px] bg-secondary/60">
@@ -506,13 +506,6 @@ export default function ReportCards({
 											<Badge variant="outline" className="gap-1">
 												<PhilippinePeso className="h-3.5 w-3.5" />
 												<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.withholding_tax ?? null)}</span>
-											</Badge>
-										</div>
-										<div className="flex items-center justify-between">
-											<span className="text-muted-foreground whitespace-nowrap">PERAA Contribution</span>
-											<Badge variant="outline" className="gap-1">
-												<PhilippinePeso className="h-3.5 w-3.5" />
-												<span className="font-medium tabular-nums">{formatAmountPlain(selectedPayroll?.peraa_con ?? null)}</span>
 											</Badge>
 										</div>
 									</div>
