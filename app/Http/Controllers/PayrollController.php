@@ -103,7 +103,9 @@ class PayrollController extends Controller
                 $total_hours_worked = $metrics['total_hours'];
                 $tardiness = $metrics['tardiness'];
                 $undertime = $metrics['undertime'];
-                $absences = $metrics['absences'];
+                // Source absences from the same computation used by AttendanceCards (metrics),
+                // so payroll subtraction matches what's shown in the UI and in ReportCards.
+                $absences = max(0, (float)($metrics['absences'] ?? 0));
                 $overtime_hours = $metrics['overtime'];
                 $weekday_ot = $metrics['overtime_count_weekdays'];
                 $weekend_ot = $metrics['overtime_count_weekends'];
@@ -114,15 +116,7 @@ class PayrollController extends Controller
                 $tardiness = 0;
                 $undertime = 0;
                 $overtime_hours = 0;
-                $overtime_pay = 0;
-                // If overtime_pay is zero but hours exist, compute manually (match frontend logic)
-                if ($overtime_pay == 0 && $overtime_hours > 0) {
-                    if ($weekday_ot > 0 || $weekend_ot > 0) {
-                        $overtime_pay = ($college_rate * 0.25 * $weekday_ot) + ($college_rate * 0.30 * $weekend_ot);
-                    } else {
-                        $overtime_pay = $college_rate * 0.25 * $overtime_hours;
-                    }
-                }
+                $overtime_pay = 0; // explicitly ignore OT for college branch
                 $honorarium = !is_null($employee->honorarium) ? floatval($employee->honorarium) : 0;
 
                 // Statutory contributions: initialize numeric variables and read flags
@@ -135,7 +129,11 @@ class PayrollController extends Controller
                 // gross pay and statutory contributions below.
                 $withholding_tax = 0.0;
 
-                // Gross pay: (college_rate * total_hours_worked) - (college_rate * tardiness) - (college_rate * undertime) - (college_rate * absences) + overtime_pay + honorarium
+                // Gross pay: (college_rate * total_hours_worked)
+                //          - (college_rate * tardiness)
+                //          - (college_rate * undertime)
+                //          - (college_rate * absences)
+                //          + overtime_pay + honorarium
                 $gross_pay = round(
                     ($college_rate * $total_hours_worked)
                         - ($college_rate * $tardiness)
@@ -145,6 +143,22 @@ class PayrollController extends Controller
                         + $honorarium,
                     2
                 );
+
+                // Debug trace for college computation (include both sources for comparison)
+                Log::info('[Payroll Debug][College] Components', [
+                    'employee_id' => $employee->id,
+                    'month' => $payrollMonth,
+                    'college_rate' => $college_rate,
+                    'total_hours_worked' => $total_hours_worked,
+                    'absences_hours' => $absences,
+                    'absences_metrics' => isset($metrics['absences']) ? (float)$metrics['absences'] : null,
+                    'absences_summary' => isset($summaryData['absences']) && is_numeric($summaryData['absences']) ? (float)$summaryData['absences'] : null,
+                    'tardiness_hours' => 0,
+                    'undertime_hours' => 0,
+                    'overtime_pay' => 0,
+                    'honorarium' => $honorarium,
+                    'gross_pay' => $gross_pay,
+                ]);
 
                 // For record-keeping, set base_salary to employee's base_salary or 0 (not used in calculation)
                 $base_salary = !is_null($employee->base_salary) ? $employee->base_salary : 0;
@@ -329,16 +343,60 @@ class PayrollController extends Controller
      */
     private function computeMonthlyMetricsPHP(Employees $employee, string $selectedMonth): array
     {
-        // Build schedule map by weekday code (mon..sun)
-        $workDays = $employee->workDays()->get(['day', 'work_start_time', 'work_end_time']);
+        // Helper to normalize day keys to mon..sun
+        $normalizeDayKey = function ($raw) {
+            $s = strtolower(trim((string)$raw));
+            if ($s === 'monday' || $s === 'mon' || $s === '1') return 'mon';
+            if ($s === 'tuesday' || $s === 'tue' || $s === '2') return 'tue';
+            if ($s === 'wednesday' || $s === 'wed' || $s === '3') return 'wed';
+            if ($s === 'thursday' || $s === 'thu' || $s === '4') return 'thu';
+            if ($s === 'friday' || $s === 'fri' || $s === '5') return 'fri';
+            if ($s === 'saturday' || $s === 'sat' || $s === '6') return 'sat';
+            if ($s === 'sunday' || $s === 'sun' || $s === '0' || $s === '7') return 'sun';
+            return $s;
+        };
+
+        // Build schedule map by weekday code (mon..sun). Support both workDays and college program schedules.
+        // Structure: ['mon' => ['start'=>int|null,'end'=>int|null,'durationMin'=>int,'noTimes'=>bool,'extraCollegeDurMin'=>int]]
         $schedByCode = [];
+
+        // Time-based schedules from workDays
+        $workDays = $employee->workDays()->get(['day', 'work_start_time', 'work_end_time']);
         foreach ($workDays as $wd) {
             $start = $this->hmToMin($wd->work_start_time);
             $end = $this->hmToMin($wd->work_end_time);
             if ($start === null || $end === null) continue;
             $raw = $this->diffMin($start, $end);
             $durationMin = max(0, $raw - 60); // minus 1 hour break
-            $schedByCode[strtolower($wd->day)] = ['start' => $start, 'end' => $end, 'durationMin' => $durationMin];
+            $code = $normalizeDayKey($wd->day);
+            if (!isset($schedByCode[$code])) {
+                $schedByCode[$code] = ['start' => $start, 'end' => $end, 'durationMin' => $durationMin, 'noTimes' => false, 'extraCollegeDurMin' => 0];
+            } else {
+                // Merge overlapping time-based schedules by expanding window and recomputing duration
+                $prev = $schedByCode[$code];
+                $mergedStart = min($prev['start'], $start);
+                $mergedEnd = max($prev['end'], $end);
+                $mergedRaw = $this->diffMin($mergedStart, $mergedEnd);
+                $mergedDuration = max(0, $mergedRaw - 60);
+                $schedByCode[$code] = ['start' => $mergedStart, 'end' => $mergedEnd, 'durationMin' => $mergedDuration, 'noTimes' => false, 'extraCollegeDurMin' => $prev['extraCollegeDurMin'] ?? 0];
+            }
+        }
+
+        // College schedules (hours only, no start/end)
+        $collegeScheds = $employee->collegeProgramSchedules()->get(['day', 'hours_per_day']);
+        foreach ($collegeScheds as $cs) {
+            $code = $normalizeDayKey($cs->day);
+            $mins = (int) round(max(0, (float)$cs->hours_per_day) * 60);
+            if (!isset($schedByCode[$code])) {
+                // Create a no-times schedule using hours only
+                $schedByCode[$code] = ['start' => null, 'end' => null, 'durationMin' => $mins, 'noTimes' => true, 'extraCollegeDurMin' => 0];
+            } else {
+                // Accumulate extra college duration for multi-role expectations
+                $prev = $schedByCode[$code];
+                $prevExtra = isset($prev['extraCollegeDurMin']) ? (int)$prev['extraCollegeDurMin'] : 0;
+                $prev['extraCollegeDurMin'] = $prevExtra + $mins;
+                $schedByCode[$code] = $prev;
+            }
         }
 
         // Records by date
@@ -364,7 +422,14 @@ class PayrollController extends Controller
         [$y, $m] = array_map('intval', explode('-', $selectedMonth));
         $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $m, $y);
 
-        $tardMin = 0; $underMin = 0; $absentMin = 0; $otMin = 0; $otWeekdayMin = 0; $otWeekendMin = 0; $totalWorkedMin = 0;
+    $tardMin = 0; $underMin = 0; $absentMin = 0; $otMin = 0; $otWeekdayMin = 0; $otWeekendMin = 0; $totalWorkedMin = 0;
+
+    // Role flags for college handling parity with frontend
+    $rolesStr = strtolower((string)($employee->roles ?? ''));
+    $tokens = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStr)));
+    $hasCollege = strpos($rolesStr, 'college instructor') !== false;
+    $isCollegeOnly = $hasCollege && (count($tokens) > 0 ? (count(array_filter($tokens, function($t){ return strpos($t, 'college instructor') !== false; })) === count($tokens)) : true);
+    $isCollegeMulti = $hasCollege && !$isCollegeOnly;
 
         for ($day = 1; $day <= $daysInMonth; $day++) {
             $dateStr = sprintf('%04d-%02d-%02d', $y, $m, $day);
@@ -381,65 +446,77 @@ class PayrollController extends Controller
                 $obs = $obsMap[$dateStr] ?? null;
                 $obsType = $obs && isset($obs['type']) ? strtolower((string)$obs['type']) : '';
 
+                // Whole-day or half-day observances: if worked, add as OT (observance), else skip expectations
                 if (strpos($obsType, 'whole') !== false) {
                     $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
                     $totalWorkedMin += $workedMinusBreak;
-                    if ($hasBoth) {
-                        $otMin += $workedMinusBreak;
-                        $otWeekendMin += $workedMinusBreak;
-                    }
+                    if ($hasBoth) { $otMin += $workedMinusBreak; $otWeekendMin += $workedMinusBreak; }
                     continue;
                 }
-
                 if (strpos($obsType, 'half') !== false) {
-                    $suspMin = $this->hmToMin($obs['start_time'] ?? null);
-                    if ($suspMin === null) $suspMin = 12 * 60; // default 12:00
-                    $expectedEnd = max($sched['start'], min($suspMin, $sched['end']));
-                    $expectedDuration = max(0, $expectedEnd - $sched['start']);
-
-                    if (!$hasBoth) {
-                        $absentMin += $expectedDuration;
-                        continue;
-                    }
-
-                    $totalWorkedMin += $workedRaw; // no lunch deduction for half-day expectation
-                    $tard = max(0, $timeIn - $sched['start']);
-                    $under = max(0, $expectedEnd - $timeOut);
-                    $over = max(0, $timeOut - max($timeIn, $expectedEnd));
-
-                    $tardMin += $tard; $underMin += $under; $otMin += $over; $otWeekdayMin += $over;
+                    $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
+                    $totalWorkedMin += $workedMinusBreak;
+                    if ($hasBoth) { $otMin += $workedMinusBreak; $otWeekdayMin += $workedMinusBreak; }
                     continue;
                 }
 
-                // Default or rainy-day
+                // If schedule is hours-only (noTimes), treat expected as durationMin
+                if (!empty($sched['noTimes'])) {
+                    $expected = (int)($sched['durationMin'] ?? 0);
+                    $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
+                    if (!$hasBoth) { $absentMin += $expected; continue; }
+                    $totalWorkedMin += $workedMinusBreak;
+                    if ($hasCollege) {
+                        $deficit = max(0, $expected - $workedMinusBreak);
+                        $absentMin += $deficit;
+                    } else {
+                        $under = max(0, $expected - $workedMinusBreak);
+                        $underMin += $under;
+                    }
+                    continue;
+                }
+
+                // Time-based default
                 $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
                 $totalWorkedMin += $workedMinusBreak;
 
+                // If no clock records, count full expected as absence
                 if (!$hasBoth) {
-                    $absentMin += $sched['durationMin'];
+                    $expected = (int)($sched['durationMin'] ?? 0);
+                    // In multi-role, if there is extra college duration, raise expectation
+                    if ($isCollegeMulti && isset($sched['extraCollegeDurMin']) && $sched['extraCollegeDurMin'] > 0) {
+                        $expected = max($expected, (int)$sched['extraCollegeDurMin']);
+                    }
+                    $absentMin += $expected;
                     continue;
                 }
 
-                if (strpos($obsType, 'rainy') !== false) {
-                    $graceEnd = $sched['start'] + 60;
-                    $tard = ($timeIn <= $graceEnd) ? 0 : max(0, $timeIn - $sched['start']);
-                    $under = max(0, $sched['end'] - $timeOut);
-                    $over = max(0, $workedMinusBreak - $sched['durationMin']);
-                    $tardMin += $tard; $underMin += $under; $otMin += $over; $otWeekdayMin += $over;
-                } else {
-                    $tard = max(0, $timeIn - $sched['start']);
-                    $under = max(0, $sched['end'] - $timeOut);
-                    $over = max(0, $workedMinusBreak - $sched['durationMin']);
-                    $tardMin += $tard; $underMin += $under; $otMin += $over; $otWeekdayMin += $over;
+                if ($hasCollege && ($isCollegeOnly || ($isCollegeMulti && ((int)($sched['extraCollegeDurMin'] ?? 0)) > (int)($sched['durationMin'] ?? 0)))) {
+                    $expected = (int)($sched['durationMin'] ?? 0);
+                    if ($isCollegeMulti && isset($sched['extraCollegeDurMin']) && $sched['extraCollegeDurMin'] > 0) {
+                        $expected = max($expected, (int)$sched['extraCollegeDurMin']);
+                    }
+                    $deficit = max(0, $expected - $workedMinusBreak);
+                    $absentMin += $deficit;
+                    if (!$isCollegeOnly) {
+                        $over = max(0, $workedMinusBreak - $expected);
+                        $otMin += $over; $otWeekdayMin += $over;
+                    }
+                    continue;
                 }
+
+                // Non-college: standard tardiness/undertime/OT
+                $tard = max(0, $timeIn - (int)$sched['start']);
+                $under = max(0, (int)$sched['end'] - $timeOut);
+                $over = max(0, $workedMinusBreak - (int)$sched['durationMin']);
+                $tardMin += $tard; $underMin += $under; $otMin += $over; $otWeekdayMin += $over;
             } else {
                 // Non-scheduled day (weekend/off)
                 if ($hasBoth) {
                     $workedRaw = $this->diffMin($timeIn, $timeOut);
                     $workedMinusBreak = max(0, $workedRaw - 60);
                     $totalWorkedMin += $workedMinusBreak;
-                    $otMin += $workedMinusBreak;
-                    $otWeekendMin += $workedMinusBreak;
+                    if (!$isCollegeOnly) { $otMin += $workedMinusBreak; $otWeekendMin += $workedMinusBreak; }
                 }
             }
         }

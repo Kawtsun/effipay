@@ -733,7 +733,7 @@ class TimeKeepingController extends Controller
         // 1. Fetch ALL leave records that intersect with the current month.
         // We are skipping the 'status' filter as the column does not yet exist.
         // All found leaves are currently treated as excused/approved for absence calculation.
-        $approvedLeaves = \App\Models\Leave::where('employee_id', $employeeId)
+    $approvedLeaves = \App\Models\Leave::where('employee_id', $employeeId)
             ->where(function ($query) use ($monthStart, $monthEnd) {
                 // Ensure the leave period overlaps the month
                 $query->where('leave_start_day', '<=', $monthEnd)
@@ -742,7 +742,7 @@ class TimeKeepingController extends Controller
             // ->where('status', 'Approved') // Ensure we only count approved leaves
             ->get(['leave_start_day', 'leave_end_day', 'status']);
 
-        $leaveDatesMap = []; // NEW: This will hold date => type mapping
+    $leaveDatesMap = []; // NEW: This will hold date => type mapping
 
         foreach ($approvedLeaves as $leave) {
             $startDate = max($leave->leave_start_day, $monthStart);
@@ -762,91 +762,144 @@ class TimeKeepingController extends Controller
                 $leaveDatesMap[$dateObj->format('Y-m-d')] = $type;
             }
         }
-        // --- END MODIFIED LEAVE DATE CALCULATION ---
+    // Build a quick lookup set for leave dates
+    $leaveDatesSet = [];
+    foreach ($leaveDatesMap as $d => $_type) { $leaveDatesSet[$d] = true; }
+    // --- END MODIFIED LEAVE DATE CALCULATION ---
 
         // Note: observanceSet and observanceTypeMap were populated earlier for this month
 
         // FIX: Define daysInMonth for the loop to work
         $daysInMonth = (int)date('t', strtotime($monthStart));
 
-        // Get employee's workDays schedule as associative array: key=day ('mon', 'tue', etc.), value=workDay model
-        $workDaysModels = $employee->workDays ? $employee->workDays->keyBy(function ($wd) {
-            return strtolower($wd->day);
-        }) : collect();
+        // Build merged schedules from workDays and college program schedules (parity with AttendanceCards)
+        $normalizeDayKey = function ($raw) {
+            $s = strtolower(trim((string)$raw));
+            if ($s === 'monday' || $s === 'mon' || $s === '1') return 'mon';
+            if ($s === 'tuesday' || $s === 'tue' || $s === '2') return 'tue';
+            if ($s === 'wednesday' || $s === 'wed' || $s === '3') return 'wed';
+            if ($s === 'thursday' || $s === 'thu' || $s === '4') return 'thu';
+            if ($s === 'friday' || $s === 'fri' || $s === '5') return 'fri';
+            if ($s === 'saturday' || $s === 'sat' || $s === '6') return 'sat';
+            if ($s === 'sunday' || $s === 'sun' || $s === '0' || $s === '7') return 'sun';
+            return $s;
+        };
+        $hmToMin = function ($time) {
+            if (!$time) return null; $p = explode(':', (string)$time); if (count($p) < 2) return null; $h = intval($p[0]); $m = intval($p[1]); return $h*60 + $m;
+        };
+        $diffMin = function (int $startMin, int $endMin) {
+            $d = $endMin - $startMin; if ($d <= 0) $d += 24 * 60; return $d;
+        };
 
-        // Helper to map PHP day number (0=Sun, 6=Sat) to string ('sun', ...)
+        $schedByCode = [];
+        $workDaysModels = $employee->workDays ? $employee->workDays : collect();
+        foreach ($workDaysModels as $wd) {
+            $start = $hmToMin($wd->work_start_time); $end = $hmToMin($wd->work_end_time);
+            if ($start === null || $end === null) continue;
+            $raw = $diffMin($start, $end);
+            $durationMin = max(0, $raw - 60);
+            $code = $normalizeDayKey($wd->day);
+            if (!isset($schedByCode[$code])) {
+                $schedByCode[$code] = ['start' => $start, 'end' => $end, 'durationMin' => $durationMin, 'noTimes' => false, 'extraCollegeDurMin' => 0];
+            } else {
+                $prev = $schedByCode[$code];
+                $mergedStart = min($prev['start'], $start);
+                $mergedEnd = max($prev['end'], $end);
+                $mergedRaw = $diffMin($mergedStart, $mergedEnd);
+                $mergedDuration = max(0, $mergedRaw - 60);
+                $schedByCode[$code] = ['start' => $mergedStart, 'end' => $mergedEnd, 'durationMin' => $mergedDuration, 'noTimes' => false, 'extraCollegeDurMin' => $prev['extraCollegeDurMin'] ?? 0];
+            }
+        }
+        $collegeScheds = $employee->collegeProgramSchedules ? $employee->collegeProgramSchedules : collect();
+        foreach ($collegeScheds as $cs) {
+            $code = $normalizeDayKey($cs->day);
+            $mins = (int) round(max(0, (float)$cs->hours_per_day) * 60);
+            if (!isset($schedByCode[$code])) {
+                $schedByCode[$code] = ['start' => null, 'end' => null, 'durationMin' => $mins, 'noTimes' => true, 'extraCollegeDurMin' => 0];
+            } else {
+                $prev = $schedByCode[$code];
+                $prev['extraCollegeDurMin'] = ($prev['extraCollegeDurMin'] ?? 0) + $mins;
+                $schedByCode[$code] = $prev;
+            }
+        }
+
+        // Role flags for college handling
+        $rolesStr = strtolower((string)($employee->roles ?? ''));
+        $tokens = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStr)));
+        $hasCollege = strpos($rolesStr, 'college instructor') !== false;
+        $isCollegeOnly = $hasCollege && (count($tokens) > 0 ? (count(array_filter($tokens, function($t){ return strpos($t, 'college instructor') !== false; })) === count($tokens)) : true);
+        $isCollegeMulti = $hasCollege && !$isCollegeOnly;
+
         $phpDayToStr = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-
         $absent_hours = 0;
 
         for ($i = 1; $i <= $daysInMonth; $i++) {
             $date = date('Y-m-d', strtotime($month . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
-            $dayOfWeekNum = date('w', strtotime($date)); // 0=Sun, 6=Sat
+            $dayOfWeekNum = date('w', strtotime($date));
             $dayOfWeekStr = $phpDayToStr[$dayOfWeekNum];
+            $sched = $schedByCode[$dayOfWeekStr] ?? null;
+            if (!$sched) continue; // not a scheduled work day of any type
 
-            // Find workDay model for this day
-            $workDay = $workDaysModels->get($dayOfWeekStr);
-            if (!$workDay) continue; // not a scheduled work day
-
-            // Skip if date is a whole-day suspension or an automated holiday (do not count as absent)
+            // Skip whole-day or automated observances
             $isObservance = isset($observanceSet[$date]);
             $isWholeDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day');
             $isAutomatedHoliday = $isObservance && (!empty($observanceAutomatedMap[$date]));
             if ($isWholeDay || $isAutomatedHoliday) continue;
 
-            // Skip if date is an existing leave day (assuming approved since no status column)
-            if (isset($leaveDatesSet[$date])) {
+            // Skip leave dates
+            if (isset($leaveDatesSet[$date])) continue;
+
+            $tk = $records->where('date', $date);
+            $hasClock = false;
+            foreach ($tk as $rec) {
+                $ci = trim((string)($rec->clock_in ?? ''));
+                $co = trim((string)($rec->clock_out ?? ''));
+                if ($ci !== '' && $co !== '') { $hasClock = true; break; }
+            }
+
+            // Compute expected hours for this day
+            $expectedMin = (int)($sched['durationMin'] ?? 0);
+            if ($isCollegeMulti && isset($sched['extraCollegeDurMin']) && $sched['extraCollegeDurMin'] > 0) {
+                $expectedMin = max($expectedMin, (int)$sched['extraCollegeDurMin']);
+            }
+
+            if (!$hasClock) {
+                $absent_hours += round($expectedMin / 60, 2);
                 continue;
             }
 
-            $tk = $records->where('date', $date);
-
-            // Check for absence
-            $allAbsent = true;
-            if ($tk->count() > 0) {
-                foreach ($tk as $rec) {
-                    $clockIn = trim((string)($rec->clock_in ?? ''));
-                    $clockOut = trim((string)($rec->clock_out ?? ''));
-                    if ($clockIn !== '' || $clockOut !== '') {
-                        $allAbsent = false;
-                        break;
+            // If worked, compute deficit for college roles and treat as absence hours
+            if (!empty($sched['noTimes'])) {
+                // No explicit start/end: use total worked minus 1h break if any
+                $first = $tk->first(); $last = $tk->last();
+                $in = strtotime((string)($first->clock_in ?? $first->time_in ?? ''));
+                $out = strtotime((string)($last->clock_out ?? $last->time_out ?? ''));
+                if ($in && $out) {
+                    $worked = $out - $in; if ($worked < 0) $worked += 24*60*60;
+                    $workedMinusBreak = max(0, ($worked - 3600) / 60); // minutes
+                    if ($hasCollege) {
+                        $deficitMin = max(0, $expectedMin - (int)round($workedMinusBreak));
+                        $absent_hours += round($deficitMin / 60, 2);
                     }
                 }
+                continue;
             }
 
-            // Calculate work hours for this day from workDay schedule
-            $workHoursPerDay = 8;
-            if (!empty($workDay->work_start_time) && !empty($workDay->work_end_time)) {
-                $start = strtotime($workDay->work_start_time);
-                $end = strtotime($workDay->work_end_time);
-                $totalScheduledSeconds = $end - $start;
-                if ($totalScheduledSeconds <= 0) $totalScheduledSeconds += 24 * 60 * 60;
-
-                // Define the fixed break end time and deduction duration
-                $fixedBreakEnd = strtotime('13:00:00'); // 1:00:00 PM
-                $breakDurationSeconds = 3600;             // 1 hour
-
-                // Check 1: Did the scheduled shift end strictly LATER THAN 1:00 PM?
-                // Note the change from >= to >
-                $shiftEndsAfterBreak = ($end > $fixedBreakEnd);
-
-                if ($shiftEndsAfterBreak) {
-                    // If yes, deduct the fixed 1 hour.
-                    $finalDeductionSeconds = $breakDurationSeconds;
-                } else {
-                    // If no (it ended at 1:00 PM or earlier), deduct nothing.
-                    $finalDeductionSeconds = 0;
+            // Time-based schedule: compute workedMinusBreak and deficit when college
+            $first = $tk->first(); $last = $tk->last();
+            $in = strtotime((string)($first->clock_in ?? $first->time_in ?? ''));
+            $out = strtotime((string)($last->clock_out ?? $last->time_out ?? ''));
+            if ($in && $out) {
+                $worked = $out - $in; if ($worked < 0) $worked += 24*60*60;
+                $workedMinusBreak = max(0, ($worked - 3600)); // seconds
+                $workedMin = (int)round($workedMinusBreak / 60);
+                if ($hasCollege) {
+                    $deficitMin = max(0, $expectedMin - $workedMin);
+                    $absent_hours += round($deficitMin / 60, 2);
                 }
-
-                $actualWorkSeconds = $totalScheduledSeconds - $finalDeductionSeconds;
-                $workHoursPerDay = max(0, round($actualWorkSeconds / 3600, 2));
-            }
-
-            if ($tk->count() === 0 || $allAbsent) {
-                // Only count as absent if it's a scheduled workday and not excused (leave/holiday)
-                $absent_hours += $workHoursPerDay;
             }
         }
+
         $absences = $absent_hours;
 
         $hasData = $records->count() > 0;
