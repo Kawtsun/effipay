@@ -258,22 +258,69 @@ export function ReportDataProvider({
     return !!(employee && typeof employee.roles === "string" && employee.roles.toLowerCase().includes("college instructor"));
   }, [employee]);
 
+  // Derive a corrected Gross Pay for multi-role with College Instructor so the card reflects the new rule
+  const adjustedSelectedPayroll = React.useMemo(() => {
+    if (!selectedPayroll) return null;
+    try {
+      const rolesStr = String(employee?.roles ?? '').toLowerCase();
+      const tokens = rolesStr.split(/[\,\n]+/).map(s => s.trim()).filter(Boolean);
+      const hasCollege = rolesStr.includes('college instructor');
+      const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every(t => t.includes('college instructor')) : true);
+      const isCollegeMulti = hasCollege && !isCollegeOnly;
+
+      if (!isCollegeMulti) return selectedPayroll; // keep original for non-multi cases
+
+      // Resolve numbers
+      const baseSalary = Number(selectedPayroll.base_salary ?? employee?.base_salary ?? 0) || 0;
+      const honorarium = Number(selectedPayroll.honorarium ?? employee?.honorarium ?? 0) || 0;
+      const collegeRate = Number(selectedPayroll.college_rate ?? timekeepingSummary?.college_rate ?? 0) || 0;
+      const collegeHours = Number(timekeepingSummary?.total_hours ?? NaN);
+      const t = Number((tkComputed?.tardiness ?? timekeepingSummary?.tardiness) ?? 0) || 0;
+      const u = Number((tkComputed?.undertime ?? timekeepingSummary?.undertime) ?? 0) || 0;
+      const a = Number((tkComputed?.absences ?? timekeepingSummary?.absences) ?? 0) || 0;
+
+      // Non-college hourly rate for deductions and OT
+      const nonCollegeRate = (() => {
+        const rSum = Number(timekeepingSummary?.rate_per_hour ?? NaN);
+        if (Number.isFinite(rSum) && rSum > 0) return Number(rSum.toFixed(2));
+        const rSP = Number((selectedPayroll as any)?.rate_per_hour ?? NaN);
+        if (Number.isFinite(rSP) && rSP > 0) return Number(rSP.toFixed(2));
+        const rTK = Number(tkComputed?.rate_per_hour ?? NaN);
+        return Number.isFinite(rTK) && rTK > 0 ? Number(rTK.toFixed(2)) : 0;
+      })();
+
+      // Overtime pay using the same rule as summary cards
+      const weekdayOT = Number(tkComputed?.overtime_count_weekdays ?? timekeepingSummary?.overtime_count_weekdays ?? 0) || 0;
+      const weekendOT = Number(tkComputed?.overtime_count_weekends ?? timekeepingSummary?.overtime_count_weekends ?? 0) || 0;
+      const observanceOT = Number(tkComputed?.overtime_count_observances ?? timekeepingSummary?.overtime_count_observances ?? 0) || 0;
+      const overtimePay = (nonCollegeRate * 0.25 * weekdayOT) + (nonCollegeRate * 0.30 * weekendOT) + (nonCollegeRate * 2.0 * observanceOT);
+
+      const collegeGsp = (Number.isFinite(collegeHours) && collegeHours > 0 && collegeRate > 0) ? collegeRate * collegeHours : 0;
+      const deductions = nonCollegeRate * (t + u + a);
+      const derivedGross = Number((baseSalary + collegeGsp + overtimePay - deductions + honorarium).toFixed(2));
+
+      return { ...selectedPayroll, gross_pay: derivedGross };
+    } catch {
+      return selectedPayroll;
+    }
+  }, [selectedPayroll, employee, tkComputed, timekeepingSummary]);
+
   // Helper used by the dialog to compute the monetary values for summary cards
   // Sync rule: Prefer Timekeeping summary (hours and rate) so the Report matches the Timekeeping view.
   const getSummaryCardAmount = React.useCallback((type: "tardiness" | "undertime" | "overtime" | "absences") => {
     const tk = (tkComputed || timekeepingSummary) as (EmployeePayrollSummary | null | undefined);
     const payroll = selectedPayroll;
 
-    // Resolve hourly rate
-    const rate = (() => {
-      const rTK = Number(tk?.rate_per_hour ?? NaN);
-      if (Number.isFinite(rTK) && rTK > 0) return Number(rTK.toFixed(2));
-      if (isCollegeInstructorPayroll) {
-        const rP = Number(payroll?.college_rate ?? NaN);
-        if (Number.isFinite(rP) && rP > 0) return Number(rP.toFixed(2));
-      }
+    // Resolve hourly rate for monetary conversions
+    // IMPORTANT: Overtime must use the base-salary derived rate_per_hour, never the college rate.
+    const baseRatePerHour = (() => {
+      const rSum = Number(timekeepingSummary?.rate_per_hour ?? NaN);
+      if (Number.isFinite(rSum) && rSum > 0) return Number(rSum.toFixed(2));
       const rPH = Number(payroll?.rate_per_hour ?? NaN);
-      return Number.isFinite(rPH) && rPH > 0 ? Number(rPH.toFixed(2)) : 0;
+      if (Number.isFinite(rPH) && rPH > 0) return Number(rPH.toFixed(2));
+      // final fallback: if tkComputed provided a non-college rate (rare), use it
+      const rTK = Number(tkComputed?.rate_per_hour ?? NaN);
+      return Number.isFinite(rTK) && rTK > 0 ? Number(rTK.toFixed(2)) : 0;
     })();
 
     if (type === "overtime") {
@@ -286,9 +333,9 @@ export function ReportDataProvider({
       const observanceOT = Number.isFinite(Number(tk?.overtime_count_observances))
         ? Number(Number(tk?.overtime_count_observances).toFixed(2))
         : Number(Number(payroll?.overtime_count_observances ?? 0).toFixed(2));
-      const weekdayPay = rate * 0.25 * weekdayOT;
-      const weekendPay = rate * 0.30 * weekendOT;
-      const observancePay = rate * 2.00 * observanceOT; // double pay
+      const weekdayPay = baseRatePerHour * 0.25 * weekdayOT;
+      const weekendPay = baseRatePerHour * 0.30 * weekendOT;
+      const observancePay = baseRatePerHour * 2.00 * observanceOT; // double pay
       const overtimePay = weekdayPay + weekendPay + observancePay;
       return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
@@ -310,7 +357,7 @@ export function ReportDataProvider({
       }
       return 0;
     })();
-    const amount = rate * hours;
+    const amount = baseRatePerHour * hours;
     return `₱${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }, [isCollegeInstructorPayroll, selectedPayroll, timekeepingSummary, tkComputed]);
 
@@ -398,7 +445,7 @@ export function ReportDataProvider({
       setSelectedMonth,
       setPendingMonth,
       monthlyPayrollData,
-      selectedPayroll,
+  selectedPayroll: adjustedSelectedPayroll,
       hasPayroll,
       isCollegeInstructorPayroll,
       getSummaryCardAmount,

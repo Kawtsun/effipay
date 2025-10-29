@@ -45,41 +45,31 @@ class PayrollController extends Controller
             ->count('employee_id');
         if ($employeesWithTkCount === 0) {
             // Send an error flash that the frontend will display as a toast
-            return redirect()->back()->with('flash', ['type' => 'error', 'message' => 'No TimeKeeping Record found for this month']);
+            return redirect()->back()->with('flash', [
+                'type' => 'error',
+                'message' => 'No TimeKeeping Record found for this month',
+                'at' => now()->timestamp,
+            ]);
         }
-        $createdCount = 0;
-        foreach ($employees as $employee) {
+    $createdCount = 0;
+    foreach ($employees as $employee) {
             // Reset branch-scoped variables per employee to avoid bleed-over between iterations
             $college_rate = null;
             $overtime_hours = 0; $tardiness = 0; $undertime = 0; $absences = 0; $overtime_pay = 0;
             $honorarium = 0; $base_salary = 0; $sss = 0.0; $philhealth = 0.0; $pag_ibig = 0.0; $withholding_tax = 0.0;
 
-            $existingPayrolls = \App\Models\Payroll::where('employee_id', $employee->id)
+            // Enforce only one payroll per employee per month.
+            // If a payroll record already exists for this employee and month, skip.
+            $alreadyHasPayroll = \App\Models\Payroll::where('employee_id', $employee->id)
                 ->where('month', $payrollMonth)
-                ->get();
-            if ($existingPayrolls->count() >= 2) {
-                // Already run twice for this month
+                ->exists();
+            if ($alreadyHasPayroll) {
                 continue;
             }
-            // Decide target payroll date for this run:
-            // - If no payroll yet: use 15th of the month
-            // - If one payroll exists: use the last day of the month
-            // - Prevent duplicate same-day entries
-            $firstHalfDate = Carbon::createFromFormat('Y-m-d', $payrollMonth . '-15');
-            $lastDayDate   = Carbon::createFromFormat('Y-m-d', $payrollMonth . '-' . str_pad($payrollDate->endOfMonth()->day, 2, '0', STR_PAD_LEFT));
-            $existingDates = collect($existingPayrolls)->pluck('payroll_date')->map(fn($d) => Carbon::parse($d)->format('Y-m-d'))->toArray();
-            if ($existingPayrolls->count() === 0) {
-                $payrollDateStr = $firstHalfDate->format('Y-m-d');
-            } else {
-                $payrollDateStr = $lastDayDate->format('Y-m-d');
-            }
-            if (in_array($payrollDateStr, $existingDates, true)) {
-                // If computed date collides (edge case), fallback to actual parsed day
-                $payrollDateStr = $payrollDate->format('Y-m-d');
-                if (in_array($payrollDateStr, $existingDates, true)) {
-                    continue; // still duplicate
-                }
-            }
+
+            // Use the requested payroll date as the record date (normalized earlier),
+            // ensuring it stays within the selected month.
+            $payrollDateStr = $payrollDate->format('Y-m-d');
 
             // Skip employee if they have no timekeeping data for the month
             $hasTK = \App\Models\TimeKeeping::where('employee_id', $employee->id)
@@ -118,6 +108,13 @@ class PayrollController extends Controller
                 $weekday_ot = $metrics['overtime_count_weekdays'];
                 $weekend_ot = $metrics['overtime_count_weekends'];
                 $overtime_pay = isset($summaryData['overtime_pay_total']) ? floatval($summaryData['overtime_pay_total']) : 0;
+                // College instructors work by hourly schedule only: they should not have
+                // tardiness, undertime, or overtime adjustments applied to gross pay.
+                // Keep absences, which still reduce pay.
+                $tardiness = 0;
+                $undertime = 0;
+                $overtime_hours = 0;
+                $overtime_pay = 0;
                 // If overtime_pay is zero but hours exist, compute manually (match frontend logic)
                 if ($overtime_pay == 0 && $overtime_hours > 0) {
                     if ($weekday_ot > 0 || $weekend_ot > 0) {
@@ -131,8 +128,12 @@ class PayrollController extends Controller
                 // Statutory contributions: initialize numeric variables and read flags
                 $sss = 0.0;
                 $philhealth = 0.0;
-                $pag_ibig = $employee->pag_ibig;
-                $withholding_tax = $employee->withholding_tax;
+                // Ensure numeric defaults for PAG-IBIG and withholding tax calculation
+                $pag_ibig = $employee->pag_ibig ?? 0.0;
+                // Previously this was taken directly from the employee boolean which resulted
+                // in a fixed value (1). Instead compute withholding tax from the computed
+                // gross pay and statutory contributions below.
+                $withholding_tax = 0.0;
 
                 // Gross pay: (college_rate * total_hours_worked) - (college_rate * tardiness) - (college_rate * undertime) - (college_rate * absences) + overtime_pay + honorarium
                 $gross_pay = round(
@@ -155,6 +156,18 @@ class PayrollController extends Controller
                 if (!empty($employee->philhealth)) {
                     $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2);
                 }
+
+                // Compute withholding tax for college instructors using the same
+                // progressive bracket logic applied to other employee types.
+                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay, $sss, $pag_ibig, $philhealth) {
+                    $totalComp = $gross_pay - ($sss + $pag_ibig + $philhealth);
+                    if ($totalComp <= 20832) return 0;
+                    if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
+                    if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
+                    if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
+                    if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
+                    return 183541.80 + 0.35 * ($totalComp - 666667);
+                })($gross_pay, $sss, $pag_ibig, $philhealth) : 0;
             } else {
                 // Use all calculated values from timekeeping summary (default logic)
                 $workHoursPerDay = $employee->work_hours_per_day ?? 8;
@@ -295,9 +308,19 @@ class PayrollController extends Controller
             } catch (\Throwable $e) {
                 Log::warning('Failed to write audit log for payroll run: ' . $e->getMessage());
             }
-            return redirect()->back()->with('flash', 'Payroll run successfully for ' . date('F Y', strtotime($payrollDateStr)) . '. Payroll records created: ' . $createdCount);
+            return redirect()->back()->with('flash', [
+                'type' => 'success',
+                'message' => 'Payroll run successfully for ' . date('F Y', strtotime($payrollDateStr)) . '. Payroll records created: ' . $createdCount,
+                'at' => now()->timestamp,
+            ]);
         } else {
-            return redirect()->back()->with('flash', 'Payroll already run twice for this month.');
+            // No new payrolls were created. Either all eligible employees already have payroll
+            // for this month, or none have timekeeping data yet for this month.
+            return redirect()->back()->with('flash', [
+                'type' => 'info',
+                'message' => 'No eligible employees to process payroll for this month.',
+                'at' => now()->timestamp,
+            ]);
         }
     }
 

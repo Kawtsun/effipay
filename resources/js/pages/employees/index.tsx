@@ -90,6 +90,8 @@ export default function Index({
                     toast.error(props.flash.message || 'An error occurred')
                 } else if (props.flash.type === 'success') {
                     toast.success(props.flash.message || 'Success')
+                } else if (props.flash.type === 'info') {
+                    toast.info(props.flash.message || 'Info')
                 } else {
                     toast(props.flash.message || 'Notification')
                 }

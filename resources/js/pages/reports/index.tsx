@@ -81,6 +81,8 @@ export default function ReportsIndex() {
                     toast.error(flash.message || 'An error occurred')
                 } else if (flash.type === 'success') {
                     toast.success(flash.message || 'Success')
+                } else if (flash.type === 'info') {
+                    toast.info(flash.message || 'Info')
                 } else {
                     toast(flash.message || 'Notification')
                 }

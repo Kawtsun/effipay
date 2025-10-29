@@ -15,16 +15,25 @@ export function calculateGrossPay(
         role?: string;
         college_rate?: number;
         totalHours?: number;
+        hasCollegeMultiRole?: boolean;
+        collegeHoursForGsp?: number; // if provided, overrides totalHours when computing college GSP for multi-role
     }
 ): number {
     const isCollege = options?.role === 'College Instructor' && typeof options.college_rate === 'number' && typeof options.totalHours === 'number';
+    const isCollegeMulti = Boolean(options?.hasCollegeMultiRole) && typeof options?.college_rate === 'number';
     if (isCollege) {
         const rate = options.college_rate!;
         const totalHours = options.totalHours!;
-        // Match timekeeping-view-dialog: (rate * totalHours) + overtimePay - (rate * tardiness) - (rate * undertime) - (rate * absences)
+        // College-only: (rate * totalHours) + OT - rate*(T+U+A)
         return parseFloat(((rate * totalHours) + overtimePay - (rate * tardiness) - (rate * undertime) - (rate * absences)).toFixed(2));
+    } else if (isCollegeMulti) {
+        const rate = options!.college_rate as number;
+        const hours = typeof options?.collegeHoursForGsp === 'number' ? options!.collegeHoursForGsp : (typeof options?.totalHours === 'number' ? options!.totalHours! : 0);
+        const collegeGsp = Math.max(0, rate * Math.max(0, hours));
+        const deductions = (ratePerHour * tardiness) + (ratePerHour * undertime) + (ratePerHour * absences);
+        return parseFloat((baseSalary + collegeGsp + overtimePay - deductions).toFixed(2));
     } else {
-        // For non-college: (baseSalary + overtimePay) - (rate * tardiness) - (rate * undertime) - (rate * absences)
+        // Non-college: (baseSalary + OT) - rate*(T+U+A)
         return parseFloat(((baseSalary + overtimePay) - (ratePerHour * tardiness) - (ratePerHour * undertime) - (ratePerHour * absences)).toFixed(2));
     }
 }
