@@ -282,7 +282,8 @@ export default function TableReport({
                 header: () => <div className="px-4 text-xs font-semibold uppercase tracking-wide">Roles</div>,
                 cell: ({ row }) => {
                     const roles = row.original.roles ? row.original.roles.split(',').map((r) => r.trim()).filter(Boolean) : []
-                    return <RolesTableBadge roles={roles} college_program={row.original.college_program} compact />
+                    const basicEducationLevel = (row.original as unknown as { basic_education_level?: string | null; basic_edu_level?: string | null }).basic_education_level ?? (row.original as unknown as { basic_education_level?: string | null; basic_edu_level?: string | null }).basic_edu_level ?? null
+                    return <RolesTableBadge roles={roles} college_program={row.original.college_program} basicEducationLevel={basicEducationLevel || undefined} compact />
                 },
                 size: COLUMN_SIZES.roles,
                 enableSorting: false,

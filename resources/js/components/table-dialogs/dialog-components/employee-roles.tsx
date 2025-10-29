@@ -69,7 +69,8 @@ export default function EmployeeRolesList({ roles, collegeProgram, basicEducatio
             const level = basicEducationLevel.trim();
             // Keep the badge simple (no brackets), show the level as a label next to it.
             const badgeLabel = r;
-            const detailItems = [{ label: level }];
+            // Add explicit label "Level:" like the table tooltip implementation
+            const detailItems = [{ code: 'Level', label: level }];
             return { badgeLabel, detailItems } as const;
         }
         return { badgeLabel: r } as const;
@@ -86,7 +87,13 @@ export default function EmployeeRolesList({ roles, collegeProgram, basicEducatio
                                 {item.detailItems.map((d, i) => (
                                     <React.Fragment key={(d as any).code ?? `${d.label}-${i}`}>
                                         {i > 0 && <span className="opacity-60">•</span>}
-                                        <span className="break-words">{"code" in d && d.code ? `${d.code}: ${d.label}` : d.label}</span>
+                                        {"code" in d && d.code ? (
+                                            <span className="break-words">
+                                                <span className="font-semibold">{d.code}:</span> {d.label}
+                                            </span>
+                                        ) : (
+                                            <span className="break-words">{(d as any).label}</span>
+                                        )}
                                     </React.Fragment>
                                 ))}
                             </div>
