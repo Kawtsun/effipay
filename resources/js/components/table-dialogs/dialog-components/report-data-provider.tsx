@@ -2,6 +2,7 @@ import * as React from "react";
 import { Employees } from "@/types";
 import { toast } from "sonner";
 import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
+import type { TimeRecordLike } from "@/utils/computeMonthlyMetrics";
 
 // Types copied from current Report View Dialog for parity
 export interface PayrollData {
@@ -116,6 +117,37 @@ export function ReportDataProvider({
   const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, pendingMonth) as {
     summary?: EmployeePayrollSummary | null;
   };
+
+  // Fallback total hours computed from BTR when summary doesn't provide it (e.g., college role edge cases)
+  const [fallbackTotalHours, setFallbackTotalHours] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    // Only attempt fallback when we have context and summary total_hours isn't a valid positive number
+    const summaryHours = Number((timekeepingSummary as EmployeePayrollSummary | undefined)?.total_hours ?? NaN);
+    const needsFallback = !Number.isFinite(summaryHours) || summaryHours <= 0;
+    if (!employee || !pendingMonth || !needsFallback) {
+      setFallbackTotalHours(null);
+      return;
+    }
+    let aborted = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/timekeeping/records?employee_id=${employee.id}&month=${pendingMonth}`);
+        const data = await res.json();
+        const records: Array<Record<string, unknown>> = Array.isArray(data?.records) ? data.records : [];
+        if (!records.length) {
+          setFallbackTotalHours(0);
+          return;
+        }
+        // Import on demand to avoid cyclic deps at module load time
+  const { computeMonthlyMetrics } = await import("@/utils/computeMonthlyMetrics");
+  const metrics = await computeMonthlyMetrics(employee, pendingMonth, records as unknown as TimeRecordLike[]);
+        if (!aborted) setFallbackTotalHours(Number(metrics.total_hours ?? 0));
+      } catch {
+        if (!aborted) setFallbackTotalHours(null);
+      }
+    })();
+    return () => { aborted = true; };
+  }, [employee, pendingMonth, timekeepingSummary]);
 
   // Fetch merged months from backend (payroll + timekeeping)
   const fetchAvailableMonths = React.useCallback(async () => {
@@ -330,11 +362,13 @@ export function ReportDataProvider({
       return typeof pr === 'number' ? pr : null;
     })();
     const honorarium = selectedPayroll?.honorarium ?? null;
-    const total_hours = (timekeepingSummary && typeof timekeepingSummary.total_hours === 'number')
-      ? timekeepingSummary.total_hours
-      : null;
+    // Prefer timekeeping summary hours when available, else fallback computed from BTR to keep College/GSP visible
+    const summaryHoursNum = Number((timekeepingSummary as EmployeePayrollSummary | undefined)?.total_hours ?? NaN);
+    const total_hours = Number.isFinite(summaryHoursNum) && summaryHoursNum > 0
+      ? summaryHoursNum
+      : (fallbackTotalHours ?? null);
     return { base_salary, college_rate, honorarium, total_hours };
-  }, [selectedPayroll, timekeepingSummary]);
+  }, [selectedPayroll, timekeepingSummary, fallbackTotalHours]);
 
   // Helper to return hour counts for the summary cards (used for hover swap in UI)
   const getSummaryCardHours = React.useCallback((type: "tardiness" | "undertime" | "overtime" | "absences") => {
