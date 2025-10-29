@@ -108,6 +108,10 @@ class StoreEmployeesRequest extends FormRequest
             'numeric',
             'min:0',
         ];
+
+        // Accept college_rate directly so null clears can pass through when roles change.
+        // Not excluded when not college: we want to allow explicit clearing on create as well.
+        $rules['college_rate'] = ['nullable', 'numeric', 'min:0'];
         
         // Your original contribution logic (unchanged)
         if ($isAdmin) {

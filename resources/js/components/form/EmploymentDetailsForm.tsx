@@ -135,6 +135,43 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
 
     const availableStatuses = ['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave'];
 
+    // Helper: given the next role toggles, determine if earnings fields would still be shown.
+    // This mirrors the logic in EarningsForm (showBaseSalary, showRatePerHour) but computed locally.
+    const clearEarningsIfHidden = React.useCallback((next: {
+        admin: boolean;
+        college: boolean;
+        basicEdu: boolean;
+        others: boolean; // others checkbox state
+        othersText: string; // current others text
+    }) => {
+        // Others only counts as a role if it has a non-empty text (same behavior as rolesArr generation)
+        const nextOthersActive = next.others && next.othersText.trim().length > 0;
+
+        const wouldShowBaseSalary = next.admin || next.basicEdu || nextOthersActive;
+        const wouldShowRatePerHour = next.college || next.basicEdu;
+
+        if (!wouldShowBaseSalary) {
+            if ((data.base_salary ?? '') !== '') {
+                // Use null so backend treats it as explicit clear
+                setData('base_salary', null);
+            }
+        }
+        if (!wouldShowRatePerHour) {
+            if ((data.rate_per_hour ?? '') !== '') {
+                // Use null so backend treats it as explicit clear
+                setData('rate_per_hour', null);
+            }
+            // Ensure backend also receives a clear for college_rate in edit page payloads
+            if ((data.college_rate ?? '') !== '') {
+                setData('college_rate', null);
+            }
+        }
+        // Also clear honorarium whenever a role is unchecked as requested (send null to clear)
+        if ((data.honorarium ?? '') !== '') {
+            setData('honorarium', null);
+        }
+    }, [data.base_salary, data.rate_per_hour, data.honorarium, data.college_rate, setData]);
+
     const ErrorDisplay = ({ field }: { field: keyof typeof errors }) => {
         if (!errors[field]) return null;
         return (
@@ -165,7 +202,24 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
                     </Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-admin" checked={isAdmin} onCheckedChange={(c) => setIsAdmin(!!c)} />
+                            <Checkbox
+                                id="role-admin"
+                                checked={isAdmin}
+                                onCheckedChange={(c) => {
+                                    const isChecked = !!c;
+                                    if (!isChecked) {
+                                        // Before unchecking admin, clear earnings fields that will no longer be visible
+                                        clearEarningsIfHidden({
+                                            admin: false,
+                                            college: isCollege,
+                                            basicEdu: isBasicEdu,
+                                            others: isOthers,
+                                            othersText: othersRoleText,
+                                        });
+                                    }
+                                    setIsAdmin(isChecked);
+                                }}
+                            />
                             <Label htmlFor="role-admin" className="cursor-pointer font-normal">Administrator</Label>
                         </div>
                         <div className="flex items-center gap-2">
@@ -174,14 +228,26 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
                                 checked={isCollege}
                                 onCheckedChange={(c) => {
                                     const isChecked = !!c;
-                                    setIsCollege(isChecked);
                                     if (!isChecked) {
+                                        // Before unchecking college, clear earnings fields that will no longer be visible
+                                        clearEarningsIfHidden({
+                                            admin: isAdmin,
+                                            college: false,
+                                            basicEdu: isBasicEdu,
+                                            others: isOthers,
+                                            othersText: othersRoleText,
+                                        });
+                                        // Additionally clear rate fields unconditionally when unchecking College (use null for explicit clear)
+                                        setData('rate_per_hour', null);
+                                        setData('college_rate', null);
+                                        // And clear college-specific details
                                         setData('college_work_hours', '');
                                         setData('college_program', '');
                                         setData('college_work_hours_by_program', {});
                                         setData('college_work_days_by_program', {});
                                         setCollegePrograms([]);
                                     }
+                                    setIsCollege(isChecked);
                                 }}
                             />
                             <Label htmlFor="role-college" className="cursor-pointer font-normal">College Instructor</Label>
@@ -189,15 +255,40 @@ export function EmploymentDetailsForm({ form, resetToken }: EmploymentDetailsFor
                         <div className="flex items-center gap-2">
                             <Checkbox id="role-basicedu" checked={isBasicEdu} onCheckedChange={(c) => {
                                 const isChecked = !!c;
-                                setIsBasicEdu(isChecked);
                                 if (!isChecked) {
+                                    // Before unchecking basic education, clear earnings fields that will no longer be visible
+                                    clearEarningsIfHidden({
+                                        admin: isAdmin,
+                                        college: isCollege,
+                                        basicEdu: false,
+                                        others: isOthers,
+                                        othersText: othersRoleText,
+                                    });
+                                    // Additionally clear rate fields unconditionally when unchecking Basic Education (use null for explicit clear)
+                                    setData('rate_per_hour', null);
+                                    setData('college_rate', null);
                                     setData('basic_education_level', '');
                                 }
+                                setIsBasicEdu(isChecked);
                             }} />
                             <Label htmlFor="role-basicedu" className="cursor-pointer font-normal">Basic Education</Label>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Checkbox id="role-others" checked={isOthers} onCheckedChange={(c) => { setIsOthers(!!c); setOthersRoleText(''); }} />
+                            <Checkbox id="role-others" checked={isOthers} onCheckedChange={(c) => {
+                                const isChecked = !!c;
+                                if (!isChecked) {
+                                    // Before unchecking others, clear earnings fields that will no longer be visible
+                                    clearEarningsIfHidden({
+                                        admin: isAdmin,
+                                        college: isCollege,
+                                        basicEdu: isBasicEdu,
+                                        others: false,
+                                        othersText: othersRoleText,
+                                    });
+                                    setOthersRoleText('');
+                                }
+                                setIsOthers(isChecked);
+                            }} />
                             <Label htmlFor="role-others" className="cursor-pointer font-normal">Others</Label>
                         </div>
                     </div>
