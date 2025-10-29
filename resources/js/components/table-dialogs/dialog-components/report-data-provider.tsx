@@ -254,82 +254,59 @@ export function ReportDataProvider({
   // Helper used by the dialog to compute the monetary values for summary cards
   const getSummaryCardAmount = React.useCallback((type: "tardiness" | "undertime" | "overtime" | "absences") => {
     if (!hasPayroll) return "-";
+    // Overtime amount: prefer payroll counts and payroll rate; fallback to timekeeping when missing
     if (type === "overtime") {
-      let rate = 0;
       let weekdayOvertime = 0;
       let weekendOvertime = 0;
-      if (isCollegeInstructorPayroll && selectedPayroll) {
-        rate = Number(selectedPayroll.college_rate ?? 0);
-        // Match AttendanceCards rounding: use 2-decimal hours before multiplying
+      let rate = 0;
+      if (selectedPayroll) {
         weekdayOvertime = Number(Number(selectedPayroll.overtime_count_weekdays ?? 0).toFixed(2));
         weekendOvertime = Number(Number(selectedPayroll.overtime_count_weekends ?? 0).toFixed(2));
-        if ((weekdayOvertime + weekendOvertime) === 0 && timekeepingSummary) {
-          weekdayOvertime = Number(Number(timekeepingSummary.overtime_count_weekdays ?? 0).toFixed(2));
-          weekendOvertime = Number(Number(timekeepingSummary.overtime_count_weekends ?? 0).toFixed(2));
-        }
-        const rateRounded = Number(Number(rate).toFixed(2));
-        const weekdayPay = rateRounded * 0.25 * weekdayOvertime;
-        const weekendPay = rateRounded * 0.30 * weekendOvertime;
-        const overtimePay = weekdayPay + weekendPay;
-        return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        rate = isCollegeInstructorPayroll
+          ? Number(selectedPayroll.college_rate ?? 0)
+          : Number(selectedPayroll.rate_per_hour ?? NaN);
       } else if (timekeepingSummary) {
-        rate = Number(timekeepingSummary.rate_per_hour ?? 0);
+        // Only fall back to timekeeping when payroll record is not present
         weekdayOvertime = Number(Number(timekeepingSummary.overtime_count_weekdays ?? 0).toFixed(2));
         weekendOvertime = Number(Number(timekeepingSummary.overtime_count_weekends ?? 0).toFixed(2));
-        const rateRounded = Number(Number(rate).toFixed(2));
-        const weekdayPay = rateRounded * 0.25 * weekdayOvertime;
-        const weekendPay = rateRounded * 0.30 * weekendOvertime;
-        const overtimePay = weekdayPay + weekendPay;
-        return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       }
-      return "-";
+      if (!Number.isFinite(rate) || rate <= 0) {
+        const rFromTK = Number((timekeepingSummary as EmployeePayrollSummary | undefined)?.rate_per_hour ?? NaN);
+        if (Number.isFinite(rFromTK)) rate = rFromTK;
+      }
+      const rateRounded = Number(Number(rate || 0).toFixed(2));
+      const weekdayPay = rateRounded * 0.25 * weekdayOvertime;
+      const weekendPay = rateRounded * 0.30 * weekendOvertime;
+      const overtimePay = weekdayPay + weekendPay;
+      return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    // For non-overtime metrics, prefer timekeeping summary hours for consistency with AttendanceCards.
-    // Fallback to payroll-stored hours only if timekeeping data is unavailable.
-    const hoursFromTimekeeping = (() => {
-      if (!timekeepingSummary) return NaN;
-      const s = timekeepingSummary as EmployeePayrollSummary;
+
+    // Non-OT amounts: prefer hours from payroll table to stay consistent with processed payroll
+    const hoursFromPayroll = (() => {
+      if (!selectedPayroll) return 0;
       switch (type) {
         case "tardiness":
-          return Number(s.tardiness ?? NaN);
+          return Number(selectedPayroll.tardiness ?? 0);
         case "undertime":
-          return Number(s.undertime ?? NaN);
+          return Number(selectedPayroll.undertime ?? 0);
         case "absences":
-          return Number(s.absences ?? NaN);
+          return Number(selectedPayroll.absences ?? 0);
         default:
-          return NaN;
+          return 0;
       }
     })();
 
-    const hours = Number.isFinite(hoursFromTimekeeping)
-      ? hoursFromTimekeeping
-      : (() => {
-          if (!selectedPayroll) return 0;
-          switch (type) {
-            case "tardiness":
-              return Number(selectedPayroll.tardiness ?? 0);
-            case "undertime":
-              return Number(selectedPayroll.undertime ?? 0);
-            case "absences":
-              return Number(selectedPayroll.absences ?? 0);
-            default:
-              return 0;
-          }
-        })();
-
-    // Resolve rate: college instructors use college_rate; otherwise use timekeeping rate_per_hour,
-    // and fall back to payroll.rate_per_hour when provided.
-    const rate = (() => {
-      if (isCollegeInstructorPayroll) {
-        return Number(selectedPayroll?.college_rate ?? 0);
-      }
+    // Rate resolution: college uses payroll.college_rate; non-college prefer payroll.rate_per_hour then TK
+    let rate = isCollegeInstructorPayroll
+      ? Number(selectedPayroll?.college_rate ?? 0)
+      : Number(selectedPayroll?.rate_per_hour ?? NaN);
+    if (!Number.isFinite(rate)) {
       const rFromTK = Number((timekeepingSummary as EmployeePayrollSummary | undefined)?.rate_per_hour ?? NaN);
-      if (Number.isFinite(rFromTK)) return rFromTK;
-      return Number(selectedPayroll?.rate_per_hour ?? 0);
-    })();
+      if (Number.isFinite(rFromTK)) rate = rFromTK;
+      else rate = 0;
+    }
 
-    // Match AttendanceCards rounding steps: round hours and rate to 2 decimals before multiply
-    const hoursRounded = Number(Number(hours || 0).toFixed(2));
+    const hoursRounded = Number(Number(hoursFromPayroll || 0).toFixed(2));
     const rateRounded = Number(Number(rate || 0).toFixed(2));
     const amount = hoursRounded * rateRounded;
     return `₱${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -362,25 +339,31 @@ export function ReportDataProvider({
   // Helper to return hour counts for the summary cards (used for hover swap in UI)
   const getSummaryCardHours = React.useCallback((type: "tardiness" | "undertime" | "overtime" | "absences") => {
     if (!hasPayroll) return "-";
+    // Prefer payroll values for hours
     if (type === "overtime") {
-      let weekdayOvertime = 0;
-      let weekendOvertime = 0;
-      if (isCollegeInstructorPayroll && selectedPayroll) {
-        weekdayOvertime = Number(selectedPayroll.overtime_count_weekdays ?? 0);
-        weekendOvertime = Number(selectedPayroll.overtime_count_weekends ?? 0);
-        if ((weekdayOvertime + weekendOvertime) === 0 && timekeepingSummary) {
-          weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
-          weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
-        }
-      } else if (timekeepingSummary) {
+      let weekdayOvertime = Number(selectedPayroll?.overtime_count_weekdays ?? 0);
+      let weekendOvertime = Number(selectedPayroll?.overtime_count_weekends ?? 0);
+      if ((weekdayOvertime + weekendOvertime) === 0 && timekeepingSummary) {
         weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
         weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
       }
       const total = (weekdayOvertime || 0) + (weekendOvertime || 0);
-      return Number.isFinite(total) ? `${total.toFixed(2)} hr(s)` : "-";
+      return Number.isFinite(total) ? `${Number(total).toFixed(2)} hr(s)` : "-";
     }
-    // Prefer timekeeping summary hours for consistency; fallback to payroll-stored hours
-    if (timekeepingSummary) {
+    const value = (() => {
+      switch (type) {
+        case "tardiness":
+          return Number(selectedPayroll?.tardiness ?? 0);
+        case "undertime":
+          return Number(selectedPayroll?.undertime ?? 0);
+        case "absences":
+          return Number(selectedPayroll?.absences ?? 0);
+        default:
+          return 0;
+      }
+    })();
+    // Fallback to timekeeping summary only when payroll record is not present (not for zero values)
+    if (!selectedPayroll && timekeepingSummary) {
       const s = timekeepingSummary as EmployeePayrollSummary;
       const v = (() => {
         switch (type) {
@@ -396,23 +379,8 @@ export function ReportDataProvider({
       })();
       if (Number.isFinite(v)) return `${v.toFixed(2)} hr(s)`;
     }
-    if (selectedPayroll) {
-      const value = (() => {
-        switch (type) {
-          case "tardiness":
-            return Number(selectedPayroll.tardiness ?? 0);
-          case "undertime":
-            return Number(selectedPayroll.undertime ?? 0);
-          case "absences":
-            return Number(selectedPayroll.absences ?? 0);
-          default:
-            return 0;
-        }
-      })();
-      return Number.isFinite(value) ? `${value.toFixed(2)} hr(s)` : "-";
-    }
-    return "-";
-  }, [hasPayroll, isCollegeInstructorPayroll, selectedPayroll, timekeepingSummary]);
+    return Number.isFinite(value) ? `${Number(value).toFixed(2)} hr(s)` : "-";
+  }, [hasPayroll, selectedPayroll, timekeepingSummary]);
 
   return (
     <>{children({

@@ -86,13 +86,15 @@ class PayrollController extends Controller
                 continue;
             }
 
-            // Fetch timekeeping summary for this employee and month
-            // NOTE: We only fetch the summary for the CURRENT month for deductions, not for 13th month calculation.
+            // Fetch timekeeping summary (used only as secondary source for some rate fields)
             $summary = app(TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
                 'employee_id' => $employee->id,
                 'month' => $payrollMonth
             ]));
             $summaryData = $summary->getData(true);
+
+            // Compute monthly metrics using the same logic as Attendance Cards
+            $metrics = $this->computeMonthlyMetricsPHP($employee, $payrollMonth);
 
             // Check if employee is a College Instructor (case-insensitive, substring match)
             $isCollegeInstructor = false;
@@ -103,16 +105,16 @@ class PayrollController extends Controller
             if ($isCollegeInstructor) {
                 // Use college_rate for all calculations
                 $college_rate = isset($employee->college_rate) ? floatval($employee->college_rate) : 0;
-                $total_hours_worked = isset($summaryData['total_hours']) ? floatval($summaryData['total_hours']) : 0;
-                $tardiness = isset($summaryData['tardiness']) ? floatval($summaryData['tardiness']) : 0;
-                $undertime = isset($summaryData['undertime']) ? floatval($summaryData['undertime']) : 0;
-                $absences = isset($summaryData['absences']) ? floatval($summaryData['absences']) : 0;
+                $total_hours_worked = $metrics['total_hours'];
+                $tardiness = $metrics['tardiness'];
+                $undertime = $metrics['undertime'];
+                $absences = $metrics['absences'];
+                $overtime_hours = $metrics['overtime'];
+                $weekday_ot = $metrics['overtime_count_weekdays'];
+                $weekend_ot = $metrics['overtime_count_weekends'];
                 $overtime_pay = isset($summaryData['overtime_pay_total']) ? floatval($summaryData['overtime_pay_total']) : 0;
-                $overtime_hours = isset($summaryData['overtime']) ? floatval($summaryData['overtime']) : 0;
                 // If overtime_pay is zero but hours exist, compute manually (match frontend logic)
                 if ($overtime_pay == 0 && $overtime_hours > 0) {
-                    $weekday_ot = isset($summaryData['overtime_count_weekdays']) ? floatval($summaryData['overtime_count_weekdays']) : 0;
-                    $weekend_ot = isset($summaryData['overtime_count_weekends']) ? floatval($summaryData['overtime_count_weekends']) : 0;
                     if ($weekday_ot > 0 || $weekend_ot > 0) {
                         $overtime_pay = ($college_rate * 0.25 * $weekday_ot) + ($college_rate * 0.30 * $weekend_ot);
                     } else {
@@ -153,7 +155,8 @@ class PayrollController extends Controller
                 $workHoursPerDay = $employee->work_hours_per_day ?? 8;
                 $base_salary = isset($summaryData['base_salary']) ? $summaryData['base_salary'] : $employee->base_salary;
                 $rate_per_hour = $summaryData['rate_per_hour'] ?? 0;
-                $tardiness = isset($summaryData['tardiness']) ? $summaryData['tardiness'] : 0;
+                // Source attendance metrics from the same logic used by Attendance Cards
+                $tardiness = $metrics['tardiness'];
                 if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
                     $start = strtotime($employee->work_start_time);
                     $end = strtotime($employee->work_end_time);
@@ -161,10 +164,10 @@ class PayrollController extends Controller
                     if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
                     $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
                 }
-                $undertime = isset($summaryData['undertime']) ? $summaryData['undertime'] : 0;
-                $absences = isset($summaryData['absences']) ? $summaryData['absences'] : 0;
+                $undertime = $metrics['undertime'];
+                $absences = $metrics['absences'];
+                $overtime_hours = $metrics['overtime'];
                 $overtime_pay = isset($summaryData['overtime_pay_total']) ? floatval($summaryData['overtime_pay_total']) : 0;
-                $overtime_hours = isset($summaryData['overtime']) ? floatval($summaryData['overtime']) : 0;
 
                 $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
                 // Gross pay: (base_salary + overtime_pay) - (rate_per_hour * tardiness) - (rate_per_hour * undertime) - (rate_per_hour * absences) + honorarium
@@ -290,6 +293,171 @@ class PayrollController extends Controller
         } else {
             return redirect()->back()->with('flash', 'Payroll already run twice for this month.');
         }
+    }
+
+    /**
+     * Compute monthly metrics in PHP to mirror the Attendance Cards logic.
+     */
+    private function computeMonthlyMetricsPHP(Employees $employee, string $selectedMonth): array
+    {
+        // Build schedule map by weekday code (mon..sun)
+        $workDays = $employee->workDays()->get(['day', 'work_start_time', 'work_end_time']);
+        $schedByCode = [];
+        foreach ($workDays as $wd) {
+            $start = $this->hmToMin($wd->work_start_time);
+            $end = $this->hmToMin($wd->work_end_time);
+            if ($start === null || $end === null) continue;
+            $raw = $this->diffMin($start, $end);
+            $durationMin = max(0, $raw - 60); // minus 1 hour break
+            $schedByCode[strtolower($wd->day)] = ['start' => $start, 'end' => $end, 'durationMin' => $durationMin];
+        }
+
+        // Records by date
+        $records = \App\Models\TimeKeeping::where('employee_id', $employee->id)
+            ->where('date', 'like', $selectedMonth . '%')
+            ->get(['date', 'clock_in', 'clock_out']);
+        $recMap = [];
+        foreach ($records as $r) {
+            $recMap[$r->date] = [
+                'clock_in' => $r->clock_in,
+                'clock_out' => $r->clock_out,
+            ];
+        }
+
+        // Observances for the month
+        $obsArr = \App\Models\Observance::where('date', 'like', $selectedMonth . '%')->get(['date', 'type', 'label', 'start_time']);
+        $obsMap = [];
+        foreach ($obsArr as $o) {
+            $d = substr((string)$o->date, 0, 10);
+            $obsMap[$d] = ['type' => $o->type ?: $o->label, 'start_time' => $o->start_time ? $o->start_time->format('H:i') : null];
+        }
+
+        [$y, $m] = array_map('intval', explode('-', $selectedMonth));
+        $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $m, $y);
+
+        $tardMin = 0; $underMin = 0; $absentMin = 0; $otMin = 0; $otWeekdayMin = 0; $otWeekendMin = 0; $totalWorkedMin = 0;
+
+        for ($day = 1; $day <= $daysInMonth; $day++) {
+            $dateStr = sprintf('%04d-%02d-%02d', $y, $m, $day);
+            $d = new \DateTime($dateStr . ' 00:00:00');
+            $code = ['sun','mon','tue','wed','thu','fri','sat'][(int)$d->format('w')];
+            $sched = $schedByCode[$code] ?? null;
+            $rec = $recMap[$dateStr] ?? null;
+            $timeIn = $this->parseClock($rec['clock_in'] ?? null);
+            $timeOut = $this->parseClock($rec['clock_out'] ?? null);
+            $hasBoth = ($timeIn !== null && $timeOut !== null);
+
+            if ($sched) {
+                $workedRaw = $hasBoth ? $this->diffMin($timeIn, $timeOut) : 0;
+                $obs = $obsMap[$dateStr] ?? null;
+                $obsType = $obs && isset($obs['type']) ? strtolower((string)$obs['type']) : '';
+
+                if (strpos($obsType, 'whole') !== false) {
+                    $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
+                    $totalWorkedMin += $workedMinusBreak;
+                    if ($hasBoth) {
+                        $otMin += $workedMinusBreak;
+                        $otWeekendMin += $workedMinusBreak;
+                    }
+                    continue;
+                }
+
+                if (strpos($obsType, 'half') !== false) {
+                    $suspMin = $this->hmToMin($obs['start_time'] ?? null);
+                    if ($suspMin === null) $suspMin = 12 * 60; // default 12:00
+                    $expectedEnd = max($sched['start'], min($suspMin, $sched['end']));
+                    $expectedDuration = max(0, $expectedEnd - $sched['start']);
+
+                    if (!$hasBoth) {
+                        $absentMin += $expectedDuration;
+                        continue;
+                    }
+
+                    $totalWorkedMin += $workedRaw; // no lunch deduction for half-day expectation
+                    $tard = max(0, $timeIn - $sched['start']);
+                    $under = max(0, $expectedEnd - $timeOut);
+                    $over = max(0, $timeOut - max($timeIn, $expectedEnd));
+
+                    $tardMin += $tard; $underMin += $under; $otMin += $over; $otWeekdayMin += $over;
+                    continue;
+                }
+
+                // Default or rainy-day
+                $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
+                $totalWorkedMin += $workedMinusBreak;
+
+                if (!$hasBoth) {
+                    $absentMin += $sched['durationMin'];
+                    continue;
+                }
+
+                if (strpos($obsType, 'rainy') !== false) {
+                    $graceEnd = $sched['start'] + 60;
+                    $tard = ($timeIn <= $graceEnd) ? 0 : max(0, $timeIn - $sched['start']);
+                    $under = max(0, $sched['end'] - $timeOut);
+                    $over = max(0, $workedMinusBreak - $sched['durationMin']);
+                    $tardMin += $tard; $underMin += $under; $otMin += $over; $otWeekdayMin += $over;
+                } else {
+                    $tard = max(0, $timeIn - $sched['start']);
+                    $under = max(0, $sched['end'] - $timeOut);
+                    $over = max(0, $workedMinusBreak - $sched['durationMin']);
+                    $tardMin += $tard; $underMin += $under; $otMin += $over; $otWeekdayMin += $over;
+                }
+            } else {
+                // Non-scheduled day (weekend/off)
+                if ($hasBoth) {
+                    $workedRaw = $this->diffMin($timeIn, $timeOut);
+                    $workedMinusBreak = max(0, $workedRaw - 60);
+                    $totalWorkedMin += $workedMinusBreak;
+                    $otMin += $workedMinusBreak;
+                    $otWeekendMin += $workedMinusBreak;
+                }
+            }
+        }
+
+        $toH = function ($min) { return round($min / 60, 2); };
+        return [
+            'tardiness' => $toH($tardMin),
+            'undertime' => $toH($underMin),
+            'overtime' => $toH($otMin),
+            'absences' => $toH($absentMin),
+            'overtime_count_weekdays' => $toH($otWeekdayMin),
+            'overtime_count_weekends' => $toH($otWeekendMin),
+            'total_hours' => $toH($totalWorkedMin),
+        ];
+    }
+
+    private function hmToMin($time): ?int
+    {
+        if (!$time) return null;
+        $parts = explode(':', (string)$time);
+        if (count($parts) < 2) return null;
+        $h = intval($parts[0]); $m = intval($parts[1]);
+        return $h * 60 + $m;
+    }
+
+    private function diffMin(int $startMin, int $endMin): int
+    {
+        $d = $endMin - $startMin;
+        if ($d <= 0) $d += 24 * 60; // overnight handling
+        return $d;
+    }
+
+    private function parseClock($raw): ?int
+    {
+        if (!$raw) return null;
+        $s = trim((string)$raw);
+        if ($s === '-' || $s === '') return null;
+        if (preg_match('/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)$/i', $s, $m)) {
+            $h = intval($m[1]); $mi = intval($m[2]); $ap = strtoupper($m[3]);
+            if ($ap === 'PM' && $h < 12) $h += 12;
+            if ($ap === 'AM' && $h === 12) $h = 0;
+            return $h * 60 + $mi;
+        }
+        if (preg_match('/^(\d{1,2}):(\d{2})(?::\d{2})?$/', $s, $m)) {
+            return intval($m[1]) * 60 + intval($m[2]);
+        }
+        return null;
     }
 
     /**
