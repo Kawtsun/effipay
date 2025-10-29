@@ -88,6 +88,8 @@ export default function Index({
                     toast.error(props.flash.message || 'An error occurred')
                 } else if (props.flash.type === 'success') {
                     toast.success(props.flash.message || 'Success')
+                } else if (props.flash.type === 'info') {
+                    toast.info(props.flash.message || 'Info')
                 } else {
                     toast(props.flash.message || 'Notification')
                 }
@@ -350,7 +352,7 @@ export default function Index({
                     />
 
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <EmployeeViewDialog employee={viewing as unknown as any} onClose={() => setViewing(null)} showPayroll={false} />
+                    <EmployeeViewDialog employee={viewing as unknown as any} onClose={() => setViewing(null)} />
                     <EmployeeDelete
                         open={open}
                         setOpen={setOpen}

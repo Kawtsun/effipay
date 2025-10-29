@@ -98,6 +98,8 @@ export default function Index() {
         }
       } else if (flash.type === 'success') {
         toast.success(flash.message || 'Success');
+      } else if (flash.type === 'info') {
+        toast.info(flash.message || 'Info');
       } else if (flash.message === 'Payroll already run twice for this month.') {
         toast.info(flash.message);
       } else {
@@ -140,12 +142,13 @@ export default function Index() {
           setImportFlag(selectedMonth, false)
           // Fetch categorized lists now
           ;(async () => {
-            const lists = await loadTkLists(selectedMonth)
+            await loadTkLists(selectedMonth)
           })()
         },
         onFinish: () => setIsRunningPayroll(false),
       }
     )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth])
 
   // Helper to fetch employees with/without timekeeping
@@ -298,6 +301,7 @@ export default function Index() {
         setTkLists(null)
       }
     })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth])
 
   // Listen for timekeeping imports and auto-categorize for the current month
@@ -326,6 +330,7 @@ export default function Index() {
     }
     window.addEventListener('timekeeping:imported', onImported)
     return () => window.removeEventListener('timekeeping:imported', onImported)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth])
 
   const breadcrumbs: BreadcrumbItem[] = [
@@ -361,7 +366,7 @@ export default function Index() {
                   onValueChange={(val) => {
                     const norm = normalizeMonth(val)
                     setSelectedMonth(norm)
-                    try { localStorage.setItem('salary.selectedMonth', norm || '') } catch {}
+                    try { localStorage.setItem('salary.selectedMonth', norm || '') } catch { /* no-op */ }
                   }}
                   placeholder="Select payroll month"
                 />

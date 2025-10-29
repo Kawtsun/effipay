@@ -45,41 +45,31 @@ class PayrollController extends Controller
             ->count('employee_id');
         if ($employeesWithTkCount === 0) {
             // Send an error flash that the frontend will display as a toast
-            return redirect()->back()->with('flash', ['type' => 'error', 'message' => 'No TimeKeeping Record found for this month']);
+            return redirect()->back()->with('flash', [
+                'type' => 'error',
+                'message' => 'No TimeKeeping Record found for this month',
+                'at' => now()->timestamp,
+            ]);
         }
-        $createdCount = 0;
-        foreach ($employees as $employee) {
+    $createdCount = 0;
+    foreach ($employees as $employee) {
             // Reset branch-scoped variables per employee to avoid bleed-over between iterations
             $college_rate = null;
             $overtime_hours = 0; $tardiness = 0; $undertime = 0; $absences = 0; $overtime_pay = 0;
             $honorarium = 0; $base_salary = 0; $sss = 0.0; $philhealth = 0.0; $pag_ibig = 0.0; $withholding_tax = 0.0;
 
-            $existingPayrolls = \App\Models\Payroll::where('employee_id', $employee->id)
+            // Enforce only one payroll per employee per month.
+            // If a payroll record already exists for this employee and month, skip.
+            $alreadyHasPayroll = \App\Models\Payroll::where('employee_id', $employee->id)
                 ->where('month', $payrollMonth)
-                ->get();
-            if ($existingPayrolls->count() >= 2) {
-                // Already run twice for this month
+                ->exists();
+            if ($alreadyHasPayroll) {
                 continue;
             }
-            // Decide target payroll date for this run:
-            // - If no payroll yet: use 15th of the month
-            // - If one payroll exists: use the last day of the month
-            // - Prevent duplicate same-day entries
-            $firstHalfDate = Carbon::createFromFormat('Y-m-d', $payrollMonth . '-15');
-            $lastDayDate   = Carbon::createFromFormat('Y-m-d', $payrollMonth . '-' . str_pad($payrollDate->endOfMonth()->day, 2, '0', STR_PAD_LEFT));
-            $existingDates = collect($existingPayrolls)->pluck('payroll_date')->map(fn($d) => Carbon::parse($d)->format('Y-m-d'))->toArray();
-            if ($existingPayrolls->count() === 0) {
-                $payrollDateStr = $firstHalfDate->format('Y-m-d');
-            } else {
-                $payrollDateStr = $lastDayDate->format('Y-m-d');
-            }
-            if (in_array($payrollDateStr, $existingDates, true)) {
-                // If computed date collides (edge case), fallback to actual parsed day
-                $payrollDateStr = $payrollDate->format('Y-m-d');
-                if (in_array($payrollDateStr, $existingDates, true)) {
-                    continue; // still duplicate
-                }
-            }
+
+            // Use the requested payroll date as the record date (normalized earlier),
+            // ensuring it stays within the selected month.
+            $payrollDateStr = $payrollDate->format('Y-m-d');
 
             // Skip employee if they have no timekeeping data for the month
             $hasTK = \App\Models\TimeKeeping::where('employee_id', $employee->id)
@@ -318,9 +308,19 @@ class PayrollController extends Controller
             } catch (\Throwable $e) {
                 Log::warning('Failed to write audit log for payroll run: ' . $e->getMessage());
             }
-            return redirect()->back()->with('flash', 'Payroll run successfully for ' . date('F Y', strtotime($payrollDateStr)) . '. Payroll records created: ' . $createdCount);
+            return redirect()->back()->with('flash', [
+                'type' => 'success',
+                'message' => 'Payroll run successfully for ' . date('F Y', strtotime($payrollDateStr)) . '. Payroll records created: ' . $createdCount,
+                'at' => now()->timestamp,
+            ]);
         } else {
-            return redirect()->back()->with('flash', 'Payroll already run twice for this month.');
+            // No new payrolls were created. Either all eligible employees already have payroll
+            // for this month, or none have timekeeping data yet for this month.
+            return redirect()->back()->with('flash', [
+                'type' => 'info',
+                'message' => 'No eligible employees to process payroll for this month.',
+                'at' => now()->timestamp,
+            ]);
         }
     }
 

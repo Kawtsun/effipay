@@ -81,6 +81,8 @@ export default function ReportsIndex() {
                     toast.error(flash.message || 'An error occurred')
                 } else if (flash.type === 'success') {
                     toast.success(flash.message || 'Success')
+                } else if (flash.type === 'info') {
+                    toast.info(flash.message || 'Info')
                 } else {
                     toast(flash.message || 'Notification')
                 }
@@ -307,7 +309,7 @@ export default function ReportsIndex() {
                     />
 
                     {/* Dialogs from tcc-adjustments */}
-                    <ReportViewDialog employee={viewing} onClose={() => setViewing(null)} activeRoles={appliedFilters.roles} />
+                    <ReportViewDialog employee={viewing} onClose={() => setViewing(null)} />
                     <PrintDialog open={printDialog.open} onClose={() => setPrintDialog({ open: false, employee: null })} employee={printDialog.employee as Employees | null} />
                     <PrintAllDialog open={printAllDialogOpen} onClose={() => setPrintAllDialogOpen(false)} />
                     <AdjustmentDialog
