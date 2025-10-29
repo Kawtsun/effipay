@@ -74,32 +74,56 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
 
     function getGrossPay() {
         if (!summary) return 0;
-        const isCollegeInstructor = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
-        const ratePerHour = isCollegeInstructor ? Number(summary.college_rate ?? 0) : Number(summary.rate_per_hour ?? 0);
+        const rolesStr = (employee?.roles || '').toLowerCase();
+        const roleTokens = rolesStr.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
+        const hasCollege = rolesStr.includes('college instructor');
+        const isCollegeOnly = hasCollege && (roleTokens.length > 0 ? roleTokens.every(t => t.includes('college instructor')) : true);
+        const isCollegeMulti = hasCollege && !isCollegeOnly;
+
         const baseSalary = Number(summary.base_salary ?? 0);
-        const totalHours = Number(summary.total_hours ?? 0);
-        const tardiness = Number(summary.tardiness ?? 0);
-        const undertime = Number(summary.undertime ?? 0);
-        const absences = Number(summary.absences ?? 0);
-        // Use new overtime formula
+        const nonCollegeRatePerHour = Number(summary.rate_per_hour ?? 0);
+        const collegeRatePerHour = Number(summary.college_rate ?? 0);
+
+        // Prefer locally computed metrics when available to reflect UI logic
+        const tardiness = Number((computed?.tardiness ?? summary.tardiness) ?? 0);
+        const undertime = Number((computed?.undertime ?? summary.undertime) ?? 0);
+        const absences = Number((computed?.absences ?? summary.absences) ?? 0);
+        const totalHours = Number((computed?.total_hours ?? summary.total_hours) ?? 0);
+
         const overtimePay = getOvertimePay();
-        if (isCollegeInstructor) {
+
+        if (isCollegeOnly) {
+            // College-only: use college rate and hours for all
             return (
-                (ratePerHour * totalHours)
+                (collegeRatePerHour * totalHours)
                 + overtimePay
-                - (ratePerHour * tardiness)
-                - (ratePerHour * undertime)
-                - (ratePerHour * absences)
-            );
-        } else {
-            return (
-                baseSalary
-                + overtimePay
-                - (ratePerHour * tardiness)
-                - (ratePerHour * undertime)
-                - (ratePerHour * absences)
+                - (collegeRatePerHour * tardiness)
+                - (collegeRatePerHour * undertime)
+                - (collegeRatePerHour * absences)
             );
         }
+
+        if (isCollegeMulti) {
+            // Multi-role with College Instructor:
+            // Gross = Base Salary + College/GSP + Overtime - (non-college rate * (tardiness + undertime + absences))
+            // Note: computed metrics exclude college-role timekeeping from T/U/A in the section below.
+            const collegeGsp = collegeRatePerHour > 0 && totalHours > 0
+                ? (collegeRatePerHour * totalHours)
+                : 0;
+            const deductions = (nonCollegeRatePerHour * tardiness)
+                + (nonCollegeRatePerHour * undertime)
+                + (nonCollegeRatePerHour * absences);
+            return baseSalary + collegeGsp + overtimePay - deductions;
+        }
+
+        // Non-college
+        return (
+            baseSalary
+            + overtimePay
+            - (nonCollegeRatePerHour * tardiness)
+            - (nonCollegeRatePerHour * undertime)
+            - (nonCollegeRatePerHour * absences)
+        );
     }
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [loadingPayroll, setLoadingPayroll] = useState(false);
@@ -213,7 +237,12 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     // ---------- Compute metrics from BTR + schedule ----------
     const computed = React.useMemo(() => {
         if (!employee || !selectedMonth) return null;
-        const workDays = Array.isArray((employee as any).work_days) ? (employee as any).work_days : [];
+    const workDays = Array.isArray((employee as any).work_days) ? (employee as any).work_days : [];
+    const rolesStr = String((employee as any).roles || '').toLowerCase();
+    const roleTokens = rolesStr.split(/[\,\n]+/).map((s: string) => s.trim()).filter(Boolean);
+    const hasCollege = rolesStr.includes('college instructor');
+    const isCollegeOnly = hasCollege && (roleTokens.length > 0 ? roleTokens.every((t: string) => t.includes('college instructor')) : true);
+    const isCollegeMulti = hasCollege && !isCollegeOnly;
         // Build schedule map by weekday code (mon..sun)
         const schedByCode: Record<string, { start: number; end: number; durationMin: number }> = {};
         const hmToMin = (t?: string) => {
@@ -262,6 +291,10 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
             if (Number.isNaN(start) || Number.isNaN(end)) continue;
             const raw = diffMin(start, end);
             const durationMin = Math.max(0, raw - 60); // minus 1 hour break to match schedule display
+            const roleStr = String((wd as any).role ?? '').toLowerCase();
+            const fromCollegeRole = roleStr.includes('college instructor');
+            // Exclude college-instructor schedules from T/U/A for multi-role employees
+            if (isCollegeMulti && fromCollegeRole) continue;
             schedByCode[(wd as any).day] = { start, end, durationMin };
         }
 

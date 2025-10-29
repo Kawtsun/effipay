@@ -257,6 +257,53 @@ export function ReportDataProvider({
     return !!(employee && typeof employee.roles === "string" && employee.roles.toLowerCase().includes("college instructor"));
   }, [employee]);
 
+  // Derive a corrected Gross Pay for multi-role with College Instructor so the card reflects the new rule
+  const adjustedSelectedPayroll = React.useMemo(() => {
+    if (!selectedPayroll) return null;
+    try {
+      const rolesStr = String(employee?.roles ?? '').toLowerCase();
+      const tokens = rolesStr.split(/[\,\n]+/).map(s => s.trim()).filter(Boolean);
+      const hasCollege = rolesStr.includes('college instructor');
+      const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every(t => t.includes('college instructor')) : true);
+      const isCollegeMulti = hasCollege && !isCollegeOnly;
+
+      if (!isCollegeMulti) return selectedPayroll; // keep original for non-multi cases
+
+      // Resolve numbers
+      const baseSalary = Number(selectedPayroll.base_salary ?? employee?.base_salary ?? 0) || 0;
+      const honorarium = Number(selectedPayroll.honorarium ?? employee?.honorarium ?? 0) || 0;
+      const collegeRate = Number(selectedPayroll.college_rate ?? timekeepingSummary?.college_rate ?? 0) || 0;
+      const collegeHours = Number(timekeepingSummary?.total_hours ?? NaN);
+      const t = Number((tkComputed?.tardiness ?? timekeepingSummary?.tardiness) ?? 0) || 0;
+      const u = Number((tkComputed?.undertime ?? timekeepingSummary?.undertime) ?? 0) || 0;
+      const a = Number((tkComputed?.absences ?? timekeepingSummary?.absences) ?? 0) || 0;
+
+      // Non-college hourly rate for deductions and OT
+      const nonCollegeRate = (() => {
+        const rTK = Number(tkComputed?.rate_per_hour ?? NaN);
+        if (Number.isFinite(rTK) && rTK > 0) return Number(rTK.toFixed(2));
+        const rSP = Number((selectedPayroll as any)?.rate_per_hour ?? NaN);
+        if (Number.isFinite(rSP) && rSP > 0) return Number(rSP.toFixed(2));
+        const rTS = Number(timekeepingSummary?.rate_per_hour ?? NaN);
+        return Number.isFinite(rTS) && rTS > 0 ? Number(rTS.toFixed(2)) : 0;
+      })();
+
+      // Overtime pay using the same rule as summary cards
+      const weekdayOT = Number(tkComputed?.overtime_count_weekdays ?? timekeepingSummary?.overtime_count_weekdays ?? 0) || 0;
+      const weekendOT = Number(tkComputed?.overtime_count_weekends ?? timekeepingSummary?.overtime_count_weekends ?? 0) || 0;
+      const observanceOT = Number(tkComputed?.overtime_count_observances ?? timekeepingSummary?.overtime_count_observances ?? 0) || 0;
+      const overtimePay = (nonCollegeRate * 0.25 * weekdayOT) + (nonCollegeRate * 0.30 * weekendOT) + (nonCollegeRate * 2.0 * observanceOT);
+
+      const collegeGsp = (Number.isFinite(collegeHours) && collegeHours > 0 && collegeRate > 0) ? collegeRate * collegeHours : 0;
+      const deductions = nonCollegeRate * (t + u + a);
+      const derivedGross = Number((baseSalary + collegeGsp + overtimePay - deductions + honorarium).toFixed(2));
+
+      return { ...selectedPayroll, gross_pay: derivedGross };
+    } catch {
+      return selectedPayroll;
+    }
+  }, [selectedPayroll, employee, tkComputed, timekeepingSummary]);
+
   // Helper used by the dialog to compute the monetary values for summary cards
   // Sync rule: Prefer Timekeeping summary (hours and rate) so the Report matches the Timekeeping view.
   const getSummaryCardAmount = React.useCallback((type: "tardiness" | "undertime" | "overtime" | "absences") => {
@@ -389,7 +436,7 @@ export function ReportDataProvider({
       setSelectedMonth,
       setPendingMonth,
       monthlyPayrollData,
-      selectedPayroll,
+  selectedPayroll: adjustedSelectedPayroll,
       hasPayroll,
       isCollegeInstructorPayroll,
       getSummaryCardAmount,
