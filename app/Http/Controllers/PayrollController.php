@@ -103,13 +103,11 @@ class PayrollController extends Controller
                 $total_hours_worked = $metrics['total_hours'];
                 $tardiness = $metrics['tardiness'];
                 $undertime = $metrics['undertime'];
-                // Source absences from the same computation used by AttendanceCards (metrics),
-                // so payroll subtraction matches what's shown in the UI and in ReportCards.
+                // Source absences from the same computation used by AttendanceCards (metrics)
                 $absences = max(0, (float)($metrics['absences'] ?? 0));
                 $overtime_hours = $metrics['overtime'];
                 $weekday_ot = $metrics['overtime_count_weekdays'];
                 $weekend_ot = $metrics['overtime_count_weekends'];
-                $overtime_pay = isset($summaryData['overtime_pay_total']) ? floatval($summaryData['overtime_pay_total']) : 0;
                 // College instructors work by hourly schedule only: they should not have
                 // tardiness, undertime, or overtime adjustments applied to gross pay.
                 // Keep absences, which still reduce pay.
@@ -199,7 +197,10 @@ class PayrollController extends Controller
                 $undertime = $metrics['undertime'];
                 $absences = $metrics['absences'];
                 $overtime_hours = $metrics['overtime'];
-                $overtime_pay = isset($summaryData['overtime_pay_total']) ? floatval($summaryData['overtime_pay_total']) : 0;
+                // Recompute overtime pay from buckets to match UI cards: 0.25x on weekdays, 0.30x on weekends
+                $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
+                $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
+                $overtime_pay = round((float)$rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
 
                 $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
                 // Gross pay: (base_salary + overtime_pay) - (rate_per_hour * tardiness) - (rate_per_hour * undertime) - (rate_per_hour * absences) + honorarium
@@ -212,6 +213,22 @@ class PayrollController extends Controller
                         + $honorarium,
                     2
                 );
+
+                // Debug trace for admin computation to validate parity with UI
+                Log::info('[Payroll Debug][Admin] Components', [
+                    'employee_id' => $employee->id,
+                    'month' => $payrollMonth,
+                    'base_salary' => $base_salary,
+                    'rate_per_hour' => $rate_per_hour,
+                    'tardiness_hours' => $tardiness,
+                    'undertime_hours' => $undertime,
+                    'absences_hours' => $absences,
+                    'weekday_ot_hours' => $weekday_ot,
+                    'weekend_ot_hours' => $weekend_ot,
+                    'overtime_pay' => $overtime_pay,
+                    'honorarium' => $honorarium,
+                    'gross_pay' => $gross_pay,
+                ]);
 
                 // Statutory contributions: compute numeric amounts based on flags
                 $sss = 0.0;
