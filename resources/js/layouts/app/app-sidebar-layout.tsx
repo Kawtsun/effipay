@@ -1,3 +1,4 @@
+// app-sidebar-layout.tsx
 import { AppContent } from '@/components/app-content';
 import AppContentScrollArea from '@/components/app-content-scroll-area';
 import { AppShell } from '@/components/app-shell';
@@ -6,11 +7,8 @@ import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import TccHeader from '@/components/tcc-header';
 import { Toaster } from '@/components/ui/sonner';
 import { type BreadcrumbItem } from '@/types';
+import { StickySearchProvider } from '@/contexts/sticky-search';
 import { type PropsWithChildren } from 'react';
-
-// import { initializeTheme } from '@/hooks/use-appearance';
-
-// initializeTheme();
 
 export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWithChildren<{ breadcrumbs?: BreadcrumbItem[] }>) {
     return (
@@ -21,16 +19,18 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
             <AppShell variant="sidebar">
                 <div className="flex flex-1 pt-[94px]">
                     <AppSidebar />
+                    {/* 👇 REMOVE overflow-hidden from here */}
                     <AppContent variant="sidebar">
-                        <AppContentScrollArea>
-                            <div className="sticky top-0 z-10 bg-white dark:bg-gray-950">
-                                <AppSidebarHeader breadcrumbs={breadcrumbs} />
-                            </div>
-                            {children}
-                        </AppContentScrollArea>
+                        <StickySearchProvider>
+                            <AppSidebarHeader breadcrumbs={breadcrumbs} />
+                            <AppContentScrollArea>
+                                {children}
+                            </AppContentScrollArea>
+                        </StickySearchProvider>
                     </AppContent>
-                        <Toaster richColors position={'top-right'} visibleToasts={5} />
+                    <Toaster richColors position={'top-right'} visibleToasts={5} />
                 </div>
+
             </AppShell>
         </div>
     );

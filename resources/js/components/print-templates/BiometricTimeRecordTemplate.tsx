@@ -1,7 +1,7 @@
 
-
 import React from 'react';
 import { Document, Page, View, Text, StyleSheet, Image } from '@react-pdf/renderer';
+import { Employees } from '@/types';
 
 const styles = StyleSheet.create({
   page: {
@@ -44,14 +44,14 @@ const styles = StyleSheet.create({
   },
   tableContainer: {
     marginTop: 12,
-    marginBottom: 18, // leave space for labels below
+    marginBottom: 18,
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#fff',
     minHeight: 120,
-    maxHeight: 600, // ensure table doesn't take whole page
+    maxHeight: 600,
   },
   tableHeaderRow: {
     flexDirection: 'row',
@@ -97,16 +97,34 @@ const styles = StyleSheet.create({
   },
   dateCell: {
     flex: 2,
-    // fontFamily: 'Courier',
     fontSize: 8,
   },
 });
 
+const DAY_LABELS: Record<string, string> = {
+    mon: "Monday",
+    tue: "Tuesday",
+    wed: "Wednesday",
+    thu: "Thursday",
+    fri: "Friday",
+    sat: "Saturday",
+    sun: "Sunday",
+};
+
+const LEAVE_COLOR_MAP: Record<string, { bg: string; text: string; }> = {
+    'Paid Leave': { bg: '#dcfce7', text: '#166534' },
+    'Maternity Leave': { bg: '#dbeafe', text: '#1e40af' },
+    'Sick Leave': { bg: '#ffedd5', text: '#9a3412' },
+    'Study Leave': { bg: '#f3e8ff', text: '#6b21a8' },
+    'DEFAULT': { bg: '#f3f4f6', text: '#1f2937' },
+};
 
 interface BiometricTimeRecordTemplateProps {
+  employee: Employees | null;
+  leaveDatesMap: Record<string, string>;
   employeeName?: string;
   role?: string;
-  payPeriod?: string; // 'YYYY-MM' or 'YYYY-MM-DD'
+  payPeriod?: string;
   records?: TimeRecord[];
   totalHours?: number | string;
   tardiness?: number | string;
@@ -120,7 +138,7 @@ const getPayPeriodString = (period?: string) => {
   let year = date.getFullYear();
   let month = date.getMonth() + 1;
   if (period) {
-    const match = period.match(/^\d{4}-(\d{2})/);
+    const match = period.match(/^(\d{4})-(\d{2})/);
     if (match) {
       year = parseInt(period.substring(0, 4), 10);
       month = parseInt(match[1], 10);
@@ -131,7 +149,6 @@ const getPayPeriodString = (period?: string) => {
   return `${monthName} 1-${lastDay}, ${year}`;
 };
 
-// Helper for day name
 function getDayName(dateStr: string) {
   const dateObj = new Date(dateStr);
   if (isNaN(dateObj.getTime())) return '';
@@ -139,7 +156,7 @@ function getDayName(dateStr: string) {
 }
 
 interface TimeRecord {
-  date: string; // YYYY-MM-DD
+  date: string;
   timeIn?: string | null;
   timeOut?: string | null;
   time_in?: string | null;
@@ -151,10 +168,11 @@ interface TimeRecord {
 interface TableProps {
   records: TimeRecord[];
   payPeriod?: string;
+  leaveDatesMap: Record<string, string>;
+  employee: Employees | null;
 }
 
 const normalizeDate = (date: string) => {
-  // Always returns YYYY-MM-DD with leading zeros
   const d = new Date(date);
   if (isNaN(d.getTime())) return date;
   const yyyy = d.getFullYear();
@@ -163,8 +181,7 @@ const normalizeDate = (date: string) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-const TimekeepingTable: React.FC<TableProps> = ({ records, payPeriod }) => {
-  // Generate days for the month
+const TimekeepingTable: React.FC<TableProps> = ({ records, payPeriod, leaveDatesMap, employee }) => {
   const daysInMonth = payPeriod
     ? new Date(
         parseInt(payPeriod.split("-")[0]),
@@ -174,29 +191,49 @@ const TimekeepingTable: React.FC<TableProps> = ({ records, payPeriod }) => {
     : 0;
   const year = payPeriod ? payPeriod.split("-")[0] : "";
   const month = payPeriod ? payPeriod.split("-")[1] : "";
-  // Map records by normalized date for quick lookup
   const recordMap: Record<string, TimeRecord> = {};
   records.forEach((rec) => {
     recordMap[normalizeDate(rec.date)] = rec;
   });
+
   return (
     <View style={styles.tableContainer}>
       <View style={styles.tableHeaderRow}>
         <Text style={[styles.tableHeaderCell, styles.tableHeaderCellLeft, styles.dateCell]}>Date</Text>
         <Text style={styles.tableHeaderCell}>Time In</Text>
-        <Text style={[styles.tableHeaderCell, styles.tableHeaderCellRight]}>Time Out</Text>
+        <Text style={styles.tableHeaderCell}>Time Out</Text>
       </View>
       {Array.from({ length: daysInMonth }, (_, i) => {
         const day = i + 1;
         const dateStr = `${year}-${month.padStart(2, "0")}-${String(day).padStart(2, "0")}`;
         const rec = recordMap[dateStr];
         const isEven = i % 2 === 0;
+        
+        const leaveType = leaveDatesMap[dateStr];
+        const isLeaveDay = !!leaveType;
+
         const dayName = getDayName(dateStr);
+        const workDays = employee?.work_days || [];
+        const isWorkDay = workDays.some(workDay => DAY_LABELS[workDay.day] === dayName);
+        const isPaidLeaveDay = isLeaveDay && isWorkDay;
+
+        const colors = isLeaveDay ? (LEAVE_COLOR_MAP[leaveType] || LEAVE_COLOR_MAP.DEFAULT) : null;
+
+        const rowStyle = [
+            styles.tableRow,
+            isLeaveDay && colors ? { backgroundColor: colors.bg } : (isEven ? styles.evenRow : styles.oddRow)
+        ];
+        
+        const textStyle = isLeaveDay && colors ? { color: colors.text } : {};
+
         return (
-          <View key={dateStr} style={[styles.tableRow, isEven ? styles.evenRow : styles.oddRow]}> 
-            <Text style={[styles.tableCell, styles.dateCell]}>{dateStr}{dayName ? ` (${dayName})` : ''}</Text>
-            <Text style={styles.tableCell}>{rec?.timeIn || rec?.clock_in || rec?.time_in || "-"}</Text>
-            <Text style={styles.tableCell}>{rec?.timeOut || rec?.clock_out || rec?.time_out || "-"}</Text>
+          <View key={dateStr} style={rowStyle}>
+            <Text style={[styles.tableCell, styles.dateCell, textStyle]}>
+                {`${dateStr}${dayName ? ` (${dayName})` : ''}`}
+                {isPaidLeaveDay && <Text style={{fontWeight: 'bold', fontSize: 6, textTransform: 'uppercase'}}>{` - ${leaveType}`}</Text>}
+            </Text>
+            <Text style={[styles.tableCell, textStyle]}>{rec?.timeIn || rec?.clock_in || rec?.time_in || (isPaidLeaveDay ? leaveType : "-")}</Text>
+            <Text style={[styles.tableCell, textStyle]}>{rec?.timeOut || rec?.clock_out || rec?.time_out || (isPaidLeaveDay ? leaveType : "-")}</Text>
           </View>
         );
       })}
@@ -204,9 +241,6 @@ const TimekeepingTable: React.FC<TableProps> = ({ records, payPeriod }) => {
   );
 };
 
-
-
-// Format numbers with commas and 2 decimal places (copied from PayslipTemplate)
 const formatWithCommas = (value: string | number): string => {
   let num = 0;
   if (value === null || value === undefined || value === '') {
@@ -222,7 +256,6 @@ const formatWithCommas = (value: string | number): string => {
   return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-// Helper to get numeric value
 const getNum = (v: string | number | undefined | null) => {
   if (v === undefined || v === null || v === '') return 0;
   if (typeof v === 'string') return Number(v.replace(/,/g, ''));
@@ -230,6 +263,8 @@ const getNum = (v: string | number | undefined | null) => {
 };
 
 const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = ({
+  employee,
+  leaveDatesMap,
   employeeName = '-',
   role = '',
   payPeriod,
@@ -242,7 +277,6 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
 }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      {/* Centered Header Row */}
       <View style={styles.headerRow}>
         <Image
           style={styles.logo}
@@ -255,9 +289,7 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
           <Text style={styles.subtitle}>Tel. Nos.: (02) 234-5566</Text>
         </View>
       </View>
-      {/* Employee Name and Period Row */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginTop: 8 }}>
-        {/* Employee Name (left) */}
         <View style={{ flex: 1 }}>
           <Text>
             Employee Name: <Text style={{ fontWeight: 'bold' }}>{employeeName || '-'}</Text>
@@ -276,20 +308,16 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
             })()}</Text>
           </Text>
         </View>
-        {/* Period (right) */}
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
           <Text>
             Period: <Text style={{ fontWeight: 'bold' }}>{getPayPeriodString(payPeriod)}</Text>
           </Text>
         </View>
       </View>
-      {/* Timekeeping Table */}
-      <TimekeepingTable records={records} payPeriod={payPeriod} />
-      {/* Summary Label */}
+      <TimekeepingTable records={records} payPeriod={payPeriod} leaveDatesMap={leaveDatesMap} employee={employee} />
       <View style={{marginBottom: 2 }}>
         <Text style={{ fontWeight: 'bold', fontSize: 8 }}>Summary:</Text>
       </View>
-      {/* Summary Row */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 0, marginBottom: 0, fontSize: 8 }}>
         <Text style={{ flex: 1, textAlign: 'left' }}>
           TOTAL HOURS: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(totalHours))}</Text>
@@ -308,10 +336,7 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
         </Text>
       </View>
 
-
-      {/* Conforme/Verified Signature Lines and Labels (inline underline) */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 20, marginBottom: 0 }}>
-        {/* Conforme */}
         <View style={{ flex: 1, alignItems: 'flex-start' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text>CONFORME:</Text>
@@ -323,7 +348,6 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
             <Text style={{ fontSize: 7 }}>(Signature over Printed Name)</Text>
           </View>
         </View>
-        {/* Verified */}
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
             <Text>VERIFIED:</Text>
@@ -340,5 +364,4 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
   </Document>
 );
 
-// ...existing code...
 export default BiometricTimeRecordTemplate;

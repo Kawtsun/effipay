@@ -1,0 +1,6 @@
+/* Ensure custom role badge color always wins */
+.badge.custom-role-badge,
+.custom-role-badge {
+  background-color: #f72297 !important;
+  color: #fff !important;
+}

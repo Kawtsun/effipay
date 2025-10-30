@@ -1,26 +1,7 @@
 import { Employees } from "@/types";
 import { Badge } from "./ui/badge";
-import { Shield, GraduationCap, Book } from "lucide-react";
-
-const COLLEGE_PROGRAMS = [
-  { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-  { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-  { value: 'COELA', label: 'College of Education and Liberal Arts' },
-  { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-  { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-  { value: 'JD', label: 'Juris Doctor' },
-  { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-  { value: 'RLE', label: 'Related Learning Experience' },
-  { value: 'CG', label: 'Career Guidance' },
-  { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-  { value: 'GSP', label: 'Graduate Studies Programs' },
-  { value: 'MBA', label: 'Master of Business Administration' },
-];
-
-export function getCollegeProgramLabel(acronym: string) {
-  const found = COLLEGE_PROGRAMS.find((p) => p.value === acronym);
-  return found ? found.label : acronym;
-}
+import { Shield, GraduationCap, Book, User } from "lucide-react";
+import { getCollegeProgramLabel } from '@/constants/college-programs';
 
 export function RolesBadges({ roles, activeRoles, employee }: { roles: string; activeRoles?: string[]; employee: Employees }) {
   if (!roles) return null;
@@ -32,7 +13,10 @@ export function RolesBadges({ roles, activeRoles, employee }: { roles: string; a
     const rest = rolesArr.filter((r) => !filtered.includes(r));
     rolesArr = [...filtered, ...rest];
   } else {
-    rolesArr = order.filter((r) => rolesArr.includes(r));
+    // Show standard roles in order, then custom roles
+    const ordered = order.filter((r) => rolesArr.includes(r));
+    const custom = rolesArr.filter((r) => !order.includes(r));
+    rolesArr = [...ordered, ...custom];
   }
   return (
     <div className="flex flex-wrap gap-2 max-w-lg px-4 py-2 break-words whitespace-pre-line">
@@ -56,9 +40,12 @@ export function RolesBadges({ roles, activeRoles, employee }: { roles: string; a
         } else if (role === "basic education instructor") {
           color = "warning";
           icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
+        } else {
+          color = "purple";
+          icon = <User className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
         }
         return (
-          <Badge key={role} variant={color} className="capitalize flex items-center">
+          <Badge key={role} variant={color} className={`capitalize flex items-center${!order.includes(role) ? ' custom-role-badge' : ''}`}>
             {icon}
             {role.replace(/\b\w/g, (c) => c.toUpperCase())}
             {extra}

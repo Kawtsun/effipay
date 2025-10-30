@@ -7,6 +7,7 @@ use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -17,19 +18,15 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::create([
-            'username' => 'admin',
-            'password' => Hash::make('admin123')
-        ]);
-
-        User::create([
-            'username' => 'admin2',
-            'password' => Hash::make('admin000')
-        ]);
+        // Note: Admin user seeding has been moved to a dedicated seeder
+        // (AdminUserSeeder) so it can be invoked explicitly in production.
+        // To seed admin users, run:
+        //   php artisan db:seed --class=Database\\Seeders\\AdminUserSeeder
 
         $this->call([
+            AdminUserSeeder::class,
             EmployeesSeeder::class,
-            SalarySeeder::class,
+            // SalarySeeder::class,
             // TimeKeepingsSeeder::class,
             // PayrollSeeder::class,
         ]);

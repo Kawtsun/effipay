@@ -25,27 +25,107 @@ class ReportsController extends Controller
         }
 
         if ($request->filled('types')) {
-            $query->whereIn('employee_type', $request->types);
+            $query->whereHas('employeeTypes', function ($q) use ($request) {
+                $q->whereIn('type', $request->types);
+            });
         }
 
         if ($request->filled('statuses')) {
             $query->whereIn('employee_status', $request->statuses);
         }
 
+        $standardRoles = ['administrator', 'college instructor', 'basic education instructor'];
+
         if ($request->filled('roles') && is_array($request->roles) && count($request->roles)) {
-            $query->where(function($q) use ($request) {
-                foreach ($request->roles as $role) {
-                    $q->orWhere('roles', 'like', '%' . $role . '%');
+            $query->where(function($q) use ($request, $standardRoles) {
+                $rolesToFilter = $request->roles;
+
+                // If 'others' is in the filter, it means "any role that is not a standard one".
+                if (in_array('others', $rolesToFilter)) {
+                    $rolesToFilter = array_diff($rolesToFilter, ['others']); // Remove 'others' from specific checks
+                    $q->orWhere(function($subQuery) use ($standardRoles) {
+                        // This subquery should find employees where the roles string does NOT contain ANY of the standard roles.
+                        // The AND logic here is correct.
+                        foreach ($standardRoles as $stdRole) {
+                            $subQuery->where('roles', 'not like', '%' . $stdRole . '%');
+                        }
+                    });
+                }
+
+                foreach ($rolesToFilter as $role) {
+                    $q->orWhere('roles', $role)
+                      ->orWhere('roles', 'like', $role . ',%')
+                      ->orWhere('roles', 'like', '%,' . $role . ',%')
+                      ->orWhere('roles', 'like', '%,' . $role);
                 }
             });
         }
 
-        // Filter by college program if set
-        if ($request->filled('collegeProgram')) {
+        // Filter by college program if set (only when college instructor is selected)
+        if ($request->filled('collegeProgram') && 
+            $request->filled('roles') && 
+            is_array($request->roles) && 
+            in_array('college instructor', $request->roles)) {
             $query->where('college_program', $request->collegeProgram);
         }
 
-        $employees = $query->paginate(10)->withQueryString();
+        // Filter by basic education level if set (only when basic education instructor is selected)
+        if ($request->filled('basicEducationLevel') &&
+            $request->filled('roles') &&
+            is_array($request->roles) &&
+            in_array('basic education instructor', $request->roles)) {
+            $query->where('basic_edu_level', $request->basicEducationLevel);
+        }
+
+        // Get available custom roles (others roles)
+        $othersRoles = [];
+        
+        // Get all unique roles from employees
+        $allRoles = \App\Models\Employees::pluck('roles')->filter()->map(function ($roles) {
+            return explode(',', $roles);
+        })->flatten()->map(function ($role) {
+            return trim($role);
+        })->filter()->unique()->values();
+        
+        // Filter out standard roles to get custom roles
+        $customRoles = $allRoles->filter(function ($role) use ($standardRoles) {
+            return !in_array(strtolower($role), $standardRoles);
+        })->map(function ($role) {
+            return [
+                'value' => $role,
+                'label' => ucwords($role)
+            ];
+        })->values()->toArray();
+        
+        $othersRoles = $customRoles;
+
+        // Get perPage from request, prioritizing 'perPage' then 'per_page', defaulting to 10
+        $perPage = $request->input('perPage') ?? $request->input('per_page', 10);
+        $perPage = max(1, min(100, (int) $perPage)); // Ensure it's between 1 and 100
+        
+        // Eager-load to mirror Employees/TimeKeeping controllers
+        $employees = $query->with(['workDays', 'employeeTypes', 'collegeProgramSchedules'])
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $employees->getCollection()->transform(function ($emp) {
+            // ** THE FIX IS HERE **
+            // We now map the collection to the correct array structure
+            $employeeTypesArray = $emp->employeeTypes->map(function ($type) {
+                return [
+                    'role' => $type->role,
+                    'type' => $type->type,
+                ];
+            });
+
+            // Unset the original relationship to avoid sending redundant data
+            unset($emp->employeeTypes);
+            // Assign the newly formatted array
+            $emp->employee_types = $employeeTypesArray;
+
+            return $emp;
+        });
+
         $month = $request->input('month'); // Optionally filter by month
         $employeesArray = array_map(function ($emp) use ($month) {
             // Fetch payroll for this employee and month (if month provided)
@@ -71,9 +151,12 @@ class ReportsController extends Controller
                 'last_name' => $emp->last_name,
                 'first_name' => $emp->first_name,
                 'middle_name' => $emp->middle_name,
-                'employee_type' => $emp->employee_type,
+                'employee_types' => $emp->employee_types,
                 'employee_status' => $emp->employee_status,
                 'roles' => $emp->roles,
+                // Expose basic education level for dialogs (support both keys used in UI)
+                'basic_edu_level' => $emp->basic_edu_level ?? null,
+                'basic_education_level' => $emp->basic_edu_level ?? null,
                 'base_salary' => $base_salary,
                 'overtime_pay_total' => $overtime_pay_total,
                 'sss' => $sss,
@@ -88,7 +171,27 @@ class ReportsController extends Controller
                 'total_deductions' => $total_deductions,
                 'net_pay' => $net_pay,
                 'per_payroll' => $net_pay, // For summary, just net_pay
-                // Optionally add more payroll fields as needed
+                // Work days: mirror Employees/TimeKeeping structure (separate time-based days vs. college schedules)
+                'work_days' => $emp->workDays
+                    ? $emp->workDays->map(function ($wd) {
+                        return [
+                            'day' => (string) $wd->day,
+                            'work_start_time' => $wd->work_start_time,
+                            'work_end_time' => $wd->work_end_time,
+                            'work_hours' => $wd->work_hours,
+                            'role' => $wd->role,
+                        ];
+                    })->values()->toArray()
+                    : [],
+                'college_schedules' => ($emp->relationLoaded('collegeProgramSchedules') && $emp->collegeProgramSchedules)
+                    ? $emp->collegeProgramSchedules->map(function ($row) {
+                        return [
+                            'program_code' => (string) $row->program_code,
+                            'day' => (string) $row->day,
+                            'hours_per_day' => (float) $row->hours_per_day,
+                        ];
+                    })->values()->toArray()
+                    : [],
             ];
         }, $employees->items());
 
@@ -97,11 +200,15 @@ class ReportsController extends Controller
             'currentPage' => $employees->currentPage(),
             'totalPages'  => $employees->lastPage(),
             'search'      => $request->input('search', ''),
+            'perPage'     => $perPage,
+            'othersRoles' => $othersRoles,
             'filters'     => [
                 'types'    => (array) $request->input('types', []),
                 'statuses' => (array) $request->input('statuses', []),
                 'roles'    => array_values((array) $request->input('roles', [])),
                 'collegeProgram' => $request->input('collegeProgram', ''),
+                'basicEducationLevel' => $request->input('basicEducationLevel', ''),
+                'othersRole' => '', // No longer a separate filter, reset for frontend state
             ],
         ]);
     }

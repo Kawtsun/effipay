@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { formatFullName } from "@/utils/formatFullName";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,7 @@ import { Skeleton } from "./ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { RolesBadges } from "./roles-badges";
 import DialogScrollArea from "./dialog-scroll-area";
+import { EmployeeScheduleBadges } from "./employee-schedule-badges";
 
 interface Props {
   employee: Employees | null;
@@ -29,11 +30,102 @@ interface TimeRecord {
   clock_out?: string | null;
 }
 
+// Define the structure for the monthly summary response (including our debug info)
+interface MonthlySummary {
+  absences: number;
+  _debug?: {
+    // CHANGE 1: Update the debug structure to map date -> leave type
+    // We assume the backend returns this structure now
+    leave_dates_map: Record<string, string>; // e.g., { '2025-09-03': 'Paid Leave', '2025-09-05': 'Sick Leave' }
+    leave_dates_in_month: string[]; // Keep for backward compatibility if needed, but the map is better
+    // ... other debug fields
+  };
+  // Add other fields you might need later (e.g., tardiness, overtime)
+}
+
+// BTRDialog.tsx (around line 45, or anywhere outside the component)
+
+const DAY_LABELS: Record<string, string> = {
+  mon: "Monday",
+  tue: "Tuesday",
+  wed: "Wednesday",
+  thu: "Thursday",
+  fri: "Friday",
+  sat: "Saturday",
+  sun: "Sunday",
+};
+
+import { OBSERVANCE_COLOR_MAP, OBSERVANCE_PRETTY } from './observance-colors';
+
+// Map some normalized leave strings to observance keys when possible
+const LEAVE_TO_OBSERVANCE: Record<string, string> = {
+  'Rainy Day': 'rainy-day',
+  'Rainy-day': 'rainy-day',
+  'Half-day': 'half-day',
+  'Half Day': 'half-day',
+  'Whole-day': 'whole-day',
+  'Whole Day': 'whole-day',
+};
+
+const LEAVE_COLOR_MAP: Record<string, { bg: string; text: string; badge: string }> = {
+  'Paid Leave': {
+    bg: 'bg-green-100 dark:bg-green-900/30',
+    text: 'text-green-800 dark:text-green-300',
+    badge: 'bg-green-500/20 text-green-700 dark:text-green-300 dark:bg-green-900/50',
+  },
+  'Maternity Leave': {
+    bg: 'bg-blue-100 dark:bg-blue-900/30',
+    text: 'text-blue-800 dark:text-blue-300',
+    badge: 'bg-blue-500/20 text-blue-700 dark:text-blue-300 dark:bg-blue-900/50',
+  },
+  'Sick Leave': {
+    bg: 'bg-orange-100 dark:bg-orange-900/30',
+    text: 'text-orange-800 dark:text-orange-300',
+    badge: 'bg-orange-500/20 text-orange-700 dark:text-orange-300 dark:bg-orange-900/50',
+  },
+  'Study Leave': {
+    bg: 'bg-purple-100 dark:bg-purple-900/30',
+    text: 'text-purple-800 dark:text-purple-300',
+    badge: 'bg-purple-500/20 text-purple-700 dark:text-purple-300 dark:bg-purple-900/50',
+  },
+  // Default for any other type, or if debug data is corrupted
+  'DEFAULT': {
+    bg: 'bg-gray-100 dark:bg-gray-700/30',
+    text: 'text-gray-800 dark:text-gray-300',
+    badge: 'bg-gray-400/20 text-gray-700 dark:text-gray-300 dark:bg-gray-600/50',
+  },
+};
+
+// ... (New data structure)
+interface LeaveTypeData {
+  type: string; // e.g., 'Paid Leave'
+  date: string; // e.g., '2025-09-03'
+}
+
 export default function BTRDialog({ employee, onClose }: Props) {
+  // Use YYYY-MM strings consistently
+  const normalizeYm = (ym: string) => {
+    const base = ym?.slice(0, 7) || "";
+    const [y, m] = base.split("-");
+    const yi = parseInt(y || "", 10);
+    const mi = parseInt(m || "", 10);
+    if (Number.isNaN(yi) || Number.isNaN(mi)) return base;
+    return `${yi}-${String(mi).padStart(2, '0')}`;
+  };
+
+  const now = new Date();
+  const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
   const [selectedMonth, setSelectedMonth] = useState("");
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [records, setRecords] = useState<TimeRecord[]>([]);
-  // const [loading, setLoading] = useState(false); // No longer used
+  const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
+  const [observanceMap, setObservanceMap] = useState<Record<string, { type?: string; label?: string; start_time?: string; is_automated?: boolean }>>({});
+
+  // Loading state for skeleton and minimum loading time
+  const [loading, setLoading] = useState(false);
+  const [minLoading, setMinLoading] = useState(false);
+  const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch months
   useEffect(() => {
@@ -41,59 +133,130 @@ export default function BTRDialog({ employee, onClose }: Props) {
     fetch("/payroll/all-available-months")
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && Array.isArray(data.months)) {
-          setAvailableMonths(data.months);
-          if (!selectedMonth && data.months.length > 0) {
-            setSelectedMonth(data.months[0]);
-          } else if (data.months.length === 0) {
-            toast.error('No available months to display.');
+        if (data?.success && Array.isArray(data.months)) {
+          const normalized = (data.months as string[])
+            .map((m) => normalizeYm(m))
+            .filter(Boolean) as string[];
+          setAvailableMonths(normalized);
+          if (normalized.length > 0 && !selectedMonth) {
+            setSelectedMonth(normalized[0]);
+          } else if (normalized.length === 0) {
+            // Fallback to current month when API returns nothing
+            setSelectedMonth(normalizeYm(currentYm));
           }
         }
+      })
+      .catch(() => {
+        // On failure, still allow user to pick current/recent months
+        if (!selectedMonth) setSelectedMonth(normalizeYm(currentYm));
       });
-  }, [employee, selectedMonth]);
+  }, [employee, selectedMonth, currentYm]);
 
-  // Loading state for skeleton and minimum loading time
-  const [loading, setLoading] = useState(false);
-  const [minLoading, setMinLoading] = useState(false);
-  const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
+  // Fetch observances for the selected month to drive row highlighting
   useEffect(() => {
-    if (!employee || !selectedMonth) return;
+    if (!selectedMonth) {
+      setObservanceMap({});
+      return;
+    }
+    const [y, m] = selectedMonth.split('-');
+    const monthPrefix = `${y}-${m.padStart(2, '0')}`;
+    fetch('/observances')
+      .then(res => res.json())
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        const map: Record<string, any> = {};
+        for (const o of data) {
+          const d = (o?.date || '').slice(0, 10);
+          if (!d.startsWith(monthPrefix)) continue;
+          map[d] = { type: o?.type, label: o?.label, start_time: o?.start_time, is_automated: o?.is_automated };
+        }
+        setObservanceMap(map);
+        // Expose for quick debugging if needed
+        (window as any).__BTR_DEBUG__ = { ...(window as any).__BTR_DEBUG__, observanceMap: map };
+      })
+      .catch(() => {});
+  }, [selectedMonth]);
+
+  // Fetch Timekeeping Records AND Monthly Summary (Absence/Leave Data)
+  useEffect(() => {
+    if (!employee || !selectedMonth) {
+      setRecords([]);
+      setMonthlySummary(null);
+      return;
+    }
+
     setLoading(true);
     setMinLoading(true);
     if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
     minLoadingTimeout.current = setTimeout(() => setMinLoading(false), 400);
-    fetch(`/api/timekeeping/records?employee_id=${employee.id}&month=${selectedMonth}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data.records)) {
-          setRecords(data.records);
-          if (data.records.length === 0) {
-            toast.error("No timekeeping data found for this month.");
-          }
+
+    const recordsPromise = fetch(`/api/timekeeping/records?employee_id=${employee.id}&month=${selectedMonth}`)
+      .then((res) => res.json());
+
+    const summaryPromise = fetch(`/api/timekeeping/monthlySummary?employee_id=${employee.id}&month=${selectedMonth}`)
+      .then((res) => res.json());
+
+    Promise.all([recordsPromise, summaryPromise])
+      .then(([recordsData, summaryData]) => {
+        // --- Handle Time Records ---
+        if (Array.isArray(recordsData.records)) {
+          setRecords(recordsData.records);
+          // Only show error if no records AND the summary is empty too (less spammy)
         } else {
           setRecords([]);
-          toast.error("No timekeeping data found for this month.");
+        }
+
+        // --- Handle Monthly Summary (for leave dates) ---
+        if (summaryData.success) {
+          setMonthlySummary(summaryData);
+
+          // You can use this for quick console inspection of your debug data!
+          // console.log("Monthly Summary Debug:", summaryData._debug);
+
+        } else {
+          setMonthlySummary(null);
+          // Optional: toast.error("Failed to load monthly summary.");
         }
       })
+      .catch((error) => {
+        console.error("Fetch error:", error);
+        toast.error("An error occurred while fetching timekeeping data.");
+      })
       .finally(() => setLoading(false));
+
+    return () => {
+      if (minLoadingTimeout.current) clearTimeout(minLoadingTimeout.current);
+    };
   }, [employee, selectedMonth]);
 
   // Generate days for the month
   const daysInMonth = selectedMonth
     ? new Date(
-        parseInt(selectedMonth.split("-")[0]),
-        parseInt(selectedMonth.split("-")[1]),
-        0
-      ).getDate()
+      parseInt(selectedMonth.split("-")[0]),
+      parseInt(selectedMonth.split("-")[1]),
+      0
+    ).getDate()
     : 0;
   const year = selectedMonth ? selectedMonth.split("-")[0] : "";
   const month = selectedMonth ? selectedMonth.split("-")[1] : "";
 
   // Map records by date for quick lookup
-  const recordMap: Record<string, TimeRecord> = {};
-  records.forEach((rec) => {
-    recordMap[rec.date] = rec;
-  });
+  const recordMap: Record<string, TimeRecord> = useMemo(() => {
+    const map: Record<string, TimeRecord> = {};
+    records.forEach((rec) => {
+      map[rec.date] = rec;
+    });
+    return map;
+  }, [records]);
+
+  // Change the name to reflect it's now a map
+  const leaveDatesMap: Record<string, string> = useMemo(() => {
+    // Check for the new debug property
+    if (monthlySummary && monthlySummary._debug && monthlySummary._debug.leave_dates_map && typeof monthlySummary._debug.leave_dates_map === 'object') {
+      return monthlySummary._debug.leave_dates_map;
+    }
+    return {}; // Return an empty object if data is missing or wrong type
+  }, [monthlySummary]);
 
   // Helper for time formatting (copied from timekeeping-view-dialog)
   function formatTime12Hour(time?: string): string {
@@ -139,11 +302,10 @@ export default function BTRDialog({ employee, onClose }: Props) {
                   <div className="space-y-2 text-sm">
                     <Info label="Status" value={employee.employee_status} />
                     <Info label="Type" value={employee.employee_type} />
-                    <Info label="Schedule" value={
-                      employee.work_start_time && employee.work_end_time && employee.work_hours_per_day
-                        ? `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${employee.work_hours_per_day} hours)`
-                        : '-'
-                    } />
+                    <div className="mb-2">
+                      <span className="text-xs text-muted-foreground">Schedule</span>
+                      <EmployeeScheduleBadges workDays={employee.work_days || []} />
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -244,25 +406,79 @@ export default function BTRDialog({ employee, onClose }: Props) {
                           const dateStr = `${year}-${month.padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                           const rec = recordMap[dateStr];
                           const isEven = i % 2 === 0;
+
+                          // --- UPDATED LOGIC FOR LEAVE & STYLING ---
+                          const leaveType = leaveDatesMap[dateStr];
+                          const isLeaveDay = !!leaveType;
+                          // Observance for this date takes priority
+                          const obs = observanceMap[dateStr];
+                          const obsType = obs?.type as (keyof typeof OBSERVANCE_COLOR_MAP) | undefined;
+                          let colors = LEAVE_COLOR_MAP.DEFAULT;
+                          if (obsType && OBSERVANCE_COLOR_MAP[obsType]) {
+                            colors = OBSERVANCE_COLOR_MAP[obsType];
+                          } else if (isLeaveDay) {
+                            const mapped = LEAVE_TO_OBSERVANCE[leaveType];
+                            if (mapped && OBSERVANCE_COLOR_MAP[mapped]) {
+                              colors = OBSERVANCE_COLOR_MAP[mapped];
+                            } else {
+                              colors = LEAVE_COLOR_MAP[leaveType] || LEAVE_COLOR_MAP.DEFAULT;
+                            }
+                          }
+
+                          let rowClassName = isEven
+                            ? "bg-gray-50 dark:bg-gray-900/40"
+                            : "bg-white dark:bg-gray-800/60";
+                          let textClassName = "";
+
+                          const isHighlight = !!obsType || isLeaveDay;
+                          if (isHighlight) {
+                            rowClassName = colors.bg; // Use specific background color
+                            textClassName = colors.text; // Use specific text color
+                          }
+
+                          const dateObj = new Date(dateStr);
+                          const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                          const workDays = employee?.work_days || [];
+                          const isWorkDay = workDays.some(workDay => DAY_LABELS[workDay.day] === dayName);
+                          const isPaidLeaveDay = isLeaveDay && isWorkDay; // leave-based tag (fallback)
+                          const showObservanceTag = !!obsType; // primary tag control
+                          // --- END UPDATED LOGIC ---
+
+
                           return (
                             <tr
                               key={dateStr}
-                              className={
-                                `${isEven ? "bg-gray-50 dark:bg-gray-900/40" : "bg-white dark:bg-gray-800/60"} ` +
-                                "hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors group"
-                              }
+                              className={`${rowClassName} hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors group`}
                             >
-                              <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-mono text-xs group-hover:text-primary rounded-l-md">
+                              <td className={`px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-mono text-xs rounded-l-md ${textClassName}`}>
                                 {(() => {
-                                  const dateObj = new Date(dateStr);
-                                  const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
-                                  return `${dateStr}${dayName ? ` (${dayName})` : ''}`;
+                                  const displayText = `${dateStr}${dayName ? ` (${dayName})` : ''}`;
+
+                                  // Display the leave badge with the specific type
+                                  return (
+                                    <>
+                                      {displayText}
+                                      {(showObservanceTag || isPaidLeaveDay) && (
+                                        <span className={`ml-2 px-2 py-0.5 text-[10px] font-bold rounded-full ${colors.badge}`}>
+                                          {(
+                                            showObservanceTag
+                                              ? (OBSERVANCE_PRETTY[obsType as string] || (obsType as string || '').replace('-', ' '))
+                                              : leaveType
+                                          ).toUpperCase()}
+                                        </span>
+                                      )}
+                                    </>
+                                  );
                                 })()}
                               </td>
-                              <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold group-hover:text-primary">
+
+                              {/* === MODIFIED TIME IN COLUMN === */}
+                              <td className={`px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold rounded-md ${textClassName}`}>
                                 {rec?.clock_in || rec?.time_in || "-"}
                               </td>
-                              <td className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold group-hover:text-primary rounded-r-md">
+
+                              {/* === MODIFIED TIME OUT COLUMN === */}
+                              <td className={`px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold rounded-r-md ${textClassName}`}>
                                 {rec?.clock_out || rec?.time_out || "-"}
                               </td>
                             </tr>

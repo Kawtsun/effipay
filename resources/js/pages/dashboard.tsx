@@ -49,7 +49,8 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
     useEffect(() => {
         // Only fetch if months prop is empty (SSR/first load)
         if (!months || months.length === 0) {
-            fetch('/payroll/all-available-months')
+            // Fetch payroll-only months (processed payrolls) instead of merged months
+            fetch('/payroll/processed-months')
                 .then(res => res.json())
                 .then(data => {
                     if (data.success && Array.isArray(data.months)) {
@@ -91,13 +92,15 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
-                {/* Intro like other pages */}
-                <div className="flex-none">
-                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
-                        <LayoutDashboard className="h-6 w-6 text-primary" />
-                        Dashboard
-                    </h1>
-                    <p className="text-sm text-muted-foreground">Quick glance at employees and payroll totals.</p>
+                {/* Header */}
+                <div className="flex items-center gap-4">
+                    <div className="bg-primary/10 dark:bg-primary p-3 rounded-full border border-primary/20 dark:border-primary">
+                        <LayoutDashboard className="h-6 w-6 text-primary dark:text-primary-foreground" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+                        <p className="text-muted-foreground">Quick glance at employees and payroll totals.</p>
+                    </div>
                 </div>
 
                 {/* Month selector aligned above cards, like reports */}

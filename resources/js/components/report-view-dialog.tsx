@@ -1,4 +1,4 @@
-    // ...existing code...
+// ...existing code...
 import DialogScrollArea from './dialog-scroll-area';
 import { formatFullName } from '../utils/formatFullName';
 // Use the same formatting as employee-view-dialog
@@ -40,6 +40,7 @@ import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { toast } from "sonner";
 import { Skeleton } from "./ui/skeleton";
 import { RolesBadges } from "./roles-badges";
+import { EmployeeScheduleBadges } from './employee-schedule-badges';
 
 interface PayrollData {
     id: number;
@@ -58,6 +59,7 @@ interface PayrollData {
     undertime?: number;
     absences?: number;
     gross_pay: number;
+    adjustments?: number | null;
     sss_salary_loan?: number;
     sss_calamity_loan?: number;
     pagibig_multi_loan?: number;
@@ -183,6 +185,8 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     const [loadingPayroll, setLoadingPayroll] = useState(false);
     const [minLoading, setMinLoading] = useState(false);
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
+    const [otherAdjustments, setOtherAdjustments] = useState<number | null>(null);
+    const [lastAdjustmentType, setLastAdjustmentType] = useState<'add'|'deduct'|null>(null);
 
     useEffect(() => {
         if (employee && (typeof (ReportViewDialog as any).open === 'boolean' ? (ReportViewDialog as any).open : true)) {
@@ -198,6 +202,72 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
             setMonthlyPayrollData(null);
         }
         // eslint-disable-next-line
+    }, [employee, pendingMonth]);
+
+    // When monthly payroll data is loaded, initialize otherAdjustments/lastAdjustmentType
+    useEffect(() => {
+        try {
+            if (monthlyPayrollData && monthlyPayrollData.payrolls && monthlyPayrollData.payrolls.length > 0) {
+                const latest = monthlyPayrollData.payrolls.reduce((latest, curr) => {
+                    return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
+                }, monthlyPayrollData.payrolls[0]);
+                setOtherAdjustments(latest.adjustments ?? null);
+                // Infer type from sign if adjustments is present
+                if (typeof latest.adjustments === 'number') {
+                    setLastAdjustmentType(latest.adjustments < 0 ? 'deduct' : 'add');
+                }
+            } else {
+                setOtherAdjustments(null);
+                setLastAdjustmentType(null);
+            }
+        } catch (err) {
+            console.error('Error initializing other adjustments:', err);
+        }
+    }, [monthlyPayrollData]);
+
+    // Listen for adjustments applied elsewhere and update the displayed payroll
+    useEffect(() => {
+        function onAdjusted(e: Event) {
+            try {
+                // event.detail should contain the updated payroll data
+                const detail: any = (e as CustomEvent).detail || {};
+                // If the backend returns the updated payroll object, and it matches the current selected month & employee, update it
+                if (detail && detail.payroll && detail.payroll.employee_id === employee?.id && detail.payroll.month === pendingMonth) {
+                    // Update monthlyPayrollData by replacing the payroll with same id or adding it
+                    setMonthlyPayrollData((prev) => {
+                        if (!prev) return prev;
+                        const existing = prev.payrolls || [];
+                        const updatedPayroll = detail.payroll;
+                        const idx = existing.findIndex((p: any) => p.id === updatedPayroll.id);
+                        let newPayrolls = existing.slice();
+                        if (idx >= 0) {
+                            newPayrolls[idx] = { ...newPayrolls[idx], ...updatedPayroll };
+                        } else {
+                            newPayrolls.push(updatedPayroll);
+                        }
+                        return { ...prev, payrolls: newPayrolls };
+                    });
+                    // Update otherAdjustments state for quick access
+                    setOtherAdjustments(detail.payroll.adjustments ?? null);
+                    // If the event includes adjustment type info, update lastAdjustmentType
+                    if (detail.adjustment && detail.adjustment.type) {
+                        setLastAdjustmentType(detail.adjustment.type === 'deduct' ? 'deduct' : 'add');
+                    }
+                } else if (detail && detail.payroll && detail.payroll.employee_id === employee?.id) {
+                    // If the payroll's month isn't the current pendingMonth but pertains to this employee, still store adjustments if month matches selectedMonth
+                    if (detail.payroll.month === pendingMonth) {
+                        setOtherAdjustments(detail.payroll.adjustments ?? null);
+                        if (detail.adjustment && detail.adjustment.type) {
+                            setLastAdjustmentType(detail.adjustment.type === 'deduct' ? 'deduct' : 'add');
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error handling payroll.adjusted event', err);
+            }
+        }
+        window.addEventListener('payroll.adjusted', onAdjusted as EventListener);
+        return () => window.removeEventListener('payroll.adjusted', onAdjusted as EventListener);
     }, [employee, pendingMonth]);
 
     // Fetch merged months from backend (payroll + timekeeping)
@@ -277,22 +347,10 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                             <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
-                                                <Info label="Schedule" value={(() => {
-                                                    if (employee.work_start_time && employee.work_end_time) {
-                                                        const [startHour, startMinute] = employee.work_start_time.split(':').map(Number);
-                                                        const [endHour, endMinute] = employee.work_end_time.split(':').map(Number);
-                                                        const startMinutes = startHour * 60 + startMinute;
-                                                        const endMinutes = endHour * 60 + endMinute;
-                                                        let actualWorkMinutes = endMinutes - startMinutes;
-                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
-                                                        const hours = Math.floor(totalMinutes / 60);
-                                                        const minutes = totalMinutes % 60;
-                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
-                                                        return `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${durationText})`;
-                                                    }
-                                                    return '-';
-                                                })()} />
+                                                <div className="mb-2">
+                                                    <span className="text-xs text-muted-foreground">Schedule</span>
+                                                    <EmployeeScheduleBadges workDays={employee.work_days || []} />
+                                                </div>
                                             </div>
                                         </div>
                                         <div>
@@ -560,6 +618,25 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
                                                                             <Info label="Monthly Salary" value={hasPayroll && selectedPayroll && selectedPayroll.base_salary !== null && selectedPayroll.base_salary !== undefined ? `₱${formatWithCommas(selectedPayroll.base_salary)}` : '-'} />
                                                                         )}
                                                                         <Info label="Honorarium" value={hasPayroll && selectedPayroll && selectedPayroll.honorarium !== null && selectedPayroll.honorarium !== undefined ? `₱${formatWithCommas(selectedPayroll.honorarium)}` : '-'} />
+                                                                        {/* Other Adjustments section: render only when there is a non-zero adjustment */}
+                                                                        {(() => {
+                                                                            const adjValRaw = (selectedPayroll?.adjustments ?? otherAdjustments);
+                                                                            const adjVal = adjValRaw !== null && adjValRaw !== undefined ? Number(adjValRaw) : null;
+                                                                            if (adjVal === null || adjVal === 0) return null;
+                                                                            const adjType = lastAdjustmentType ?? (adjVal < 0 ? 'deduct' : 'add');
+                                                                            return (
+                                                                                <div className="mt-3">
+                                                                                    <h5 className="font-semibold text-base mb-2 text-gray-700 dark:text-gray-300">Other Adjustments</h5>
+                                                                                    <div className="space-y-2">
+                                                                                        {adjType === 'add' ? (
+                                                                                            <Info label="Addition" value={`₱${formatWithCommas(Math.abs(adjVal))}`} />
+                                                                                        ) : (
+                                                                                            <Info label="Deduction" value={`₱${formatWithCommas(Math.abs(adjVal))}`} />
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })()}
                                                                     </div>
                                                                 </div>
                                                                 {/* Deductions (center column) */}

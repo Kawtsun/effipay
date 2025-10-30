@@ -1,0 +1,354 @@
+import * as React from 'react';
+import { Asterisk, CheckCircle, XCircle, ChevronDown, Info, Calendar, Coffee } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { TimePicker } from '@/components/ui/time-picker';
+import { cn } from '@/lib/utils';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+const ALL_DAYS = [
+    { key: 'mon', label: 'Mon' },
+    { key: 'tue', label: 'Tue' },
+    { key: 'wed', label: 'Wed' },
+    { key: 'thu', label: 'Thu' },
+    { key: 'fri', label: 'Fri' },
+    { key: 'sat', label: 'Sat' },
+    { key: 'sun', label: 'Sun' },
+];
+
+const WEEKDAYS = ALL_DAYS.slice(0, 5).map(d => d.key);
+const WEEKENDS = ALL_DAYS.slice(5, 7).map(d => d.key);
+
+export type WorkDayTime = {
+    day: string;
+    work_start_time: string;
+    work_end_time: string;
+};
+
+export type WorkDaysSelectorProps = {
+    value: WorkDayTime[];
+    onChange: (days: WorkDayTime[]) => void;
+    selectedIndex: number;
+    onSelectIndex: (idx: number) => void;
+    showTimePickers?: boolean;
+};
+export function WorkDaysSelector({ value, onChange, selectedIndex, onSelectIndex, showTimePickers = true }: WorkDaysSelectorProps) {
+    // Helper to get default times
+    const defaultStart = '08:00';
+    const defaultEnd = '16:00';
+
+    const isSelected = (key: string) => value.some(d => d.day === key);
+    // Ensure we always render and operate on a Monday->Sunday sorted copy of the incoming value.
+    const sortedValue = React.useMemo(
+        () => [...value].sort((a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)),
+        [value]
+    );
+
+    const isSelectedSorted = (key: string) => sortedValue.some(d => d.day === key);
+    const allWeekdays = WEEKDAYS; // already keys
+    const allWeekends = WEEKENDS; // already keys
+    const allDays = [...allWeekdays, ...allWeekends];
+
+    const areAllWeekdays = WEEKDAYS.every(k => isSelectedSorted(k));
+    const areAllWeekends = WEEKENDS.every(k => isSelectedSorted(k));
+    const areAllDays = ALL_DAYS.map(d => d.key).every(k => isSelectedSorted(k));
+
+    // Add or remove a day
+    const toggleDay = (key: string) => {
+        if (isSelectedSorted(key)) {
+            onChange(sortedValue.filter(d => d.day !== key));
+        } else {
+            onChange(
+                [...sortedValue, { day: key, work_start_time: defaultStart, work_end_time: defaultEnd }].sort(
+                    (a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)
+                )
+            );
+        }
+    };
+    // Toggle all days
+    const handleAll = () => {
+        if (areAllDays) {
+            onChange([]);
+        } else {
+            onChange(
+                ALL_DAYS.map(day => {
+                    const found = sortedValue.find(d => d.day === day.key);
+                    return found || { day: day.key, work_start_time: defaultStart, work_end_time: defaultEnd };
+                })
+            );
+        }
+    };
+    // Toggle all weekdays
+    const handleWeekdays = () => {
+        if (areAllWeekdays) {
+            onChange(value.filter(d => !WEEKDAYS.includes(d.day)));
+        } else {
+            const weekends = sortedValue.filter(d => WEEKENDS.includes(d.day));
+            const weekdays = WEEKDAYS.map(day => {
+                const found = sortedValue.find(d => d.day === day);
+                return found || { day, work_start_time: defaultStart, work_end_time: defaultEnd };
+            });
+            onChange([...weekdays, ...weekends].sort((a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)));
+        }
+    };
+    // Toggle all weekends
+    const handleWeekends = () => {
+        if (areAllWeekends) {
+            onChange(value.filter(d => !WEEKENDS.includes(d.day)));
+        } else {
+            const weekdays = sortedValue.filter(d => WEEKDAYS.includes(d.day));
+            const weekends = WEEKENDS.map(day => {
+                const found = sortedValue.find(d => d.day === day);
+                return found || { day, work_start_time: defaultStart, work_end_time: defaultEnd };
+            });
+            onChange([...weekdays, ...weekends].sort((a, b) => ALL_DAYS.findIndex(d => d.key === a.day) - ALL_DAYS.findIndex(d => d.key === b.day)));
+        }
+    };
+    const clearAll = () => onChange([]);
+
+    // Navigation helpers and time setter for selected day
+    const hasDays = sortedValue.length > 0;
+    const currentDay = hasDays ? sortedValue[selectedIndex] : undefined;
+
+    React.useEffect(() => {
+        if (sortedValue.length > 0 && selectedIndex >= sortedValue.length) {
+            onSelectIndex(sortedValue.length - 1);
+        }
+    }, [sortedValue, selectedIndex, onSelectIndex]);
+
+    const setTime = (field: 'work_start_time' | 'work_end_time', time: string) => {
+        if (!currentDay) return;
+        onChange(sortedValue.map((d, i) => (i === selectedIndex ? { ...d, [field]: time } : d)));
+    };
+
+    const formatTime12Hour = (time: string) => {
+        if (!time) return '';
+        const [h, m] = time.split(':').map(Number);
+        const period = h >= 12 ? 'PM' : 'AM';
+        const hour12 = h % 12 === 0 ? 12 : h % 12;
+        return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
+    };
+
+    return (
+        <div className="flex flex-col gap-6 px-4 py-2">
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <Label className="font-semibold flex items-center">
+                        Work Days <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                    </Label>
+                    <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="outline" size="sm" className="h-8 px-2">
+                                    Quick Select <ChevronDown className="w-4 h-4 ml-2" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onClick={handleWeekdays}>
+                                    {areAllWeekdays ? 'Deselect Weekdays' : 'Select Weekdays'}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleWeekends}>
+                                    {areAllWeekends ? 'Deselect Weekends' : 'Select Weekends'}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleAll}>
+                                    {areAllDays ? 'Deselect All Days' : 'Select All Days'}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={clearAll}
+                            className="text-destructive hover:text-destructive h-8 px-2"
+                        >
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Clear
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-7 gap-2">
+                    {ALL_DAYS.map(day => {
+                        const selected = value.some(d => d.day === day.key);
+                        return (
+                            <Button
+                                key={day.key}
+                                type="button"
+                                size="sm"
+                                variant={selected ? 'default' : 'outline'}
+                                onClick={() => toggleDay(day.key)}
+                                title={day.label}
+                                className="h-10 text-xs"
+                            >
+                                {day.label}
+                            </Button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <AnimatePresence initial={false}>
+                {hasDays && showTimePickers && (
+                    <motion.div
+                        key="workdays-time-picker"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-4"
+                    >
+                        <Separator />
+                        <Label className="font-semibold">Work Hours</Label>
+
+                        <Tabs
+                            value={currentDay?.day}
+                            onValueChange={day => onSelectIndex(sortedValue.findIndex(d => d.day === day))}
+                            className="w-full"
+                        >
+                            <TabsList>
+                                {sortedValue.map(d => (
+                                    <TabsTrigger key={d.day} value={d.day}>
+                                        {d.day.toUpperCase()}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                            <TabsContent value={currentDay?.day || ''} className="pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center">
+                                            <Label>Start Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                        </div>
+                                        <TimePicker
+                                            value={currentDay?.work_start_time || ''}
+                                            onChange={val => setTime('work_start_time', val)}
+                                            placeholder="Select start time"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center">
+                                            <Label>End Time</Label> <Asterisk className="h-4 w-4 text-destructive ml-1" />
+                                        </div>
+                                        <TimePicker
+                                            value={currentDay?.work_end_time || ''}
+                                            onChange={val => setTime('work_end_time', val)}
+                                            placeholder="Select end time"
+                                        />
+                                    </div>
+                                </div>
+                            </TabsContent>
+                        </Tabs>
+
+                        <AnimatePresence initial={false}>
+                            {currentDay && currentDay.work_start_time && currentDay.work_end_time && (
+                                <motion.div
+                                    key="workdays-hint"
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 8 }}
+                                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                    className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+                                >
+                                    <div className="text-sm text-blue-700 dark:text-blue-300">
+                                        {(() => {
+                                            const [startHour, startMinute] = currentDay.work_start_time.split(':').map(Number);
+                                            const [endHour, endMinute] = currentDay.work_end_time.split(':').map(Number);
+                                            const startMinutes = startHour * 60 + startMinute;
+                                            const endMinutes = endHour * 60 + endMinute;
+                                            let actualWorkMinutes = endMinutes - startMinutes;
+                                            if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
+                                            // --- NEW DEFINITIVE BREAK LOGIC (Overlap and Cap) ---
+                                            const totalScheduledMinutes = actualWorkMinutes; // Rename for clarity
+
+                                            // FIXED BREAK WINDOW
+                                            const fixedBreakStartMinutes = 12 * 60; // 720 minutes (12:00 PM)
+                                            const fixedBreakEndMinutes = 13 * 60;   // 780 minutes (1:00 PM)
+                                            const mandatedDeduction = 60;          // 1 hour
+
+                                            // --- STEP 1: Calculate Overlap (Non-Work Time) ---
+                                            // This calculates the duration the employee is actually scheduled *during* the fixed 12 PM - 1 PM window.
+                                            const overlapStartMinutes = Math.max(startMinutes, fixedBreakStartMinutes);
+                                            const overlapEndMinutes = Math.min(endMinutes, fixedBreakEndMinutes);
+                                            const overlapMinutes = Math.max(0, overlapEndMinutes - overlapStartMinutes); // This time is never counted as work.
+
+                                            // --- STEP 2: Determine Final Deduction Amount (The Break Rule) ---
+                                            let finalDeductionMinutes;
+                                            let messageMinutes; // The minutes to show in the span message
+
+                                            if (endMinutes > fixedBreakEndMinutes) {
+                                                // Rule Triggered: Full 1-hour break is mandated for net hours calculation.
+                                                finalDeductionMinutes = mandatedDeduction;
+                                                messageMinutes = mandatedDeduction; // Report 1 hour deduction in the message
+                                            } else {
+                                                // Rule Not Triggered: Deduction equals the scheduled overlap.
+                                                finalDeductionMinutes = overlapMinutes;
+                                                messageMinutes = overlapMinutes; // Report the exact overlap time in the message
+                                            }
+
+                                            // --- STEP 3: Calculate Net Working Minutes (Payroll) ---
+                                            const totalMinutes = Math.max(0, totalScheduledMinutes - finalDeductionMinutes);
+
+                                            // --- Step 4: Prepare Reactive Output Strings (Using messageMinutes) ---
+                                            const hours = Math.floor(totalMinutes / 60);
+                                            const minutes = totalMinutes % 60;
+                                            const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
+
+                                            const breakHours = Math.floor(messageMinutes / 60);
+                                            const breakMins = messageMinutes % 60;
+
+                                            // Build the readable time string (e.g., "1 hour" or "45 minutes")
+                                            let deductionAmount = '';
+                                            const hPart = breakHours > 0 ? `${breakHours} hour${breakHours > 1 ? 's' : ''}` : '';
+                                            const mPart = breakMins > 0 ? `${breakMins} minute${breakMins > 1 ? 's' : ''}` : '';
+                                            const separator = hPart && mPart ? ' and ' : '';
+                                            deductionAmount = `${hPart}${separator}${mPart}`;
+
+                                            // --- UPDATED SPAN MESSAGE GENERATION LOGIC ---
+                                            let breakText;
+
+                                            if (messageMinutes === 0) {
+                                                breakText = 'No break time deduction.';
+                                            }
+                                            // Condition 1: If the reported time is less than 60 minutes (1-59 min), it's overlap.
+                                            else if (messageMinutes < mandatedDeduction) {
+                                                breakText = `Your schedule is overlapping with the break time for ${deductionAmount}.`;
+                                            }
+                                            // Condition 2: If the reported time is 60 minutes or more (the full mandate).
+                                            else {
+                                                // This handles 60 minutes, 1 hour 15 minutes, etc. (though 60 min is the practical max here).
+                                                breakText = `A mandatory break of ${deductionAmount} is deducted from your total work hours.`;
+                                            }
+
+                                            return (
+                                                <>
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-4 w-4" />
+                                                        <span>Schedule: <strong>{formatTime12Hour(currentDay.work_start_time)} - {formatTime12Hour(currentDay.work_end_time)}</strong> (Total Work Hours:<strong> {durationText} </strong>)</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <Coffee className="h-4 w-4" />
+                                                        <span>Break Time: <strong>12:00PM - 1:00PM</strong></span>
+                                                    </div>
+                                                    <span className="text-xs text-blue-600 dark:text-blue-400 mt-2 block">*{breakText}</span>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}

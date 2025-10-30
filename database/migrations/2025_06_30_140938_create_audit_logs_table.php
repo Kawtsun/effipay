@@ -13,6 +13,13 @@ return new class extends Migration
     {
         Schema::create('audit_logs', function (Blueprint $table) {
             $table->id();
+            $table->string('username'); // current login user
+            $table->string('action');   // action performed (create, update, delete)
+            $table->string('name');     // name of the affected entity (e.g. employee name)
+            $table->string('entity_type'); // type of entity (e.g. Employee)
+            $table->unsignedBigInteger('entity_id')->nullable(); // id of affected entity
+            $table->text('details')->nullable(); // additional details
+            $table->timestamp('date'); // date of action
             $table->timestamps();
         });
     }

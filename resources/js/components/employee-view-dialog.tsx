@@ -19,6 +19,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import { EmployeeScheduleBadges } from "./employee-schedule-badges";
 import DialogScrollArea from './dialog-scroll-area';
 
 import { motion, AnimatePresence } from "framer-motion"
@@ -50,6 +51,12 @@ interface MonthlyPayrollData {
     month: string
 }
 
+interface WorkDayTime {
+    day: string;
+    work_start_time: string;
+    work_end_time: string;
+}
+
 interface Employees {
     overtime_pay: number;
     id: number;
@@ -77,6 +84,7 @@ interface Employees {
     tea?: number;
     honorarium: number;
     college_program?: string;
+    work_days?: WorkDayTime[];
 }
 
 interface Props {
@@ -219,22 +227,10 @@ export default function EmployeeViewDialog({ employee, onClose, activeRoles, sho
                                             <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
                                                 <Info label="Type" value={employee.employee_type} />
-                                                <Info label="Schedule" value={(() => {
-                                                    if (employee.work_start_time && employee.work_end_time) {
-                                                        const [startHour, startMinute] = employee.work_start_time.split(':').map(Number);
-                                                        const [endHour, endMinute] = employee.work_end_time.split(':').map(Number);
-                                                        const startMinutes = startHour * 60 + startMinute;
-                                                        const endMinutes = endHour * 60 + endMinute;
-                                                        let actualWorkMinutes = endMinutes - startMinutes;
-                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
-                                                        const hours = Math.floor(totalMinutes / 60);
-                                                        const minutes = totalMinutes % 60;
-                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
-                                                        return `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${durationText})`;
-                                                    }
-                                                    return '-';
-                                                })()} />
+                                                <div className="mb-2">
+                                                    <span className="text-xs text-muted-foreground">Schedule</span>
+                                                    <EmployeeScheduleBadges workDays={employee.work_days || []} />
+                                                </div>
                                             </div>
                                         </div>
                                         <div>

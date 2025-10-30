@@ -22,27 +22,62 @@ class ObservanceController extends Controller
     // Store new observances (expects array of dates and optional label)
     public function store(Request $request)
     {
+        // Accept either array of date strings (backwards compatible) or array of objects
         $data = $request->validate([
             'add' => 'array',
-            'add.*' => 'date',
             'remove' => 'array',
-            'remove.*' => 'date',
             'label' => 'nullable|string',
         ]);
 
         $created = [];
         $removed = [];
 
-        // Add new observances (manual entries always is_automated = false)
+        // Add or update observances (manual entries always is_automated = false)
         if (!empty($data['add'])) {
-            foreach ($data['add'] as $date) {
-                $created[] = Observance::updateOrCreate(
+            foreach ($data['add'] as $item) {
+                // support string date (backwards compatible) or object { date, label, type, start_time }
+                if (is_string($item)) {
+                    $date = $item;
+                    $label = $data['label'] ?? null;
+                    $type = null;
+                    $start_time = null;
+                } elseif (is_array($item)) {
+                    $date = $item['date'] ?? null;
+                    $label = $item['label'] ?? ($data['label'] ?? null);
+                    $type = $item['type'] ?? null;
+                    $start_time = $item['start_time'] ?? null;
+                } else {
+                    continue;
+                }
+                if (!$date) continue;
+                // Determine if this is an update vs. a create for audit phrasing
+                $existing = Observance::where('date', $date)->first();
+                $model = Observance::updateOrCreate(
                     ['date' => $date],
                     [
-                        'label' => $data['label'] ?? null,
+                        'label' => $label,
                         'is_automated' => false,
+                        'type' => $type,
+                        'start_time' => $start_time,
                     ]
                 );
+                $created[] = $model;
+
+                // Audit log: added vs updated calendar event
+                try {
+                    $username = \Illuminate\Support\Facades\Auth::user()->username ?? 'system';
+                    \App\Models\AuditLogs::create([
+                        'username'    => $username,
+                        'action'      => $existing ? 'updated calendar event' : 'add calendar event',
+                        'name'        => $label ?? ($type ?? 'observance'),
+                        'entity_type' => 'observance',
+                        'entity_id'   => null,
+                        'details'     => json_encode(['date' => $date, 'type' => $type, 'start_time' => $start_time]),
+                        'date'        => now('Asia/Manila'),
+                    ]);
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to write audit log for adding observance: ' . $e->getMessage());
+                }
             }
         }
 
@@ -56,6 +91,21 @@ class ObservanceController extends Controller
                     ->delete();
                 if ($deleted) {
                     $removed[] = $date;
+                    // Audit log: removed calendar event
+                    try {
+                        $username = \Illuminate\Support\Facades\Auth::user()->username ?? 'system';
+                        \App\Models\AuditLogs::create([
+                            'username'    => $username,
+                            'action'      => 'remove calendar event',
+                            'name'        => 'observance',
+                            'entity_type' => 'observance',
+                            'entity_id'   => null,
+                            'details'     => json_encode(['date' => $date]),
+                            'date'        => now('Asia/Manila'),
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Log::warning('Failed to write audit log for removing observance: ' . $e->getMessage());
+                    }
                 }
             }
         }

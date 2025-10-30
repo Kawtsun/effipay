@@ -8,9 +8,11 @@ interface DialogScrollAreaProps {
 }
 
 export default function DialogScrollArea({ children, className = '', style }: DialogScrollAreaProps) {
+  // Make the scroll area flexible to its container instead of forcing a fixed viewport height.
+  // Parent should be a flex column and give this component the remaining height (flex-1 min-h-0).
   return (
     <ScrollArea
-      className={`h-[80vh] max-h-[80vh] rounded-md bg-white dark:bg-gray-950 ${className}`}
+      className={`flex-1 min-h-0 rounded-md ${className}`}
       style={style}
       type="auto"
     >

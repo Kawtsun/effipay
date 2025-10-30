@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Employees extends Model
 {
@@ -14,13 +15,14 @@ class Employees extends Model
         'last_name',
         'first_name',
         'middle_name',
-        'employee_type',
+        // 'employee_type', // REMOVED - This is now handled by the employeeTypes relationship
         'employee_status',
         'roles',
         'college_program',
+    'basic_edu_level',
         'base_salary',
         'college_rate',
-        'rate_per_hour', // Accept rate_per_hour for mass assignment (optional, for flexibility)
+        'rate_per_hour',
         'sss',
         'philhealth',
         'pag_ibig',
@@ -39,8 +41,43 @@ class Employees extends Model
         'honorarium',
     ];
 
-    public function payrolls()
+    protected $casts = [
+        'sss' => 'boolean',
+        'philhealth' => 'boolean',
+        'withholding_tax' => 'boolean',
+    ];
+
+    /**
+     * Default attribute values for new models.
+     */
+    protected $attributes = [
+        'withholding_tax' => true,
+    ];
+
+    public function payrolls(): HasMany
     {
         return $this->hasMany(Payroll::class);
     }
+
+    public function workDays(): HasMany
+    {
+        return $this->hasMany(WorkDay::class, 'employee_id');
+    }
+
+    // Note: role-based schedules are stored in work_days with a 'role' column.
+    // The previous roleWorkDays() relation has been removed.
+
+    /**
+     * Get the employee types for the employee.
+     */
+    public function employeeTypes(): HasMany
+    {
+        return $this->hasMany(EmployeeType::class, 'employee_id');
+    }
+
+    public function collegeProgramSchedules(): HasMany
+    {
+        return $this->hasMany(EmployeeCollegeProgramSchedule::class, 'employee_id');
+    }
 }
+

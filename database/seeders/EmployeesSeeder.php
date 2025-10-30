@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Employees;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -128,7 +129,7 @@ class EmployeesSeeder extends Seeder
             $employeeIds[] = $index + 1; // IDs start from 1
         }
 
-        $shuffled = collect($employeeNames2)->shuffle();
+        // $shuffled = collect($employeeNames2)->shuffle();
         $employeeTypesTeaching = ['Full Time', 'Part Time', 'Provisionary'];
         $employeeTypesAdmin = ['Regular', 'Provisionary'];
         $collegePrograms = [
@@ -144,10 +145,13 @@ class EmployeesSeeder extends Seeder
                 $collegeProgram = fake()->randomElement($collegePrograms);
                 $type = fake()->randomElement($employeeTypesTeaching);
                 $baseSalary = null;
-                $collegeRate = number_format(fake()->randomFloat(2, 250, 500), 2, '.', '');
-                $sss = null;
-                $philhealth = null;
-                $pag_ibig = null;
+                // College rate per hour stored in column `college_rate`
+                $collegeRate = round(fake()->randomFloat(2, 250, 500), 2);
+                // Contribution flags are optional for non-admins
+                $sss = fake()->boolean();
+                $philhealth = fake()->boolean();
+                $pag_ibig = null; // optional for non-admins
+                // withholding_tax is now a boolean column; allow model default (true)
                 $withholding_tax = null;
             } else {
                 $roles = 'administrator';
@@ -167,155 +171,13 @@ class EmployeesSeeder extends Seeder
                     $baseSalary = fake()->numberBetween(50000, 70000);
                 }
                 $collegeRate = null;
-                // Deductions
-                // SSS formula (match salaryFormulas.ts)
-                // SSS bracket logic (fully match salaryFormulas.ts)
-                $sss = 0;
-                if ($baseSalary < 5250) {
-                    $sss = 250.00;
-                } elseif ($baseSalary <= 5749.99) {
-                    $sss = 275.00;
-                } elseif ($baseSalary <= 6249.99) {
-                    $sss = 300.00;
-                } elseif ($baseSalary <= 6749.99) {
-                    $sss = 325.00;
-                } elseif ($baseSalary <= 7249.99) {
-                    $sss = 350.00;
-                } elseif ($baseSalary <= 7749.99) {
-                    $sss = 375.00;
-                } elseif ($baseSalary <= 8249.99) {
-                    $sss = 400.00;
-                } elseif ($baseSalary <= 8749.99) {
-                    $sss = 425.00;
-                } elseif ($baseSalary <= 9249.99) {
-                    $sss = 450.00;
-                } elseif ($baseSalary <= 9749.99) {
-                    $sss = 475.00;
-                } elseif ($baseSalary <= 10249.99) {
-                    $sss = 500.00;
-                } elseif ($baseSalary <= 10749.99) {
-                    $sss = 525.00;
-                } elseif ($baseSalary <= 11249.99) {
-                    $sss = 550.00;
-                } elseif ($baseSalary <= 11749.99) {
-                    $sss = 575.00;
-                } elseif ($baseSalary <= 12249.99) {
-                    $sss = 600.00;
-                } elseif ($baseSalary <= 12749.99) {
-                    $sss = 625.00;
-                } elseif ($baseSalary <= 13249.99) {
-                    $sss = 650.00;
-                } elseif ($baseSalary <= 13749.99) {
-                    $sss = 675.00;
-                } elseif ($baseSalary <= 14249.99) {
-                    $sss = 700.00;
-                } elseif ($baseSalary <= 14749.99) {
-                    $sss = 725.00;
-                } elseif ($baseSalary <= 15249.99) {
-                    $sss = 750.00;
-                } elseif ($baseSalary <= 15749.99) {
-                    $sss = 775.00;
-                } elseif ($baseSalary <= 16249.99) {
-                    $sss = 800.00;
-                } elseif ($baseSalary <= 16749.99) {
-                    $sss = 825.00;
-                } elseif ($baseSalary <= 17249.99) {
-                    $sss = 850.00;
-                } elseif ($baseSalary <= 17749.99) {
-                    $sss = 875.00;
-                } elseif ($baseSalary <= 18249.99) {
-                    $sss = 900.00;
-                } elseif ($baseSalary <= 18749.99) {
-                    $sss = 925.00;
-                } elseif ($baseSalary <= 19249.99) {
-                    $sss = 950.00;
-                } elseif ($baseSalary <= 19749.99) {
-                    $sss = 975.00;
-                } elseif ($baseSalary <= 20249.99) {
-                    $sss = 1000.00;
-                } elseif ($baseSalary <= 20749.99) {
-                    $sss = 1025.00;
-                } elseif ($baseSalary <= 21249.99) {
-                    $sss = 1050.00;
-                } elseif ($baseSalary <= 21749.99) {
-                    $sss = 1075.00;
-                } elseif ($baseSalary <= 22249.99) {
-                    $sss = 1100.00;
-                } elseif ($baseSalary <= 22749.99) {
-                    $sss = 1125.00;
-                } elseif ($baseSalary <= 23249.99) {
-                    $sss = 1150.00;
-                } elseif ($baseSalary <= 23749.99) {
-                    $sss = 1175.00;
-                } elseif ($baseSalary <= 24249.99) {
-                    $sss = 1200.00;
-                } elseif ($baseSalary <= 24749.99) {
-                    $sss = 1225.00;
-                } elseif ($baseSalary <= 25249.99) {
-                    $sss = 1250.00;
-                } elseif ($baseSalary <= 25749.99) {
-                    $sss = 1275.00;
-                } elseif ($baseSalary <= 26249.99) {
-                    $sss = 1300.00;
-                } elseif ($baseSalary <= 26749.99) {
-                    $sss = 1325.00;
-                } elseif ($baseSalary <= 27249.99) {
-                    $sss = 1350.00;
-                } elseif ($baseSalary <= 27749.99) {
-                    $sss = 1375.00;
-                } elseif ($baseSalary <= 28249.99) {
-                    $sss = 1400.00;
-                } elseif ($baseSalary <= 28749.99) {
-                    $sss = 1425.00;
-                } elseif ($baseSalary <= 29249.99) {
-                    $sss = 1450.00;
-                } elseif ($baseSalary <= 29749.99) {
-                    $sss = 1475.00;
-                } elseif ($baseSalary <= 30249.99) {
-                    $sss = 1500.00;
-                } elseif ($baseSalary <= 30749.99) {
-                    $sss = 1525.00;
-                } elseif ($baseSalary <= 31249.99) {
-                    $sss = 1550.00;
-                } elseif ($baseSalary <= 31749.99) {
-                    $sss = 1575.00;
-                } elseif ($baseSalary <= 32249.99) {
-                    $sss = 1600.00;
-                } elseif ($baseSalary <= 32749.99) {
-                    $sss = 1625.00;
-                } elseif ($baseSalary <= 33249.99) {
-                    $sss = 1650.00;
-                } elseif ($baseSalary <= 33749.99) {
-                    $sss = 1675.00;
-                } elseif ($baseSalary <= 34249.99) {
-                    $sss = 1700.00;
-                } elseif ($baseSalary <= 34749.99) {
-                    $sss = 1725.00;
-                } else {
-                    $sss = 1750.00;
-                }
-                $sss = number_format($sss, 2, '.', '');
-                $pag_ibig = number_format(fake()->numberBetween(1000, (int)($baseSalary * 0.08)), 2, '.', '');
-                // PhilHealth calculation (match SalaryController: ($base_salary * 0.05) / 2, min 250, max 2500)
-                $calculatedPhilHealth = ($baseSalary * 0.05) / 2;
-                $philhealth = number_format(max(250, min(2500, $calculatedPhilHealth)), 2, '.', '');
-                // Withholding tax calculation (match SalaryController)
-                $total_compensation = $baseSalary - ($sss + $pag_ibig + $philhealth);
-                if ($total_compensation <= 20832) {
-                    $withholding_tax = number_format(0, 2, '.', '');
-                } elseif ($total_compensation >= 20833 && $total_compensation <= 33332) {
-                    $withholding_tax = number_format(($total_compensation - 20833) * 0.15, 2, '.', '');
-                } elseif ($total_compensation >= 33333 && $total_compensation <= 66666) {
-                    $withholding_tax = number_format(($total_compensation - 33333) * 0.20 + 1875, 2, '.', '');
-                } elseif ($total_compensation >= 66667 && $total_compensation <= 166666) {
-                    $withholding_tax = number_format(($total_compensation - 66667) * 0.25 + 8541.80, 2, '.', '');
-                } elseif ($total_compensation >= 166667 && $total_compensation <= 666666) {
-                    $withholding_tax = number_format(($total_compensation - 166667) * 0.30 + 33541.80, 2, '.', '');
-                } elseif ($total_compensation >= 666667) {
-                    $withholding_tax = number_format(($total_compensation - 666667) * 0.35 + 183541.80, 2, '.', '');
-                } else {
-                    $withholding_tax = number_format(0, 2, '.', '');
-                }
+                // Contribution flags for admins are required booleans; set to true by default
+                $sss = true;
+                $philhealth = true;
+                // Pag-IBIG is a numeric amount
+                $pag_ibig = fake()->numberBetween(200, 2500);
+                // withholding_tax is a boolean now; let default apply (true)
+                $withholding_tax = null;
             }
             // Generate work schedule based on employee type
             $workHoursPerDay = $type === 'Part Time' ? fake()->randomElement([4, 6]) : 8;
@@ -332,24 +194,107 @@ class EmployeesSeeder extends Seeder
             $last_name = $parts[0] ?? '';
             $middle_name = count($parts) > 2 ? $parts[count($parts) - 1] : '';
             $first_name = count($parts) > 2 ? implode(' ', array_slice($parts, 1, -1)) : ($parts[1] ?? '');
-            Employees::create([
+            $data = [
                 'last_name' => $last_name,
                 'first_name' => $first_name,
                 'middle_name' => $middle_name,
-                'employee_type' => $type,
                 'employee_status' => fake()->randomElement(['Active', 'Paid Leave', 'Maternity Leave', 'Sick Leave', 'Study Leave']),
                 'roles' => $roles,
                 'college_program' => $collegeProgram,
                 'base_salary' => $baseSalary,
+                // Keep both fields in sync to support old/new code paths
                 'college_rate' => $collegeRate,
                 'sss' => $sss,
                 'philhealth' => $philhealth,
                 'pag_ibig' => $pag_ibig,
-                'withholding_tax' => $withholding_tax,
+                // withholding_tax is boolean; omit to use model default
                 'work_hours_per_day' => $workHoursPerDay,
                 'work_start_time' => $workStartTime,
                 'work_end_time' => $workEndTime,
+            ];
+
+            $employee = Employees::create($data);
+
+            // Create corresponding employee_types record to support multiple employee types
+            // Each record maps a role to a specific type (e.g., 'college instructor' => 'Part Time')
+            $employee->employeeTypes()->create([
+                'role' => $roles,
+                'type' => $type,
             ]);
+
+            // Randomize work days for each employee
+            $workDayOptions = [
+                // Mon-Wed-Fri
+                [
+                    ['day' => 'mon', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'wed', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'fri', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                ],
+                // Tue-Thu-Sat
+                [
+                    ['day' => 'tue', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'thu', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'sat', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                ],
+                // Mon-Sat (full week except Sun)
+                [
+                    ['day' => 'mon', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'tue', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'wed', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'thu', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'fri', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'sat', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                ],
+                // Mon-Tue-Wed-Thu-Fri (no Sat)
+                [
+                    ['day' => 'mon', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'tue', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'wed', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'thu', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                    ['day' => 'fri', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                ],
+                // Sat only
+                [
+                    ['day' => 'sat', 'work_start_time' => '08:00:00', 'work_end_time' => '16:00:00'],
+                ],
+            ];
+            $selectedWorkDays = $workDayOptions[array_rand($workDayOptions)];
+            // Support multiple roles: split by comma and create per-role schedule rows
+            $rolesList = array_values(array_filter(array_map('trim', explode(',', (string) $roles))));
+            if (empty($rolesList)) { $rolesList = [null]; }
+
+            foreach ($rolesList as $roleForDay) {
+                $isCollegeRole = is_string($roleForDay) && stripos($roleForDay, 'college') !== false;
+
+                if ($isCollegeRole) {
+                    // For college roles, use employee_college_program_schedules instead of work_days
+                    // Ensure we have a program; fall back to a random one if somehow null
+                    $programCode = $collegeProgram ?: (fake()->randomElement($collegePrograms));
+                    foreach ($selectedWorkDays as $workDay) {
+                        DB::table('employee_college_program_schedules')->insert([
+                            'employee_id' => $employee->id,
+                            'program_code' => $programCode,
+                            'day' => $workDay['day'],
+                            'hours_per_day' => $workHoursPerDay,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                } else {
+                    // Non-college roles go to work_days with the role column populated
+                    foreach ($selectedWorkDays as $workDay) {
+                        DB::table('work_days')->insert([
+                            'employee_id' => $employee->id,
+                            'role' => $roleForDay,
+                            'day' => $workDay['day'],
+                            'work_start_time' => $workDay['work_start_time'],
+                            'work_end_time' => $workDay['work_end_time'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
         }
     }
 }

@@ -1,292 +1,450 @@
-import { formatFullName } from '../../utils/formatFullName';
-type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string };
-const MIN_SPINNER_MS = 400;
-import EmployeeFilter from '@/components/employee-filter';
-// @ts-ignore
-import Encoding from 'encoding-japanese';
-import EmployeePagination from '@/components/employee-pagination';
-import EmployeeSearch from '@/components/employee-search';
-import TimeKeepingViewDialog from '@/components/timekeeping-view-dialog';
-import BTRDialog from '@/components/btr-dialog';
-import { Button } from '@/components/ui/button';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import AppLayout from '@/layouts/app-layout';
-import { cn } from '@/lib/utils';
-import { BreadcrumbItem, Employees } from '@/types';
-import { Head, router, usePage } from '@inertiajs/react';
-import { Users, Shield, GraduationCap, Book, Eye, Import, Fingerprint, Loader2, Calendar } from 'lucide-react';
-import { CalendarViewDialog } from '@/components/calendar-view-dialog';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useState, useCallback, useRef } from 'react';
-import { toast } from 'sonner';
-import Papa from 'papaparse';
-// @ts-ignore
-import * as XLSX from 'xlsx';
+import { usePage } from '@inertiajs/react'
+type FilterState = { types: string[]; statuses: string[]; roles: string[]; basicEducationLevel?: string; othersRole?: string; collegeProgram?: string }
+import { getCollegeProgramLabel } from '@/constants/college-programs'
+const MIN_SPINNER_MS = 400
+import EmployeeFilter from '@/components/employee-filter'
+import Encoding from 'encoding-japanese'
+// import EmployeePagination from '@/components/employee-pagination';
+import TableTimekeeping from '@/components/table_timekeeping'
+import EmployeeSearch from '@/components/employee-search'
+import TimeKeepingViewDialog from '@/components/table-dialogs/timekeeping-view-dialog'
+import BTRViewDialog from '@/components/table-dialogs/btr-view-dialog'
+import { Button } from '@/components/ui/button'
+
+import AppLayout from '@/layouts/app-layout'
+import { cn } from '@/lib/utils'
+import { BreadcrumbItem, Employees } from '@/types'
+import { Head, router } from '@inertiajs/react'
+import { Import, Calendar, Clock } from 'lucide-react'
+import { CalendarViewDialog } from '@/components/calendar-view-dialog'
+
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { toast } from 'sonner'
+import Papa from 'papaparse'
+import * as XLSX from 'xlsx'
 
 export default function TimeKeeping() {
-    const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null);
-    const [selectedBtrEmployee, setSelectedBtrEmployee] = useState<Employees | null>(null);
-    const [calendarOpen, setCalendarOpen] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const MAX_ROWS = 10;
-    const ROW_HEIGHT = 53; // px
+    const { csrfToken } = usePage().props as unknown as { csrfToken: string }
+    const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null)
+    const [selectedBtrEmployee, setSelectedBtrEmployee] = useState<Employees | null>(null)
+    const [calendarOpen, setCalendarOpen] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const [pageSize, setPageSize] = useState<number>(10)
 
     const handleImportClick = () => {
         if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-            fileInputRef.current.click();
+            fileInputRef.current.value = ''
+            fileInputRef.current.click()
         }
-    };
+    }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const validTypes = [
-            'text/csv',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ];
-        const validExtensions = ['.csv', '.xls', '.xlsx'];
-        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        const file = e.target.files?.[0]
+        if (!file) return
+        const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        const validExtensions = ['.csv', '.xls', '.xlsx']
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
         if (!validTypes.includes(file.type) && !validExtensions.includes(ext)) {
-            toast.error('Invalid file type. Only CSV or Excel files are accepted.');
-            return;
+            toast.error('Invalid file type. Only CSV or Excel files are accepted.')
+            return
         }
 
-    let rows: Record<string, unknown>[] = [];
-    const importToast = toast.loading('Importing file...');
-    // Show loading toast for at least 1.5s before verifying file
-    setTimeout(() => {
-        if (ext === '.csv') {
-            file.arrayBuffer().then(buffer => {
-                // Use encoding.js to auto-detect and convert encoding to UTF-8
-                const uint8Array = new Uint8Array(buffer);
-                const detected = Encoding.detect(uint8Array);
-                const text = Encoding.convert(uint8Array, {
-                    to: 'UNICODE',
-                    from: detected,
-                    type: 'string'
-                });
-                // Strip BOM if present
-                let cleanText = text;
-                if (cleanText.charCodeAt(0) === 0xFEFF) {
-                    cleanText = cleanText.slice(1);
-                }
-                console.log('Raw CSV text:', cleanText);
-                const result = Papa.parse(cleanText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    transform: (value: string) => value ? value.normalize('NFC') : value,
-                    error: (err: Error) => {
-                        console.error('PapaParse error:', err);
+        let rows: Record<string, unknown>[] = []
+        const importToast = toast.loading('Importing file...')
+        // Show loading toast for at least 1.5s before verifying file
+        setTimeout(() => {
+            if (ext === '.csv') {
+                file.arrayBuffer().then((buffer) => {
+                    // Use encoding.js to auto-detect and convert encoding to UTF-8
+                    const uint8Array = new Uint8Array(buffer)
+                    const detected = Encoding.detect(uint8Array)
+                    const text = Encoding.convert(uint8Array, {
+                        from: detected,
+                        type: 'string',
+                    })
+                    // Strip BOM if present
+                    let cleanText = text
+                    if (cleanText.charCodeAt(0) === 0xfeff) {
+                        cleanText = cleanText.slice(1)
                     }
-                });
-                console.log('Parsed rows:', result.data);
-                // Log and filter out empty/malformed rows
-                const validRows = (result.data as Record<string, unknown>[]).filter((row) => row && Object.values(row).some(v => v !== null && v !== undefined && v !== ''));
-                if (validRows.length !== (result.data as Record<string, unknown>[]).length) {
-                    toast.dismiss(importToast);
-                    toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${(result.data as Record<string, unknown>[]).length} rows.`, { duration: 3000, id: `skipped-${Date.now()}` });
+                    console.log('Raw CSV text:', cleanText)
+                    const result = Papa.parse(cleanText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        transform: (value: string) => (value ? value.normalize('NFC') : value),
+                        error: (err: Error) => {
+                            console.error('PapaParse error:', err)
+                        },
+                    })
+                    console.log('Parsed rows:', result.data)
+                    // Log and filter out empty/malformed rows
+                    const validRows = (result.data as Record<string, unknown>[]).filter((row) => row && Object.values(row).some((v) => v !== null && v !== undefined && v !== ''))
+                    if (validRows.length !== (result.data as Record<string, unknown>[]).length) {
+                        toast.dismiss(importToast)
+                        toast.warning(`Some rows were skipped due to parsing errors. Imported ${validRows.length} of ${(result.data as Record<string, unknown>[]).length} rows.`, { duration: 3000, id: `skipped-${Date.now()}` })
+                    }
+                    rows = validRows
+                    // Add another delay before removing loading toast and showing result
+                    setTimeout(() => {
+                        sendImport(rows, file.name, importToast)
+                    }, 1000)
+                })
+            } else {
+                file.arrayBuffer().then((data) => {
+                    const workbook = XLSX.read(data, { type: 'array' })
+                    const sheetName = workbook.SheetNames[0]
+                    const worksheet = workbook.Sheets[sheetName]
+                    rows = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[]
+                    // Convert Excel serial date numbers to YYYY-MM-DD strings
+                    function excelSerialToDate(serial: number) {
+                        const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+                        const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000)
+                        return date.toISOString().slice(0, 10)
+                    }
+                    function excelSerialToTime(serial: number) {
+                        // Excel time serial is a fraction of a day
+                        const totalSeconds = Math.round(serial * 24 * 60 * 60)
+                        const hours = Math.floor(totalSeconds / 3600)
+                        const minutes = Math.floor((totalSeconds % 3600) / 60)
+                        const seconds = totalSeconds % 60
+                        return [hours, minutes, seconds].map((v) => v.toString().padStart(2, '0')).join(':')
+                    }
+                    rows = rows.map((row) => {
+                        if (row.Date && typeof row.Date === 'number') {
+                            row.Date = excelSerialToDate(row.Date)
+                        }
+                        if (row.ClockIn && typeof row.ClockIn === 'number') {
+                            row.ClockIn = excelSerialToTime(row.ClockIn)
+                        }
+                        if (row.ClockOut && typeof row.ClockOut === 'number') {
+                            row.ClockOut = excelSerialToTime(row.ClockOut)
+                        }
+                        // Also handle alternate column names (if your sheet uses 'Clock In'/'Clock Out')
+                        if (row['Clock In'] && typeof row['Clock In'] === 'number') {
+                            row['Clock In'] = excelSerialToTime(row['Clock In'])
+                        }
+                        if (row['Clock Out'] && typeof row['Clock Out'] === 'number') {
+                            row['Clock Out'] = excelSerialToTime(row['Clock Out'])
+                        }
+                        return row
+                    })
+                    setTimeout(() => {
+                        sendImport(rows, file.name, importToast)
+                    }, 1000)
+                })
+            }
+        }, 1500)
+        // Extract YYYY-MM months from imported rows
+        function extractMonths(rows: Record<string, unknown>[]): string[] {
+            const months = new Set<string>()
+            const dateKeys = new Set<string>(['date', 'Date', 'DATE'])
+            for (const row of rows) {
+                // Find a date-like field
+                let val: unknown = undefined
+                for (const key of Object.keys(row)) {
+                    if (dateKeys.has(key)) { val = row[key]; break }
                 }
-                rows = validRows;
-                // Add another delay before removing loading toast and showing result
-                setTimeout(() => {
-                    sendImport(rows, file.name, importToast);
-                }, 1000);
-            });
-        } else {
-            file.arrayBuffer().then(data => {
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                rows = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
-                setTimeout(() => {
-                    sendImport(rows, file.name, importToast);
-                }, 1000);
-            });
+                if (!val && 'ClockIn' in row && typeof row['ClockIn'] === 'string') {
+                    // If your files encode date in another column, extend here as needed
+                    // For now, skip
+                }
+                if (typeof val === 'string' && val.trim()) {
+                    // Try parse common formats
+                    let iso = ''
+                    const s = val.trim()
+                    // YYYY-MM-DD
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) iso = s
+                    // MM/DD/YYYY
+                    else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+                        const [m, d, y] = s.split('/')
+                        iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+                    }
+                    // DD-MM-YYYY (alternative with dashes)
+                    else if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(s)) {
+                        const [d, m, y] = s.split('-')
+                        iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+                    }
+                    // Fallback: Date.parse
+                    else {
+                        const t = Date.parse(s)
+                        if (!Number.isNaN(t)) iso = new Date(t).toISOString().slice(0,10)
+                    }
+                    if (iso) {
+                        const m = iso.slice(0,7)
+                        if (/^\d{4}-\d{2}$/.test(m)) months.add(m)
+                    }
+                }
+            }
+            return Array.from(months)
         }
-    }, 1500);
+
         function sendImport(rows: Record<string, unknown>[], fileName: string, toastId: string | number) {
             fetch('/time-keeping/import', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
-                body: JSON.stringify({ records: rows }),
+                body: JSON.stringify({ records: rows, file_name: fileName }),
             })
-                .then(async response => {
+                .then(async (response) => {
                     // Dismiss loading toast first, then show result toast
-                    toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
+                    toast.dismiss(typeof toastId === 'number' ? undefined : toastId)
+
+                    // Session expired / CSRF problem
+                    if (response.status === 419 || response.status === 401) {
+                        toast.error('Session expired. The page will reload to recover your session.');
+                        window.setTimeout(() => window.location.reload(), 1200);
+                        return;
+                    }
+
+                    // Method not allowed / route mismatch
+                    if (response.status === 405) {
+                        toast.error('Server route mismatch detected. Reloading the page to refresh routes.');
+                        window.setTimeout(() => window.location.reload(), 1200);
+                        return;
+                    }
+
                     if (response.ok) {
-                        toast.success(`Successfully imported: ${fileName}`, { id: `success-${Date.now()}`, duration: 1000 });
-                        router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] });
-                    } else {
-                        let errorMsg = 'Import failed.';
+                        toast.success(`Successfully imported: ${fileName}`, { id: `success-${Date.now()}`, duration: 1000 })
+                        // Persist imported months so Payroll can detect it even if not open
+                        const months = extractMonths(rows)
                         try {
-                            const errorData = await response.json();
+                            for (const m of months) {
+                                sessionStorage.setItem(`salary.imported.${m}`, '1')
+                            }
+                        } catch (e) {
+                            console.warn('Unable to persist imported months to sessionStorage', e)
+                        }
+                        // Notify other pages (e.g., Payroll) that a new timekeeping import occurred including months
+                        try {
+                            window.dispatchEvent(new CustomEvent('timekeeping:imported', { detail: { fileName, months, at: Date.now() } }))
+                        } catch (e) {
+                            console.warn('Unable to dispatch timekeeping imported event', e)
+                        }
+                        router.reload({ only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'] })
+                    } else {
+                        let errorMsg = 'Import failed.'
+                        try {
+                            const errorData = await response.json()
                             if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
-                                errorMsg = errorData.errors.join('\n');
+                                errorMsg = errorData.errors.join('\n')
                             }
                         } catch (err) {
                             // Could not parse error JSON
-                            console.error('Error parsing import error response:', err);
+                            console.error('Error parsing import error response:', err)
                         }
-                        toast.error(errorMsg, { duration: 3000 });
+                        toast.error(errorMsg, { duration: 3000 })
                     }
                 })
                 .catch((err) => {
-                    toast.error('Import failed.');
-                    toast.dismiss(typeof toastId === 'number' ? undefined : toastId);
-                    console.error('Import failed:', err);
-                });
+                    // Network or unexpected error — reload to attempt recovery
+                    toast.error('Import failed due to network or session error. The page will reload to try to recover.');
+                    toast.dismiss(typeof toastId === 'number' ? undefined : toastId)
+                    console.error('Import failed:', err)
+                    window.setTimeout(() => window.location.reload(), 1200);
+                })
         }
-    };
-
-    function getCollegeProgramLabel(acronym: string) {
-        const COLLEGE_PROGRAMS = [
-            { value: 'BSBA', label: 'Bachelor of Science in Business Administration' },
-            { value: 'BSA', label: 'Bachelor of Science in Accountancy' },
-            { value: 'COELA', label: 'College of Education and Liberal Arts' },
-            { value: 'BSCRIM', label: 'Bachelor of Science in Criminology' },
-            { value: 'BSCS', label: 'Bachelor of Science in Computer Science' },
-            { value: 'JD', label: 'Juris Doctor' },
-            { value: 'BSN', label: 'Bachelor of Science in Nursing' },
-            { value: 'RLE', label: 'Related Learning Experience' },
-            { value: 'CG', label: 'Career Guidance' },
-            { value: 'BSPT', label: 'Bachelor of Science in Physical Therapy' },
-            { value: 'GSP', label: 'Graduate Studies Programs' },
-            { value: 'MBA', label: 'Master of Business Administration' },
-        ];
-        const found = COLLEGE_PROGRAMS.find(p => p.value === acronym);
-        return found ? found.label : acronym;
     }
-    const page = usePage();
+
+    // getCollegeProgramLabel imported from shared constants
+    const page = usePage()
     const {
         employees = [],
         currentPage = 1,
         totalPages = 1,
         search: initialSearch = '',
         filters: initialFiltersRaw = { types: [], statuses: [], roles: [] },
+        othersRoles: initialOthersRoles = [],
     } = page.props as {
-        employees?: Employees[];
-        currentPage?: number;
-        totalPages?: number;
-        search?: string;
-        filters?: FilterState;
-    };
+        employees?: Employees[]
+        currentPage?: number
+        totalPages?: number
+        search?: string
+        filters?: FilterState
+        othersRoles?: Array<{ value: string; label: string }>
+    }
 
-    const initialFilters = initialFiltersRaw || { types: [], statuses: [], roles: [] };
-    const [searchTerm, setSearchTerm] = useState(initialSearch);
-    const toArray = (val: unknown) => Array.isArray(val) ? val : val ? [val] : [];
-    const [filters, setFilters] = useState<FilterState>({
+    const raw = (initialFiltersRaw || {}) as Partial<FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }>
+    const initialFilters: FilterState = {
+        types: raw.types ?? [],
+        statuses: raw.statuses ?? [],
+        roles: raw.roles ?? [],
+    }
+    const initialCollegeProgram = raw.collegeProgram ?? ''
+    const initialOthersRole = raw.othersRole ?? ''
+    const initialBasicEducationLevel = raw.basicEducationLevel ?? ''
+    const [searchTerm, setSearchTerm] = useState(initialSearch)
+    const toArray = (val: unknown) => (Array.isArray(val) ? val : val ? [val] : [])
+    const [filters, setFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
-        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
-    });
-    const [appliedFilters, setAppliedFilters] = useState<FilterState>({
+        collegeProgram: initialCollegeProgram,
+        othersRole: initialOthersRole,
+        basicEducationLevel: initialBasicEducationLevel,
+    })
+    const [appliedFilters, setAppliedFilters] = useState<FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }>({
         ...initialFilters,
         roles: toArray(initialFilters.roles),
-        collegeProgram: typeof initialFilters.collegeProgram !== 'undefined' ? initialFilters.collegeProgram : '',
-    });
-    const [loading, setLoading] = useState(false);
-    const spinnerStart = useRef<number>(0);
+        collegeProgram: initialCollegeProgram,
+        othersRole: initialOthersRole,
+        basicEducationLevel: initialBasicEducationLevel,
+    })
+    const [loading, setLoading] = useState(true)
+    const spinnerStart = useRef<number>(Date.now())
+
+    useEffect(() => {
+        const elapsed = Date.now() - spinnerStart.current
+        const wait = Math.max(0, MIN_SPINNER_MS - elapsed)
+        setTimeout(() => setLoading(false), wait)
+    }, [])
 
     // Visit helper
-    const visit = useCallback((params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string }>, options: { preserve?: boolean } = {}) => {
-        spinnerStart.current = Date.now();
-        setLoading(true);
-        router.visit(route('time-keeping.index'), {
-            method: 'get',
-            data: params,
-            preserveState: options.preserve ?? false,
-            preserveScroll: true,
-            only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'],
-            onFinish: () => {
-                const elapsed = Date.now() - spinnerStart.current;
-                const wait = Math.max(0, MIN_SPINNER_MS - elapsed);
-                setTimeout(() => setLoading(false), wait);
-            },
-        });
-    }, []);
+    const visit = useCallback(
+    (params: Partial<{ search: string; page: number; types: string[]; statuses: string[]; roles: string[]; collegeProgram: string; basicEducationLevel: string; othersRole: string; perPage: number }>, options: { preserve?: boolean } = {}) => {
+            spinnerStart.current = Date.now()
+            setLoading(true)
+            router.visit(route('time-keeping.index'), {
+                method: 'get',
+                data: params,
+                preserveState: options.preserve ?? false,
+                preserveScroll: true,
+                only: ['employees', 'currentPage', 'totalPages', 'search', 'filters'],
+                onFinish: () => {
+                    const elapsed = Date.now() - spinnerStart.current
+                    const wait = Math.max(0, MIN_SPINNER_MS - elapsed)
+                    setTimeout(() => setLoading(false), wait)
+                },
+            })
+        },
+        [],
+    )
 
     // Search handler
-    const handleSearch = useCallback((term: string) => {
-        setSearchTerm(term);
-        visit({
-            search: term || undefined,
-            page: 1,
-            types: appliedFilters.types.length ? appliedFilters.types : undefined,
-            statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
-            roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
-            collegeProgram: appliedFilters.collegeProgram || undefined,
-        }, { preserve: true });
-    }, [visit, appliedFilters]);
+    const handleSearch = useCallback(
+        (term: string) => {
+            setSearchTerm(term)
+            visit(
+                {
+                    search: term || undefined,
+                    page: 1,
+                    types: appliedFilters.types.length > 0 ? appliedFilters.types : undefined,
+                    statuses: appliedFilters.statuses.length > 0 ? appliedFilters.statuses : undefined,
+                    roles: appliedFilters.roles.length > 0 ? appliedFilters.roles : undefined,
+                    collegeProgram: appliedFilters.collegeProgram || undefined,
+                    basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
+                    perPage: pageSize,
+                },
+                { preserve: true },
+            )
+        },
+        [visit, appliedFilters, pageSize],
+    )
 
     // Filter apply
-    const handleFilterChange = useCallback((newFilters: FilterState) => {
-        setFilters(newFilters);
-        setAppliedFilters(newFilters);
-        visit({
-            search: searchTerm || undefined,
-            page: 1,
-            types: newFilters.types.length ? newFilters.types : undefined,
-            statuses: newFilters.statuses.length ? newFilters.statuses : undefined,
-            roles: newFilters.roles.length ? newFilters.roles : undefined,
-            collegeProgram: newFilters.collegeProgram || undefined,
-        }, { preserve: true });
-    }, [visit, searchTerm]);
+    const handleFilterChange = useCallback(
+        (newFilters: { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string | string[]; basicEducationLevel?: string | string[]; othersRole?: string }) => {
+            // Normalize collegeProgram to a single string (first selected)
+            const normalizedCollegeProgram = Array.isArray(newFilters.collegeProgram)
+                ? newFilters.collegeProgram[0] || ''
+                : newFilters.collegeProgram || ''
+
+            // Normalize basicEducationLevel similarly (first selected)
+            const normalizedBasicEdu = Array.isArray(newFilters.basicEducationLevel)
+                ? newFilters.basicEducationLevel[0] || ''
+                : newFilters.basicEducationLevel || ''
+
+            const applied = { ...newFilters, collegeProgram: normalizedCollegeProgram, basicEducationLevel: normalizedBasicEdu } as FilterState & { collegeProgram?: string; othersRole?: string; basicEducationLevel?: string }
+            // Immediately reflect in local UI state
+            setFilters(applied)
+
+            // Build roles to send (expand 'others' to specific role)
+            let rolesToSend = [...applied.roles]
+            if (applied.roles.includes('others') && (applied as { othersRole?: string }).othersRole) {
+                rolesToSend = rolesToSend.filter((r) => r !== 'others')
+                rolesToSend.push((applied as { othersRole?: string }).othersRole as string)
+            }
+
+            const appliedForUI = { ...applied, roles: rolesToSend }
+            setAppliedFilters(appliedForUI)
+
+            visit(
+                {
+                    search: searchTerm || undefined,
+                    page: 1,
+                    types: applied.types.length ? applied.types : undefined,
+                    statuses: applied.statuses.length ? applied.statuses : undefined,
+                    roles: rolesToSend.length ? rolesToSend : undefined,
+                    collegeProgram: (applied as { collegeProgram?: string }).collegeProgram || undefined,
+                    basicEducationLevel: (applied as { basicEducationLevel?: string }).basicEducationLevel || undefined,
+                    perPage: pageSize,
+                },
+                { preserve: true },
+            )
+        },
+        [visit, searchTerm, pageSize],
+    )
 
     // Reset filters
     const resetFilters = useCallback(() => {
-        const empty = { types: [], statuses: [], roles: [], collegeProgram: '' };
-        setFilters(empty);
-        setAppliedFilters(empty);
-        visit({ search: searchTerm || undefined, page: 1 }, { preserve: true });
-    }, [visit, searchTerm]);
+        const empty = { types: [], statuses: [], roles: [], collegeProgram: '', basicEducationLevel: '', othersRole: '' }
+        setFilters(empty)
+        setAppliedFilters(empty)
+    visit({ search: searchTerm || undefined, page: 1, perPage: pageSize }, { preserve: true })
+    }, [visit, searchTerm, pageSize])
 
     // Pagination
-    const handlePage = useCallback((page: number) => {
-        visit({
-            search: searchTerm || undefined,
-            page,
-            types: appliedFilters.types.length ? appliedFilters.types : undefined,
-            statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
-            roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
-            collegeProgram: appliedFilters.collegeProgram || undefined,
-        }, { preserve: true });
-    }, [visit, searchTerm, appliedFilters]);
+    const handlePage = useCallback(
+        (page: number) => {
+            let rolesToSend = [...appliedFilters.roles]
+            // Re-apply the same logic for pagination requests
+            if (appliedFilters.roles.includes('others') && appliedFilters.othersRole) {
+                rolesToSend = rolesToSend.filter((r) => r !== 'others')
+                rolesToSend.push(appliedFilters.othersRole)
+            }
+
+            visit(
+                {
+                    search: searchTerm || undefined,
+                    page,
+                    types: appliedFilters.types.length ? appliedFilters.types : undefined,
+                    statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
+                    roles: rolesToSend.length ? rolesToSend : undefined,
+                    collegeProgram: appliedFilters.collegeProgram || undefined,
+                    basicEducationLevel: appliedFilters.basicEducationLevel || undefined,
+                    // othersRole is now part of the 'roles' array, no need to send separately
+                    perPage: pageSize,
+                },
+                { preserve: true },
+            )
+        },
+        [visit, searchTerm, appliedFilters, pageSize],
+    )
 
     const crumbs: BreadcrumbItem[] = [
         {
             title: 'Time Keeping',
             href: '/time-keeping',
         },
-    ];
+    ]
 
     function capitalizeWords(str: string) {
-        return str.replace(/\b\w/g, c => c.toUpperCase());
+        return str.replace(/\b\w/g, (c) => c.toUpperCase())
     }
 
     return (
         <AppLayout breadcrumbs={crumbs}>
             <Head title="Time Keeping" />
-            <div className="flex h-full flex-col gap-4 overflow-hidden py-6 px-2 sm:px-4 md:px-8">
+            <div className="flex h-full flex-col gap-4 overflow-hidden px-2 py-6 sm:px-4 md:px-8">
                 {/* HEADER */}
-                <div className="flex-none">
-                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
-                        <Users className="h-6 w-6 text-primary" />
-                        Time Keeping
-                    </h1>
-                    <p className="text-sm text-muted-foreground">View employee time keeping records.</p>
+                <div className="flex items-center gap-4">
+                    <div className="dark:bg-primary bg-primary/10 rounded-full border border-primary/20 p-3 dark:border-primary">
+                        <Clock className="h-6 w-6 text-primary dark:text-primary-foreground" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Time Keeping</h1>
+                        <p className="text-muted-foreground">View employee time keeping records.</p>
+                    </div>
                 </div>
 
                 {/* SEARCH & CONTROLS */}
@@ -307,8 +465,26 @@ export default function TimeKeeping() {
                                 selectedTypes={filters.types}
                                 selectedStatuses={filters.statuses}
                                 selectedRoles={filters.roles}
-                                collegeProgram={filters.collegeProgram}
-                                onChange={newFilters => handleFilterChange({ ...filters, ...newFilters })}
+                                collegeProgram={filters.collegeProgram ? [filters.collegeProgram] : []}
+                                othersRole={filters.othersRole}
+                                othersRoles={Array.isArray(initialOthersRoles) ? initialOthersRoles : []}
+                                onChange={(newFilters) => {
+                                    const cp = Array.isArray(newFilters.collegeProgram)
+                                        ? (newFilters.collegeProgram[0] ?? '')
+                                        : (newFilters.collegeProgram ? newFilters.collegeProgram : '')
+                                    const be = Array.isArray(newFilters.basicEducationLevel)
+                                        ? (newFilters.basicEducationLevel[0] ?? '')
+                                        : (newFilters.basicEducationLevel ? newFilters.basicEducationLevel : '')
+                                    handleFilterChange({
+                                        types: newFilters.types,
+                                        statuses: newFilters.statuses,
+                                        roles: newFilters.roles,
+                                        othersRole: newFilters.othersRole,
+                                        collegeProgram: cp,
+                                        basicEducationLevel: be,
+                                    })
+                                }}
+                                basicEducationLevel={filters.basicEducationLevel ? [filters.basicEducationLevel] : []}
                             />
                             <Button variant="secondary" type="button" onClick={() => setCalendarOpen(true)}>
                                 <Calendar />
@@ -318,204 +494,59 @@ export default function TimeKeeping() {
                                 <Import />
                                 Import
                             </Button>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                style={{ display: 'none' }}
-                                accept=".csv,.xls,.xlsx"
-                                onChange={handleFileChange}
-                            />
+                            <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".csv,.xls,.xlsx" onChange={handleFileChange} />
                         </div>
                     </div>
                     {/* Category filter and Active Filters Preview in one line */}
-                    <div className="flex items-center justify-between w-full">
+                    <div className="flex w-full items-center justify-between">
                         <div
                             className={cn(
                                 'text-right text-xs text-muted-foreground transition-all duration-200 ease-in-out',
-                                (appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0 || appliedFilters.roles.length > 0) ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0',
+                                appliedFilters.types.length > 0 || appliedFilters.statuses.length > 0 || appliedFilters.roles.length > 0 ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0',
                             )}
                         >
                             Showing: {appliedFilters.types.length ? appliedFilters.types.map(capitalizeWords).join(', ') : 'All Types'} /
                             {appliedFilters.statuses.length ? ' ' + appliedFilters.statuses.map(capitalizeWords).join(', ') : ' All Statuses'} /
                             {appliedFilters.roles.length ? ' ' + appliedFilters.roles.map(capitalizeWords).join(', ') : ' All Roles'}
-                            {appliedFilters.roles.includes('college instructor') && appliedFilters.collegeProgram ?
-                                ` / ${' '}${appliedFilters.collegeProgram} - ${getCollegeProgramLabel(appliedFilters.collegeProgram)}` : ''}
+                            {appliedFilters.roles.includes('college instructor') && appliedFilters.collegeProgram ? ` / ${' '}${appliedFilters.collegeProgram} - ${getCollegeProgramLabel(appliedFilters.collegeProgram)}` : ''}
+                            {appliedFilters.roles.includes('basic education instructor') && appliedFilters.basicEducationLevel ? ` / ${' '}${appliedFilters.basicEducationLevel}` : ''}
+                            {appliedFilters.roles.includes('others') && appliedFilters.othersRole ? ` / ${' '}${capitalizeWords(appliedFilters.othersRole)}` : ''}
                         </div>
                     </div>
                 </div>
 
                 {/* TABLE & PAGINATION */}
                 <div className="relative flex flex-1 flex-col">
-                    {loading && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 transition-opacity duration-300 dark:bg-black/70">
-                            <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                        </div>
-                    )}
-                    <div className="w-full overflow-x-auto">
-                        <Table className="select-none min-w-[900px]" style={{ tableLayout: 'fixed', width: '100%' }}>
-                            <TableHeader className=''>
-                                <TableRow className='odd:bg-muted/50 even:bg-background hover:bg-muted transition-colors'>
-                                    <TableHead style={{ width: 120 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Employee ID</TableHead>
-                                    <TableHead style={{ width: 400 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Name</TableHead>
-                                    <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase tracking-wide text-left px-4 py-2'>Employee Type</TableHead>
-                                    <TableHead style={{ width: 160 }} className='text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2'>Employee Status</TableHead>
-                                    <TableHead style={{ width: 350 }} className="text-xs font-semibold uppercase  tracking-wide text-left px-4 py-2">Roles</TableHead>
-                                    <TableHead style={{ width: 180 }} className='text-right text-xs font-semibold uppercase  tracking-wide px-4 py-2'>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-
-                            <TableBody>
-                                {employees.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center text-muted-foreground" style={{ width: '100%' }}>
-                                            No employees found.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    <>
-                                        {employees.map((emp: Employees) => (
-                                            <TableRow
-                                                key={emp.id}
-                                                className="transition-opacity duration-300"
-                                            >
-                                                <TableCell style={{ width: 120 }} className="px-4 py-2">{emp.id}</TableCell>
-                                                <TableCell style={{ width: 400 }} className="px-4 py-2">{formatFullName(emp.last_name, emp.first_name, emp.middle_name)}</TableCell>
-                                                <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_type}</TableCell>
-                                                <TableCell style={{ width: 160 }} className="px-4 py-2">{emp.employee_status}</TableCell>
-                                                <TableCell style={{ width: 350 }} className="px-4 py-2 min-w-[160px]">
-                                                    {(() => {
-                                                        if (!emp.roles) return '';
-                                                        const rolesArr = emp.roles.split(',').map((r: string) => r.trim()).filter(Boolean);
-                                                        const order = ['administrator', 'college instructor', 'basic education instructor'];
-                                                        let displayRoles = rolesArr;
-                                                        if (appliedFilters.roles.length > 0) {
-                                                            const filtered = appliedFilters.roles.filter(r => rolesArr.includes(r));
-                                                            const rest = rolesArr.filter((r: string) => !filtered.includes(r));
-                                                            displayRoles = [...filtered, ...rest];
-                                                        } else {
-                                                            displayRoles = order.filter(r => rolesArr.includes(r));
-                                                        }
-                                                        if (displayRoles.length === 0) return '';
-                                                        const mainRole = displayRoles[0];
-                                                        const additionalRolesCount = displayRoles.length - 1;
-                                                        let color: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
-                                                        let icon = null;
-                                                        if (mainRole === 'administrator') {
-                                                            color = 'info';
-                                                            icon = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                        } else if (mainRole === 'college instructor') {
-                                                            color = 'purple';
-                                                            icon = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                        } else if (mainRole === 'basic education instructor') {
-                                                            color = 'warning';
-                                                            icon = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                        }
-                                                        // Tooltip: all roles as badges, with full program name for college instructor
-                                                        const tooltipContent = (
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {displayRoles.map(role => {
-                                                                    let c: 'secondary' | 'info' | 'purple' | 'warning' = 'secondary';
-                                                                    let i = null;
-                                                                    let e = null;
-                                                                    if (role === 'administrator') {
-                                                                        c = 'info';
-                                                                        i = <Shield className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                                    } else if (role === 'college instructor') {
-                                                                        c = 'purple';
-                                                                        i = <GraduationCap className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                                        if (emp.college_program) {
-                                                                            e = <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}] {getCollegeProgramLabel(emp.college_program)}</span>;
-                                                                        }
-                                                                    } else if (role === 'basic education instructor') {
-                                                                        c = 'warning';
-                                                                        i = <Book className="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />;
-                                                                    }
-                                                                    return (
-                                                                        <Badge key={role} variant={c} className="capitalize flex items-center">
-                                                                            {i}{capitalizeWords(role)}{e}
-                                                                        </Badge>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        );
-                                                        // Main badge: show acronym for college instructor, +N for additional roles
-                                                        const badgeContent = (
-                                                            <span className="inline-flex items-center gap-1">
-                                                                <Badge key={mainRole} variant={color} className="capitalize flex items-center">
-                                                                    {icon}{capitalizeWords(mainRole)}{mainRole === 'college instructor' && emp.college_program ? <span className="ml-1 text-xs font-semibold text-white">[{emp.college_program}]</span> : null}
-                                                                </Badge>
-                                                                {additionalRolesCount > 0 && (
-                                                                    <Badge variant="success" className="cursor-pointer">+{additionalRolesCount}</Badge>
-                                                                )}
-                                                            </span>
-                                                        );
-                                                        // Tooltip logic
-                                                        // Only one role and not college instructor: no tooltip
-                                                        if (displayRoles.length === 1 && mainRole !== 'college instructor') {
-                                                            return badgeContent;
-                                                        }
-                                                        // Otherwise, show tooltip (for college instructor or multiple roles)
-                                                        return (
-                                                            <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>{badgeContent}</TooltipTrigger>
-                                                                    <TooltipContent side="top" className="max-w-lg px-4 py-3 whitespace-pre-line break-words">{tooltipContent}</TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        );
-                                                    })()}
-                                                </TableCell>
-                                                <TableCell style={{ width: 180 }} className="px-4 py-2 whitespace-nowrap text-right">
-                                                    <div className='flex justify-end items-center gap-2'>
-                                                        <Button variant="secondary" onClick={() => { setSelectedEmployee(emp); }}>
-                                                            <Eye />
-                                                            View
-                                                        </Button>
-                                                        <Button onClick={() => setSelectedBtrEmployee(emp)}>
-                                                            <Fingerprint />
-                                                            BTR
-                                                        </Button>
-                                                    </div>
-
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-
-                                        {Array.from({ length: Math.max(0, MAX_ROWS - employees.length) }).map((_, i) => (
-                                            <TableRow key={`empty-${i}`}>
-                                                <TableCell style={{ width: 120, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                                <TableCell style={{ width: 200, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                                <TableCell style={{ width: 160, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                                <TableCell style={{ width: 160, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                                <TableCell style={{ width: 240, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                                <TableCell style={{ width: 180, height: ROW_HEIGHT }} className="px-4 py-2" />
-                                            </TableRow>
-                                        ))}
-                                    </>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    <div className="mt-4 flex min-h-[56px] justify-center">
-                        <EmployeePagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePage} />
-                    </div>
+                    <TableTimekeeping
+                        data={employees}
+                        loading={loading}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={handlePage}
+                        onPageSizeChange={(size) => {
+                            setPageSize(size)
+                            visit(
+                                {
+                                    search: searchTerm || undefined,
+                                    page: 1,
+                                    types: appliedFilters.types.length ? appliedFilters.types : undefined,
+                                    statuses: appliedFilters.statuses.length ? appliedFilters.statuses : undefined,
+                                    roles: appliedFilters.roles.length ? appliedFilters.roles : undefined,
+                                    collegeProgram: appliedFilters.collegeProgram || undefined,
+                                       perPage: size,
+                                },
+                                { preserve: true },
+                            )
+                        }}
+                        onView={(emp) => setSelectedEmployee(emp)}
+                        onBTR={(emp) => setSelectedBtrEmployee(emp)}
+                    />
                 </div>
             </div>
             {/* Floating Modal for Late/Early Departures */}
-            {selectedEmployee && (
-                <TimeKeepingViewDialog
-                    employee={selectedEmployee}
-                    onClose={() => setSelectedEmployee(null)}
-                />
-            )}
-            {selectedBtrEmployee && (
-                <BTRDialog
-                    employee={selectedBtrEmployee}
-                    onClose={() => setSelectedBtrEmployee(null)}
-                />
-            )}
-    <CalendarViewDialog open={calendarOpen} onClose={() => setCalendarOpen(false)} />
-    </AppLayout>
-    );
+            {selectedEmployee && <TimeKeepingViewDialog employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />}
+            {selectedBtrEmployee && <BTRViewDialog employee={selectedBtrEmployee} onClose={() => setSelectedBtrEmployee(null)} />}
+            <CalendarViewDialog open={calendarOpen} onClose={() => setCalendarOpen(false)} />
+        </AppLayout>
+    )
 }

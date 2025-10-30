@@ -4,8 +4,9 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, ClipboardList, Clock, Folder, LayoutDashboard, ScrollText, Users, Wallet } from 'lucide-react';
+import { Trophy, ClipboardList, Clock, Folder, LayoutDashboard, ScrollText, Users, Wallet, Info } from 'lucide-react';
 import AppLogo from './app-logo';
+import { SidebarCopyrightFooter } from './sidebar-copyright-footer';
 
 const mainNavItems: NavItem[] = [
     {
@@ -13,31 +14,26 @@ const mainNavItems: NavItem[] = [
         href: '/dashboard',
         icon: LayoutDashboard,
     },
-
     {
-        title: 'Salary Management',
-        href: '/salary',
+        title: 'Payroll',
+        href: '/payroll',
         icon: Wallet,
     },
-
     {
         title: 'Employees',
         href: '/employees',
         icon: Users,
     },
-
     {
         title: 'Time Keeping',
         href: '/time-keeping',
         icon: Clock,
     },
-
     {
         title: 'Reports',
         href: '/reports',
         icon: ClipboardList,
     },
-
     {
         title: 'Audit Logs',
         href: '/audit-logs',
@@ -45,18 +41,18 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-// const footerNavItems: NavItem[] = [
-//     {
-//         title: 'Repository',
-//         href: 'https://github.com/laravel/react-starter-kit',
-//         icon: Folder,
-//     },
-//     {
-//         title: 'Documentation',
-//         href: 'https://laravel.com/docs/starter-kits#react',
-//         icon: BookOpen,
-//     },
-// ];
+const footerNavItems: NavItem[] = [
+    // {
+    //     title: 'Repository',
+    //     href: 'https://github.com/laravel/react-starter-kit',
+    //     icon: Folder,
+    // },
+    {
+        title: 'About',
+        href: '/about', // Now an Internal URL
+        icon: Info,
+    },
+];
 
 export function AppSidebar() {
     return (
@@ -78,8 +74,9 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                {/* <NavFooter items={footerNavItems} className="mt-auto" /> */}
+                <NavFooter items={footerNavItems} />
                 <NavUser />
+                <SidebarCopyrightFooter />
             </SidebarFooter>
         </Sidebar>
     );

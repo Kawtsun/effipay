@@ -16,6 +16,7 @@ import { useEmployeePayroll } from "@/hooks/useEmployeePayroll";
 import { MonthRangePicker } from "./ui/month-range-picker";
 import { Skeleton } from "./ui/skeleton";
 import { RolesBadges } from "./roles-badges"; // Ensure RolesBadges is imported
+import { EmployeeScheduleBadges } from './employee-schedule-badges';
 
 function formatTime12Hour(time?: string): string {
     if (!time) return '-';
@@ -62,43 +63,68 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     // Calculate gross pay including overtime (for display)
     function getOvertimePay() {
         if (!summary) return 0;
-        const isCollegeInstructor = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
-        const ratePerHour = isCollegeInstructor ? Number(summary.college_rate ?? 0) : Number(summary.rate_per_hour ?? 0);
+        // Overtime must use the base-salary derived rate per hour, never the college rate
+        const baseRatePerHour = Number(summary.rate_per_hour ?? 0);
         const weekdayOvertime = Number(summary.overtime_count_weekdays ?? 0);
         const weekendOvertime = Number(summary.overtime_count_weekends ?? 0);
-        const weekdayPay = ratePerHour * 0.25 * weekdayOvertime;
-        const weekendPay = ratePerHour * 0.30 * weekendOvertime;
+        const weekdayPay = baseRatePerHour * 0.25 * weekdayOvertime;
+        const weekendPay = baseRatePerHour * 0.30 * weekendOvertime;
         return weekdayPay + weekendPay;
     }
 
     function getGrossPay() {
         if (!summary) return 0;
-        const isCollegeInstructor = employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor');
-        const ratePerHour = isCollegeInstructor ? Number(summary.college_rate ?? 0) : Number(summary.rate_per_hour ?? 0);
-        const baseSalary = Number(summary.base_salary ?? 0);
-        const totalHours = Number(summary.total_hours ?? 0);
-        const tardiness = Number(summary.tardiness ?? 0);
-        const undertime = Number(summary.undertime ?? 0);
-        const absences = Number(summary.absences ?? 0);
-        // Use new overtime formula
+        const rolesStr = (employee?.roles || '').toLowerCase();
+        const roleTokens = rolesStr.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
+        const hasCollege = rolesStr.includes('college instructor');
+        const isCollegeOnly = hasCollege && (roleTokens.length > 0 ? roleTokens.every(t => t.includes('college instructor')) : true);
+        const isCollegeMulti = hasCollege && !isCollegeOnly;
+
+    const baseSalary = Number(summary.base_salary ?? 0);
+    const nonCollegeRatePerHour = Number(summary.rate_per_hour ?? 0);
+    const collegeRatePerHour = Number(summary.college_rate ?? 0);
+
+        // Prefer locally computed metrics when available to reflect UI logic
+        const tardiness = Number((computed?.tardiness ?? summary.tardiness) ?? 0);
+        const undertime = Number((computed?.undertime ?? summary.undertime) ?? 0);
+        const absences = Number((computed?.absences ?? summary.absences) ?? 0);
+    const totalHours = Number((computed?.total_hours ?? summary.total_hours) ?? 0);
+    const collegeHours = Number(((computed as any)?.college_paid_hours ?? summary.total_hours) ?? 0);
+
         const overtimePay = getOvertimePay();
-        if (isCollegeInstructor) {
+
+        if (isCollegeOnly) {
+            // College-only: use college rate and hours for all
             return (
-                (ratePerHour * totalHours)
+                (collegeRatePerHour * collegeHours)
                 + overtimePay
-                - (ratePerHour * tardiness)
-                - (ratePerHour * undertime)
-                - (ratePerHour * absences)
-            );
-        } else {
-            return (
-                baseSalary
-                + overtimePay
-                - (ratePerHour * tardiness)
-                - (ratePerHour * undertime)
-                - (ratePerHour * absences)
+                - (collegeRatePerHour * tardiness)
+                - (collegeRatePerHour * undertime)
+                - (collegeRatePerHour * absences)
             );
         }
+
+        if (isCollegeMulti) {
+            // Multi-role with College Instructor:
+            // Gross = Base Salary + College/GSP + Overtime - (non-college rate * (tardiness + undertime + absences))
+            // Note: computed metrics exclude college-role timekeeping from T/U/A in the section below.
+            const collegeGsp = collegeRatePerHour > 0 && totalHours > 0
+                ? (collegeRatePerHour * totalHours)
+                : 0;
+            const deductions = (nonCollegeRatePerHour * tardiness)
+                + (nonCollegeRatePerHour * undertime)
+                + (nonCollegeRatePerHour * absences);
+            return baseSalary + collegeGsp + overtimePay - deductions;
+        }
+
+        // Non-college
+        return (
+            baseSalary
+            + overtimePay
+            - (nonCollegeRatePerHour * tardiness)
+            - (nonCollegeRatePerHour * undertime)
+            - (nonCollegeRatePerHour * absences)
+        );
     }
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [loadingPayroll, setLoadingPayroll] = useState(false);
@@ -109,10 +135,12 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     // Use a more specific type for records if possible. Assuming records are objects with string keys and values.
     const [records, setRecords] = useState<Array<Record<string, unknown>>>([]);
     const recordsMinLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
+    // Observances map keyed by YYYY-MM-DD to apply event formulas in computations
+    const [observanceMap, setObservanceMap] = useState<Record<string, { type?: string; start_time?: string }>>({});
     useEffect(() => {
         if (!employee || !selectedMonth) return;
-    if (recordsMinLoadingTimeout.current) clearTimeout(recordsMinLoadingTimeout.current);
-    recordsMinLoadingTimeout.current = setTimeout(() => {}, 400);
+        if (recordsMinLoadingTimeout.current) clearTimeout(recordsMinLoadingTimeout.current);
+        recordsMinLoadingTimeout.current = setTimeout(() => { }, 400);
         fetch(`/api/timekeeping/records?employee_id=${employee.id}&month=${selectedMonth}`)
             .then((res) => res.json())
             .then((data) => {
@@ -126,17 +154,38 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                     toast.error("No timekeeping data found for this month.");
                 }
             })
-            .finally(() => {});
+            .finally(() => { });
     }, [employee, selectedMonth]);
+    // Fetch observances for the current month and store minimal data in a map
+    useEffect(() => {
+        if (!selectedMonth) return;
+        (async () => {
+            try {
+                const res = await fetch('/observances');
+                const payload = await res.json();
+                const arr = Array.isArray(payload) ? payload : (Array.isArray(payload?.observances) ? payload.observances : []);
+                const map: Record<string, { type?: string; start_time?: string }> = {};
+                for (const o of arr) {
+                    const d = (o?.date || '').slice(0, 10);
+                    if (!d || d.slice(0, 7) !== selectedMonth) continue;
+                    map[d] = { type: o?.type || o?.label, start_time: o?.start_time };
+                }
+                setObservanceMap(map);
+            } catch (e) {
+                console.error('Failed to fetch observances', e);
+                setObservanceMap({});
+            }
+        })();
+    }, [selectedMonth]);
     // Use records.length === 0 to determine if there is data, matching BTRDialog
 
     // Show toast if no data, but only once per employee+month, and reset properly when data is present
     // Remove lastToastRef and use BTRDialog's approach
 
-    // Fetch merged months from backend (payroll + timekeeping)
+    // Fetch timekeeping-only months from backend (distinct months found in timekeeping records)
     const fetchAvailableMonths = React.useCallback(async () => {
         try {
-            const response = await fetch('/payroll/all-available-months');
+            const response = await fetch('/timekeeping/available-months');
             const result = await response.json();
             if (result.success) {
                 setAvailableMonths(result.months);
@@ -186,12 +235,191 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
 
     // fetchMonthlySummary is now handled by useEmployeePayroll
 
-    // DEBUG: Show actual values for troubleshooting
-    console.log('DEBUG employee.schedule:', {
-        work_start_time: employee?.work_start_time,
-        work_end_time: employee?.work_end_time,
-        work_hours_per_day: employee?.work_hours_per_day
-    });
+    // ---------- Compute metrics from BTR + schedule ----------
+    const computed = React.useMemo(() => {
+        if (!employee || !selectedMonth) return null;
+    const workDays = Array.isArray((employee as any).work_days) ? (employee as any).work_days : [];
+    const rolesStr = String((employee as any).roles || '').toLowerCase();
+    const roleTokens = rolesStr.split(/[\,\n]+/).map((s: string) => s.trim()).filter(Boolean);
+    const hasCollege = rolesStr.includes('college instructor');
+    const isCollegeOnly = hasCollege && (roleTokens.length > 0 ? roleTokens.every((t: string) => t.includes('college instructor')) : true);
+    const isCollegeMulti = hasCollege && !isCollegeOnly;
+        // Build schedule map by weekday code (mon..sun)
+        const schedByCode: Record<string, { start: number; end: number; durationMin: number }> = {};
+        const hmToMin = (t?: string) => {
+            if (!t) return NaN;
+            const parts = t.split(':');
+            if (parts.length < 2) return NaN;
+            const h = Number(parts[0]);
+            const m = Number(parts[1]);
+            if (Number.isNaN(h) || Number.isNaN(m)) return NaN;
+            return h * 60 + m;
+        };
+        const diffMin = (startMin: number, endMin: number) => {
+            let d = endMin - startMin;
+            if (d <= 0) d += 24 * 60; // overnight handling
+            return d;
+        };
+        const codeFromDate = (d: Date) => {
+            const idx = d.getDay(); // 0..6 Sun..Sat
+            return ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][idx];
+        };
+        const parseClock = (raw?: any): number => {
+            if (!raw || typeof raw !== 'string') return NaN;
+            let s = raw.trim();
+            // Accept 'HH:mm', 'HH:mm:ss', 'h:mm AM/PM'
+            const ampmMatch = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)$/i);
+            if (ampmMatch) {
+                let h = Number(ampmMatch[1]);
+                const m = Number(ampmMatch[2]);
+                const ap = ampmMatch[3].toUpperCase();
+                if (ap === 'PM' && h < 12) h += 12;
+                if (ap === 'AM' && h === 12) h = 0;
+                return h * 60 + m;
+            }
+            const hmMatch = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+            if (hmMatch) {
+                const h = Number(hmMatch[1]);
+                const m = Number(hmMatch[2]);
+                return h * 60 + m;
+            }
+            return NaN;
+        };
+
+        for (const wd of workDays) {
+            const start = hmToMin((wd as any).work_start_time);
+            const end = hmToMin((wd as any).work_end_time);
+            if (Number.isNaN(start) || Number.isNaN(end)) continue;
+            const raw = diffMin(start, end);
+            const durationMin = Math.max(0, raw - 60); // minus 1 hour break to match schedule display
+            const roleStr = String((wd as any).role ?? '').toLowerCase();
+            const fromCollegeRole = roleStr.includes('college instructor');
+            // Exclude college-instructor schedules from T/U/A for multi-role employees
+            if (isCollegeMulti && fromCollegeRole) continue;
+            schedByCode[(wd as any).day] = { start, end, durationMin };
+        }
+
+        // Map records by date
+        const map: Record<string, any> = {};
+        for (const r of records) {
+            const rd = (r as any).date;
+            if (typeof rd === 'string') map[rd] = r;
+        }
+
+        const [yStr, mStr] = selectedMonth.split('-');
+        const y = Number(yStr), m = Number(mStr);
+        if (!y || !m) return null;
+        const daysInMonth = new Date(y, m, 0).getDate();
+
+        let tardMin = 0;
+        let underMin = 0;
+        let absentMin = 0;
+        let otMin = 0;
+        let otWeekdayMin = 0;
+        let otWeekendMin = 0;
+        let totalWorkedMin = 0;
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${yStr}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const d = new Date(`${dateStr}T00:00:00`);
+            const code = codeFromDate(d);
+            const sched = schedByCode[code];
+            const rec = map[dateStr];
+            const timeIn = parseClock(rec?.clock_in ?? rec?.time_in);
+            const timeOut = parseClock(rec?.clock_out ?? rec?.time_out);
+
+            const hasBoth = !Number.isNaN(timeIn) && !Number.isNaN(timeOut);
+            if (sched) {
+                // Scheduled day with potential observance adjustments
+                const workedRaw = hasBoth ? diffMin(timeIn, timeOut) : 0;
+                const obs = observanceMap[dateStr];
+                const obsType = obs?.type?.toLowerCase?.() || '';
+
+                // WHOLE-DAY: No absences/tardy/undertime; any work counts as overtime (weekend bucket)
+                if (obsType.includes('whole')) {
+                    const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
+                    totalWorkedMin += workedMinusBreak;
+                    if (hasBoth) {
+                        otMin += workedMinusBreak;
+                        otWeekendMin += workedMinusBreak;
+                    }
+                    continue;
+                }
+
+                // HALF-DAY: suspension starts at provided time; expectation ends there; overtime after that
+                if (obsType.includes('half')) {
+                    const suspMinVal = hmToMin(obs?.start_time);
+                    const suspMin = Number.isNaN(suspMinVal) ? 12 * 60 : suspMinVal; // default 12:00
+                    const expectedEnd = Math.max(sched.start, Math.min(suspMin, sched.end));
+                    const expectedDuration = Math.max(0, expectedEnd - sched.start);
+
+                    if (!hasBoth) {
+                        absentMin += expectedDuration;
+                        continue;
+                    }
+
+                    // Morning work (no lunch break deduction for half-day expectation)
+                    totalWorkedMin += workedRaw;
+                    const tard = Math.max(0, timeIn - sched.start);
+                    const under = Math.max(0, expectedEnd - timeOut);
+                    const over = Math.max(0, timeOut - Math.max(timeIn, expectedEnd));
+
+                    tardMin += tard;
+                    underMin += under;
+                    otMin += over;
+                    otWeekdayMin += over;
+                    continue;
+                }
+
+                // Default or RAINY-DAY behavior
+                const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
+                totalWorkedMin += workedMinusBreak;
+
+                if (!hasBoth) {
+                    absentMin += sched.durationMin;
+                    continue;
+                }
+
+                // Tardiness: rainy-day 1-hour grace; if beyond grace, base from original start
+                let tard: number;
+                if (obsType.includes('rainy')) {
+                    const graceEnd = sched.start + 60;
+                    tard = timeIn <= graceEnd ? 0 : Math.max(0, timeIn - sched.start);
+                } else {
+                    tard = Math.max(0, timeIn - sched.start);
+                }
+
+                const under = Math.max(0, sched.end - timeOut);
+                const over = Math.max(0, workedMinusBreak - sched.durationMin);
+
+                tardMin += tard;
+                underMin += under;
+                otMin += over;
+                otWeekdayMin += over;
+            } else {
+                // Not scheduled day (weekend or off)
+                if (hasBoth) {
+                    const workedRaw = diffMin(timeIn, timeOut);
+                    const workedMinusBreak = Math.max(0, workedRaw - 60);
+                    totalWorkedMin += workedMinusBreak;
+                    otMin += workedMinusBreak;
+                    otWeekendMin += workedMinusBreak;
+                }
+            }
+        }
+
+        const toH = (min: number) => Number((min / 60).toFixed(2));
+        return {
+            tardiness: toH(tardMin),
+            undertime: toH(underMin),
+            overtime: toH(otMin),
+            absences: toH(absentMin),
+            overtime_count_weekdays: toH(otWeekdayMin),
+            overtime_count_weekends: toH(otWeekendMin),
+            total_hours: toH(totalWorkedMin),
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [employee, records, selectedMonth, observanceMap]);
     return (
         <Dialog open={!!employee} onOpenChange={(open) => !open && onClose()}>
             <AnimatePresence>
@@ -218,23 +446,11 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                             <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
                                             <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
-                                                <Info label="Type" value={employee.employee_type} />
-                                                <Info label="Schedule" value={(() => {
-                                                    if (employee.work_start_time && employee.work_end_time) {
-                                                        const [startHour, startMinute] = employee.work_start_time.split(':').map(Number);
-                                                        const [endHour, endMinute] = employee.work_end_time.split(':').map(Number);
-                                                        const startMinutes = startHour * 60 + startMinute;
-                                                        const endMinutes = endHour * 60 + endMinute;
-                                                        let actualWorkMinutes = endMinutes - startMinutes;
-                                                        if (actualWorkMinutes <= 0) actualWorkMinutes += 24 * 60;
-                                                        const totalMinutes = Math.max(1, actualWorkMinutes - 60); // minus 1 hour for break
-                                                        const hours = Math.floor(totalMinutes / 60);
-                                                        const minutes = totalMinutes % 60;
-                                                        const durationText = minutes === 0 ? `${hours} hours` : `${hours} hours and ${minutes} minutes`;
-                                                        return `${formatTime12Hour(employee.work_start_time)} - ${formatTime12Hour(employee.work_end_time)} (${durationText})`;
-                                                    }
-                                                    return '-';
-                                                })()} />
+                                                <Info label="Type" value={(employee as any).employee_type ?? ''} />
+                                                <div className="mb-2">
+                                                    <span className="text-xs text-muted-foreground">Schedule</span>
+                                                    <EmployeeScheduleBadges workDays={employee.work_days || []} />
+                                                </div>
                                             </div>
                                         </div>
                                         <div>
@@ -252,7 +468,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                 value={selectedMonth}
                                                 onValueChange={handleMonthChange}
                                                 placeholder="Select month"
-                                                className="w-46 min-w-0 px-2 py-1 text-sm"
+                                                className="w-56 min-w-0 px-2 py-1 text-sm"
                                                 availableMonths={availableMonths}
                                             />
                                         </div>
@@ -345,12 +561,12 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                     exit={{ opacity: 0 }}
                                                     transition={{ duration: 0.25 }}
                                                 >
-                                                    {/* Dynamically render timekeeping cards for future-proofing */}
+                                                    {/* Dynamically render timekeeping cards based on computed metrics */}
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                                         {[
                                                             {
                                                                 label: 'Tardiness',
-                                                                value: records.length === 0 ? '-' : `${Number(summary?.tardiness ?? 0).toFixed(2)} hr(s)`,
+                                                                value: records.length === 0 ? '-' : `${Number((computed?.tardiness ?? summary?.tardiness) ?? 0).toFixed(2)} hr(s)`,
                                                                 bg: 'bg-orange-50 dark:bg-orange-900/20',
                                                                 border: 'border-orange-200 dark:border-orange-800',
                                                                 text: 'text-orange-600',
@@ -358,7 +574,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             },
                                                             {
                                                                 label: 'Undertime',
-                                                                value: records.length === 0 ? '-' : `${Number(summary?.undertime ?? 0).toFixed(2)} hr(s)`,
+                                                                value: records.length === 0 ? '-' : `${Number((computed?.undertime ?? summary?.undertime) ?? 0).toFixed(2)} hr(s)`,
                                                                 bg: 'bg-red-50 dark:bg-red-900/20',
                                                                 border: 'border-red-200 dark:border-red-800',
                                                                 text: 'text-red-600',
@@ -366,7 +582,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             },
                                                             {
                                                                 label: 'Overtime',
-                                                                value: records.length === 0 ? '-' : `${Number(summary?.overtime ?? 0).toFixed(2)} hr(s)`,
+                                                                value: records.length === 0 ? '-' : `${Number((computed?.overtime ?? summary?.overtime) ?? 0).toFixed(2)} hr(s)`,
                                                                 bg: 'bg-blue-50 dark:bg-blue-900/20',
                                                                 border: 'border-blue-200 dark:border-blue-800',
                                                                 text: 'text-blue-600',
@@ -375,11 +591,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             },
                                                             {
                                                                 label: 'Absences',
-                                                                value: records.length === 0
-                                                                    ? '-'
-                                                                    : (typeof summary?.absences === 'number' && employee?.work_hours_per_day
-                                                                        ? `${Number(summary.absences).toFixed(2)} hr(s)`
-                                                                        : '-'),
+                                                                value: records.length === 0 ? '-' : `${Number((computed?.absences ?? summary?.absences) ?? 0).toFixed(2)} hr(s)`,
                                                                 bg: 'bg-gray-50 dark:bg-gray-800',
                                                                 border: 'border-gray-200 dark:border-gray-700',
                                                                 text: 'text-gray-600',
@@ -399,7 +611,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                                 {card.label === 'Overtime' && card.extra && (
                                                                     <div className="text-xs text-blue-400 mt-1">
                                                                         {records.length !== 0
-                                                                            ? `Weekdays: ${Number(summary?.overtime_count_weekdays ?? 0).toFixed(2)} hr(s), Weekends: ${Number(summary?.overtime_count_weekends ?? 0).toFixed(2)} hr(s)`
+                                                                            ? `Weekdays: ${Number((computed?.overtime_count_weekdays ?? summary?.overtime_count_weekdays) ?? 0).toFixed(2)} hr(s), Weekends: ${Number((computed?.overtime_count_weekends ?? summary?.overtime_count_weekends) ?? 0).toFixed(2)} hr(s)`
                                                                             : ''}
                                                                     </div>
                                                                 )}
@@ -413,7 +625,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             {employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor') ? (
                                                                 <div className="space-y-3 text-sm">
                                                                     <Info label="Rate Per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.college_rate ?? 0)}`} />
-                                                                    <Info label="Total Hours" value={records.length === 0 ? '-' : `${Number(summary?.total_hours ?? 0).toFixed(2)} hr(s)`} />
+                                                                    <Info label="Total Hours" value={records.length === 0 ? '-' : `${Number((((computed as any)?.college_paid_hours) ?? summary?.total_hours ?? 0)).toFixed(2)} hr(s)`} />
                                                                     <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(getGrossPay())}`} />
                                                                 </div>
                                                             ) : (

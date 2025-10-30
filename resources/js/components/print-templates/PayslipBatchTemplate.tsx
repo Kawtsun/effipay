@@ -73,8 +73,8 @@ const PayslipBatchTemplate: React.FC<PayslipBatchTemplateProps> = ({ payslips })
                     earnings={data.earnings}
                     deductions={data.deductions}
                     totalDeductions={data.totalDeductions}
-                    totalHours={data.earnings?.numHours}
-                    collegeRate={data.earnings?.ratePerHour}
+                    totalHours={data.earnings?.totalHours ?? data.earnings?.numHours}
+                    collegeRate={data.earnings?.collegeRate ?? data.earnings?.ratePerHour}
                   />
                 ) : null}
               </View>
