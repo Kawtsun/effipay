@@ -12,6 +12,7 @@ export type TimeKeepingMetrics = {
   overtime_count_weekends: number;
   overtime_count_observances: number;
   total_hours: number;
+  college_paid_hours?: number;
   rate_per_hour?: number;
   rate_per_day?: number;
   college_rate?: number;
@@ -118,7 +119,10 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
       return { isHalf, isWhole, startMin: hasStart ? startMinVal : undefined } as const;
     };
 
-    const schedByCode: Record<string, { start: number; end: number; durationMin: number; noTimes?: boolean; isCollege?: boolean; extraCollegeDurMin?: number }> = {};
+  const schedByCode: Record<string, { start: number; end: number; durationMin: number; noTimes?: boolean; isCollege?: boolean; extraCollegeDurMin?: number }> = {};
+  // Track explicit College Instructor time windows (from work_days role) and extra college minutes (from college_schedules without times)
+  const collegeTimesByCode: Record<string, { start: number; end: number; durationMin: number }> = {};
+  const collegeExtraMinByCode: Record<string, number> = {};
     for (const wd of workDays) {
       const start = hmToMin(wd.work_start_time || undefined);
       const end = hmToMin(wd.work_end_time || undefined);
@@ -140,6 +144,9 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
         const mergedDuration = Math.max(0, mergedRaw - 60);
         schedByCode[codeKey] = { start: mergedStart, end: mergedEnd, durationMin: mergedDuration, isCollege: Boolean(prev.isCollege || fromCollegeRole), extraCollegeDurMin: prev.extraCollegeDurMin };
       }
+      if (fromCollegeRole) {
+        collegeTimesByCode[codeKey] = { start, end, durationMin };
+      }
     }
 
     try {
@@ -154,6 +161,7 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
             existing.extraCollegeDurMin = (existing.extraCollegeDurMin ?? 0) + mins;
             // do not flip isCollege here; keep origin of time-based schedule
           }
+          collegeExtraMinByCode[code] = (collegeExtraMinByCode[code] ?? 0) + mins;
         };
         if (Array.isArray(collegeSchedulesRaw)) {
           collegeSchedulesRaw.forEach(item => pushHours(item?.day as string, Number(item?.hours_per_day ?? 0)));
@@ -179,7 +187,7 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
     if (!y || !m) return null;
     const daysInMonth = new Date(y, m, 0).getDate();
 
-  let tardMin = 0, underMin = 0, absentMin = 0, otMin = 0, otWeekdayMin = 0, otWeekendMin = 0, otObservanceMin = 0, totalWorkedMin = 0;
+  let tardMin = 0, underMin = 0, absentMin = 0, otMin = 0, otWeekdayMin = 0, otWeekendMin = 0, otObservanceMin = 0, totalWorkedMin = 0, collegePaidMin = 0;
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${yStr}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -206,6 +214,8 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           }
           if (!hasBoth) { absentMin += expectedDuration; continue; }
           totalWorkedMin += workedMinusBreak;
+          // College/GSP paid hours for no-times entries: cap actual worked by expected college minutes
+          collegePaidMin += Math.min(workedMinusBreak, expectedDuration);
           if (isCollegeOnly || isCollegeMulti) {
             const deficit = Math.max(0, expectedDuration - workedMinusBreak);
             absentMin += deficit;
@@ -227,6 +237,41 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
         const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
         totalWorkedMin += workedMinusBreak;
         if (!hasBoth) { const expected = (isCollegeMulti && sched.extraCollegeDurMin && sched.extraCollegeDurMin > 0) ? Math.max(sched.durationMin, sched.extraCollegeDurMin) : sched.durationMin; absentMin += expected; continue; }
+
+        // Compute College/GSP paid minutes within schedule windows and/or extra minutes
+        if (!obsInfo.isWhole && !obsInfo.isHalf) {
+          let paidToday = 0;
+          const cSpec = collegeTimesByCode[code];
+          if (cSpec) {
+            // overlap between [timeIn,timeOut] and [cSpec.start,cSpec.end], considering potential overnight
+            const calcOverlap = (aStart: number, aEnd: number, bStart: number, bEnd: number) => {
+              let in1 = aStart, out1 = aEnd, s1 = bStart, e1 = bEnd;
+              if (out1 <= in1) out1 += 24 * 60;
+              if (e1 <= s1) e1 += 24 * 60;
+              const left = Math.max(in1, s1);
+              const right = Math.min(out1, e1);
+              return Math.max(0, right - left);
+            };
+            let overlap = hasBoth ? calcOverlap(timeIn, timeOut, cSpec.start, cSpec.end) : 0;
+            // Apply lunch deduction if overlap crosses 1 PM
+            const fixedBreakEnd = 13 * 60; // 13:00
+            const normalize = (val: number, ref: number) => { let v = val; if (v <= ref) v += 24 * 60; return v; };
+            const outNorm = normalize(timeOut, timeIn);
+            const endNorm = normalize(cSpec.end, cSpec.start);
+            const overlapEndCandidate = Math.min(outNorm, endNorm);
+            if (overlap > 0 && overlapEndCandidate > fixedBreakEnd) {
+              overlap = Math.max(0, overlap - 60);
+            }
+            paidToday += Math.min(overlap, cSpec.durationMin);
+          }
+          // Extra college minutes (no times): cap by remaining workedMinusBreak
+          const extra = collegeExtraMinByCode[code] ?? 0;
+          if (extra > 0) {
+            const remain = Math.max(0, workedMinusBreak - paidToday);
+            paidToday += Math.min(remain, extra);
+          }
+          collegePaidMin += paidToday;
+        }
 
         if (isCollegeOnly || (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > sched.durationMin))) {
           const expected = (isCollegeMulti && (sched.extraCollegeDurMin ?? 0) > 0) ? Math.max(sched.durationMin, sched.extraCollegeDurMin || 0) : sched.durationMin;
@@ -276,6 +321,7 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
       overtime_count_weekends: toH(otWeekendMin),
       overtime_count_observances: toH(otObservanceMin),
       total_hours: toH(totalWorkedMin),
+      college_paid_hours: toH(collegePaidMin),
       rate_per_hour: ratePerHour,
       rate_per_day: ratePerDay,
       college_rate: collegeRate,

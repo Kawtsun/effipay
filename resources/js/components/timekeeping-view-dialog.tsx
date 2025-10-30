@@ -80,22 +80,23 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
         const isCollegeOnly = hasCollege && (roleTokens.length > 0 ? roleTokens.every(t => t.includes('college instructor')) : true);
         const isCollegeMulti = hasCollege && !isCollegeOnly;
 
-        const baseSalary = Number(summary.base_salary ?? 0);
-        const nonCollegeRatePerHour = Number(summary.rate_per_hour ?? 0);
-        const collegeRatePerHour = Number(summary.college_rate ?? 0);
+    const baseSalary = Number(summary.base_salary ?? 0);
+    const nonCollegeRatePerHour = Number(summary.rate_per_hour ?? 0);
+    const collegeRatePerHour = Number(summary.college_rate ?? 0);
 
         // Prefer locally computed metrics when available to reflect UI logic
         const tardiness = Number((computed?.tardiness ?? summary.tardiness) ?? 0);
         const undertime = Number((computed?.undertime ?? summary.undertime) ?? 0);
         const absences = Number((computed?.absences ?? summary.absences) ?? 0);
-        const totalHours = Number((computed?.total_hours ?? summary.total_hours) ?? 0);
+    const totalHours = Number((computed?.total_hours ?? summary.total_hours) ?? 0);
+    const collegeHours = Number(((computed as any)?.college_paid_hours ?? summary.total_hours) ?? 0);
 
         const overtimePay = getOvertimePay();
 
         if (isCollegeOnly) {
             // College-only: use college rate and hours for all
             return (
-                (collegeRatePerHour * totalHours)
+                (collegeRatePerHour * collegeHours)
                 + overtimePay
                 - (collegeRatePerHour * tardiness)
                 - (collegeRatePerHour * undertime)
@@ -445,7 +446,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                             <h4 className="font-semibold text-base mb-4 border-b pb-2">General Information</h4>
                                             <div className="space-y-2 text-sm">
                                                 <Info label="Status" value={employee.employee_status} />
-                                                <Info label="Type" value={employee.employee_type} />
+                                                <Info label="Type" value={(employee as any).employee_type ?? ''} />
                                                 <div className="mb-2">
                                                     <span className="text-xs text-muted-foreground">Schedule</span>
                                                     <EmployeeScheduleBadges workDays={employee.work_days || []} />
@@ -624,7 +625,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             {employee && typeof employee.roles === 'string' && employee.roles.toLowerCase().includes('college instructor') ? (
                                                                 <div className="space-y-3 text-sm">
                                                                     <Info label="Rate Per Hour" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(summary?.college_rate ?? 0)}`} />
-                                                                    <Info label="Total Hours" value={records.length === 0 ? '-' : `${Number((computed?.total_hours ?? summary?.total_hours) ?? 0).toFixed(2)} hr(s)`} />
+                                                                    <Info label="Total Hours" value={records.length === 0 ? '-' : `${Number((((computed as any)?.college_paid_hours) ?? summary?.total_hours ?? 0)).toFixed(2)} hr(s)`} />
                                                                     <Info label="Gross Pay" value={records.length === 0 ? '-' : `₱${formatNumberWithCommasAndFixed(getGrossPay())}`} />
                                                                 </div>
                                                             ) : (

@@ -274,7 +274,11 @@ export function ReportDataProvider({
       const baseSalary = Number(selectedPayroll.base_salary ?? employee?.base_salary ?? 0) || 0;
       const honorarium = Number(selectedPayroll.honorarium ?? employee?.honorarium ?? 0) || 0;
       const collegeRate = Number(selectedPayroll.college_rate ?? timekeepingSummary?.college_rate ?? 0) || 0;
-      const collegeHours = Number(timekeepingSummary?.total_hours ?? NaN);
+      const collegeHours = (() => {
+        const hTK = Number((tkComputed as any)?.college_paid_hours ?? NaN);
+        if (Number.isFinite(hTK)) return hTK;
+        return Number(timekeepingSummary?.total_hours ?? NaN);
+      })();
       const t = Number((tkComputed?.tardiness ?? timekeepingSummary?.tardiness) ?? 0) || 0;
       const u = Number((tkComputed?.undertime ?? timekeepingSummary?.undertime) ?? 0) || 0;
       const a = Number((tkComputed?.absences ?? timekeepingSummary?.absences) ?? 0) || 0;
@@ -372,19 +376,17 @@ export function ReportDataProvider({
 
   // Earnings data used by UI (Earnings column in ReportCards)
   const earnings = React.useMemo(() => {
-    const base_salary = selectedPayroll?.base_salary ?? null;
+  const base_salary = selectedPayroll?.base_salary ?? null;
     // Use college_rate strictly from payroll table for UI display
     const college_rate = ((): number | null => {
       const pr = selectedPayroll?.college_rate;
       return typeof pr === 'number' ? pr : null;
     })();
     const honorarium = selectedPayroll?.honorarium ?? null;
-    // Prefer computed total hours (same source as Timekeeping view); fall back to summary if needed
+    // For College/GSP, use college-paid hours (attendance within college schedule only)
     const total_hours = (() => {
-      const tkH = (tkComputed && typeof (tkComputed as { total_hours?: unknown })?.total_hours === 'number')
-        ? Number((tkComputed as { total_hours?: number }).total_hours)
-        : NaN;
-      if (Number.isFinite(tkH)) return tkH;
+      const hC = (tkComputed && typeof (tkComputed as any).college_paid_hours === 'number') ? Number((tkComputed as any).college_paid_hours) : NaN;
+      if (Number.isFinite(hC)) return hC;
       const sumH = (timekeepingSummary && typeof (timekeepingSummary as { total_hours?: unknown })?.total_hours === 'number')
         ? Number((timekeepingSummary as { total_hours?: number }).total_hours)
         : NaN;
