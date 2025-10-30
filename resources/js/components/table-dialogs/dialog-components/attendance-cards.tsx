@@ -17,6 +17,8 @@ type Metrics = {
 	absences?: MetricValue;
 	// Provided by TimeKeepingDataProvider for month aggregate
 	total_hours?: MetricValue;
+    // College-only paid hours (attendance within college schedule windows)
+    college_paid_hours?: MetricValue;
 	// Optional overtime breakdown and rates for computing peso values
 	overtime_count_weekdays?: MetricValue;
 	overtime_count_weekends?: MetricValue;
@@ -215,6 +217,20 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 	React.useEffect(() => { setMounted(true); }, []);
 	const shouldSkeleton = Boolean(isLoading || !mounted);
 
+	// Prefer college-paid hours for college-only employees
+	const isCollegeOnly = React.useMemo(() => {
+		const r = String(rolesText || '').toLowerCase();
+		if (!r.includes('college instructor')) return false;
+		const tokens = r.split(/[\,\n]+/).map(s => s.trim()).filter(Boolean);
+		return tokens.length > 0 ? tokens.every(t => t.includes('college instructor')) : true;
+	}, [rolesText]);
+	const displayTotalHours = React.useMemo(() => {
+		const cph = Number(metrics.college_paid_hours ?? NaN);
+		if (isCollegeOnly && Number.isFinite(cph)) return cph;
+		const th = Number(metrics.total_hours ?? NaN);
+		return Number.isFinite(th) ? th : null;
+	}, [isCollegeOnly, metrics.college_paid_hours, metrics.total_hours]);
+
 	return (
 		<Card className={className}>
 			<CardHeader className="pb-4">
@@ -368,7 +384,7 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 									<div className="inline-flex items-center">
 										<Badge variant="outline" className="w-full justify-center">
 											<Clock3 />
-											<span className="font-medium tabular-nums text-foreground/90">{formatHours(metrics.total_hours, isEmpty)}</span>
+											<span className="font-medium tabular-nums text-foreground/90">{formatHours(displayTotalHours, isEmpty)}</span>
 										</Badge>
 									</div>
 								</div>

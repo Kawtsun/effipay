@@ -50,6 +50,7 @@ export default function TimekeepingViewDialog({ employee, onClose }: Props) {
                                                     overtime: computed?.overtime,
                                                     absences: computed?.absences,
                                                     total_hours: computed?.total_hours,
+                                                    college_paid_hours: (computed as any)?.college_paid_hours,
                                                     overtime_count_weekdays: computed?.overtime_count_weekdays,
                                                     overtime_count_weekends: computed?.overtime_count_weekends,
                                                     rate_per_hour: computed?.rate_per_hour,

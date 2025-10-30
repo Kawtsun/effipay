@@ -12,6 +12,8 @@ export type TimeKeepingMetrics = {
   overtime_count_weekends: number;
   overtime_count_observances: number;
   total_hours: number;
+  // College-paid hours: attendance counted only within college schedule windows
+  college_paid_hours?: number;
   // Added pay context so UI can compute peso values consistently
   rate_per_hour?: number;
   rate_per_day?: number;
@@ -264,7 +266,18 @@ export function TimeKeepingDataProvider({
   // Build schedule map by weekday code (mon..sun)
   // When schedules come from college program hours (no start/end), mark noTimes=true and carry duration only.
   // Also tag entries that originate from a College Instructor role so we can treat deficits as Absences for multi-role.
-  const schedByCode: Record<string, { start: number; end: number; durationMin: number; noTimes?: boolean; isCollege?: boolean; extraCollegeDurMin?: number }> = {};
+  const schedByCode: Record<string, {
+      // Merged admin span primarily for tardy/under computation
+      start: number; end: number; durationMin: number;
+      // Flag for days that only have program hours without explicit times
+      noTimes?: boolean;
+      // True if any time-based window on the day is flagged college
+      isCollege?: boolean;
+      // Program hours-only extra minutes for college on that day
+      extraCollegeDurMin?: number;
+      // Keep granular windows to compute overlap precisely
+      timeWindows?: Array<{ start: number; end: number; isCollege: boolean }>;
+    }> = {};
     const hmToMin = (t?: string) => {
       if (!t) return NaN;
       const parts = t.split(":");
@@ -344,7 +357,7 @@ export function TimeKeepingDataProvider({
       const codeKey = normalizeDayKey(wd.day);
       if (!codeKey) continue;
       if (!schedByCode[codeKey]) {
-        schedByCode[codeKey] = { start, end, durationMin, isCollege: fromCollegeRole };
+        schedByCode[codeKey] = { start, end, durationMin, isCollege: fromCollegeRole, timeWindows: [{ start, end, isCollege: fromCollegeRole }] };
       } else {
         // Merge overlapping or adjacent time-based schedules into a single span for the day
         const prev = schedByCode[codeKey];
@@ -352,12 +365,15 @@ export function TimeKeepingDataProvider({
         const mergedEnd = Math.max(prev.end, end);
         const mergedRaw = diffMin(mergedStart, mergedEnd);
         const mergedDuration = Math.max(0, mergedRaw - 60); // subtract only one lunch break per day
+        const windows = Array.isArray(prev.timeWindows) ? prev.timeWindows.slice() : [];
+        windows.push({ start, end, isCollege: fromCollegeRole });
         schedByCode[codeKey] = {
           start: mergedStart,
           end: mergedEnd,
           durationMin: mergedDuration,
           isCollege: Boolean(prev.isCollege || fromCollegeRole),
           extraCollegeDurMin: prev.extraCollegeDurMin,
+          timeWindows: windows,
         };
       }
     }
@@ -423,7 +439,9 @@ export function TimeKeepingDataProvider({
   let otWeekdayMin = 0;
   let otWeekendMin = 0;
   let otObservanceMin = 0;
-    let totalWorkedMin = 0;
+  let totalWorkedMin = 0;
+  // Tracks only the portion of attendance that falls within any college schedule (time-based or program hours)
+  let collegePaidMin = 0;
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${yStr}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -455,6 +473,7 @@ export function TimeKeepingDataProvider({
               otMin += workedRaw;
               if (code === 'sat' || code === 'sun') otWeekendMin += workedRaw; else otWeekdayMin += workedRaw;
             }
+            // College-paid hours do not accrue on whole-day observances (no college schedule expectations)
             continue;
           }
           if (obsInfo.isHalf) {
@@ -464,6 +483,7 @@ export function TimeKeepingDataProvider({
               otMin += workedRaw;
               if (code === 'sat' || code === 'sun') otWeekendMin += workedRaw; else otWeekdayMin += workedRaw;
             }
+            // No college-paid hours on half-day observances
             continue;
           }
           // Default day: duration-only expectation
@@ -472,6 +492,8 @@ export function TimeKeepingDataProvider({
             continue;
           }
           totalWorkedMin += workedMinusBreak;
+          // College-paid: cap by expected duration for college-only hour schedules
+          collegePaidMin += Math.min(workedMinusBreak, expectedDuration);
           if (isCollegeOnly || isCollegeMulti) {
             // College schedules: deficit -> Absences
             const deficit = Math.max(0, expectedDuration - workedMinusBreak);
@@ -500,6 +522,7 @@ export function TimeKeepingDataProvider({
             otMin += workedRaw;
             otObservanceMin += workedRaw;
           }
+          // No college-paid hours on whole-day observances
           continue;
         }
 
@@ -510,6 +533,7 @@ export function TimeKeepingDataProvider({
             otMin += workedRaw;
             otObservanceMin += workedRaw; // observance treated as double pay bucket
           }
+          // No college-paid hours on half-day observances
           continue;
         }
 
@@ -525,6 +549,46 @@ export function TimeKeepingDataProvider({
           absentMin += expected;
           continue;
         }
+
+        // College-paid hours on time-based schedules: count only the actual overlap with college windows
+        let dayCollegePaid = 0;
+        const windows = Array.isArray(sched.timeWindows) ? sched.timeWindows.filter(w => w && w.isCollege) : [];
+        if (windows.length > 0 && hasBoth) {
+          const overlap = (aStart: number, aEnd: number, bStart: number, bEnd: number) => {
+            // simple same-day overlap; inputs are minutes [0,1440)
+            const s = Math.max(aStart, bStart);
+            const e = Math.min(aEnd, bEnd);
+            return Math.max(0, e - s);
+          };
+          let overlappedMin = 0;
+          let overlappedAfterBreakMin = 0;
+          const breakEnd = 13 * 60; // 13:00
+          for (const w of windows) {
+            const o = overlap(timeIn, timeOut, w.start, w.end);
+            overlappedMin += o;
+            // Portion of this window occurring after 13:00
+            if (timeOut > breakEnd && w.end > breakEnd) {
+              const oAfter = overlap(timeIn, timeOut, Math.max(w.start, breakEnd), w.end);
+              overlappedAfterBreakMin += oAfter;
+            }
+          }
+          // Apply the same lunch rule within overlapped portion (cap to overlapped minutes)
+          if (overlappedMin > 0 && timeOut > 13 * 60 && overlappedAfterBreakMin > 0) {
+            const lunchDeduct = Math.min(60, overlappedAfterBreakMin, overlappedMin);
+            overlappedMin = Math.max(0, overlappedMin - lunchDeduct);
+          }
+          // Guard with actually-worked minutes after global lunch deduction
+          overlappedMin = Math.min(overlappedMin, workedMinusBreak);
+          dayCollegePaid += overlappedMin;
+        }
+
+        // Also account for program-only college hours on the same day
+        if ((sched.extraCollegeDurMin ?? 0) > 0 && hasBoth) {
+          const remaining = Math.max(0, workedMinusBreak - dayCollegePaid);
+          dayCollegePaid += Math.min(remaining, sched.extraCollegeDurMin!);
+        }
+
+        collegePaidMin += dayCollegePaid;
 
         // College-dominant expectation rule:
         // - College-only employees
@@ -573,6 +637,7 @@ export function TimeKeepingDataProvider({
             otMin += workedMinusBreak;
             if (code === 'sat' || code === 'sun') otWeekendMin += workedMinusBreak; else otWeekdayMin += workedMinusBreak;
           }
+          // No college-paid hours on unscheduled days
         }
       }
     }
@@ -616,6 +681,7 @@ export function TimeKeepingDataProvider({
       overtime_count_weekends: toH(otWeekendMin),
       overtime_count_observances: toH(otObservanceMin),
       total_hours: toH(totalWorkedMin),
+      college_paid_hours: toH(collegePaidMin),
       rate_per_hour: ratePerHour,
       rate_per_day: ratePerDay,
       college_rate: collegeRate,

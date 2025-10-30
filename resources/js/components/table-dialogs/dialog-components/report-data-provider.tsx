@@ -385,12 +385,20 @@ export function ReportDataProvider({
     const honorarium = selectedPayroll?.honorarium ?? null;
     // For College/GSP, use college-paid hours (attendance within college schedule only)
     const total_hours = (() => {
-      const hC = (tkComputed && typeof (tkComputed as any).college_paid_hours === 'number') ? Number((tkComputed as any).college_paid_hours) : NaN;
-      if (Number.isFinite(hC)) return hC;
+      const rolesStr = String(employee?.roles ?? '').toLowerCase();
+      const tokens = rolesStr.split(/[\,\n]+/).map(s => s.trim()).filter(Boolean);
+      const hasCollege = rolesStr.includes('college instructor');
+      const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every(t => t.includes('college instructor')) : true);
+      if (isCollegeOnly) {
+        const hC = (tkComputed && typeof (tkComputed as any).college_paid_hours === 'number') ? Number((tkComputed as any).college_paid_hours) : NaN;
+        if (Number.isFinite(hC)) return hC;
+      }
       const sumH = (timekeepingSummary && typeof (timekeepingSummary as { total_hours?: unknown })?.total_hours === 'number')
         ? Number((timekeepingSummary as { total_hours?: number }).total_hours)
         : NaN;
-      return Number.isFinite(sumH) ? sumH : null;
+      if (Number.isFinite(sumH)) return sumH;
+      // Final fallback: if college-only and TK computed has hours-only, coerce null when not available
+      return null;
     })();
     return { base_salary, college_rate, honorarium, total_hours };
   }, [selectedPayroll, timekeepingSummary, tkComputed]);
