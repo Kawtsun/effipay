@@ -107,6 +107,11 @@ class UpdateEmployeesRequest extends FormRequest
             'min:0',
         ];
 
+        // Allow backend to explicitly clear persisted rate by accepting college_rate in the payload
+        // We intentionally DO NOT exclude this when not college so that null can pass through
+        // and EmployeesController@update can set the DB value to null when roles change.
+        $rules['college_rate'] = ['nullable', 'numeric', 'min:0'];
+
         // Contribution logic matching StoreEmployeesRequest
         if ($isAdmin) {
             // Admins must have SSS and PhilHealth flags

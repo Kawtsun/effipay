@@ -156,17 +156,19 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
   const absencesAmount = earnings?.absencesAmount !== undefined && earnings?.absencesAmount !== null && earnings?.absencesAmount !== ''
     ? getNum(earnings?.absencesAmount)
     : parseFloat((absencesHours * ratePerHour).toFixed(2));
-  // For college instructor role, show totalHours and collegeRate, else '-'
-  const isCollegeInstructor = typeof role === 'string' && role.toLowerCase().includes('college instructor');
-  const displayNumHours = isCollegeInstructor && typeof totalHours === 'number'
+  // For college instructor ONLY: role string may contain multiple roles; enforce "college-only" rule
+    const rolesTokens = (role || '').toLowerCase().split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
+  const hasCollegeRole = rolesTokens.some(t => t.includes('college'));
+  const isCollegeOnly = hasCollegeRole && (rolesTokens.length > 0 ? rolesTokens.every(t => t.includes('college')) : true);
+  const displayNumHours = isCollegeOnly && typeof totalHours === 'number'
     ? totalHours.toFixed(2)
     : '-';
-  const displayRatePerHour = isCollegeInstructor && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
+  const displayRatePerHour = isCollegeOnly && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
     ? collegeRate
     : '-';
   // College/GSP value: for college instructor, numHours * ratePerHour
   let displayCollegeGSP: string | number = '-';
-  if (isCollegeInstructor && typeof totalHours === 'number' && getNum(collegeRate) > 0) {
+  if (isCollegeOnly && typeof totalHours === 'number' && getNum(collegeRate) > 0) {
     displayCollegeGSP = parseFloat((totalHours * getNum(collegeRate)).toFixed(2));
   }
 
@@ -177,17 +179,22 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
   } else if (earnings?.overtime_hours !== undefined && earnings?.overtime_hours !== null && earnings?.overtime_hours !== '') {
     overtimeHours = getNum(earnings?.overtime_hours);
   }
-  // If college instructor, use weekday/weekend overtime formula
+  // Compute overtime using weekday/weekend formula for both college-only and non-college when counts are provided.
   let overtimeAmount = 0;
-  if (isCollegeInstructor && getNum(collegeRate) > 0) {
-    // Try to get weekday/weekend overtime counts from earnings, fallback to 0
-    const weekdayOvertime = getNum(earnings?.overtime_count_weekdays);
-    const weekendOvertime = getNum(earnings?.overtime_count_weekends);
-    const rate = getNum(collegeRate);
-    const weekdayPay = rate * 0.25 * weekdayOvertime;
-    const weekendPay = rate * 0.30 * weekendOvertime;
-    overtimeAmount = parseFloat((weekdayPay + weekendPay).toFixed(2));
-  } else if (earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== '') {
+  const weekdayOvertime = getNum(earnings?.overtime_count_weekdays);
+  const weekendOvertime = getNum(earnings?.overtime_count_weekends);
+  if ((earnings?.overtime_count_weekdays !== undefined || earnings?.overtime_count_weekends !== undefined)) {
+    // Use weighted OT formula consistent with Attendance/Report Cards
+    const rate = isCollegeOnly ? getNum(collegeRate) : ratePerHour;
+    if (rate > 0) {
+      const weekdayPay = rate * 0.25 * (weekdayOvertime || 0);
+      const weekendPay = rate * 0.30 * (weekendOvertime || 0);
+      overtimeAmount = parseFloat((weekdayPay + weekendPay).toFixed(2));
+    } else {
+      overtimeAmount = 0;
+    }
+  } else if (earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && getNum(earnings?.overtime_pay_total) > 0) {
+    // Only use payroll OT when it's a positive value; otherwise compute fallback
     overtimeAmount = getNum(earnings?.overtime_pay_total);
   } else if (overtimeHours && ratePerHour > 0) {
     overtimeAmount = parseFloat((overtimeHours * ratePerHour).toFixed(2));

@@ -56,10 +56,11 @@ const RoleBadge: React.FC<RoleBadgeProps> = ({ role, className, program }) => {
 interface RolesTableBadgeProps {
     roles: string[]
     college_program?: string
+    basicEducationLevel?: string | null
     compact?: boolean // when true, remove extra outer padding for table usage
 }
 
-export function RolesTableBadge({ roles, college_program, compact = false }: RolesTableBadgeProps) {
+export function RolesTableBadge({ roles, college_program, basicEducationLevel, compact = false }: RolesTableBadgeProps) {
     if (!roles || roles.length === 0) {
         return <div className="px-4 py-2 text-muted-foreground">Not Assigned</div>
     }
@@ -77,12 +78,15 @@ export function RolesTableBadge({ roles, college_program, compact = false }: Rol
     const mainRole = sortedRoles[0]
     const additionalRolesCount = sortedRoles.length - 1
     const isMainRoleCollegeInstructor = mainRole.toLowerCase() === 'college instructor'
+    const isMainRoleBasicEdu = mainRole.toLowerCase() === 'basic education instructor'
 
     const programs = college_program ? college_program.split(',').map(p => p.trim()) : [];
     let displayProgram = college_program;
     if (isMainRoleCollegeInstructor && programs.length > 1) {
         displayProgram = `${programs[0]},...`;
     }
+
+    const level = typeof basicEducationLevel === 'string' && basicEducationLevel.trim().length ? basicEducationLevel.trim() : ''
 
     const badgeContent = (
         <span className="inline-flex items-center gap-1.5 max-w-full overflow-hidden">
@@ -97,8 +101,9 @@ export function RolesTableBadge({ roles, college_program, compact = false }: Rol
 
     const hasMultipleRoles = sortedRoles.length > 1
     const hasSingleCollegeInstructorRole = sortedRoles.length === 1 && isMainRoleCollegeInstructor && !!college_program
+    const hasSingleBasicEduWithLevel = sortedRoles.length === 1 && isMainRoleBasicEdu && !!level
 
-    if (!hasMultipleRoles && !hasSingleCollegeInstructorRole) {
+    if (!hasMultipleRoles && !hasSingleCollegeInstructorRole && !hasSingleBasicEduWithLevel) {
         return <div className={cn(compact ? 'px-0 py-0 min-w-0' : 'min-w-[160px] px-4 py-2')}>{badgeContent}</div>
     }
 
@@ -117,6 +122,7 @@ export function RolesTableBadge({ roles, college_program, compact = false }: Rol
                             <p className="mb-1 text-sm font-semibold">{hasMultipleRoles ? 'All Roles' : 'Role Details'}</p>
                             {sortedRoles.map((role) => {
                                 const isCollegeInstructor = role.toLowerCase() === 'college instructor';
+                                const isBasicEduInstructor = role.toLowerCase() === 'basic education instructor';
                                 const programsForRole = isCollegeInstructor ? (college_program || '').split(',').map(p => p.trim()).filter(Boolean) : [];
                                 const programLabels = programsForRole.map(p => getProgramLabel(p));
 
@@ -130,6 +136,19 @@ export function RolesTableBadge({ roles, college_program, compact = false }: Rol
                                                         <span className="font-semibold">{prog}:</span> {programLabels[index]}
                                                     </div>
                                                 ))}
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
+                                if (isBasicEduInstructor && level) {
+                                    return (
+                                        <div key={role} className="flex flex-col items-start gap-2">
+                                            <RoleBadge role={role} />
+                                            <div className="pl-4 mt-1 space-y-1">
+                                                <div className="text-xs text-muted-foreground">
+                                                    <span className="font-semibold">Level:</span> {level}
+                                                </div>
                                             </div>
                                         </div>
                                     );

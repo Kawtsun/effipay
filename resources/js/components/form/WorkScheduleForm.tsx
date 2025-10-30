@@ -66,6 +66,64 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
         [nonCollegeRoles]
     );
 
+    /* TEMP: Disable auto-clearing schedules on role/college changes for debugging
+    // When roles change, proactively drop any work_days entries that belong to roles
+    // which are no longer selected. This prevents old schedules (e.g., Administrator)
+    // from being re-submitted after switching to another role (e.g., Basic Education).
+    React.useEffect(() => {
+        const selectedLower = new Set(rolesArr.map((r: string) => r.toLowerCase()));
+        const wd = data.work_days as any;
+        let changed = false;
+        let nextWorkDays: any = wd;
+
+        if (Array.isArray(wd)) {
+            const filtered = wd.filter((d: any) => {
+                const role = (d && d.role) ? String(d.role).toLowerCase() : '';
+                if (!role) return true; // keep untagged
+                return selectedLower.has(role);
+            });
+            if (filtered.length !== wd.length) {
+                nextWorkDays = filtered;
+                changed = true;
+            }
+        } else if (wd && typeof wd === 'object') {
+            const nextObj: Record<string, any> = {};
+            Object.keys(wd).forEach((role) => {
+                if (selectedLower.has(role.toLowerCase())) {
+                    nextObj[role] = wd[role];
+                } else {
+                    changed = true; // drop schedules of removed roles
+                }
+            });
+            // Only set if keys differ in count or content changed
+            if (changed) {
+                nextWorkDays = nextObj;
+            }
+        }
+
+        if (changed) {
+            setData('work_days', nextWorkDays);
+            if (typeof clearErrors === 'function') {
+                clearErrors('work_days');
+            }
+        }
+
+        // If College role was removed, clear college program days/hours
+        if (!isCollegeRole) {
+            const hadDays = data.college_work_days_by_program && Object.keys(data.college_work_days_by_program as any || {}).length > 0;
+            const hadHours = data.college_work_hours_by_program && Object.keys(data.college_work_hours_by_program as any || {}).length > 0;
+            if (hadDays) setData('college_work_days_by_program', {});
+            if (hadHours) setData('college_work_hours_by_program', {});
+            if (hadDays || hadHours) {
+                if (typeof clearErrors === 'function') {
+                    clearErrors(['college_work_days_by_program', 'college_work_hours_by_program']);
+                }
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rolesArr.join(','), isCollegeRole]);
+    */
+
     // Program list (canonical order) for per-program inputs
     // canonical program order via shared constant
 
@@ -265,6 +323,7 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                                                         clearErrors(key);
                                                                     }
 
+                                                                    /* TEMP: Disable auto-clearing college hours when program has no days
                                                                     // If no work days remain for this program, also clear its hours and related errors
                                                                     if (!days || days.length === 0) {
                                                                         const hoursMap = {
@@ -279,6 +338,7 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
                                                                             clearErrors(hoursKey);
                                                                         }
                                                                     }
+                                                                    */
                                                                 }}
                                                                 errors={errors as Record<string, string>}
                                                             />

@@ -151,6 +151,14 @@ const ExportLedgerDialog: React.FC = () => {
                 </div>
                 <DialogFooter>
                     <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setDialogOpen(false)}
+                        disabled={loading}
+                    >
+                        Close
+                    </Button>
+                    <Button
                         onClick={handleExport}
                         disabled={loading || !selectedMonth}
                     >

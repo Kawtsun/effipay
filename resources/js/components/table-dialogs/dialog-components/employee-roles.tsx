@@ -10,6 +10,7 @@ function getProgramLabel(value: string): string {
 export type EmployeeRolesListProps = {
     roles?: string | string[] | null;
     collegeProgram?: string | null;
+    basicEducationLevel?: string | null;
     className?: string;
     compact?: boolean;
 };
@@ -47,7 +48,7 @@ function RoleBadge({ label }: { label: string }) {
     );
 }
 
-export default function EmployeeRolesList({ roles, collegeProgram, className = "", compact = false }: EmployeeRolesListProps) {
+export default function EmployeeRolesList({ roles, collegeProgram, basicEducationLevel, className = "", compact = false }: EmployeeRolesListProps) {
     const all = React.useMemo(() => normalizeRoles(roles), [roles]);
     if (!all.length) {
         return <div className={compact ? "px-0 py-0" : "px-4 py-2"}><span className="text-muted-foreground text-sm">Not Assigned</span></div>;
@@ -64,6 +65,14 @@ export default function EmployeeRolesList({ roles, collegeProgram, className = "
             const detailItems = programs.map((p) => ({ code: p, label: getProgramLabel(p) }));
             return { badgeLabel, detailItems } as const;
         }
+        if (r.toLowerCase() === "basic education instructor" && typeof basicEducationLevel === 'string' && basicEducationLevel.trim().length) {
+            const level = basicEducationLevel.trim();
+            // Keep the badge simple (no brackets), show the level as a label next to it.
+            const badgeLabel = r;
+            // Add explicit label "Level:" like the table tooltip implementation
+            const detailItems = [{ code: 'Level', label: level }];
+            return { badgeLabel, detailItems } as const;
+        }
         return { badgeLabel: r } as const;
     });
 
@@ -76,9 +85,15 @@ export default function EmployeeRolesList({ roles, collegeProgram, className = "
                         {"detailItems" in item && item.detailItems && item.detailItems.length > 0 && (
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground min-w-0">
                                 {item.detailItems.map((d, i) => (
-                                    <React.Fragment key={d.code}>
+                                    <React.Fragment key={(d as any).code ?? `${d.label}-${i}`}>
                                         {i > 0 && <span className="opacity-60">•</span>}
-                                        <span className="break-words">{d.code}: {d.label}</span>
+                                        {"code" in d && d.code ? (
+                                            <span className="break-words">
+                                                <span className="font-semibold">{d.code}:</span> {d.label}
+                                            </span>
+                                        ) : (
+                                            <span className="break-words">{(d as any).label}</span>
+                                        )}
                                     </React.Fragment>
                                 ))}
                             </div>

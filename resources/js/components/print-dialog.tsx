@@ -16,6 +16,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Printer, FileText } from 'lucide-react';
 import { MonthPicker } from './ui/month-picker';
 import { Employees } from '@/types';
+import { computeMonthlyMetrics } from '@/utils/computeMonthlyMetrics';
+import { computeRatePerHourForEmployee } from '@/components/table-dialogs/dialog-components/timekeeping-data-provider';
 
 interface Payroll {
     payroll_date: string;
@@ -25,6 +27,7 @@ interface Payroll {
     undertime?: number;
     absences?: number;
     overtime_pay?: number;
+    adjustments?: number;
     sss?: string;
     sss_salary_loan?: string;
     sss_calamity_loan?: string;
@@ -152,21 +155,20 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
 };
 
 export default function PrintDialog({ open, onClose, employee }: PrintDialogProps) {
-    if (!employee) {
-        return null;
-    }
-    
+    // Hooks must be unconditionally called; guard usages instead of returning early
     const [selectedMonth, setSelectedMonth] = useState<string>('');
-    const { summary: timekeepingSummary } = useEmployeePayroll(employee.id, selectedMonth);
+    const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? 0, selectedMonth);
     const [btrRecords, setBtrRecords] = useState<BTRRecord[]>([]);
     const [leaveDatesMap, setLeaveDatesMap] = useState<Record<string, string>>({});
+    const [btrTotalHours, setBtrTotalHours] = useState<number>(0);
+    const [btrMetrics, setBtrMetrics] = useState<{ tardiness: number; undertime: number; overtime: number; absences: number }>({ tardiness: 0, undertime: 0, overtime: 0, absences: 0 });
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const [payrollData, setPayrollData] = useState<PayslipData | null>(null);
     const [showPDF, setShowPDF] = useState<false | 'payslip' | 'btr'>(false);
     const [loadingPayslip, setLoadingPayslip] = useState(false);
     const [loadingBTR, setLoadingBTR] = useState(false);
 
-    const fetchAvailableMonths = async () => {
+    const fetchAvailableMonths = React.useCallback(async () => {
         try {
             const response = await fetch('/payroll/all-available-months');
             const result = await response.json();
@@ -181,17 +183,21 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         } catch (error) {
             console.error('Error fetching available months:', error);
         }
-    };
+    }, [selectedMonth]);
     React.useEffect(() => {
         if (open) {
             fetchAvailableMonths();
         }
-    }, [open]);
+    }, [open, fetchAvailableMonths]);
 
     const handlePrintPayslip = async () => {
+        if (!employee) {
+            toast.error('No employee selected.');
+            return;
+        }
         setLoadingPayslip(true);
         setShowPDF(false);
-        const data = await fetchPayrollData(employee?.id, selectedMonth);
+        const data = await fetchPayrollData(employee.id, selectedMonth);
         if (!data) {
             toast.error('No payroll data found for the selected month.');
             setLoadingPayslip(false);
@@ -216,57 +222,98 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         const result = await response.json();
         let btrRecords: BTRRecord[] = [];
         if (result.success && Array.isArray(result.records) && result.records.length > 0) {
+            // Keep original record fields (clock_in/clock_out or time_in/time_out) and also set normalized time_in/time_out
+            // so computeMonthlyMetrics can parse them correctly.
             btrRecords = result.records.map((rec: Record<string, unknown>) => {
-                const dateObj = new Date(rec.date as string);
+                const dateStr = String(rec.date || '');
+                const dateObj = new Date(dateStr);
                 const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                const time_in = (rec.clock_in as string) || (rec.time_in as string) || '-';
+                const time_out = (rec.clock_out as string) || (rec.time_out as string) || '-';
                 return {
-                    date: rec.date as string,
+                    ...(rec as object),
+                    date: dateStr,
                     dayName,
-                    timeIn: (rec.clock_in as string) || (rec.time_in as string) || '-',
-                    timeOut: (rec.clock_out as string) || (rec.time_out as string) || '-',
-                };
+                    time_in,
+                    time_out,
+                } as unknown as BTRRecord;
             });
         }
-        let numHours = 0;
-        if (timekeepingSummary) {
-            let totalWorkedHours = 0;
-            if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
-                const attendedShifts = btrRecords.filter(
-                    (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
-                ).length;
-                totalWorkedHours = attendedShifts * employee.work_hours_per_day;
-            }
-            numHours = totalWorkedHours
-                - (Number(timekeepingSummary.tardiness ?? 0))
-                - (Number(timekeepingSummary.undertime ?? 0))
-                - (Number(timekeepingSummary.absences ?? 0))
-                + (Number(timekeepingSummary.overtime ?? 0));
-            if (numHours < 0) numHours = 0;
-        }
-            setPayrollData({
+        // Compute monthly metrics using the same logic as AttendanceCards
+    const metrics = await computeMonthlyMetrics(employee, selectedMonth, btrRecords);
+    const rolesStr = (employee?.roles || '').toLowerCase();
+    const tokens = rolesStr.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
+        const hasCollege = rolesStr.includes('college instructor') || rolesStr.includes('college');
+        const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every(t => t.includes('college')) : true);
+
+    const tardinessRaw = metrics.tardiness ?? 0;
+    const undertimeRaw = metrics.undertime ?? 0;
+    // Fallback to monthly summary absences if metrics unexpectedly yields 0/undefined
+    const absencesFromSummary = Number(timekeepingSummary?.absences ?? 0) || 0;
+    const absences = Number(metrics.absences ?? NaN);
+    const effectiveAbsences = Number.isFinite(absences) && absences > 0 ? absences : absencesFromSummary;
+        const overtimeRaw = metrics.overtime ?? 0;
+    const totalHoursFromSummary = metrics.total_hours ?? 0;
+    const weekdayOT = Number(metrics.overtime_count_weekdays ?? 0) || 0;
+    const weekendOT = Number(metrics.overtime_count_weekends ?? 0) || 0;
+        const numHours = Number.isFinite(totalHoursFromSummary) ? totalHoursFromSummary : 0;
+
+        // Apply college-only rule: no tardiness, undertime, or overtime; only absences count
+        const tardiness = isCollegeOnly ? 0 : tardinessRaw;
+        const undertime = isCollegeOnly ? 0 : undertimeRaw;
+        const overtime = isCollegeOnly ? 0 : overtimeRaw;
+
+        const effectiveCollegeRate = (data.earnings.collegeRate ?? payrollCollegeRate ?? 0) as number;
+        const resolvedNonCollegeRate = Number(timekeepingSummary?.rate_per_hour ?? 0) > 0
+            ? Number(timekeepingSummary?.rate_per_hour)
+            : computeRatePerHourForEmployee(employee);
+        const ratePerHour = isCollegeOnly
+            ? effectiveCollegeRate
+            : resolvedNonCollegeRate;
+        const collegeGSP = isCollegeOnly && typeof numHours === 'number'
+            ? parseFloat((numHours * Number(effectiveCollegeRate || 0)).toFixed(2))
+            : (data.earnings?.collegeGSP ?? undefined);
+        // Compute absences amount explicitly to ensure value is shown
+        const absencesAmount = (() => {
+            const rate = Number(ratePerHour) || 0;
+            if (rate <= 0) return undefined;
+            return parseFloat(((Number(effectiveAbsences) || 0) * rate).toFixed(2));
+        })();
+                        // Build overtime pay total with robust fallback: if payroll has a positive value, use it; otherwise compute from hours * rate for non-college
+                        const numericOvertimeFromPayroll = Number(data.earnings?.overtime_pay_total ?? NaN);
+                                    // Use the same formula as Attendance/Report Cards for non-college:
+                                    // OT pay = ratePerHour * (0.25 * weekdayOT + 0.30 * weekendOT)
+                                    const computedOTFallback = (!isCollegeOnly && Number(ratePerHour) > 0)
+                                        ? parseFloat((Number(ratePerHour) * ((0.25 * weekdayOT) + (0.30 * weekendOT))).toFixed(2))
+                            : 0;
+                        const overtime_pay_total = (!isCollegeOnly && Number.isFinite(numericOvertimeFromPayroll) && numericOvertimeFromPayroll > 0)
+                            ? numericOvertimeFromPayroll
+                            : computedOTFallback;
+
+                        setPayrollData({
                 ...data,
                 earnings: {
                     ...data.earnings,
                     numHours,
-                    ratePerHour: (employee?.roles && employee.roles.toLowerCase().includes('college'))
-                        ? (data.earnings.collegeRate ?? payrollCollegeRate ?? 0)
-                        : (timekeepingSummary?.rate_per_hour ?? 0),
-                    collegeRate: data.earnings.collegeRate ?? payrollCollegeRate ?? 0,
-                    tardiness: timekeepingSummary?.tardiness ?? 0,
-                    undertime: timekeepingSummary?.undertime ?? 0,
-                    absences: timekeepingSummary?.absences ?? 0,
-                    overtime_pay_total: timekeepingSummary?.overtime_pay_total ?? 0,
-                    overtime: timekeepingSummary?.overtime ?? undefined,
-                    overtime_count_weekdays: timekeepingSummary?.overtime_count_weekdays ?? data.earnings.overtime_count_weekdays ?? 0,
-                    overtime_count_weekends: timekeepingSummary?.overtime_count_weekends ?? data.earnings.overtime_count_weekends ?? 0,
+                    ratePerHour,
+                    collegeRate: effectiveCollegeRate,
+                    tardiness,
+                    undertime,
+                    absences: effectiveAbsences,
+                    absencesAmount,
+                                        overtime_pay_total,
+                    overtime,
+                    overtime_hours: overtime,
+                    overtime_count_weekdays: isCollegeOnly ? 0 : weekdayOT,
+                    overtime_count_weekends: isCollegeOnly ? 0 : weekendOT,
                     gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
                     net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
                     adjustment: data.earnings?.adjustment ?? undefined,
                     honorarium: data.earnings?.honorarium ?? undefined,
-                    collegeGSP: data.earnings?.collegeGSP ?? undefined,
+                    collegeGSP,
                     overload: data.earnings?.overload ?? undefined,
-                    totalHours: (employee?.roles && employee.roles.toLowerCase().includes('college'))
-                      ? (timekeepingSummary?.total_hours ? Number(timekeepingSummary.total_hours) : 0)
+                    totalHours: hasCollege
+                      ? (Number.isFinite(totalHoursFromSummary) ? totalHoursFromSummary : numHours)
                       : (typeof numHours === 'number' ? numHours : (numHours ? Number(numHours) : 0)),
                 },
             });
@@ -293,10 +340,14 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                     details: { source: 'PrintDialog' },
                 }),
             }).catch(() => {});
-        } catch {}
+    } catch (e) { void e; }
     };
 
     const handlePrintBTR = async () => {
+        if (!employee) {
+            toast.error('No employee selected.');
+            return;
+        }
         setLoadingBTR(true);
         setShowPDF(false);
         try {
@@ -304,11 +355,22 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             const btrJson = await btrRes.json();
             let btrRecords: BTRRecord[] = [];
             if (btrJson.success && Array.isArray(btrJson.records)) {
-                btrRecords = btrJson.records.map((rec: Record<string, unknown>) => ({
-                    ...rec,
-                    timeIn: (rec.clock_in as string) || (rec.time_in as string) || '-',
-                    timeOut: (rec.clock_out as string) || (rec.time_out as string) || '-',
-                }));
+                btrRecords = btrJson.records.map((rec: Record<string, unknown>) => {
+                    const dateStr = String(rec.date || '');
+                    const dateObj = new Date(dateStr);
+                    const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                    const time_in = (rec.clock_in as string) || (rec.time_in as string) || '-';
+                    const time_out = (rec.clock_out as string) || (rec.time_out as string) || '-';
+                    return {
+                        ...(rec as object),
+                        date: dateStr,
+                        dayName,
+                        timeIn: time_in,
+                        timeOut: time_out,
+                        time_in,
+                        time_out,
+                    } as unknown as BTRRecord;
+                });
             }
             
             const summaryRes = await fetch(`/api/timekeeping/monthlySummary?employee_id=${employee?.id}&month=${selectedMonth}`);
@@ -318,6 +380,15 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             } else {
                 setLeaveDatesMap({});
             }
+            // Compute and store total hours for BTR output (matches AttendanceCards)
+            const metricsBTR = await computeMonthlyMetrics(employee, selectedMonth, btrRecords);
+            setBtrTotalHours(metricsBTR.total_hours ?? 0);
+            setBtrMetrics({
+                tardiness: metricsBTR.tardiness ?? 0,
+                undertime: metricsBTR.undertime ?? 0,
+                overtime: metricsBTR.overtime ?? 0,
+                absences: metricsBTR.absences ?? 0,
+            });
 
             const hasRealTime = btrRecords.some(r => (r.timeIn && r.timeIn !== '-') || (r.timeOut && r.timeOut !== '-'));
             const hasLeaves = summaryJson.success && summaryJson._debug && Object.keys(summaryJson._debug.leave_dates_map).length > 0;
@@ -381,7 +452,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                         details: { source: 'PrintDialog' },
                     }),
                 }).catch(() => {});
-            } catch {}
+            } catch (e) { void e; }
         } catch {
             toast.error('Error generating BTR.');
             setLoadingBTR(false);
@@ -469,28 +540,11 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                             role={employee?.roles || '-'}
                                             payPeriod={selectedMonth}
                                             records={btrRecords}
-                                            totalHours={
-                                                typeof timekeepingSummary?.total_hours === 'number'
-                                                    ? timekeepingSummary.total_hours
-                                                    : (() => {
-                                                        let totalWorkedHours = 0;
-                                                        if (Array.isArray(btrRecords) && employee?.work_hours_per_day) {
-                                                            const attendedShifts = btrRecords.filter(
-                                                                (rec) => rec.timeIn !== '-' || rec.timeOut !== '-'
-                                                            ).length;
-                                                            totalWorkedHours = attendedShifts * employee.work_hours_per_day;
-                                                        }
-                                                        return totalWorkedHours
-                                                            - (Number(timekeepingSummary?.tardiness ?? 0))
-                                                            - (Number(timekeepingSummary?.undertime ?? 0))
-                                                            - (Number(timekeepingSummary?.absences ?? 0))
-                                                            + (Number(timekeepingSummary?.overtime ?? 0));
-                                                    })()
-                                            }
-                                            tardiness={timekeepingSummary?.tardiness ?? 0}
-                                            undertime={timekeepingSummary?.undertime ?? 0}
-                                            overtime={timekeepingSummary?.overtime ?? 0}
-                                            absences={timekeepingSummary?.absences ?? 0}
+                                            totalHours={btrTotalHours}
+                                            tardiness={btrMetrics.tardiness}
+                                            undertime={btrMetrics.undertime}
+                                            overtime={btrMetrics.overtime}
+                                            absences={btrMetrics.absences}
                                         />}
                                         fileName={`BTR_${sanitizeFile(employee?.last_name)}_${sanitizeFile(employee?.first_name)}_${sanitizeFile(selectedMonth)}.pdf`}
                                         download

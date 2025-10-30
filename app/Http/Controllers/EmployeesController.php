@@ -66,6 +66,16 @@ class EmployeesController extends Controller
             $query->where('college_program', $request->collegeProgram);
         }
 
+        // Filter by basic education level if set (only when basic education instructor is selected)
+        if (
+            $request->filled('basicEducationLevel') &&
+            $request->filled('roles') &&
+            is_array($request->roles) &&
+            in_array('basic education instructor', $request->roles)
+        ) {
+            $query->where('basic_edu_level', $request->basicEducationLevel);
+        }
+
         $allRolesRaw = Employees::pluck('roles')->filter()->map(function ($roles) {
             return explode(',', $roles);
         })->flatten()->map(fn ($role) => trim($role))->filter()->unique()->values();
@@ -138,6 +148,7 @@ class EmployeesController extends Controller
                 'statuses'     => (array) $request->input('statuses', []),
                 'roles'        => array_values((array) $request->input('roles', [])),
                 'collegeProgram' => $request->input('collegeProgram', ''),
+                'basicEducationLevel' => $request->input('basicEducationLevel', ''),
             ],
         ]);
     }
@@ -241,6 +252,110 @@ class EmployeesController extends Controller
         $rolesArr = array_map('strtolower', array_filter(array_map('trim', explode(',', $rolesRaw))));
         $hasNonCollegeRole = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'admin') || str_contains($r, 'basic education') || (!str_contains($r, 'college') && $r !== '')));
         $hasCollegeRole = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'college')));
+
+        // Compute unique non-college days by priority (Admin > Basic Education > Others)
+        $priority = function ($role): int {
+            $r = strtolower((string)($role ?? ''));
+            if (str_contains($r, 'admin')) return 3;
+            if (str_contains($r, 'basic education')) return 2;
+            return 1; // others/unknown/null
+        };
+        $nonCollegeByDay = [];
+        foreach ($workDaysFlattened as $wd) {
+            $dayKey = strtolower($wd['day'] ?? '');
+            if ($dayKey === '') { continue; }
+            if (!isset($nonCollegeByDay[$dayKey])) {
+                $nonCollegeByDay[$dayKey] = $wd;
+            } else {
+                $existing = $nonCollegeByDay[$dayKey];
+                if ($priority($wd['role'] ?? null) > $priority($existing['role'] ?? null)) {
+                    if (!isset($wd['work_hours']) && isset($existing['work_hours'])) {
+                        $wd['work_hours'] = $existing['work_hours'];
+                    }
+                    $nonCollegeByDay[$dayKey] = $wd;
+                } else {
+                    if (!isset($existing['work_hours']) && isset($wd['work_hours'])) {
+                        $existing['work_hours'] = $wd['work_hours'];
+                    }
+                    $nonCollegeByDay[$dayKey] = $existing;
+                }
+            }
+        }
+        $nonCollegeUnique = array_values($nonCollegeByDay);
+
+        // Deduplicate non-college work days by day with role priority: Admin > Basic Education > Others.
+        $rolePriority = function ($role): int {
+            $r = strtolower((string)($role ?? ''));
+            if (str_contains($r, 'admin')) return 3;
+            if (str_contains($r, 'basic education')) return 2;
+            return 1; // others/unknown/null
+        };
+
+        $nonCollegeByDay = [];
+        foreach ($workDaysFlattened as $wd) {
+            $dayKey = strtolower($wd['day'] ?? '');
+            if ($dayKey === '') { continue; }
+            if (!isset($nonCollegeByDay[$dayKey])) {
+                $nonCollegeByDay[$dayKey] = $wd;
+                continue;
+            }
+            $existing = $nonCollegeByDay[$dayKey];
+            $existingRank = $rolePriority($existing['role'] ?? null);
+            $newRank = $rolePriority($wd['role'] ?? null);
+            if ($newRank > $existingRank) {
+                // Prefer higher-priority role; carry over hours if missing
+                if (!isset($wd['work_hours']) && isset($existing['work_hours'])) {
+                    $wd['work_hours'] = $existing['work_hours'];
+                }
+                $nonCollegeByDay[$dayKey] = $wd;
+            } else {
+                // Keep existing; merge in hours if new has it and existing doesn't
+                if (!isset($existing['work_hours']) && isset($wd['work_hours'])) {
+                    $existing['work_hours'] = $wd['work_hours'];
+                }
+                $nonCollegeByDay[$dayKey] = $existing;
+            }
+        }
+        $nonCollegeUnique = array_values($nonCollegeByDay);
+
+        // Resolve duplicate days coming from multiple non-college roles (e.g., Admin + Basic + Others).
+        // We must only insert one row per (employee_id, day) due to a unique index,
+        // so prefer roles by priority: Admin > Basic Education > Others/Unknown.
+        $roleRank = function ($role): int {
+            $r = strtolower((string)($role ?? ''));
+            if (str_contains($r, 'admin')) return 3;
+            if (str_contains($r, 'basic education')) return 2;
+            return 1; // others/unknown/null
+        };
+
+        // Ensure variable exists even if no dedupe happens (helps static analyzers)
+        $nonCollegeUnique = $workDaysFlattened;
+
+        $nonCollegeByDay = [];
+        foreach ($workDaysFlattened as $wd) {
+            $dayKey = strtolower($wd['day'] ?? '');
+            if ($dayKey === '') { continue; }
+            $current = $nonCollegeByDay[$dayKey] ?? null;
+            if ($current === null) {
+                $nonCollegeByDay[$dayKey] = $wd;
+                continue;
+            }
+            $keepExisting = $roleRank($current['role'] ?? null) >= $roleRank($wd['role'] ?? null);
+            if ($keepExisting) {
+                // Merge hours if the incoming row has hours but the existing does not
+                if (!isset($current['work_hours']) && isset($wd['work_hours'])) {
+                    $current['work_hours'] = $wd['work_hours'];
+                }
+                $nonCollegeByDay[$dayKey] = $current;
+            } else {
+                // Replace with higher-priority role; carry over any existing hours if missing
+                if (!isset($wd['work_hours']) && isset($current['work_hours'])) {
+                    $wd['work_hours'] = $current['work_hours'];
+                }
+                $nonCollegeByDay[$dayKey] = $wd;
+            }
+        }
+        $nonCollegeUnique = array_values($nonCollegeByDay);
 
         // Build college-only per-day hours when applicable
         $workDaysCollege = [];
@@ -617,6 +732,52 @@ class EmployeesController extends Controller
         $hasNonCollegeRole = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'admin') || str_contains($r, 'basic education') || (!str_contains($r, 'college') && $r !== '')));
         $hasCollegeRole = !empty(array_filter($rolesArr, fn ($r) => str_contains($r, 'college')));
 
+        // Defensive filter: drop any role-tagged work_days entries whose role is not currently selected.
+        // This prevents old role schedules (e.g., 'administrator') from lingering when roles change
+        // (e.g., to 'basic education instructor' only).
+        if (!empty($workDaysFlattened)) {
+            $workDaysFlattened = array_values(array_filter($workDaysFlattened, function ($wd) use ($rolesArr) {
+                $role = isset($wd['role']) ? strtolower(trim((string)$wd['role'])) : '';
+                if ($role === '' || $role === null) {
+                    // Legacy/untagged rows are allowed
+                    return true;
+                }
+                return in_array($role, $rolesArr, true);
+            }));
+        }
+
+        // Deduplicate non-college days by day with role priority: Admin > Basic Education > Others
+        $nonCollegeByDay = [];
+        $priority = function ($role): int {
+            $r = strtolower((string)($role ?? ''));
+            if (str_contains($r, 'admin')) return 3;
+            if (str_contains($r, 'basic education')) return 2;
+            return 1; // others/unknown/null
+        };
+        foreach ($workDaysFlattened as $wd) {
+            $dayKey = strtolower($wd['day'] ?? '');
+            if ($dayKey === '') { continue; }
+            if (!isset($nonCollegeByDay[$dayKey])) {
+                $nonCollegeByDay[$dayKey] = $wd;
+                continue;
+            }
+            $existing = $nonCollegeByDay[$dayKey];
+            $existingRank = $priority($existing['role'] ?? null);
+            $newRank = $priority($wd['role'] ?? null);
+            if ($newRank > $existingRank) {
+                if (!isset($wd['work_hours']) && isset($existing['work_hours'])) {
+                    $wd['work_hours'] = $existing['work_hours'];
+                }
+                $nonCollegeByDay[$dayKey] = $wd;
+            } else {
+                if (!isset($existing['work_hours']) && isset($wd['work_hours'])) {
+                    $existing['work_hours'] = $wd['work_hours'];
+                }
+                $nonCollegeByDay[$dayKey] = $existing;
+            }
+        }
+        $nonCollegeUnique = array_values($nonCollegeByDay);
+
         // Build college-only per-day hours when applicable
         $workDaysCollege = [];
         if ($hasCollegeRole) {
@@ -656,7 +817,7 @@ class EmployeesController extends Controller
             // Merge: keep time-based rows, inject college hours only where a matching
             // non-college day exists. Do not create placeholder rows for college-only days.
             $byDay = [];
-            foreach ($workDaysFlattened as $wd) {
+            foreach ($nonCollegeUnique as $wd) {
                 $key = strtolower($wd['day'] ?? '');
                 if ($key !== '') { $byDay[$key] = $wd; }
             }
@@ -669,7 +830,8 @@ class EmployeesController extends Controller
             }
             $workDaysForInsert = array_values($byDay);
         } elseif ($hasNonCollegeRole) {
-            $workDaysForInsert = $workDaysFlattened;
+            // Only non-college roles: insert unique-by-day rows with role priority applied
+            $workDaysForInsert = $nonCollegeUnique;
         } else {
             // College-only schedules are stored only in employee_college_program_schedules
             // and should not create rows in work_days.
