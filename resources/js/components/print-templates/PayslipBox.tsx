@@ -138,14 +138,16 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
     if (typeof v === 'string') return Number(v.replace(/,/g, ''));
     return v;
   };
-  // College Instructor logic (match PayslipTemplate)
-  const isCollegeInstructor = typeof role === 'string' && role.toLowerCase().includes('college instructor');
-  const displayNumHours = isCollegeInstructor && typeof totalHours === 'number' ? totalHours.toFixed(2) : '-';
-  const displayRatePerHour = isCollegeInstructor && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
+  // College-only logic (match PayslipTemplate): consider multi-role strings
+  const rolesTokens = (role || '').toLowerCase().split(new RegExp('[,\\n]+')).map((s: string) => s.trim()).filter(Boolean);
+  const hasCollegeRole = rolesTokens.some(t => t.includes('college'));
+  const isCollegeOnly = hasCollegeRole && (rolesTokens.length > 0 ? rolesTokens.every(t => t.includes('college')) : true);
+  const displayNumHours = isCollegeOnly && typeof totalHours === 'number' ? Number(totalHours).toFixed(2) : '-';
+  const displayRatePerHour = isCollegeOnly && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
     ? collegeRate
     : '-';
   let displayCollegeGSP: string | number = '-';
-  if (isCollegeInstructor && typeof totalHours === 'number' && getNum(collegeRate) > 0) {
+  if (isCollegeOnly && typeof totalHours === 'number' && getNum(collegeRate) > 0) {
     displayCollegeGSP = parseFloat((totalHours * getNum(collegeRate)).toFixed(2));
   }
   const ratePerHour = getNum(earnings?.ratePerHour);
@@ -169,14 +171,18 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
     overtimeHours = getNum(earnings?.overtime_hours);
   }
   let overtimeAmount = 0;
-  if (isCollegeInstructor && getNum(collegeRate) > 0) {
-    const weekdayOvertime = getNum(earnings?.overtime_count_weekdays);
-    const weekendOvertime = getNum(earnings?.overtime_count_weekends);
-    const rate = getNum(collegeRate);
-    const weekdayPay = rate * 0.25 * weekdayOvertime;
-    const weekendPay = rate * 0.30 * weekendOvertime;
-    overtimeAmount = parseFloat((weekdayPay + weekendPay).toFixed(2));
-  } else if (earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && earnings?.overtime_pay_total !== '') {
+  const weekdayOvertime = getNum(earnings?.overtime_count_weekdays);
+  const weekendOvertime = getNum(earnings?.overtime_count_weekends);
+  if ((earnings?.overtime_count_weekdays !== undefined || earnings?.overtime_count_weekends !== undefined)) {
+    const rate = isCollegeOnly ? getNum(collegeRate) : ratePerHour;
+    if (rate > 0) {
+      const weekdayPay = rate * 0.25 * (weekdayOvertime || 0);
+      const weekendPay = rate * 0.30 * (weekendOvertime || 0);
+      overtimeAmount = parseFloat((weekdayPay + weekendPay).toFixed(2));
+    } else {
+      overtimeAmount = 0;
+    }
+  } else if (earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && getNum(earnings?.overtime_pay_total) > 0) {
     overtimeAmount = getNum(earnings?.overtime_pay_total);
   } else if (overtimeHours && ratePerHour > 0) {
     overtimeAmount = parseFloat((overtimeHours * ratePerHour).toFixed(2));
