@@ -19,11 +19,11 @@ class AdminUserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Only allow on production by default; you can override by removing this guard if desired.
-        if (!app()->environment('production')) {
-            $this->command?->warn('[AdminUserSeeder] Skipped: not in production environment.');
-            return;
-        }
+        // // Only allow on production by default; you can override by removing this guard if desired.
+        // if (!app()->environment('production')) {
+        //     $this->command?->warn('[AdminUserSeeder] Skipped: not in production environment.');
+        //     return;
+        // }
 
         $this->seedAdmin('ADMIN_USERNAME', 'ADMIN_PASSWORD');
         $this->seedAdmin('ADMIN2_USERNAME', 'ADMIN2_PASSWORD');
