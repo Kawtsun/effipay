@@ -27,6 +27,7 @@ class AdminUserSeeder extends Seeder
 
         $this->seedAdmin('ADMIN_USERNAME', 'ADMIN_PASSWORD');
         $this->seedAdmin('ADMIN2_USERNAME', 'ADMIN2_PASSWORD');
+        $this->seedAdmin('ADMIN3_USERNAME', 'ADMIN3_PASSWORD');
     }
 
     /**
