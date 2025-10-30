@@ -174,17 +174,17 @@ class PayrollController extends Controller
                     $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2);
                 }
 
-                // Compute withholding tax for college-only using the same
-                // progressive bracket logic applied to other employee types.
-                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay, $sss, $pag_ibig, $philhealth) {
-                    $totalComp = $gross_pay - ($sss + $pag_ibig + $philhealth);
+                // Compute withholding tax FROM GROSS PAY as total compensation
+                // per request. Other contributions are computed separately.
+                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
+                    $totalComp = $gross_pay; // use gross pay directly
                     if ($totalComp <= 20832) return 0;
                     if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
                     if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
                     if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
                     if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
                     return 183541.80 + 0.35 * ($totalComp - 666667);
-                })($gross_pay, $sss, $pag_ibig, $philhealth) : 0;
+                })($gross_pay) : 0;
             } elseif ($isCollegeInstructor && $isCollegeMulti) {
                 // Multi-role with College Instructor:
                 // Gross = Base Salary + College GSP + OT - non-college rate * (T+U+A) + honorarium
@@ -215,15 +215,15 @@ class PayrollController extends Controller
                 $sss = 0.0; $philhealth = 0.0; $pag_ibig = $employee->pag_ibig ?? 0.0; $withholding_tax = 0.0;
                 if (!empty($employee->sss)) { $sss = round($gross_pay * config('payroll.sss_rate', 0.045), 2); }
                 if (!empty($employee->philhealth)) { $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2); }
-                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay, $sss, $pag_ibig, $philhealth) {
-                    $totalComp = $gross_pay - ($sss + $pag_ibig + $philhealth);
+                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
+                    $totalComp = $gross_pay; // use gross pay directly
                     if ($totalComp <= 20832) return 0;
                     if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
                     if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
                     if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
                     if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
                     return 183541.80 + 0.35 * ($totalComp - 666667);
-                })($gross_pay, $sss, $pag_ibig, $philhealth) : 0;
+                })($gross_pay) : 0;
             } else {
                 // Use all calculated values from timekeeping summary (default logic)
                 $workHoursPerDay = $employee->work_hours_per_day ?? 8;
@@ -288,15 +288,15 @@ class PayrollController extends Controller
                     $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2);
                 }
 
-                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay, $sss, $pag_ibig, $philhealth) {
-                    $totalComp = $gross_pay - ($sss + $pag_ibig + $philhealth);
+                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
+                    $totalComp = $gross_pay; // use gross pay directly
                     if ($totalComp <= 20832) return 0;
                     if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
                     if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
                     if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
                     if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
                     return 183541.80 + 0.35 * ($totalComp - 666667);
-                })($gross_pay, $sss, $pag_ibig, $philhealth) : 0;
+                })($gross_pay) : 0;
             }
 
             // Create and save payroll record
