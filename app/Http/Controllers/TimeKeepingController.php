@@ -329,6 +329,33 @@ class TimeKeepingController extends Controller
             if ($emp->work_start_time) {
                 $late_threshold = date('H:i:s', strtotime($emp->work_start_time) + 15 * 60);
             }
+            // Build per-weekday non-college scheduled end times for multi-role handling
+            // Map: weekday number (1=Mon..7=Sun) => work_end_time string
+            $nonCollegeEndByDay = [];
+            $timeToMinutes = function($t) {
+                if (!$t) return null; $p = explode(':', (string)$t); if (count($p) < 2) return null; return intval($p[0]) * 60 + intval($p[1]);
+            };
+            if ($emp->workDays && count($emp->workDays)) {
+                foreach ($emp->workDays as $wd) {
+                    $roleStr = strtolower((string)($wd->role ?? ''));
+                    if (strpos($roleStr, 'college') !== false) continue; // only consider non-college roles here
+                    $d = (string)$wd->day;
+                    $dayNum = is_numeric($d) ? intval($d) : null;
+                    if ($dayNum === null) {
+                        $dn = strtolower(trim($d));
+                        $map = ['mon'=>1,'tue'=>2,'wed'=>3,'thu'=>4,'fri'=>5,'sat'=>6,'sun'=>7,'monday'=>1,'tuesday'=>2,'wednesday'=>3,'thursday'=>4,'friday'=>5,'saturday'=>6,'sunday'=>7];
+                        $dayNum = $map[$dn] ?? null;
+                    }
+                    if ($dayNum) {
+                        $existingMin = isset($nonCollegeEndByDay[$dayNum]) ? $timeToMinutes($nonCollegeEndByDay[$dayNum]) : null;
+                        $thisMin = $timeToMinutes($wd->work_end_time);
+                        // pick the latest end time if multiple non-college roles exist on same day
+                        if ($thisMin !== null && ($existingMin === null || $thisMin > $existingMin)) {
+                            $nonCollegeEndByDay[$dayNum] = $wd->work_end_time;
+                        }
+                    }
+                }
+            }
             $overtime_pay_weekdays = 0;
             $overtime_pay_weekends = 0;
             $overtime_count_weekdays = 0;
@@ -451,22 +478,48 @@ class TimeKeepingController extends Controller
                     }
                 }
                 // Overtime: count decimal hours overtime (not stacked)
-                if ($tk->clock_out && $emp->work_end_time) {
-                    $workEnd = strtotime($emp->work_end_time);
+                if ($tk->clock_out) {
                     $clockOut = strtotime($tk->clock_out);
-                    if ($clockOut >= $workEnd + 3600) { // 1 hour after work_end_time
-                        $overtime_minutes = ($clockOut - $workEnd) / 60 - 59; // subtract 59 minutes (inclusive)
-                        if ($overtime_minutes >= 1) {
-                            $overtime_hours = round($overtime_minutes / 60, 2); // decimal hours
-                            $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
-                            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
-                                $pay = round($rate_per_hour * 0.25, 2);
-                                $overtime_count_weekdays += $overtime_hours;
-                                $overtime_pay_weekdays += $pay * $overtime_hours;
-                            } else {
-                                $pay = round($rate_per_hour * 0.30, 2);
-                                $overtime_count_weekends += $overtime_hours;
-                                $overtime_pay_weekends += $pay * $overtime_hours;
+
+                    // Determine scheduled work end to use for overtime calculation.
+                    // For multi-role employees that include college, prefer the non-college role's schedule for that weekday.
+                    $rolesStrTmp = strtolower((string)($emp->roles ?? ''));
+                    $hasCollegeTmp = strpos($rolesStrTmp, 'college instructor') !== false;
+                    $tokensTmp = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStrTmp)));
+                    $isCollegeMultiTmp = $hasCollegeTmp && (count($tokensTmp) > 0 ? (count(array_filter($tokensTmp, function($t){ return strpos($t, 'college instructor') !== false; })) < count($tokensTmp)) : false);
+
+                    $dayOfWeekNum = date('N', strtotime($tk->date)); // 1-7
+                    $scheduledEnd = null;
+                    if ($isCollegeMultiTmp && isset($nonCollegeEndByDay[$dayOfWeekNum])) {
+                        $scheduledEnd = $nonCollegeEndByDay[$dayOfWeekNum];
+                    } elseif (!empty($emp->work_end_time)) {
+                        $scheduledEnd = $emp->work_end_time;
+                    }
+
+                    // If multi-role and we don't have a non-college schedule for that day, do not count OT
+                    if ($isCollegeMultiTmp && $scheduledEnd === null) {
+                        continue;
+                    }
+
+                    if ($scheduledEnd) {
+                        $workEnd = strtotime($scheduledEnd);
+                        $rawOvertimeSeconds = $clockOut - $workEnd;
+
+                        // Start counting overtime only if adjusted raw overtime is >= 3600 seconds (1 hour)
+                        if ($rawOvertimeSeconds >= 3600) {
+                            $overtime_minutes = $rawOvertimeSeconds / 60;
+                            if ($overtime_minutes > 0) {
+                                $overtime_hours = round($overtime_minutes / 60, 2); // decimal hours
+                                $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
+                                if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                                    $pay = round($rate_per_hour * 0.25, 2);
+                                    $overtime_count_weekdays += $overtime_hours;
+                                    $overtime_pay_weekdays += $pay * $overtime_hours;
+                                } else {
+                                    $pay = round($rate_per_hour * 0.30, 2);
+                                    $overtime_count_weekends += $overtime_hours;
+                                    $overtime_pay_weekends += $pay * $overtime_hours;
+                                }
                             }
                         }
                     }
@@ -474,6 +527,25 @@ class TimeKeepingController extends Controller
             }
             $overtime_count = $overtime_count_weekdays + $overtime_count_weekends;
             $overtime_pay_total = $overtime_pay_weekdays + $overtime_pay_weekends;
+
+            // If employee is a College Instructor ONLY, convert late/undertime to absences
+            // and do not count overtime originating from timekeeping records.
+            $rolesStrLocal = strtolower((string)($emp->roles ?? ''));
+            $tokensLocal = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStrLocal)));
+            $hasCollegeLocal = strpos($rolesStrLocal, 'college instructor') !== false;
+            $isCollegeOnlyLocal = $hasCollegeLocal && (count($tokensLocal) > 0 ? (count(array_filter($tokensLocal, function($t){ return strpos($t, 'college instructor') !== false; })) === count($tokensLocal)) : true);
+            if ($isCollegeOnlyLocal) {
+                // Move tardiness and undertime to absences
+                $absences += round($late_count + $early_count, 2);
+                $late_count = 0;
+                $early_count = 0;
+                // Zero out overtime and pay for college-only instructors
+                $overtime_count = 0;
+                $overtime_count_weekdays = 0;
+                $overtime_count_weekends = 0;
+                $overtime_pay_total = 0;
+                $overtime = false;
+            }
 
             return [
                 'base_salary' => $emp->base_salary,
@@ -688,41 +760,78 @@ class TimeKeepingController extends Controller
                 }
             }
             // Overtime (decimal hours, start counting after exactly 1 hour past work end time)
-            if ($tk->clock_out && $employee->work_end_time) {
-                $workEnd = strtotime($employee->work_end_time);
+            if ($tk->clock_out) {
                 $clockOut = strtotime($tk->clock_out);
 
-                // Calculate the total raw difference in seconds between actual clock out and scheduled work end
-                $rawOvertimeSeconds = $clockOut - $workEnd;
+                // Determine scheduled work end to use for overtime calculation.
+                // For multi-role employees that include college, prefer the non-college role's schedule for that weekday.
+                $rolesStrTmp = strtolower((string)($employee->roles ?? ''));
+                $hasCollegeTmp = strpos($rolesStrTmp, 'college instructor') !== false;
+                $tokensTmp = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStrTmp)));
+                $isCollegeMultiTmp = $hasCollegeTmp && (count($tokensTmp) > 0 ? (count(array_filter($tokensTmp, function($t){ return strpos($t, 'college instructor') !== false; })) < count($tokensTmp)) : false);
 
-                // Check if the total raw overtime time is GREATER THAN OR EQUAL TO 1-hour (3600 seconds).
-                // This is the CRITICAL change: use >= instead of >
-                if ($rawOvertimeSeconds >= 3600) {
+                $dayOfWeekNum = date('N', strtotime($tk->date)); // 1-7
+                $scheduledEnd = null;
+                if ($isCollegeMultiTmp) {
+                    // Build non-college end map locally for monthlySummary if not already
+                    $nonCollegeEndByDayLocal = [];
+                    if ($employee->workDays && count($employee->workDays)) {
+                        foreach ($employee->workDays as $wd) {
+                            $roleStr = strtolower((string)($wd->role ?? ''));
+                            if (strpos($roleStr, 'college') !== false) continue;
+                            $d = (string)$wd->day;
+                            $dayNum = is_numeric($d) ? intval($d) : null;
+                            if ($dayNum === null) {
+                                $dn = strtolower(trim($d));
+                                $map = ['mon'=>1,'tue'=>2,'wed'=>3,'thu'=>4,'fri'=>5,'sat'=>6,'sun'=>7,'monday'=>1,'tuesday'=>2,'wednesday'=>3,'thursday'=>4,'friday'=>5,'saturday'=>6,'sunday'=>7];
+                                $dayNum = $map[$dn] ?? null;
+                            }
+                            if ($dayNum) {
+                                // pick latest end if multiple
+                                $existing = isset($nonCollegeEndByDayLocal[$dayNum]) ? strtotime($nonCollegeEndByDayLocal[$dayNum]) : null;
+                                $thisT = $wd->work_end_time ? strtotime($wd->work_end_time) : null;
+                                if ($thisT !== null && ($existing === null || $thisT > $existing)) {
+                                    $nonCollegeEndByDayLocal[$dayNum] = $wd->work_end_time;
+                                }
+                            }
+                        }
+                    }
+                    $scheduledEnd = $nonCollegeEndByDayLocal[$dayOfWeekNum] ?? null;
+                    // If there's no non-college schedule for this weekday, skip counting overtime
+                    if ($scheduledEnd === null) continue;
+                } else {
+                    $scheduledEnd = $employee->work_end_time;
+                }
 
-                    // NEW LOGIC: If 1 hour or more is reached, count the ENTIRE RAW DIFFERENCE
-                    $overtime_minutes = $rawOvertimeSeconds / 60;
+                if ($scheduledEnd) {
+                    $workEnd = strtotime($scheduledEnd);
+                    $rawOvertimeSeconds = $clockOut - $workEnd;
 
-                    if ($overtime_minutes > 0) {
-                        $overtime_hours = ($overtime_minutes / 60);
-                        $dayOfWeek = date('N', strtotime($tk->date));
+                    // Check if the total raw overtime time is GREATER THAN OR EQUAL TO 1-hour (3600 seconds).
+                    if ($rawOvertimeSeconds >= 3600) {
+                        $overtime_minutes = $rawOvertimeSeconds / 60;
 
-                        // Overtime Pay Calculation
-                        $pay = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
-                            ? ($rate_per_hour * 0.25)
-                            : ($rate_per_hour * 0.30);
+                        if ($overtime_minutes > 0) {
+                            $overtime_hours = ($overtime_minutes / 60);
+                            $dayOfWeek = date('N', strtotime($tk->date));
 
-                        $overtime_count += $overtime_hours;
-                        $overtime_pay_total += $pay * $overtime_hours;
+                            // Overtime Pay Calculation
+                            $pay = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
+                                ? ($rate_per_hour * 0.25)
+                                : ($rate_per_hour * 0.30);
 
-                        // Overtime Weekend/Weekday count
-                        if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
-                            $overtime_count_weekdays += $overtime_hours;
-                        } else {
-                            $overtime_count_weekends += $overtime_hours;
+                            $overtime_count += $overtime_hours;
+                            $overtime_pay_total += $pay * $overtime_hours;
+
+                            // Overtime Weekend/Weekday count
+                            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                                $overtime_count_weekdays += $overtime_hours;
+                            } else {
+                                $overtime_count_weekends += $overtime_hours;
+                            }
                         }
                     }
                 }
-                // If $rawOvertimeSeconds is less than 3600 (59 minutes or less), no overtime is counted.
             }
         }
 
@@ -901,6 +1010,24 @@ class TimeKeepingController extends Controller
         }
 
         $absences = $absent_hours;
+
+        // If the employee is a College Instructor ONLY, convert tardiness/undertime to absences
+        // and do not count overtime for these employees.
+        $rolesStr = strtolower((string)($employee->roles ?? ''));
+        $tokens = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStr)));
+        $hasCollege = strpos($rolesStr, 'college instructor') !== false;
+        $isCollegeOnly = $hasCollege && (count($tokens) > 0 ? (count(array_filter($tokens, function($t){ return strpos($t, 'college instructor') !== false; })) === count($tokens)) : true);
+        if ($isCollegeOnly) {
+            // Move tardiness and undertime into absences
+            $absences += round($late_count + $early_count, 2);
+            $late_count = 0;
+            $early_count = 0;
+            // Remove overtime for college-only instructors
+            $overtime_count = 0;
+            $overtime_count_weekdays = 0;
+            $overtime_count_weekends = 0;
+            $overtime_pay_total = 0;
+        }
 
         $hasData = $records->count() > 0;
         // Calculate total_hours for all roles: sum of actual hours worked from time in/out (only on scheduled work days, minus 1 hour break per day if worked at least 4 hours)
