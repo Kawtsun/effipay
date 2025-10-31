@@ -814,24 +814,31 @@ class EmployeesController extends Controller
         }
 
         if ($hasNonCollegeRole && $hasCollegeRole) {
-            // Merge: keep time-based rows, inject college hours only where a matching
-            // non-college day exists. Do not create placeholder rows for college-only days.
-            $byDay = [];
-            foreach ($nonCollegeUnique as $wd) {
-                $key = strtolower($wd['day'] ?? '');
-                if ($key !== '') { $byDay[$key] = $wd; }
-            }
-            foreach ($workDaysCollege as $cd) {
-                $key = strtolower($cd['day'] ?? '');
-                if ($key === '') { continue; }
-                if (isset($byDay[$key])) {
-                    $byDay[$key]['work_hours'] = $cd['work_hours'] ?? null;
+            // Merge: keep ALL time-based rows (including multiple roles on the same day)
+            // and inject college hours to every matching-day entry. We purposely avoid
+            // de-duplicating by day so multi-role (e.g., Admin + Basic Ed on Monday)
+            // are both preserved.
+            $workDaysForInsert = $workDaysFlattened; // preserve per-role duplicates by day
+            if (!empty($workDaysCollege)) {
+                // Build quick lookup of college hours by day
+                $collegeByDay = [];
+                foreach ($workDaysCollege as $cd) {
+                    $k = strtolower($cd['day'] ?? '');
+                    if ($k !== '') { $collegeByDay[$k] = $cd['work_hours'] ?? null; }
                 }
+                // Inject hours into each matching time-based row
+                foreach ($workDaysForInsert as &$row) {
+                    $k = strtolower($row['day'] ?? '');
+                    if ($k !== '' && array_key_exists($k, $collegeByDay)) {
+                        $row['work_hours'] = $collegeByDay[$k];
+                    }
+                }
+                unset($row);
             }
-            $workDaysForInsert = array_values($byDay);
         } elseif ($hasNonCollegeRole) {
-            // Only non-college roles: insert unique-by-day rows with role priority applied
-            $workDaysForInsert = $nonCollegeUnique;
+            // Only non-college roles: insert the flattened per-role rows as-is so
+            // multiple roles on the same day are saved separately.
+            $workDaysForInsert = $workDaysFlattened;
         } else {
             // College-only schedules are stored only in employee_college_program_schedules
             // and should not create rows in work_days.
