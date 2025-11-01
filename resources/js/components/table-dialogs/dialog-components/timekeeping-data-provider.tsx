@@ -621,7 +621,8 @@ export function TimeKeepingDataProvider({
         }
 
   const under = Math.max(0, sched.end - timeOut);
-  const over = Math.max(0, workedMinusBreak - sched.durationMin);
+  // Overtime should be based on time past the scheduled end, independent of tardiness
+  const over = Math.max(0, timeOut - sched.end);
 
         tardMin += tard;
         underMin += under;
