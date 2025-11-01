@@ -157,8 +157,14 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           if (!schedByCode[code]) {
             schedByCode[code] = { start: NaN, end: NaN, durationMin: mins, noTimes: true, isCollege: true };
           } else {
-            const existing = schedByCode[code];
-            existing.extraCollegeDurMin = (existing.extraCollegeDurMin ?? 0) + mins;
+            const existing = schedByCode[code] as any;
+            // Computation safeguard: collapse duplicate college hours per weekday by MAX, not SUM
+            if (existing.noTimes) {
+              existing.durationMin = Math.max(Number(existing.durationMin ?? 0), mins);
+            } else {
+              const extra = Number(existing.extraCollegeDurMin ?? 0);
+              existing.extraCollegeDurMin = Math.max(extra, mins);
+            }
             // do not flip isCollege here; keep origin of time-based schedule
           }
         };

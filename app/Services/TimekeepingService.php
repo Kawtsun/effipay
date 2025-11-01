@@ -221,10 +221,19 @@ class TimekeepingService
             $code = $normalizeDayKey($cs->day);
             $mins = (int) round(max(0, (float)$cs->hours_per_day) * 60);
             if (!isset($schedByCode[$code])) {
+                // First entry for this weekday: create a no-times schedule using the given hours
                 $schedByCode[$code] = ['start' => null, 'end' => null, 'durationMin' => $mins, 'noTimes' => true, 'extraCollegeDurMin' => 0];
             } else {
                 $prev = $schedByCode[$code];
-                $prev['extraCollegeDurMin'] = ($prev['extraCollegeDurMin'] ?? 0) + $mins;
+                // Computation safeguard: collapse duplicates by taking MAX per weekday, not SUM
+                if (!empty($prev['noTimes'])) {
+                    // If the existing entry is also an hours-only schedule, keep the larger expectation
+                    $prev['durationMin'] = max((int)($prev['durationMin'] ?? 0), $mins);
+                } else {
+                    // Day already has a time-based schedule: store extra college expectation as MAX
+                    $existingExtra = (int)($prev['extraCollegeDurMin'] ?? 0);
+                    $prev['extraCollegeDurMin'] = max($existingExtra, $mins);
+                }
                 $schedByCode[$code] = $prev;
             }
         }

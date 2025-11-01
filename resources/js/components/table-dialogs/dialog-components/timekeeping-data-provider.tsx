@@ -390,10 +390,14 @@ export function TimeKeepingDataProvider({
             // No time-based schedule: create duration-only schedule
             schedByCode[code] = { start: NaN, end: NaN, durationMin: mins, noTimes: true, isCollege: true };
           } else {
-            // Day already has a time-based schedule; for multi-role we want to avoid double counting.
-            // Keep the time-based duration as-is and store extra college-only duration separately.
-            const existing = schedByCode[code];
-            existing.extraCollegeDurMin = (existing.extraCollegeDurMin ?? 0) + mins;
+            // Computation safeguard: collapse duplicate college hours per weekday by MAX, not SUM
+            const existing = schedByCode[code] as any;
+            if (existing.noTimes) {
+              existing.durationMin = Math.max(Number(existing.durationMin ?? 0), mins);
+            } else {
+              const extra = Number(existing.extraCollegeDurMin ?? 0);
+              existing.extraCollegeDurMin = Math.max(extra, mins);
+            }
             // IMPORTANT: Do NOT flip the time-based schedule to 'college'.
             // 'isCollege' should only be true when the explicit time-based schedule came from a College Instructor role.
             // Presence of extra college hours is tracked by 'extraCollegeDurMin' and should not alter isCollege.

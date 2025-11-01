@@ -457,14 +457,20 @@ class PayrollController extends Controller
                 // Create a no-times schedule using hours only
                 $schedByCode[$code] = ['start' => null, 'end' => null, 'durationMin' => $mins, 'noTimes' => true, 'extraCollegeDurMin' => 0, 'isCollege' => true];
             } else {
-                // Accumulate extra college duration for multi-role expectations
+                // Computation safeguard: collapse duplicate college hours per weekday by MAX, not SUM
                 $prev = $schedByCode[$code];
-                $prevExtra = isset($prev['extraCollegeDurMin']) ? (int)$prev['extraCollegeDurMin'] : 0;
-                $prev['extraCollegeDurMin'] = $prevExtra + $mins;
+                if (!empty($prev['noTimes'])) {
+                    $prev['durationMin'] = max((int)($prev['durationMin'] ?? 0), $mins);
+                } else {
+                    $prevExtra = isset($prev['extraCollegeDurMin']) ? (int)$prev['extraCollegeDurMin'] : 0;
+                    $prev['extraCollegeDurMin'] = max($prevExtra, $mins);
+                }
                 $schedByCode[$code] = $prev;
             }
-            // Track extra college minutes for college-paid-hours computation
-            $collegeExtraMinByCode[$code] = ($collegeExtraMinByCode[$code] ?? 0) + $mins;
+            // Track extra college minutes for college-paid-hours computation (also MAX per weekday)
+            $collegeExtraMinByCode[$code] = isset($collegeExtraMinByCode[$code])
+                ? max((int)$collegeExtraMinByCode[$code], $mins)
+                : $mins;
         }
 
         // Records by date
