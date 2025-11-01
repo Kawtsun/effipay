@@ -318,29 +318,28 @@ export function ReportDataProvider({
     // Resolve hourly rate for monetary conversions
     // IMPORTANT: Overtime must use the base-salary derived rate_per_hour, never the college rate.
     const baseRatePerHour = (() => {
+      // Prefer the same source the Timekeeping cards use (tkComputed),
+      // then fall back to the backend summary, then payroll snapshot.
+      const rTK = Number(tkComputed?.rate_per_hour ?? NaN);
+      if (Number.isFinite(rTK) && rTK > 0) return Number(rTK.toFixed(2));
       const rSum = Number(timekeepingSummary?.rate_per_hour ?? NaN);
       if (Number.isFinite(rSum) && rSum > 0) return Number(rSum.toFixed(2));
       const rPH = Number(payroll?.rate_per_hour ?? NaN);
       if (Number.isFinite(rPH) && rPH > 0) return Number(rPH.toFixed(2));
-      // final fallback: if tkComputed provided a non-college rate (rare), use it
-      const rTK = Number(tkComputed?.rate_per_hour ?? NaN);
-      return Number.isFinite(rTK) && rTK > 0 ? Number(rTK.toFixed(2)) : 0;
+      return 0;
     })();
 
     if (type === "overtime") {
+      // Match Timekeeping cards: pay 0.25x on weekdays, 0.30x on weekends (no separate observance multiplier on card)
       const weekdayOT = Number.isFinite(Number(tk?.overtime_count_weekdays))
         ? Number(Number(tk?.overtime_count_weekdays).toFixed(2))
         : Number(Number(payroll?.overtime_count_weekdays ?? 0).toFixed(2));
       const weekendOT = Number.isFinite(Number(tk?.overtime_count_weekends))
         ? Number(Number(tk?.overtime_count_weekends).toFixed(2))
         : Number(Number(payroll?.overtime_count_weekends ?? 0).toFixed(2));
-      const observanceOT = Number.isFinite(Number(tk?.overtime_count_observances))
-        ? Number(Number(tk?.overtime_count_observances).toFixed(2))
-        : Number(Number(payroll?.overtime_count_observances ?? 0).toFixed(2));
       const weekdayPay = baseRatePerHour * 0.25 * weekdayOT;
       const weekendPay = baseRatePerHour * 0.30 * weekendOT;
-      const observancePay = baseRatePerHour * 2.00 * observanceOT; // double pay
-      const overtimePay = weekdayPay + weekendPay + observancePay;
+      const overtimePay = weekdayPay + weekendPay;
       return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
