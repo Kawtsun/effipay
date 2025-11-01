@@ -16,6 +16,7 @@ import { OtherDeductionsForm } from '@/components/form/OtherDeductionsForm';
 import { type WorkDayTime } from '@/components/work-days-selector';
 import { type BreadcrumbItem } from '@/types';
 import { formatFullName } from '@/utils/formatFullName';
+import { validateNoCrossRoleOverlap } from '@/utils/validateSchedules';
 // Note: SSS/PhilHealth calculation is intentionally not run on the Edit page.
 // These contributions are computed during payroll processing.
 
@@ -183,6 +184,13 @@ export default function Edit(props: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate cross-role overlaps only on save
+        const overlapCheck = validateNoCrossRoleOverlap(form.data.work_days as any);
+        if (!overlapCheck.ok) {
+            toast.error(overlapCheck.msg);
+            return;
+        }
 
         // Normalize numeric fields to plain numeric strings (no commas) before submit.
         // useForm.setData mutates the internal form data used by form.put.

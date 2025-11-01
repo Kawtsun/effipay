@@ -174,6 +174,9 @@ export function WorkScheduleForm({ form }: WorkScheduleFormProps) {
         return `${programs} program${programs > 1 ? 's' : ''} • ${configured} with hours`;
     };
 
+    // Note: Overlap validation now happens on Save in the parent pages (create/edit).
+    // The editor allows free changes; final validation is performed before submit.
+
     return (
         <Card className="w-full shadow-sm">
             <CardHeader>
