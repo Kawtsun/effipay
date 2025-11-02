@@ -43,6 +43,7 @@
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700" rel="stylesheet" />
         <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700" rel="stylesheet" />
 
+        {{-- Inject Ziggy. Route exposure is filtered via config/ziggy.php (allowlist). --}}
         @routes
         @viteReactRefresh
         @vite(['resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])

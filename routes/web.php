@@ -12,10 +12,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\LeaveReportController;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 
-Route::get('/', fn() => Inertia::render('welcome'))
-    ->name('home');
+Route::get('/', function () {
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+    return Inertia::render('welcome');
+})->name('home');
 
 use App\Http\Controllers\ObservanceController;
 
@@ -125,5 +130,7 @@ require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
 
 
-Route::get('/{any}', fn() => Inertia::render('App'))
+// Fallback to the application shell only for authenticated users.
+// This prevents exposing the app shell and shared props to unauthenticated visitors.
+Route::middleware('auth')->get('/{any}', fn() => Inertia::render('App'))
     ->where('any', '.*');

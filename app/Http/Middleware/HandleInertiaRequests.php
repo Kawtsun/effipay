@@ -43,13 +43,17 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
+            // Share only minimal auth details needed for the UI
             'auth' => [
-                'user' => $request->user(),
+                'user' => fn () => optional($request->user(), function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'username' => $user->username,
+                    ];
+                }),
             ],
-            'ziggy' => fn(): array => [
-                ...(new Ziggy)->toArray(),
-                'location' => $request->url(),
-            ],
+            // Do NOT include full Ziggy route definitions in the Inertia payload,
+            // they are injected via the @routes directive in the Blade layout.
             'flash' => [
                 'success' => fn() => $request->session()->get('success'),
                 // add other flash types if needed

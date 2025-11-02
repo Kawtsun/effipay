@@ -8,8 +8,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpFoundationResponse;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -27,13 +29,15 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): HttpFoundationResponse
     {
         $request->authenticate();
 
-        $request->session()->regenerate();
+        // Regenerate the session ID to prevent fixation.
+        Session::regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Always redirect to dashboard using a 303 so the client performs a GET visit.
+        return redirect()->to(route('dashboard', absolute: false))->setStatusCode(303);
     }
 
     /**

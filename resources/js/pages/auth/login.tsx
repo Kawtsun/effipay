@@ -44,9 +44,17 @@ export default function Login({ status}: LoginProps) {
             return;
         }
         post(route('login'), {
-            onFinish: () => {
+            // If authentication fails (validation/credentials), clear password
+            onError: () => {
                 reset('password');
             },
+            // If it succeeds (non-Inertia redirect case), also clear password
+            onSuccess: () => {
+                reset('password');
+            },
+            // Do not clear the password onFinish, because successful logins using
+            // Inertia::location trigger a hard redirect and clearing early makes it
+            // look like the form "stopped" before navigation.
         });
     };
 
@@ -60,7 +68,7 @@ export default function Login({ status}: LoginProps) {
                         <Label htmlFor="username">Username</Label>
                         <Input
                             id="username"
-                            type="username"
+                            type="text"
                             autoFocus
                             tabIndex={1}
                             autoComplete="username"
