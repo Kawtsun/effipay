@@ -493,17 +493,19 @@ export function TimeKeepingDataProvider({
             continue;
           }
           // Default day: duration-only expectation
+          // For college program-only hours, if there's no BTR that day, do NOT create an absence bucket.
           if (!hasBoth) {
-            absentMin += expectedDuration;
+            if (!sched.isCollege) {
+              // Non-college duration-only expectations may count as absences when no logs
+              absentMin += expectedDuration;
+            }
             continue;
           }
           totalWorkedMin += workedMinusBreak;
           // College-paid: cap by expected duration for college-only hour schedules
           collegePaidMin += Math.min(workedMinusBreak, expectedDuration);
           if (isCollegeOnly || isCollegeMulti) {
-            // College schedules: deficit -> Absences
-            const deficit = Math.max(0, expectedDuration - workedMinusBreak);
-            absentMin += deficit;
+            // COUNT-ONLY policy for College: do not create absences from program-only deficits.
             // For multi-role, still allow overtime when exceeding expected duration
             if (!isCollegeOnly) {
               const over = Math.max(0, workedMinusBreak - expectedDuration);
@@ -548,10 +550,32 @@ export function TimeKeepingDataProvider({
         totalWorkedMin += workedMinusBreak;
 
         if (!hasBoth) {
-          // If this is a multi-role day with extra college hours, expected is max(admin, college)
-          const expected = (isCollegeMulti && sched.extraCollegeDurMin && sched.extraCollegeDurMin > 0)
-            ? Math.max(sched.durationMin, sched.extraCollegeDurMin)
-            : sched.durationMin;
+          // When there's no BTR on a scheduled day:
+          // - Do NOT count program-only or college time-based expectations as absences.
+          // - Only count non-college (admin/basic-ed) expected duration as absences.
+          let expected = 0;
+          if (Array.isArray(sched.timeWindows) && sched.timeWindows.length > 0) {
+            const nonCollege = sched.timeWindows.filter(w => !w.isCollege);
+            if (nonCollege.length === 0) {
+              expected = 0; // college-only windows -> no absences under count-only policy
+            } else {
+              // Sum window durations for non-college; subtract one lunch hour if any window crosses 13:00
+              let dur = 0;
+              let crossesLunch = false;
+              for (const w of nonCollege) {
+                const dmin = diffMin(w.start, w.end);
+                dur += dmin;
+                const noon = 13 * 60;
+                const endNorm = w.end <= w.start ? w.end + 24 * 60 : w.end;
+                if (w.start < noon && endNorm > noon) crossesLunch = true;
+              }
+              if (dur > 0 && crossesLunch) dur = Math.max(0, dur - 60);
+              expected = dur;
+            }
+          } else {
+            // No granular windows; fall back to merged duration, but only when not a college-only day
+            expected = sched.isCollege ? 0 : sched.durationMin;
+          }
           absentMin += expected;
           continue;
         }
@@ -596,29 +620,27 @@ export function TimeKeepingDataProvider({
 
         collegePaidMin += dayCollegePaid;
 
-        // College-dominant expectation rule:
-        // - College-only employees
-        // - OR multi-role days where the time-based schedule is from College, OR the extra college hours exceed the admin span.
-        // In those cases, treat shortfall as Absences (college policy) and suppress tardiness/undertime.
-        // Otherwise (e.g., admin span >= extra college hours), compute regular tardiness/undertime for the admin schedule.
-        if (isCollegeOnly || (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > sched.durationMin))) {
-          // College-only: treat shortfall as absence; suppress tardiness/undertime/OT
-          const expected = (isCollegeMulti && (sched.extraCollegeDurMin ?? 0) > 0)
-            ? Math.max(sched.durationMin, sched.extraCollegeDurMin || 0)
-            : sched.durationMin;
-          const deficit = Math.max(0, expected - workedMinusBreak);
-          absentMin += deficit;
-          // Preserve overtime for multi-role college schedules
-          if (!isCollegeOnly) {
+        // College time-based schedules: deficits are Absences; preserve OT beyond expected
+        if (sched.isCollege) {
+          const expected = sched.durationMin;
+          if (hasBoth) {
+            // COUNT-ONLY policy for College: do not add deficits to absences; allow overtime beyond expected
             const over = Math.max(0, workedMinusBreak - expected);
             otMin += over;
             if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
           }
+          // If no BTR that day, don't create college absences; just count zero college-paid hours.
           continue;
         }
 
+        // For program-only college hours on this day, count any unmet portion as Absences
+        if ((sched.extraCollegeDurMin ?? 0) > 0 && (isCollegeOnly || isCollegeMulti)) {
+          // COUNT-ONLY policy for College: do not add program deficits to absences.
+          // dayCollegePaid already accounts for any overlap or remaining worked time.
+        }
+
         // Non-college: full time-based breakdown applies
-        let tard: number;
+  let tard: number;
         if (obsType.includes("rainy")) {
           const graceEnd = sched.start + 60;
           tard = timeIn <= graceEnd ? 0 : Math.max(0, timeIn - sched.start);
@@ -662,14 +684,15 @@ export function TimeKeepingDataProvider({
   // rolesStr and isCollege already computed above
 
     const baseSalary = Number(employee.base_salary ?? 0) || 0;
-    // Resolve college rate: employee.college_rate -> summary.college_rate -> summary.rate_per_hour
+    // Resolve college rate ONLY for employees with a College Instructor role.
+    // Prefer explicit college_rate; fall back to monthly summary's college_rate.
+    // Do NOT fall back to general rate_per_hour, to avoid showing a misleading value.
     const collegeRate = (() => {
+      if (!isCollege) return undefined;
       const fromEmp = employee.college_rate !== undefined && employee.college_rate !== null ? Number(employee.college_rate) : undefined;
       if (typeof fromEmp === 'number' && Number.isFinite(fromEmp) && fromEmp > 0) return fromEmp;
       const fromSummaryCR = Number(summaryRates?.college_rate ?? NaN);
       if (Number.isFinite(fromSummaryCR) && fromSummaryCR > 0) return fromSummaryCR;
-      const fromSummaryRH = Number(summaryRates?.rate_per_hour ?? NaN);
-      if (Number.isFinite(fromSummaryRH) && fromSummaryRH > 0) return fromSummaryRH;
       return undefined;
     })();
 

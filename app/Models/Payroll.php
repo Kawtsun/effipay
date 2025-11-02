@@ -31,6 +31,7 @@ class Payroll extends Model
         'payroll_date',
         'base_salary', // For non-instructors, used in calculations; for instructors, for record only
         'college_rate', // For college instructors, the hourly rate used
+    'college_worked_hours', // Total college worked hours stored for this payroll period
         'salary_rate', // Base hourly rate snapshot used for this payroll (non-college)
         'honorarium',
             'overtime',
@@ -65,6 +66,7 @@ class Payroll extends Model
             'undertime' => 'float',
             'absences' => 'float',
             'salary_rate' => 'float',
+            'college_worked_hours' => 'float',
         ];
 
     public function employee()

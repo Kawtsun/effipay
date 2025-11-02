@@ -22,6 +22,7 @@ class Employees extends Model
     'basic_edu_level',
         'base_salary',
         'college_rate',
+        'college_worked_hours',
     'salary_rate',
         'rate_per_hour',
         'sss',
@@ -47,6 +48,7 @@ class Employees extends Model
         'philhealth' => 'boolean',
         'withholding_tax' => 'boolean',
         'salary_rate' => 'float',
+        'college_worked_hours' => 'float',
     ];
 
     /**

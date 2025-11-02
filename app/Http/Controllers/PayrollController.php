@@ -86,6 +86,7 @@ class PayrollController extends Controller
 
             // Compute auxiliary monthly metrics for college-paid hours only (UI parity); do not use for T/U/OT/A
             $metrics = $this->computeMonthlyMetricsPHP($employee, $payrollMonth);
+            $college_hours_metric = isset($metrics['college_paid_hours']) ? (float)$metrics['college_paid_hours'] : null;
 
             // Determine if college logic should apply and whether it's college-only vs multi-role
             // - Prefer presence of a college_rate value in employees table
@@ -97,6 +98,7 @@ class PayrollController extends Controller
             $tokens = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStr)));
             $isCollegeOnly = $hasCollegeRoleText && (!count($tokens) ? true : (count(array_filter($tokens, function($t){ return strpos($t, 'college instructor') !== false; })) === count($tokens)));
             $isCollegeMulti = $hasCollegeRoleText && !$isCollegeOnly;
+            $isMultiRole = count($tokens) > 1; // any multi-role, not limited to college
 
             if ($isCollegeInstructor && $isCollegeOnly) {
                 // College-only: pay by college schedule hours only, no T/U/OT; absences still reduce pay
@@ -201,7 +203,9 @@ class PayrollController extends Controller
                 // OT buckets from TK summary (weekday/weekend only)
                 $weekday_ot = (float)($tk['overtime_count_weekdays'] ?? 0);
                 $weekend_ot = (float)($tk['overtime_count_weekends'] ?? 0);
-                $overtime_pay = round($rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
+                $obs_ot = (float)($tk['overtime_count_observances'] ?? 0);
+                // Multi-role (college + another) includes observance OT at 2.0x using base rate
+                $overtime_pay = round($rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot) + (2.0 * $obs_ot)), 2);
 
                 $honorarium = !is_null($employee->honorarium) ? (float)$employee->honorarium : 0.0;
                 $college_gsp = ($college_rate > 0 && $college_hours > 0) ? ($college_rate * $college_hours) : 0.0;
@@ -242,7 +246,9 @@ class PayrollController extends Controller
                 // Overtime pay from TK buckets: 0.25x weekdays, 0.30x weekends
                 $weekday_ot = (float)($tk['overtime_count_weekdays'] ?? 0);
                 $weekend_ot = (float)($tk['overtime_count_weekends'] ?? 0);
-                $overtime_pay = round((float)$rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
+                $obs_ot = (float)($tk['overtime_count_observances'] ?? 0);
+                // Any multi-role (e.g., Admin + Basic Ed) includes observance OT at 2.0x; single-role ignores it
+                $overtime_pay = round((float)$rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot) + ($isMultiRole ? (2.0 * $obs_ot) : 0.0)), 2);
 
                 $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
                 // Gross pay: (base_salary + overtime_pay) - (rate_per_hour * tardiness) - (rate_per_hour * undertime) - (rate_per_hour * absences) + honorarium
@@ -333,6 +339,8 @@ class PayrollController extends Controller
                 'base_salary' => $base_salary,
                 // Only set college_rate for college instructors; otherwise force NULL
                 'college_rate' => $isCollegeInstructor ? $college_rate : null,
+                // Persist the computed college worked hours for this payroll period
+                'college_worked_hours' => $isCollegeInstructor ? $college_hours_metric : null,
                 'honorarium' => $honorarium,
                 'overtime' => $overtime_hours,
                 'tardiness' => $tardiness,
@@ -362,6 +370,16 @@ class PayrollController extends Controller
 
             \Illuminate\Support\Facades\Log::info('[Payroll Debug] Payroll::create array', $payrollData);
             \App\Models\Payroll::create($payrollData);
+
+            // Optionally sync snapshot onto employees table for quick reference
+            if ($isCollegeInstructor && $college_hours_metric !== null) {
+                try {
+                    $employee->college_worked_hours = $college_hours_metric;
+                    $employee->save();
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to update employees.college_worked_hours: ' . $e->getMessage());
+                }
+            }
             $createdCount++;
         }
 
