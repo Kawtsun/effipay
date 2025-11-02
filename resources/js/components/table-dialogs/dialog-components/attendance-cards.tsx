@@ -2,10 +2,9 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
-import { PhilippinePeso, Clock3, CircleHelp } from "lucide-react";
+import { PhilippinePeso, Clock3 } from "lucide-react";
 // Note: Summary badges are custom-styled divs to perfectly match skeleton sizing
 import { MonthRangePicker } from "../../ui/month-range-picker";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 
 type MetricValue = number | null | undefined;
@@ -42,7 +41,6 @@ type Props = {
 	collegeRate?: number;
 	/** Whether the current employee is a college instructor; controls which rate is used. */
 	isCollegeInstructor?: boolean;
-	/** Roles string to show in tooltip. */
 	rolesText?: string | null;
 	/** Month selector props (to match ReportCards UX). */
 	selectedMonth: string;
@@ -70,29 +68,13 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 
 		const [hoveredKey, setHoveredKey] = React.useState<string | null>(null);
 
-		const rolesTooltip = React.useMemo(() => {
-			const r = (rolesText ?? '').toString();
-			if (!r) return null;
-			// Normalize delimiters to line breaks for nicer display
-			return r
-				.split(/[,\n]+/)
-				.map((s) => s.trim())
-				.filter(Boolean);
-		}, [rolesText]);
-
-		const rolesTooltipText = React.useMemo(() => {
-			if (!rolesTooltip || rolesTooltip.length === 0) return null;
-			const toTitleCase = (s: string) => s.toLowerCase().replace(/\b\w/g, (ch) => ch.toUpperCase());
-			return rolesTooltip.map(toTitleCase).join(", ");
-		}, [rolesTooltip]);
+        // rolesText is still used below for rate selection and absences logic
 
 		// Resolve base and college rates and whether employee is college-only or multi-role
 		const {
 			baseRatePerHour,
 			collegeRateResolved,
 			isCollegeOnly,
-			usingCollegeRate,
-			hourlyRate,
 		} = React.useMemo(() => {
 			const roles = String(rolesText || '').toLowerCase();
 			const tokens = roles.split(/[\,\n]+/).map(s => s.trim()).filter(Boolean);
@@ -111,13 +93,7 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 			const rateCollegeLocalMetric = Number(metrics.college_rate ?? NaN);
 			const collegeRateResolved = Number.isFinite(rateCollegeLocalProp) ? rateCollegeLocalProp : rateCollegeLocalMetric;
 
-			// Decide which rate to show in the generic "Rate per hour" badge
-			const usingCollegeRate = isCollegeOnly && Number.isFinite(collegeRateResolved) && collegeRateResolved > 0;
-			const hourlyRate = usingCollegeRate
-				? collegeRateResolved
-				: (Number.isFinite(baseRatePerHour) ? baseRatePerHour : 0);
-
-			return { baseRatePerHour: Number.isFinite(baseRatePerHour) ? baseRatePerHour : 0, collegeRateResolved: Number.isFinite(collegeRateResolved) ? collegeRateResolved : 0, isCollegeOnly, usingCollegeRate, hourlyRate } as const;
+			return { baseRatePerHour: Number.isFinite(baseRatePerHour) ? baseRatePerHour : 0, collegeRateResolved: Number.isFinite(collegeRateResolved) ? collegeRateResolved : 0, isCollegeOnly } as const;
 		}, [rolesText, ratePerHour, collegeRate, metrics.rate_per_hour, metrics.college_rate, metrics.salary_rate]);
 
     const overtimeWeekdays = Number(metrics.overtime_count_weekdays ?? NaN);
@@ -412,27 +388,14 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 										</Badge>
 									</div>
 								</div>
-								{/* Rate per hour */}
+								{/* College rate from database */}
 								<div className="flex items-center gap-1">
-									<span className="inline-flex items-center gap-1 w-[160px] leading-6">{usingCollegeRate ? 'College rate:' : 'Rate per hour:'}
-										{rolesTooltip && rolesTooltip.length > 0 && (
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<button type="button" aria-label="View roles used for this rate" className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-none">
-														<CircleHelp className="h-3.5 w-3.5" />
-													</button>
-												</TooltipTrigger>
-												<TooltipContent>
-													<div className="max-w-xs whitespace-pre-wrap">{rolesTooltipText}</div>
-												</TooltipContent>
-											</Tooltip>
-										)}
-									</span>
+									<span className="inline-flex items-center w-[116px] leading-6">College rate:</span>
 									<div className="inline-flex items-center">
 										<Badge variant="outline" className="w-full justify-center">
 											<PhilippinePeso />
 											<span className="font-medium tabular-nums text-foreground/90">
-												{!Number.isFinite(hourlyRate) || hourlyRate <= 0 ? "-" : formatAmount(hourlyRate)}
+												{!Number.isFinite(Number(metrics.college_rate)) || Number(metrics.college_rate) <= 0 ? "-" : formatAmount(Number(metrics.college_rate))}
 											</span>
 										</Badge>
 									</div>
