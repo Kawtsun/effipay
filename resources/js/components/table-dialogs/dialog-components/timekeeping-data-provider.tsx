@@ -18,6 +18,8 @@ export type TimeKeepingMetrics = {
   rate_per_hour?: number;
   rate_per_day?: number;
   college_rate?: number;
+  // Base hourly rate per provided formula (base*12/288/8)
+  salary_rate?: number;
 };
 
 export type ObservanceMap = Record<string, { type?: string; start_time?: string }>;
@@ -677,6 +679,9 @@ export function TimeKeepingDataProvider({
       ? (collegeRate ?? 0)
       : Number((((ratePerDay ?? 0)) / (hoursPerDay || 8)).toFixed(2));
 
+    // Salary rate (base hourly) using fixed 8 hours per day, as requested for storage/display
+    const salaryRate = Number(((((baseSalary || 0) * 12) / 288) / 8).toFixed(2));
+
     return {
       tardiness: toH(tardMin),
       undertime: toH(underMin),
@@ -690,6 +695,7 @@ export function TimeKeepingDataProvider({
       rate_per_hour: ratePerHour,
       rate_per_day: ratePerDay,
       college_rate: collegeRate,
+      salary_rate: salaryRate,
     };
   }, [employee, records, selectedMonth, observanceMap, summaryRates]);
 

@@ -22,6 +22,7 @@ class Employees extends Model
     'basic_edu_level',
         'base_salary',
         'college_rate',
+    'salary_rate',
         'rate_per_hour',
         'sss',
         'philhealth',
@@ -45,6 +46,7 @@ class Employees extends Model
         'sss' => 'boolean',
         'philhealth' => 'boolean',
         'withholding_tax' => 'boolean',
+        'salary_rate' => 'float',
     ];
 
     /**
@@ -78,6 +80,20 @@ class Employees extends Model
     public function collegeProgramSchedules(): HasMany
     {
         return $this->hasMany(EmployeeCollegeProgramSchedule::class, 'employee_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Employees $employee) {
+            // Auto-compute salary_rate (base hourly rate) using formula: base_salary * 12 / 288 / 8
+            // Only when base_salary is present; otherwise leave null
+            $base = is_numeric($employee->base_salary) ? (float) $employee->base_salary : null;
+            if ($base !== null) {
+                $rate = ($base * 12) / 288 / 8;
+                // Round to 2 decimals to match schema
+                $employee->salary_rate = round($rate, 2);
+            }
+        });
     }
 }
 

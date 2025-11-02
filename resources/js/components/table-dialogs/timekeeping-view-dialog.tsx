@@ -55,6 +55,7 @@ export default function TimekeepingViewDialog({ employee, onClose }: Props) {
                                                     overtime_count_weekends: computed?.overtime_count_weekends,
                                                     rate_per_hour: computed?.rate_per_hour,
                                                     college_rate: computed?.college_rate,
+                                                    salary_rate: (computed as any)?.salary_rate,
                                                 }}
                                                 selectedMonth={selectedMonth}
                                                 availableMonths={availableMonths}

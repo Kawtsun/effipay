@@ -24,6 +24,7 @@ type Metrics = {
 	overtime_count_weekends?: MetricValue;
 	rate_per_hour?: MetricValue;
 	college_rate?: MetricValue;
+	salary_rate?: MetricValue;
 };
 
 type Props = {
@@ -85,32 +86,81 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 			return rolesTooltip.map(toTitleCase).join(", ");
 		}, [rolesTooltip]);
 
-		const hourlyRate = React.useMemo(() => {
-			const isCollege = typeof isCollegeInstructor === 'boolean' ? isCollegeInstructor : undefined;
-			// Prefer explicit props; fallback to metrics
+		// Resolve base and college rates and whether employee is college-only or multi-role
+		const {
+			baseRatePerHour,
+			collegeRateResolved,
+			isCollegeOnly,
+			usingCollegeRate,
+			hourlyRate,
+		} = React.useMemo(() => {
+			const roles = String(rolesText || '').toLowerCase();
+			const tokens = roles.split(/[\,\n]+/).map(s => s.trim()).filter(Boolean);
+			const hasCollege = roles.includes('college instructor');
+			const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every(t => t.includes('college instructor')) : true);
+
+			const metricSalaryRate = Number(metrics.salary_rate ?? NaN);
 			const rateFromMetrics = Number(metrics.rate_per_hour ?? NaN);
 			const rateFromProp = typeof ratePerHour === 'number' ? ratePerHour : NaN;
-			const rateNonCollegeOrGeneral = Number.isFinite(rateFromProp) ? rateFromProp : rateFromMetrics;
+			// Prefer the stored/computed salary_rate first (base hourly), then prop/general fallback
+			const baseRatePerHour = Number.isFinite(metricSalaryRate)
+				? metricSalaryRate
+				: (Number.isFinite(rateFromProp) ? rateFromProp : rateFromMetrics);
+
 			const rateCollegeLocalProp = typeof collegeRate === 'number' ? collegeRate : NaN;
 			const rateCollegeLocalMetric = Number(metrics.college_rate ?? NaN);
-			const rateCollegeResolved = Number.isFinite(rateCollegeLocalProp) ? rateCollegeLocalProp : rateCollegeLocalMetric;
+			const collegeRateResolved = Number.isFinite(rateCollegeLocalProp) ? rateCollegeLocalProp : rateCollegeLocalMetric;
 
-			// If explicitly college, use college rate when valid; otherwise fall back to general rate_per_hour
-			if (isCollege === true) {
-				if (Number.isFinite(rateCollegeResolved) && rateCollegeResolved > 0) return rateCollegeResolved;
-				return Number.isFinite(rateNonCollegeOrGeneral) ? rateNonCollegeOrGeneral : 0;
-			}
-			// If explicitly non-college, use general/non-college rate
-			if (isCollege === false) {
-				return Number.isFinite(rateNonCollegeOrGeneral) ? rateNonCollegeOrGeneral : 0;
-			}
-			// Unknown role: prefer a positive college rate if available, else general rate
-			if (Number.isFinite(rateCollegeResolved) && rateCollegeResolved > 0) return rateCollegeResolved;
-			return Number.isFinite(rateNonCollegeOrGeneral) ? rateNonCollegeOrGeneral : 0;
-		}, [isCollegeInstructor, ratePerHour, collegeRate, metrics.rate_per_hour, metrics.college_rate]);
+			// Decide which rate to show in the generic "Rate per hour" badge
+			const usingCollegeRate = isCollegeOnly && Number.isFinite(collegeRateResolved) && collegeRateResolved > 0;
+			const hourlyRate = usingCollegeRate
+				? collegeRateResolved
+				: (Number.isFinite(baseRatePerHour) ? baseRatePerHour : 0);
+
+			return { baseRatePerHour: Number.isFinite(baseRatePerHour) ? baseRatePerHour : 0, collegeRateResolved: Number.isFinite(collegeRateResolved) ? collegeRateResolved : 0, isCollegeOnly, usingCollegeRate, hourlyRate } as const;
+		}, [rolesText, ratePerHour, collegeRate, metrics.rate_per_hour, metrics.college_rate, metrics.salary_rate]);
 
     const overtimeWeekdays = Number(metrics.overtime_count_weekdays ?? NaN);
     const overtimeWeekends = Number(metrics.overtime_count_weekends ?? NaN);
+
+		// Helpers to compute pesos per card with correct rate rules
+		const payForTardiness = () => {
+			const hrs = Number(metrics.tardiness ?? NaN);
+			if (!Number.isFinite(hrs) || hrs <= 0) return null;
+			// Multi-role or non-college -> base rate; college-only -> college rate
+			const rate = isCollegeOnly ? collegeRateResolved : baseRatePerHour;
+			if (!Number.isFinite(rate) || rate <= 0) return null;
+			return hrs * rate;
+		};
+		const payForUndertime = () => {
+			const hrs = Number(metrics.undertime ?? NaN);
+			if (!Number.isFinite(hrs) || hrs <= 0) return null;
+			const rate = isCollegeOnly ? collegeRateResolved : baseRatePerHour;
+			if (!Number.isFinite(rate) || rate <= 0) return null;
+			return hrs * rate;
+		};
+		const payForOvertime = () => {
+			if (!Number.isFinite(baseRatePerHour) && !Number.isFinite(collegeRateResolved)) return null;
+			const wd = Number(metrics.overtime_count_weekdays ?? NaN) || 0;
+			const we = Number(metrics.overtime_count_weekends ?? NaN) || 0;
+			// Multi-role or non-college -> base rate; college-only -> college rate
+			const rate = isCollegeOnly ? collegeRateResolved : baseRatePerHour;
+			if (!Number.isFinite(rate) || rate <= 0) return null;
+			return rate * 0.25 * wd + rate * 0.30 * we;
+		};
+		const payForAbsences = () => {
+			const hrs = Number(metrics.absences ?? NaN);
+			if (!Number.isFinite(hrs) || hrs <= 0) return null;
+			// Absences: for multi-role college employees, use college rate; otherwise base rate
+			const roles = String(rolesText || '').toLowerCase();
+			const tokens = roles.split(/[\,\n]+/).map(s => s.trim()).filter(Boolean);
+			const hasCollege = roles.includes('college instructor');
+			const isCollegeOnlyLocal = hasCollege && (tokens.length > 0 ? tokens.every(t => t.includes('college instructor')) : true);
+			const isCollegeMulti = hasCollege && !isCollegeOnlyLocal;
+			const rate = (isCollegeMulti || isCollegeOnlyLocal) ? collegeRateResolved : baseRatePerHour;
+			if (!Number.isFinite(rate) || rate <= 0) return null;
+			return hrs * rate;
+		};
 
 		const cards = [
 		{
@@ -119,9 +169,9 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 			value: formatHours(metrics.tardiness, isEmpty),
 			// When hovered, show peso equivalent if possible
 			money: (() => {
-				const hrs = Number(metrics.tardiness ?? NaN);
-				if (isEmpty || !Number.isFinite(hrs) || !Number.isFinite(hourlyRate) || hourlyRate <= 0) return "-";
-				return <Money amount={hrs * hourlyRate} />;
+				const amt = payForTardiness();
+				if (isEmpty || !Number.isFinite(Number(amt))) return "-";
+				return <Money amount={Number(amt)} />;
 			})(),
 				// Warmer amber tones with higher contrast + balanced dark mode
 				bg: "bg-amber-50/80 dark:bg-amber-950/30",
@@ -134,9 +184,9 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 			label: "Undertime",
 			value: formatHours(metrics.undertime, isEmpty),
 			money: (() => {
-				const hrs = Number(metrics.undertime ?? NaN);
-				if (isEmpty || !Number.isFinite(hrs) || !Number.isFinite(hourlyRate) || hourlyRate <= 0) return "-";
-				return <Money amount={hrs * hourlyRate} />;
+				const amt = payForUndertime();
+				if (isEmpty || !Number.isFinite(Number(amt))) return "-";
+				return <Money amount={Number(amt)} />;
 			})(),
 				// Softer rose palette: readable on both themes
 				bg: "bg-rose-50/80 dark:bg-rose-950/30",
@@ -149,11 +199,9 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 			label: "Overtime",
 			value: formatHours(metrics.overtime, isEmpty),
 			money: (() => {
-				if (isEmpty || !Number.isFinite(hourlyRate) || hourlyRate <= 0) return "-";
-				if (!Number.isFinite(overtimeWeekdays) || !Number.isFinite(overtimeWeekends)) return "-";
-				const weekdayPay = hourlyRate * 0.25 * (overtimeWeekdays || 0);
-				const weekendPay = hourlyRate * 0.30 * (overtimeWeekends || 0);
-				return <Money amount={weekdayPay + weekendPay} />;
+				const amt = payForOvertime();
+				if (isEmpty || !Number.isFinite(Number(amt))) return "-";
+				return <Money amount={Number(amt)} />;
 			})(),
 				// Cooler sky tones for positive-ish emphasis
 				bg: "bg-sky-50/80 dark:bg-sky-950/30",
@@ -166,9 +214,9 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 			label: "Absences",
 			value: formatHours(metrics.absences, isEmpty),
 			money: (() => {
-				const hrs = Number(metrics.absences ?? NaN);
-				if (isEmpty || !Number.isFinite(hrs) || !Number.isFinite(hourlyRate) || hourlyRate <= 0) return "-";
-				return <Money amount={hrs * hourlyRate} />;
+				const amt = payForAbsences();
+				if (isEmpty || !Number.isFinite(Number(amt))) return "-";
+				return <Money amount={Number(amt)} />;
 			})(),
 				// Neutral variant with strong dark support
 				bg: "bg-zinc-50/80 dark:bg-zinc-900/40",
@@ -218,7 +266,7 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 	const shouldSkeleton = Boolean(isLoading || !mounted);
 
 	// Prefer college-paid hours for college-only employees
-	const isCollegeOnly = React.useMemo(() => {
+	const isCollegeOnlyHours = React.useMemo(() => {
 		const r = String(rolesText || '').toLowerCase();
 		if (!r.includes('college instructor')) return false;
 		const tokens = r.split(/[\,\n]+/).map(s => s.trim()).filter(Boolean);
@@ -226,10 +274,10 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 	}, [rolesText]);
 	const displayTotalHours = React.useMemo(() => {
 		const cph = Number(metrics.college_paid_hours ?? NaN);
-		if (isCollegeOnly && Number.isFinite(cph)) return cph;
+		if (isCollegeOnlyHours && Number.isFinite(cph)) return cph;
 		const th = Number(metrics.total_hours ?? NaN);
 		return Number.isFinite(th) ? th : null;
-	}, [isCollegeOnly, metrics.college_paid_hours, metrics.total_hours]);
+	}, [isCollegeOnlyHours, metrics.college_paid_hours, metrics.total_hours]);
 
 	return (
 		<Card className={className}>
@@ -350,11 +398,23 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 								))}
 							</div>
 
-							{/* Total hours summary */}
+							{/* Summary badges below cards */}
 							<motion.div className="mt-4 text-sm text-muted-foreground flex items-center gap-6 flex-wrap" variants={itemVariants} layout>
+								{/* Salary rate (base hourly) */}
+								<div className="flex items-center gap-1">
+									<span className="inline-flex items-center w-[116px] leading-6">Salary rate:</span>
+									<div className="inline-flex items-center">
+										<Badge variant="outline" className="w-full justify-center">
+											<PhilippinePeso />
+											<span className="font-medium tabular-nums text-foreground/90">
+												{!Number.isFinite(Number(metrics.salary_rate)) || Number(metrics.salary_rate) <= 0 ? "-" : formatAmount(Number(metrics.salary_rate))}
+											</span>
+										</Badge>
+									</div>
+								</div>
 								{/* Rate per hour */}
 								<div className="flex items-center gap-1">
-									<span className="inline-flex items-center gap-1 w-[120px] leading-6">Rate per hour:
+									<span className="inline-flex items-center gap-1 w-[160px] leading-6">{usingCollegeRate ? 'College rate:' : 'Rate per hour:'}
 										{rolesTooltip && rolesTooltip.length > 0 && (
 											<Tooltip>
 												<TooltipTrigger asChild>
