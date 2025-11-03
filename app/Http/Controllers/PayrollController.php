@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employees;
 use App\Models\Payroll;
 use App\Models\Salary;
+use App\Services\TimekeepingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
@@ -80,14 +81,10 @@ class PayrollController extends Controller
                 continue;
             }
 
-            // Fetch timekeeping summary (used only as secondary source for some rate fields)
-            $summary = app(TimeKeepingController::class)->monthlySummary(new \Illuminate\Http\Request([
-                'employee_id' => $employee->id,
-                'month' => $payrollMonth
-            ]));
-            $summaryData = $summary->getData(true);
+            // Fetch timekeeping summary via shared service (single source of truth)
+            $tk = app(TimekeepingService::class)->computeMonthlySummary($employee->id, $payrollMonth);
 
-            // Compute monthly metrics using the same logic as Attendance Cards
+            // Compute auxiliary monthly metrics for college-paid hours only (UI parity); do not use for T/U/OT/A
             $metrics = $this->computeMonthlyMetricsPHP($employee, $payrollMonth);
 
             // Determine if college logic should apply and whether it's college-only vs multi-role
@@ -105,14 +102,16 @@ class PayrollController extends Controller
                 // College-only: pay by college schedule hours only, no T/U/OT; absences still reduce pay
                 $college_rate = isset($employee->college_rate) ? floatval($employee->college_rate) : 0;
                 // College-paid hours within college schedules only (no overtime)
-                $total_hours_worked = isset($metrics['college_paid_hours']) ? (float)$metrics['college_paid_hours'] : (isset($metrics['total_hours']) ? (float)$metrics['total_hours'] : 0);
-                $tardiness = $metrics['tardiness'];
-                $undertime = $metrics['undertime'];
-                // Source absences from the same computation used by AttendanceCards (metrics)
-                $absences = max(0, (float)($metrics['absences'] ?? 0));
-                $overtime_hours = $metrics['overtime'];
-                $weekday_ot = $metrics['overtime_count_weekdays'];
-                $weekend_ot = $metrics['overtime_count_weekends'];
+                $total_hours_worked = isset($metrics['college_paid_hours'])
+                    ? (float)$metrics['college_paid_hours']
+                    : (isset($tk['total_hours']) ? (float)$tk['total_hours'] : 0);
+                // Use unified TK metrics for parity
+                $tardiness = (float)($tk['tardiness'] ?? 0);
+                $undertime = (float)($tk['undertime'] ?? 0);
+                $absences = max(0, (float)($tk['absences'] ?? 0));
+                $overtime_hours = (float)($tk['overtime'] ?? 0);
+                $weekday_ot = (float)($tk['overtime_count_weekdays'] ?? 0);
+                $weekend_ot = (float)($tk['overtime_count_weekends'] ?? 0);
                 // College instructors work by hourly schedule only: they should not have
                 // tardiness, undertime, or overtime adjustments applied to gross pay.
                 // Keep absences, which still reduce pay.
@@ -155,7 +154,7 @@ class PayrollController extends Controller
                     'total_hours_worked' => $total_hours_worked,
                     'absences_hours' => $absences,
                     'absences_metrics' => isset($metrics['absences']) ? (float)$metrics['absences'] : null,
-                    'absences_summary' => isset($summaryData['absences']) && is_numeric($summaryData['absences']) ? (float)$summaryData['absences'] : null,
+                    'absences_summary' => isset($tk['absences']) && is_numeric($tk['absences']) ? (float)$tk['absences'] : null,
                     'tardiness_hours' => 0,
                     'undertime_hours' => 0,
                     'overtime_pay' => 0,
@@ -188,22 +187,21 @@ class PayrollController extends Controller
             } elseif ($isCollegeInstructor && $isCollegeMulti) {
                 // Multi-role with College Instructor:
                 // Gross = Base Salary + College GSP + OT - non-college rate * (T+U+A) + honorarium
-                $base_salary = isset($summaryData['base_salary']) ? (float)$summaryData['base_salary'] : (float)($employee->base_salary ?? 0);
+                $base_salary = isset($tk['base_salary']) ? (float)$tk['base_salary'] : (float)($employee->base_salary ?? 0);
                 $college_rate = isset($employee->college_rate) ? (float)$employee->college_rate : 0.0;
                 $college_hours = isset($metrics['college_paid_hours']) ? (float)$metrics['college_paid_hours'] : (float)($metrics['total_hours'] ?? 0);
 
-                // Attendance metrics are already excluding college-role for T/U/A in computeMonthlyMetricsPHP
-                $tardiness = (float)($metrics['tardiness'] ?? 0);
-                $undertime = (float)($metrics['undertime'] ?? 0);
-                $absences = (float)($metrics['absences'] ?? 0);
+                // Use unified TK metrics for parity
+                $tardiness = (float)($tk['tardiness'] ?? 0);
+                $undertime = (float)($tk['undertime'] ?? 0);
+                $absences = (float)($tk['absences'] ?? 0);
 
                 // Resolve non-college base rate per hour
-                $rate_per_hour = isset($summaryData['rate_per_hour']) ? (float)$summaryData['rate_per_hour'] : 0.0;
-                // OT buckets: include observances as double-pay bucket
-                $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
-                $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
-                $observance_ot = (float)($metrics['overtime_count_observances'] ?? 0);
-                $overtime_pay = round($rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot) + (2.00 * $observance_ot)), 2);
+                $rate_per_hour = isset($tk['rate_per_hour']) ? (float)$tk['rate_per_hour'] : 0.0;
+                // OT buckets from TK summary (weekday/weekend only)
+                $weekday_ot = (float)($tk['overtime_count_weekdays'] ?? 0);
+                $weekend_ot = (float)($tk['overtime_count_weekends'] ?? 0);
+                $overtime_pay = round($rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
 
                 $honorarium = !is_null($employee->honorarium) ? (float)$employee->honorarium : 0.0;
                 $college_gsp = ($college_rate > 0 && $college_hours > 0) ? ($college_rate * $college_hours) : 0.0;
@@ -227,10 +225,10 @@ class PayrollController extends Controller
             } else {
                 // Use all calculated values from timekeeping summary (default logic)
                 $workHoursPerDay = $employee->work_hours_per_day ?? 8;
-                $base_salary = isset($summaryData['base_salary']) ? $summaryData['base_salary'] : $employee->base_salary;
-                $rate_per_hour = $summaryData['rate_per_hour'] ?? 0;
-                // Source attendance metrics from the same logic used by Attendance Cards
-                $tardiness = $metrics['tardiness'];
+                $base_salary = isset($tk['base_salary']) ? $tk['base_salary'] : $employee->base_salary;
+                $rate_per_hour = $tk['rate_per_hour'] ?? 0;
+                // Use unified TK metrics
+                $tardiness = (float)($tk['tardiness'] ?? 0);
                 if (!empty($employee->work_start_time) && !empty($employee->work_end_time)) {
                     $start = strtotime($employee->work_start_time);
                     $end = strtotime($employee->work_end_time);
@@ -238,14 +236,13 @@ class PayrollController extends Controller
                     if ($workMinutes <= 0) $workMinutes += 24 * 60 * 60;
                     $workHoursPerDay = max(1, round(($workMinutes / 3600) - 1, 2)); // minus 1 hour for break
                 }
-                $undertime = $metrics['undertime'];
-                $absences = $metrics['absences'];
-                $overtime_hours = $metrics['overtime'];
-                // Recompute overtime pay from buckets to match UI cards: 0.25x on weekdays, 0.30x on weekends
-                $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
-                $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
-                $observance_ot = (float)($metrics['overtime_count_observances'] ?? 0);
-                $overtime_pay = round((float)$rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot) + (2.00 * $observance_ot)), 2);
+                $undertime = (float)($tk['undertime'] ?? 0);
+                $absences = (float)($tk['absences'] ?? 0);
+                $overtime_hours = (float)($tk['overtime'] ?? 0);
+                // Overtime pay from TK buckets: 0.25x weekdays, 0.30x weekends
+                $weekday_ot = (float)($tk['overtime_count_weekdays'] ?? 0);
+                $weekend_ot = (float)($tk['overtime_count_weekends'] ?? 0);
+                $overtime_pay = round((float)$rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
 
                 $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
                 // Gross pay: (base_salary + overtime_pay) - (rate_per_hour * tardiness) - (rate_per_hour * undertime) - (rate_per_hour * absences) + honorarium
@@ -460,14 +457,20 @@ class PayrollController extends Controller
                 // Create a no-times schedule using hours only
                 $schedByCode[$code] = ['start' => null, 'end' => null, 'durationMin' => $mins, 'noTimes' => true, 'extraCollegeDurMin' => 0, 'isCollege' => true];
             } else {
-                // Accumulate extra college duration for multi-role expectations
+                // Computation safeguard: collapse duplicate college hours per weekday by MAX, not SUM
                 $prev = $schedByCode[$code];
-                $prevExtra = isset($prev['extraCollegeDurMin']) ? (int)$prev['extraCollegeDurMin'] : 0;
-                $prev['extraCollegeDurMin'] = $prevExtra + $mins;
+                if (!empty($prev['noTimes'])) {
+                    $prev['durationMin'] = max((int)($prev['durationMin'] ?? 0), $mins);
+                } else {
+                    $prevExtra = isset($prev['extraCollegeDurMin']) ? (int)$prev['extraCollegeDurMin'] : 0;
+                    $prev['extraCollegeDurMin'] = max($prevExtra, $mins);
+                }
                 $schedByCode[$code] = $prev;
             }
-            // Track extra college minutes for college-paid-hours computation
-            $collegeExtraMinByCode[$code] = ($collegeExtraMinByCode[$code] ?? 0) + $mins;
+            // Track extra college minutes for college-paid-hours computation (also MAX per weekday)
+            $collegeExtraMinByCode[$code] = isset($collegeExtraMinByCode[$code])
+                ? max((int)$collegeExtraMinByCode[$code], $mins)
+                : $mins;
         }
 
         // Records by date

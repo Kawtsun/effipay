@@ -15,6 +15,7 @@ import { LoansForm } from '@/components/form/LoansForm';
 import { OtherDeductionsForm } from '@/components/form/OtherDeductionsForm';
 import { type WorkDayTime } from '@/components/work-days-selector';
 import { type BreadcrumbItem } from '@/types'; // 👈 ADDED IMPORT
+import { validateNoCrossRoleOverlap } from '@/utils/validateSchedules';
 
 // --- DATA TYPES (unchanged) ---
 type EmployeeFormData = {
@@ -87,6 +88,13 @@ export default function Index(props: Props) {
     // Your handleSubmit function (unchanged)
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate cross-role overlaps only on save
+        const overlapCheck = validateNoCrossRoleOverlap(form.data.work_days as any);
+        if (!overlapCheck.ok) {
+            toast.error(overlapCheck.msg);
+            return;
+        }
         form.post(route('employees.store'), {
             preserveScroll: true,
             onSuccess: () => {

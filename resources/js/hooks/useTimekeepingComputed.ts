@@ -119,10 +119,11 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
       return { isHalf, isWhole, startMin: hasStart ? startMinVal : undefined } as const;
     };
 
-  const schedByCode: Record<string, { start: number; end: number; durationMin: number; noTimes?: boolean; isCollege?: boolean; extraCollegeDurMin?: number }> = {};
-  // Track explicit College Instructor time windows (from work_days role) and extra college minutes (from college_schedules without times)
-  const collegeTimesByCode: Record<string, { start: number; end: number; durationMin: number }> = {};
-  const collegeExtraMinByCode: Record<string, number> = {};
+  const schedByCode: Record<string, {
+    start: number; end: number; durationMin: number;
+    noTimes?: boolean; isCollege?: boolean; extraCollegeDurMin?: number;
+    timeWindows?: Array<{ start: number; end: number; isCollege: boolean }>
+  }> = {};
     for (const wd of workDays) {
       const start = hmToMin(wd.work_start_time || undefined);
       const end = hmToMin(wd.work_end_time || undefined);
@@ -135,17 +136,16 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
       const codeKey = normalizeDayKey(wd.day);
       if (!codeKey) continue;
       if (!schedByCode[codeKey]) {
-        schedByCode[codeKey] = { start, end, durationMin, isCollege: fromCollegeRole };
+        schedByCode[codeKey] = { start, end, durationMin, isCollege: fromCollegeRole, timeWindows: [{ start, end, isCollege: fromCollegeRole }] };
       } else {
         const prev = schedByCode[codeKey];
         const mergedStart = Math.min(prev.start, start);
         const mergedEnd = Math.max(prev.end, end);
         const mergedRaw = diffMin(mergedStart, mergedEnd);
         const mergedDuration = Math.max(0, mergedRaw - 60);
-        schedByCode[codeKey] = { start: mergedStart, end: mergedEnd, durationMin: mergedDuration, isCollege: Boolean(prev.isCollege || fromCollegeRole), extraCollegeDurMin: prev.extraCollegeDurMin };
-      }
-      if (fromCollegeRole) {
-        collegeTimesByCode[codeKey] = { start, end, durationMin };
+        const windows = Array.isArray(prev.timeWindows) ? prev.timeWindows.slice() : [];
+        windows.push({ start, end, isCollege: fromCollegeRole });
+        schedByCode[codeKey] = { start: mergedStart, end: mergedEnd, durationMin: mergedDuration, isCollege: Boolean(prev.isCollege || fromCollegeRole), extraCollegeDurMin: prev.extraCollegeDurMin, timeWindows: windows };
       }
     }
 
@@ -157,11 +157,16 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           if (!schedByCode[code]) {
             schedByCode[code] = { start: NaN, end: NaN, durationMin: mins, noTimes: true, isCollege: true };
           } else {
-            const existing = schedByCode[code];
-            existing.extraCollegeDurMin = (existing.extraCollegeDurMin ?? 0) + mins;
+            const existing = schedByCode[code] as any;
+            // Computation safeguard: collapse duplicate college hours per weekday by MAX, not SUM
+            if (existing.noTimes) {
+              existing.durationMin = Math.max(Number(existing.durationMin ?? 0), mins);
+            } else {
+              const extra = Number(existing.extraCollegeDurMin ?? 0);
+              existing.extraCollegeDurMin = Math.max(extra, mins);
+            }
             // do not flip isCollege here; keep origin of time-based schedule
           }
-          collegeExtraMinByCode[code] = (collegeExtraMinByCode[code] ?? 0) + mins;
         };
         if (Array.isArray(collegeSchedulesRaw)) {
           collegeSchedulesRaw.forEach(item => pushHours(item?.day as string, Number(item?.hours_per_day ?? 0)));
@@ -206,9 +211,11 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           const expectedDuration = Math.max(0, sched.durationMin);
           const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
           if (obsInfo.isWhole || obsInfo.isHalf) {
+            // For hours-only schedules on observances, treat all work as overtime and bucket into weekday/weekend (to match provider)
             totalWorkedMin += workedRaw;
             if (hasBoth) {
-              otMin += workedRaw; otObservanceMin += workedRaw; // Observance: double pay bucket
+              otMin += workedRaw;
+              if (code === 'sat' || code === 'sun') otWeekendMin += workedRaw; else otWeekdayMin += workedRaw;
             }
             continue;
           }
@@ -238,52 +245,66 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
         totalWorkedMin += workedMinusBreak;
         if (!hasBoth) { const expected = (isCollegeMulti && sched.extraCollegeDurMin && sched.extraCollegeDurMin > 0) ? Math.max(sched.durationMin, sched.extraCollegeDurMin) : sched.durationMin; absentMin += expected; continue; }
 
-        // Compute College/GSP paid minutes within schedule windows and/or extra minutes
+        // Compute College/GSP paid minutes within schedule windows and/or extra minutes (mirror provider)
         if (!obsInfo.isWhole && !obsInfo.isHalf) {
-          let paidToday = 0;
-          const cSpec = collegeTimesByCode[code];
-          if (cSpec) {
-            // overlap between [timeIn,timeOut] and [cSpec.start,cSpec.end], considering potential overnight
-            const calcOverlap = (aStart: number, aEnd: number, bStart: number, bEnd: number) => {
-              let in1 = aStart, out1 = aEnd, s1 = bStart, e1 = bEnd;
-              if (out1 <= in1) out1 += 24 * 60;
-              if (e1 <= s1) e1 += 24 * 60;
-              const left = Math.max(in1, s1);
-              const right = Math.min(out1, e1);
-              return Math.max(0, right - left);
+          let dayCollegePaid = 0;
+          const windows = Array.isArray(sched.timeWindows) ? sched.timeWindows.filter(w => w && w.isCollege) : [];
+          if (windows.length > 0 && hasBoth) {
+            const overlap = (aStart: number, aEnd: number, bStart: number, bEnd: number) => {
+              const s = Math.max(aStart, bStart);
+              const e = Math.min(aEnd, bEnd);
+              return Math.max(0, e - s);
             };
-            let overlap = hasBoth ? calcOverlap(timeIn, timeOut, cSpec.start, cSpec.end) : 0;
-            // Apply lunch deduction if overlap crosses 1 PM
-            const fixedBreakEnd = 13 * 60; // 13:00
-            const normalize = (val: number, ref: number) => { let v = val; if (v <= ref) v += 24 * 60; return v; };
-            const outNorm = normalize(timeOut, timeIn);
-            const endNorm = normalize(cSpec.end, cSpec.start);
-            const overlapEndCandidate = Math.min(outNorm, endNorm);
-            if (overlap > 0 && overlapEndCandidate > fixedBreakEnd) {
-              overlap = Math.max(0, overlap - 60);
+            let overlappedMin = 0;
+            let overlappedAfterBreakMin = 0;
+            const breakEnd = 13 * 60; // 13:00
+            for (const w of windows) {
+              const o = overlap(timeIn, timeOut, w.start, w.end);
+              overlappedMin += o;
+              if (timeOut > breakEnd && w.end > breakEnd) {
+                const oAfter = overlap(timeIn, timeOut, Math.max(w.start, breakEnd), w.end);
+                overlappedAfterBreakMin += oAfter;
+              }
             }
-            paidToday += Math.min(overlap, cSpec.durationMin);
+            if (overlappedMin > 0 && timeOut > breakEnd && overlappedAfterBreakMin > 0) {
+              const lunchDeduct = Math.min(60, overlappedAfterBreakMin, overlappedMin);
+              overlappedMin = Math.max(0, overlappedMin - lunchDeduct);
+            }
+            overlappedMin = Math.min(overlappedMin, workedMinusBreak);
+            dayCollegePaid += overlappedMin;
           }
-          // Extra college minutes (no times): cap by remaining workedMinusBreak
-          const extra = collegeExtraMinByCode[code] ?? 0;
-          if (extra > 0) {
-            const remain = Math.max(0, workedMinusBreak - paidToday);
-            paidToday += Math.min(remain, extra);
+          // Also account for program-only college hours on the same day
+          if ((sched.extraCollegeDurMin ?? 0) > 0 && hasBoth) {
+            const remaining = Math.max(0, workedMinusBreak - dayCollegePaid);
+            dayCollegePaid += Math.min(remaining, sched.extraCollegeDurMin!);
           }
-          collegePaidMin += paidToday;
+          collegePaidMin += dayCollegePaid;
         }
 
         if (isCollegeOnly || (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > sched.durationMin))) {
           const expected = (isCollegeMulti && (sched.extraCollegeDurMin ?? 0) > 0) ? Math.max(sched.durationMin, sched.extraCollegeDurMin || 0) : sched.durationMin;
           const deficit = Math.max(0, expected - workedMinusBreak);
           absentMin += deficit;
-          if (!isCollegeOnly) { const over = Math.max(0, workedMinusBreak - expected); otMin += over; otWeekdayMin += over; }
+          if (!isCollegeOnly) {
+            // Match provider: overtime minutes past the scheduled end, bucket by weekday/weekend
+            const over = Math.max(0, timeOut - sched.end);
+            otMin += over;
+            if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
+          }
           continue;
         }
 
-        const tard = Math.max(0, timeIn - sched.start);
+        // Match provider tardiness with rainy-day grace and overtime past scheduled end
+        const tard = (() => {
+          const type = (observanceMap[dateStr]?.type ?? '').toString().toLowerCase();
+          if (type.includes('rainy')) {
+            const graceEnd = sched.start + 60;
+            return timeIn <= graceEnd ? 0 : Math.max(0, timeIn - sched.start);
+          }
+          return Math.max(0, timeIn - sched.start);
+        })();
         const under = Math.max(0, sched.end - timeOut);
-        const over = Math.max(0, workedMinusBreak - sched.durationMin);
+        const over = Math.max(0, timeOut - sched.end);
         tardMin += tard; underMin += under; otMin += over; if (code==='sat'||code==='sun') otWeekendMin += over; else otWeekdayMin += over;
       } else {
         if (hasBoth) { const workedRaw = diffMin(timeIn, timeOut); const workedMinusBreak = Math.max(0, workedRaw - 60); totalWorkedMin += workedMinusBreak; if (!isCollegeOnly) { otMin += workedMinusBreak; if (code==='sat'||code==='sun') otWeekendMin += workedMinusBreak; else otWeekdayMin += workedMinusBreak; } }

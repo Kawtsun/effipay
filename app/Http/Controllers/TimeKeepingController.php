@@ -329,6 +329,33 @@ class TimeKeepingController extends Controller
             if ($emp->work_start_time) {
                 $late_threshold = date('H:i:s', strtotime($emp->work_start_time) + 15 * 60);
             }
+            // Build per-weekday non-college scheduled end times for multi-role handling
+            // Map: weekday number (1=Mon..7=Sun) => work_end_time string
+            $nonCollegeEndByDay = [];
+            $timeToMinutes = function($t) {
+                if (!$t) return null; $p = explode(':', (string)$t); if (count($p) < 2) return null; return intval($p[0]) * 60 + intval($p[1]);
+            };
+            if ($emp->workDays && count($emp->workDays)) {
+                foreach ($emp->workDays as $wd) {
+                    $roleStr = strtolower((string)($wd->role ?? ''));
+                    if (strpos($roleStr, 'college') !== false) continue; // only consider non-college roles here
+                    $d = (string)$wd->day;
+                    $dayNum = is_numeric($d) ? intval($d) : null;
+                    if ($dayNum === null) {
+                        $dn = strtolower(trim($d));
+                        $map = ['mon'=>1,'tue'=>2,'wed'=>3,'thu'=>4,'fri'=>5,'sat'=>6,'sun'=>7,'monday'=>1,'tuesday'=>2,'wednesday'=>3,'thursday'=>4,'friday'=>5,'saturday'=>6,'sunday'=>7];
+                        $dayNum = $map[$dn] ?? null;
+                    }
+                    if ($dayNum) {
+                        $existingMin = isset($nonCollegeEndByDay[$dayNum]) ? $timeToMinutes($nonCollegeEndByDay[$dayNum]) : null;
+                        $thisMin = $timeToMinutes($wd->work_end_time);
+                        // pick the latest end time if multiple non-college roles exist on same day
+                        if ($thisMin !== null && ($existingMin === null || $thisMin > $existingMin)) {
+                            $nonCollegeEndByDay[$dayNum] = $wd->work_end_time;
+                        }
+                    }
+                }
+            }
             $overtime_pay_weekdays = 0;
             $overtime_pay_weekends = 0;
             $overtime_count_weekdays = 0;
@@ -451,22 +478,48 @@ class TimeKeepingController extends Controller
                     }
                 }
                 // Overtime: count decimal hours overtime (not stacked)
-                if ($tk->clock_out && $emp->work_end_time) {
-                    $workEnd = strtotime($emp->work_end_time);
+                if ($tk->clock_out) {
                     $clockOut = strtotime($tk->clock_out);
-                    if ($clockOut >= $workEnd + 3600) { // 1 hour after work_end_time
-                        $overtime_minutes = ($clockOut - $workEnd) / 60 - 59; // subtract 59 minutes (inclusive)
-                        if ($overtime_minutes >= 1) {
-                            $overtime_hours = round($overtime_minutes / 60, 2); // decimal hours
-                            $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
-                            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
-                                $pay = round($rate_per_hour * 0.25, 2);
-                                $overtime_count_weekdays += $overtime_hours;
-                                $overtime_pay_weekdays += $pay * $overtime_hours;
-                            } else {
-                                $pay = round($rate_per_hour * 0.30, 2);
-                                $overtime_count_weekends += $overtime_hours;
-                                $overtime_pay_weekends += $pay * $overtime_hours;
+
+                    // Determine scheduled work end to use for overtime calculation.
+                    // For multi-role employees that include college, prefer the non-college role's schedule for that weekday.
+                    $rolesStrTmp = strtolower((string)($emp->roles ?? ''));
+                    $hasCollegeTmp = strpos($rolesStrTmp, 'college instructor') !== false;
+                    $tokensTmp = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStrTmp)));
+                    $isCollegeMultiTmp = $hasCollegeTmp && (count($tokensTmp) > 0 ? (count(array_filter($tokensTmp, function($t){ return strpos($t, 'college instructor') !== false; })) < count($tokensTmp)) : false);
+
+                    $dayOfWeekNum = date('N', strtotime($tk->date)); // 1-7
+                    $scheduledEnd = null;
+                    if ($isCollegeMultiTmp && isset($nonCollegeEndByDay[$dayOfWeekNum])) {
+                        $scheduledEnd = $nonCollegeEndByDay[$dayOfWeekNum];
+                    } elseif (!empty($emp->work_end_time)) {
+                        $scheduledEnd = $emp->work_end_time;
+                    }
+
+                    // If multi-role and we don't have a non-college schedule for that day, do not count OT
+                    if ($isCollegeMultiTmp && $scheduledEnd === null) {
+                        continue;
+                    }
+
+                    if ($scheduledEnd) {
+                        $workEnd = strtotime($scheduledEnd);
+                        $rawOvertimeSeconds = $clockOut - $workEnd;
+
+                        // Start counting overtime only if adjusted raw overtime is >= 3600 seconds (1 hour)
+                        if ($rawOvertimeSeconds >= 3600) {
+                            $overtime_minutes = $rawOvertimeSeconds / 60;
+                            if ($overtime_minutes > 0) {
+                                $overtime_hours = round($overtime_minutes / 60, 2); // decimal hours
+                                $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
+                                if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                                    $pay = round($rate_per_hour * 0.25, 2);
+                                    $overtime_count_weekdays += $overtime_hours;
+                                    $overtime_pay_weekdays += $pay * $overtime_hours;
+                                } else {
+                                    $pay = round($rate_per_hour * 0.30, 2);
+                                    $overtime_count_weekends += $overtime_hours;
+                                    $overtime_pay_weekends += $pay * $overtime_hours;
+                                }
                             }
                         }
                     }
@@ -474,6 +527,25 @@ class TimeKeepingController extends Controller
             }
             $overtime_count = $overtime_count_weekdays + $overtime_count_weekends;
             $overtime_pay_total = $overtime_pay_weekdays + $overtime_pay_weekends;
+
+            // If employee is a College Instructor ONLY, convert late/undertime to absences
+            // and do not count overtime originating from timekeeping records.
+            $rolesStrLocal = strtolower((string)($emp->roles ?? ''));
+            $tokensLocal = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStrLocal)));
+            $hasCollegeLocal = strpos($rolesStrLocal, 'college instructor') !== false;
+            $isCollegeOnlyLocal = $hasCollegeLocal && (count($tokensLocal) > 0 ? (count(array_filter($tokensLocal, function($t){ return strpos($t, 'college instructor') !== false; })) === count($tokensLocal)) : true);
+            if ($isCollegeOnlyLocal) {
+                // Move tardiness and undertime to absences
+                $absences += round($late_count + $early_count, 2);
+                $late_count = 0;
+                $early_count = 0;
+                // Zero out overtime and pay for college-only instructors
+                $overtime_count = 0;
+                $overtime_count_weekdays = 0;
+                $overtime_count_weekends = 0;
+                $overtime_pay_total = 0;
+                $overtime = false;
+            }
 
             return [
                 'base_salary' => $emp->base_salary,
@@ -610,385 +682,28 @@ class TimeKeepingController extends Controller
             return response()->json(['success' => false, 'error' => 'Employee not found']);
         }
 
-        // Fetch payroll data for this employee and month
+        // Delegate core computation to the shared service
+        $service = app(\App\Services\TimekeepingService::class);
+        $data = $service->computeMonthlySummary($employeeId, $month);
+
+        // Augment with payroll snapshot to preserve API contract
         $payroll = \App\Models\Payroll::where('employee_id', $employeeId)
             ->where('month', $month)
             ->orderBy('payroll_date', 'desc')
             ->first();
+        $data['payroll_gross_pay'] = $payroll ? $payroll->gross_pay : null;
+        $data['payroll_total_deductions'] = $payroll ? $payroll->total_deductions : null;
+        $data['payroll_net_pay'] = $payroll ? $payroll->net_pay : null;
 
-        // Get all timekeeping records for this employee in the selected month
-        $records = \App\Models\TimeKeeping::where('employee_id', $employeeId)
-            ->where('date', 'like', "$month%")
-            ->get();
-
-        // --- Compute summary values ---
-
-        $late_count = 0;
-        $early_count = 0;
-        $overtime_count = 0;
-        $overtime_count_weekdays = 0;
-        $overtime_count_weekends = 0;
-        $absences = 0;
-        $overtime_pay_total = 0;
-
-        // Use payroll values if available, otherwise fallback to employee
-        $base_salary = $payroll ? $payroll->base_salary : $employee->base_salary;
-        // Use the employee's specific schedule, fallback to 8
-        $work_hours_per_day = $employee->work_hours_per_day ?? 8;
-
-        $rate_per_day = ($base_salary * 12) / 288;
-        $rate_per_hour = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
-        $work_start_time = $employee->work_start_time;
-        $work_end_time = $employee->work_end_time;
-
-        $grace_period_default_minutes = 15;
-
-        // Fetch observances for this month early so we can apply per-date rules (e.g., rainy-day -> 60min grace)
-        $observancesRows = DB::table('observances')
-            ->where('date', 'like', "$month%")
-            ->get(['date', 'type', 'is_automated'])
-            ->toArray();
-        $observanceDates = array_map(function ($o) { return $o->date; }, $observancesRows);
-        $observanceSet = array_flip($observanceDates);
-        $observanceTypeMap = [];
-        $observanceAutomatedMap = [];
-        foreach ($observancesRows as $orow) {
-            $observanceTypeMap[$orow->date] = $orow->type ?? null;
-            $observanceAutomatedMap[$orow->date] = isset($orow->is_automated) ? (bool)$orow->is_automated : false;
+        // Lightweight debug info to keep shape stable (was previously verbose)
+        if (!isset($data['_debug'])) {
+            $data['_debug'] = [
+                'has_timekeeping_records' => !empty($data['success']) ? (bool)$data['success'] : false,
+                'calculated_absences' => $data['absences'] ?? null,
+            ];
         }
 
-        foreach ($records as $tk) {
-            // Tardiness (decimal hours)
-            if ($tk->clock_in && $work_start_time) {
-                $date = $tk->date;
-                // Skip tardiness entirely on whole-day suspension
-                if (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day') {
-                    // no tardiness on whole-day observance
-                } else {
-                    // default grace, override for rainy-day observance
-                    $grace = $grace_period_default_minutes;
-                    if (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'rainy-day') {
-                        $grace = 60; // 1 hour grace for rainy day
-                    }
-                    $late_threshold = date('H:i:s', strtotime($work_start_time) + $grace * 60);
-                    if (strtotime($tk->clock_in) > strtotime($late_threshold)) {
-                        // Count all minutes late from scheduled start time, not from grace period
-                        $late_minutes = (strtotime($tk->clock_in) - strtotime($work_start_time)) / 60;
-                        if ($late_minutes > 0) {
-                            $late_count += ($late_minutes / 60);
-                        }
-                    }
-                }
-            }
-            // Undertime (decimal hours)
-            if ($tk->clock_out && $employee->work_end_time && strtotime($tk->clock_out) < strtotime($employee->work_end_time)) {
-                $early_minutes = (strtotime($employee->work_end_time) - strtotime($tk->clock_out)) / 60;
-                if ($early_minutes > 0) {
-                    $early_count += ($early_minutes / 60);
-                }
-            }
-            // Overtime (decimal hours, start counting after exactly 1 hour past work end time)
-            if ($tk->clock_out && $employee->work_end_time) {
-                $workEnd = strtotime($employee->work_end_time);
-                $clockOut = strtotime($tk->clock_out);
-
-                // Calculate the total raw difference in seconds between actual clock out and scheduled work end
-                $rawOvertimeSeconds = $clockOut - $workEnd;
-
-                // Check if the total raw overtime time is GREATER THAN OR EQUAL TO 1-hour (3600 seconds).
-                // This is the CRITICAL change: use >= instead of >
-                if ($rawOvertimeSeconds >= 3600) {
-
-                    // NEW LOGIC: If 1 hour or more is reached, count the ENTIRE RAW DIFFERENCE
-                    $overtime_minutes = $rawOvertimeSeconds / 60;
-
-                    if ($overtime_minutes > 0) {
-                        $overtime_hours = ($overtime_minutes / 60);
-                        $dayOfWeek = date('N', strtotime($tk->date));
-
-                        // Overtime Pay Calculation
-                        $pay = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
-                            ? ($rate_per_hour * 0.25)
-                            : ($rate_per_hour * 0.30);
-
-                        $overtime_count += $overtime_hours;
-                        $overtime_pay_total += $pay * $overtime_hours;
-
-                        // Overtime Weekend/Weekday count
-                        if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
-                            $overtime_count_weekdays += $overtime_hours;
-                        } else {
-                            $overtime_count_weekends += $overtime_hours;
-                        }
-                    }
-                }
-                // If $rawOvertimeSeconds is less than 3600 (59 minutes or less), no overtime is counted.
-            }
-        }
-
-        // --- NEW LEAVE DATE CALCULATION (Fix for Missing Status Column) ---
-        $monthStart = $month . '-01';
-        $monthEnd = date('Y-m-t', strtotime($monthStart));
-
-        // 1. Fetch ALL leave records that intersect with the current month.
-        // We are skipping the 'status' filter as the column does not yet exist.
-        // All found leaves are currently treated as excused/approved for absence calculation.
-    $approvedLeaves = \App\Models\Leave::where('employee_id', $employeeId)
-            ->where(function ($query) use ($monthStart, $monthEnd) {
-                // Ensure the leave period overlaps the month
-                $query->where('leave_start_day', '<=', $monthEnd)
-                    ->where('leave_end_day', '>=', $monthStart);
-            })
-            // ->where('status', 'Approved') // Ensure we only count approved leaves
-            ->get(['leave_start_day', 'leave_end_day', 'status']);
-
-    $leaveDatesMap = []; // NEW: This will hold date => type mapping
-
-        foreach ($approvedLeaves as $leave) {
-            $startDate = max($leave->leave_start_day, $monthStart);
-            $endDate = min($leave->leave_end_day, $monthEnd);
-
-            $period = new \DatePeriod(
-                new \DateTime($startDate),
-                new \DateInterval('P1D'),
-                (new \DateTime($endDate))->modify('+1 day')
-            );
-
-            // CHANGE HERE: Access $leave->status, not $leave->leave_type
-            $type = $leave->status ?? 'DEFAULT'; // Use the status, fallback to DEFAULT if null (shouldn't happen)
-
-            foreach ($period as $dateObj) {
-                // Use the status as the value in the map
-                $leaveDatesMap[$dateObj->format('Y-m-d')] = $type;
-            }
-        }
-    // Build a quick lookup set for leave dates
-    $leaveDatesSet = [];
-    foreach ($leaveDatesMap as $d => $_type) { $leaveDatesSet[$d] = true; }
-    // --- END MODIFIED LEAVE DATE CALCULATION ---
-
-        // Note: observanceSet and observanceTypeMap were populated earlier for this month
-
-        // FIX: Define daysInMonth for the loop to work
-        $daysInMonth = (int)date('t', strtotime($monthStart));
-
-        // Build merged schedules from workDays and college program schedules (parity with AttendanceCards)
-        $normalizeDayKey = function ($raw) {
-            $s = strtolower(trim((string)$raw));
-            if ($s === 'monday' || $s === 'mon' || $s === '1') return 'mon';
-            if ($s === 'tuesday' || $s === 'tue' || $s === '2') return 'tue';
-            if ($s === 'wednesday' || $s === 'wed' || $s === '3') return 'wed';
-            if ($s === 'thursday' || $s === 'thu' || $s === '4') return 'thu';
-            if ($s === 'friday' || $s === 'fri' || $s === '5') return 'fri';
-            if ($s === 'saturday' || $s === 'sat' || $s === '6') return 'sat';
-            if ($s === 'sunday' || $s === 'sun' || $s === '0' || $s === '7') return 'sun';
-            return $s;
-        };
-        $hmToMin = function ($time) {
-            if (!$time) return null; $p = explode(':', (string)$time); if (count($p) < 2) return null; $h = intval($p[0]); $m = intval($p[1]); return $h*60 + $m;
-        };
-        $diffMin = function (int $startMin, int $endMin) {
-            $d = $endMin - $startMin; if ($d <= 0) $d += 24 * 60; return $d;
-        };
-
-        $schedByCode = [];
-        $workDaysModels = $employee->workDays ? $employee->workDays : collect();
-        foreach ($workDaysModels as $wd) {
-            $start = $hmToMin($wd->work_start_time); $end = $hmToMin($wd->work_end_time);
-            if ($start === null || $end === null) continue;
-            $raw = $diffMin($start, $end);
-            $durationMin = max(0, $raw - 60);
-            $code = $normalizeDayKey($wd->day);
-            if (!isset($schedByCode[$code])) {
-                $schedByCode[$code] = ['start' => $start, 'end' => $end, 'durationMin' => $durationMin, 'noTimes' => false, 'extraCollegeDurMin' => 0];
-            } else {
-                $prev = $schedByCode[$code];
-                $mergedStart = min($prev['start'], $start);
-                $mergedEnd = max($prev['end'], $end);
-                $mergedRaw = $diffMin($mergedStart, $mergedEnd);
-                $mergedDuration = max(0, $mergedRaw - 60);
-                $schedByCode[$code] = ['start' => $mergedStart, 'end' => $mergedEnd, 'durationMin' => $mergedDuration, 'noTimes' => false, 'extraCollegeDurMin' => $prev['extraCollegeDurMin'] ?? 0];
-            }
-        }
-        $collegeScheds = $employee->collegeProgramSchedules ? $employee->collegeProgramSchedules : collect();
-        foreach ($collegeScheds as $cs) {
-            $code = $normalizeDayKey($cs->day);
-            $mins = (int) round(max(0, (float)$cs->hours_per_day) * 60);
-            if (!isset($schedByCode[$code])) {
-                $schedByCode[$code] = ['start' => null, 'end' => null, 'durationMin' => $mins, 'noTimes' => true, 'extraCollegeDurMin' => 0];
-            } else {
-                $prev = $schedByCode[$code];
-                $prev['extraCollegeDurMin'] = ($prev['extraCollegeDurMin'] ?? 0) + $mins;
-                $schedByCode[$code] = $prev;
-            }
-        }
-
-        // Role flags for college handling
-        $rolesStr = strtolower((string)($employee->roles ?? ''));
-        $tokens = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStr)));
-        $hasCollege = strpos($rolesStr, 'college instructor') !== false;
-        $isCollegeOnly = $hasCollege && (count($tokens) > 0 ? (count(array_filter($tokens, function($t){ return strpos($t, 'college instructor') !== false; })) === count($tokens)) : true);
-        $isCollegeMulti = $hasCollege && !$isCollegeOnly;
-
-        $phpDayToStr = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-        $absent_hours = 0;
-
-        for ($i = 1; $i <= $daysInMonth; $i++) {
-            $date = date('Y-m-d', strtotime($month . '-' . str_pad($i, 2, '0', STR_PAD_LEFT)));
-            $dayOfWeekNum = date('w', strtotime($date));
-            $dayOfWeekStr = $phpDayToStr[$dayOfWeekNum];
-            $sched = $schedByCode[$dayOfWeekStr] ?? null;
-            if (!$sched) continue; // not a scheduled work day of any type
-
-            // Skip whole-day or automated observances
-            $isObservance = isset($observanceSet[$date]);
-            $isWholeDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day');
-            $isAutomatedHoliday = $isObservance && (!empty($observanceAutomatedMap[$date]));
-            if ($isWholeDay || $isAutomatedHoliday) continue;
-
-            // Skip leave dates
-            if (isset($leaveDatesSet[$date])) continue;
-
-            $tk = $records->where('date', $date);
-            $hasClock = false;
-            foreach ($tk as $rec) {
-                $ci = trim((string)($rec->clock_in ?? ''));
-                $co = trim((string)($rec->clock_out ?? ''));
-                if ($ci !== '' && $co !== '') { $hasClock = true; break; }
-            }
-
-            // Compute expected hours for this day
-            $expectedMin = (int)($sched['durationMin'] ?? 0);
-            if ($isCollegeMulti && isset($sched['extraCollegeDurMin']) && $sched['extraCollegeDurMin'] > 0) {
-                $expectedMin = max($expectedMin, (int)$sched['extraCollegeDurMin']);
-            }
-
-            if (!$hasClock) {
-                $absent_hours += round($expectedMin / 60, 2);
-                continue;
-            }
-
-            // If worked, compute deficit for college roles and treat as absence hours
-            if (!empty($sched['noTimes'])) {
-                // No explicit start/end: use total worked minus 1h break if any
-                $first = $tk->first(); $last = $tk->last();
-                $in = strtotime((string)($first->clock_in ?? $first->time_in ?? ''));
-                $out = strtotime((string)($last->clock_out ?? $last->time_out ?? ''));
-                if ($in && $out) {
-                    $worked = $out - $in; if ($worked < 0) $worked += 24*60*60;
-                    $workedMinusBreak = max(0, ($worked - 3600) / 60); // minutes
-                    if ($hasCollege) {
-                        $deficitMin = max(0, $expectedMin - (int)round($workedMinusBreak));
-                        $absent_hours += round($deficitMin / 60, 2);
-                    }
-                }
-                continue;
-            }
-
-            // Time-based schedule: compute workedMinusBreak and deficit when college
-            $first = $tk->first(); $last = $tk->last();
-            $in = strtotime((string)($first->clock_in ?? $first->time_in ?? ''));
-            $out = strtotime((string)($last->clock_out ?? $last->time_out ?? ''));
-            if ($in && $out) {
-                $worked = $out - $in; if ($worked < 0) $worked += 24*60*60;
-                $workedMinusBreak = max(0, ($worked - 3600)); // seconds
-                $workedMin = (int)round($workedMinusBreak / 60);
-                if ($hasCollege) {
-                    $deficitMin = max(0, $expectedMin - $workedMin);
-                    $absent_hours += round($deficitMin / 60, 2);
-                }
-            }
-        }
-
-        $absences = $absent_hours;
-
-        $hasData = $records->count() > 0;
-        // Calculate total_hours for all roles: sum of actual hours worked from time in/out (only on scheduled work days, minus 1 hour break per day if worked at least 4 hours)
-        $actualHoursWorked = 0;
-        foreach ($records as $tk) {
-            $date = $tk->date;
-            $dayOfWeekNum = date('w', strtotime($date));
-            $dayOfWeekStr = $phpDayToStr[$dayOfWeekNum];
-            $workDay = $workDaysModels->get($dayOfWeekStr, $workDaysModels->get($dayOfWeekNum));
-            if (!$workDay) continue;
-            if (!empty($tk->clock_in) && !empty($tk->clock_out)) {
-                // Use scheduled start from workDay if available
-                $scheduledStart = !empty($workDay->work_start_time) ? strtotime($workDay->work_start_time) : null;
-                $in = strtotime($tk->clock_in);
-                $out = strtotime($tk->clock_out);
-                // If clock_in is earlier than scheduled start, use scheduled start
-                if ($scheduledStart && $in < $scheduledStart) {
-                    $in = $scheduledStart;
-                }
-                $worked = $out - $in;
-                if ($worked < 0) $worked += 24 * 60 * 60;
-                $hours = $worked / 3600;
-
-                // Define the fixed break end time and deduction duration
-                $fixedBreakEnd = strtotime('13:00:00'); // 1:00:00 PM
-                $breakDurationSeconds = 3600;             // 1 hour
-
-                // Check 1: Did the actual clock-out end strictly LATER THAN 1:00 PM?
-                // Note the change from >= to >
-                $actualShiftEndsAfterBreak = ($out > $fixedBreakEnd);
-
-                if ($actualShiftEndsAfterBreak) {
-                    // If yes, deduct the fixed 1 hour.
-                    $finalDeductionSeconds = $breakDurationSeconds;
-                } else {
-                    // If no, deduct nothing.
-                    $finalDeductionSeconds = 0;
-                }
-
-                $workedSeconds = $worked - $finalDeductionSeconds;
-                $hours = $workedSeconds / 3600;
-                $actualHoursWorked += max(0, $hours);
-            }
-        }
-
-        // --- DEBUG BLOCK ---
-        $isAbsencesValidNumber = is_numeric($absences);
-        $workHoursExists = !empty($employee->work_hours_per_day);
-
-        $debug = [
-            'has_timekeeping_records' => $hasData,
-            'is_absences_numeric' => $isAbsencesValidNumber,
-            'employee_work_hours_per_day_value' => $employee->work_hours_per_day,
-            'work_hours_per_day_exists' => $workHoursExists,
-            'calculated_absences' => round($absences, 2),
-            'display_absences_condition_2' => $isAbsencesValidNumber && $workHoursExists,
-            'leave_dates_map' => $leaveDatesMap,
-        ];
-        // --- END DEBUG BLOCK ---
-
-        $response = [
-            'success' => $hasData,
-            'tardiness' => round($late_count, 2),
-            'undertime' => round($early_count, 2),
-            'overtime' => round($overtime_count, 2),
-            'overtime_count_weekdays' => round($overtime_count_weekdays, 2),
-            'overtime_count_weekends' => round($overtime_count_weekends, 2),
-            'absences' => round($absences, 2),
-            'base_salary' => $base_salary,
-            'rate_per_day' => $rate_per_day,
-            'rate_per_hour' => $rate_per_hour,
-            'overtime_pay_total' => round($overtime_pay_total, 2),
-            'payroll_gross_pay' => $payroll ? $payroll->gross_pay : null,
-            'payroll_total_deductions' => $payroll ? $payroll->total_deductions : null,
-            'payroll_net_pay' => $payroll ? $payroll->net_pay : null,
-            'total_hours' => round($actualHoursWorked, 2),
-            // Including work_hours_per_day for front-end conditional logic
-            'work_hours_per_day' => $employee->work_hours_per_day,
-
-            // DEBUG DATA
-            '_debug' => $debug,
-        ];
-
-        // If College Instructor, add college_rate
-        if ($employee && is_string($employee->roles) && stripos($employee->roles, 'college instructor') !== false) {
-            $response['college_rate'] = $employee->college_rate ?? null;
-        }
-        return response()->json($response);
+        return response()->json($data);
     }
 
     /**
