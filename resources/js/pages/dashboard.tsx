@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 // import { Button } from '@/components/ui/button';
 import { type BreadcrumbItem } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
-import { Users, Receipt, Wallet, LayoutDashboard } from 'lucide-react';
+import { Users, Receipt, Wallet, LayoutDashboard, PhilippinePeso } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { MonthPicker } from '@/components/ui/month-picker';
 import { toast } from 'sonner';
@@ -153,8 +153,9 @@ export default function Dashboard({ stats, months, selectedMonth, chart, employe
                                     <Wallet className="h-5 w-5 text-primary" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-3xl font-bold">
-                                        ₱{Number(localStats.totalNetPay ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    <div className="text-3xl font-bold flex items-center gap-2">
+                                        <PhilippinePeso className="h-7.5 w-7.5" strokeWidth={2.5} />
+                                        {Number(localStats.totalNetPay ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
                                 </CardContent>
                             </Card>
