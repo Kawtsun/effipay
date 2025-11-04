@@ -116,6 +116,7 @@ export function ReportDataProvider({
     absences?: number;
     college_rate?: number;
     total_hours?: number;
+    overtime_pay_total?: number;
   }
   const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, pendingMonth, employee ?? undefined) as {
     summary?: EmployeePayrollSummary | null;
@@ -293,11 +294,19 @@ export function ReportDataProvider({
         return Number.isFinite(rTK) && rTK > 0 ? Number(rTK.toFixed(2)) : 0;
       })();
 
-      // Overtime pay using the same rule as summary cards
-      const weekdayOT = Number(tkComputed?.overtime_count_weekdays ?? timekeepingSummary?.overtime_count_weekdays ?? 0) || 0;
-      const weekendOT = Number(tkComputed?.overtime_count_weekends ?? timekeepingSummary?.overtime_count_weekends ?? 0) || 0;
-      const observanceOT = Number(tkComputed?.overtime_count_observances ?? timekeepingSummary?.overtime_count_observances ?? 0) || 0;
-      const overtimePay = (nonCollegeRate * 0.25 * weekdayOT) + (nonCollegeRate * 0.30 * weekendOT) + (nonCollegeRate * 2.0 * observanceOT);
+      // Overtime pay: prefer server-computed total (includes NSD and observance rules)
+      const serverOTTotal = Number((timekeepingSummary as any)?.overtime_pay_total ?? NaN);
+      const overtimePay = Number.isFinite(serverOTTotal) && serverOTTotal >= 0
+        ? Number(serverOTTotal.toFixed(2))
+        : (() => {
+            const weekdayOT = Number(tkComputed?.overtime_count_weekdays ?? timekeepingSummary?.overtime_count_weekdays ?? 0) || 0;
+            const weekendOT = Number(tkComputed?.overtime_count_weekends ?? timekeepingSummary?.overtime_count_weekends ?? 0) || 0;
+            const observanceOT = Number(tkComputed?.overtime_count_observances ?? timekeepingSummary?.overtime_count_observances ?? 0) || 0;
+            const weekdayPay = nonCollegeRate * 0.25 * weekdayOT;
+            const weekendPay = nonCollegeRate * 0.30 * weekendOT;
+            const observancePay = nonCollegeRate * 2.0 * observanceOT;
+            return Number((weekdayPay + weekendPay + observancePay).toFixed(2));
+          })();
 
       const collegeGsp = (Number.isFinite(collegeHours) && collegeHours > 0 && collegeRate > 0) ? collegeRate * collegeHours : 0;
       const deductions = nonCollegeRate * (t + u + a);
@@ -328,6 +337,12 @@ export function ReportDataProvider({
     })();
 
     if (type === "overtime") {
+      // Prefer server-computed total from timekeeping monthly summary when available (includes NSD and observance)
+      const serverOTTotal = Number((timekeepingSummary as any)?.overtime_pay_total ?? NaN);
+      if (Number.isFinite(serverOTTotal) && serverOTTotal >= 0) {
+        return `₱${Number(serverOTTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+      // Fallback to local calculation from OT buckets
       const weekdayOT = Number.isFinite(Number(tk?.overtime_count_weekdays))
         ? Number(Number(tk?.overtime_count_weekdays).toFixed(2))
         : Number(Number(payroll?.overtime_count_weekdays ?? 0).toFixed(2));

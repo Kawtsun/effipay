@@ -18,6 +18,10 @@ export type TimeKeepingMetrics = {
   rate_per_hour?: number;
   rate_per_day?: number;
   college_rate?: number;
+  // Server-computed totals that include NSD adjustments when available
+  overtime_pay_total?: number;
+  nsd_hours?: number;
+  nsd_pay_total?: number;
 };
 
 export type ObservanceMap = Record<string, { type?: string; start_time?: string }>;
@@ -63,6 +67,9 @@ export function TimeKeepingDataProvider({
   const [summaryRates, setSummaryRates] = React.useState<{
     rate_per_hour?: number;
     college_rate?: number;
+    overtime_pay_total?: number;
+    nsd_hours?: number;
+    nsd_pay_total?: number;
   } | null>(null);
 
   // Loading flags for skeleton control
@@ -185,7 +192,13 @@ export function TimeKeepingDataProvider({
               : (typeof res.rate_per_hour === 'string' && res.rate_per_hour !== '' ? Number(res.rate_per_hour) : undefined);
             const cr = typeof res.college_rate === 'number' ? res.college_rate
               : (typeof res.college_rate === 'string' && res.college_rate !== '' ? Number(res.college_rate) : undefined);
-            setSummaryRates({ rate_per_hour: rh, college_rate: cr });
+            const otTotal = typeof res.overtime_pay_total === 'number' ? res.overtime_pay_total
+              : (typeof res.overtime_pay_total === 'string' && res.overtime_pay_total !== '' ? Number(res.overtime_pay_total) : undefined);
+            const nsdHours = typeof res.nsd_hours === 'number' ? res.nsd_hours
+              : (typeof res.nsd_hours === 'string' && res.nsd_hours !== '' ? Number(res.nsd_hours) : undefined);
+            const nsdPay = typeof res.nsd_pay_total === 'number' ? res.nsd_pay_total
+              : (typeof res.nsd_pay_total === 'string' && res.nsd_pay_total !== '' ? Number(res.nsd_pay_total) : undefined);
+            setSummaryRates({ rate_per_hour: rh, college_rate: cr, overtime_pay_total: otTotal, nsd_hours: nsdHours, nsd_pay_total: nsdPay });
           } else {
             setSummaryRates(null);
           }
@@ -685,6 +698,10 @@ export function TimeKeepingDataProvider({
       rate_per_hour: ratePerHour,
       rate_per_day: ratePerDay,
       college_rate: collegeRate,
+      // Surface server-computed overtime totals (NSD-aware) when available
+      overtime_pay_total: typeof summaryRates?.overtime_pay_total === 'number' ? summaryRates!.overtime_pay_total : undefined,
+      nsd_hours: typeof summaryRates?.nsd_hours === 'number' ? summaryRates!.nsd_hours : undefined,
+      nsd_pay_total: typeof summaryRates?.nsd_pay_total === 'number' ? summaryRates!.nsd_pay_total : undefined,
     };
   }, [employee, records, selectedMonth, observanceMap, summaryRates]);
 

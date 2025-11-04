@@ -179,12 +179,18 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
   } else if (earnings?.overtime_hours !== undefined && earnings?.overtime_hours !== null && earnings?.overtime_hours !== '') {
     overtimeHours = getNum(earnings?.overtime_hours);
   }
-  // Compute overtime using weekday/weekend formula for both college-only and non-college when counts are provided.
+  // Compute overtime amount: prefer server/payroll-provided total (includes NSD), then fallback to bucket formula when needed.
   let overtimeAmount = 0;
   const weekdayOvertime = getNum(earnings?.overtime_count_weekdays);
   const weekendOvertime = getNum(earnings?.overtime_count_weekends);
-  if ((earnings?.overtime_count_weekdays !== undefined || earnings?.overtime_count_weekends !== undefined)) {
-    // Use weighted OT formula consistent with Attendance/Report Cards
+  const providedOTTotal = earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null
+    ? getNum(earnings?.overtime_pay_total)
+    : 0;
+  if (providedOTTotal > 0 || providedOTTotal === 0) {
+    // Use provided total (server-computed) when available; zero is a valid total
+    overtimeAmount = providedOTTotal;
+  } else if (earnings?.overtime_count_weekdays !== undefined || earnings?.overtime_count_weekends !== undefined) {
+    // Fallback to weighted OT formula consistent with Attendance/Report Cards
     const rate = isCollegeOnly ? getNum(collegeRate) : ratePerHour;
     if (rate > 0) {
       const weekdayPay = rate * 0.25 * (weekdayOvertime || 0);
@@ -193,9 +199,6 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
     } else {
       overtimeAmount = 0;
     }
-  } else if (earnings?.overtime_pay_total !== undefined && earnings?.overtime_pay_total !== null && getNum(earnings?.overtime_pay_total) > 0) {
-    // Only use payroll OT when it's a positive value; otherwise compute fallback
-    overtimeAmount = getNum(earnings?.overtime_pay_total);
   } else if (overtimeHours && ratePerHour > 0) {
     overtimeAmount = parseFloat((overtimeHours * ratePerHour).toFixed(2));
   } else {

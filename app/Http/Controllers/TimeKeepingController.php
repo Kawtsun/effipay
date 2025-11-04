@@ -333,6 +333,9 @@ class TimeKeepingController extends Controller
             }
             $overtime_pay_weekdays = 0;
             $overtime_pay_weekends = 0;
+            // Night Shift Differential (NSD): hours and pay after 10:00 PM
+            $nsd_hours_total = 0; // total hours after 22:00
+            $nsd_pay_total = 0;   // corresponding pay (includes +10% bonus)
             $overtime_count_weekdays = 0;
             $overtime_count_weekends = 0;
             // Absences: check all workdays, exclude leave days, count as absent if no clock-in/out and not a leave day
@@ -452,30 +455,72 @@ class TimeKeepingController extends Controller
                         $early_count += round($early_minutes / 60, 2); // decimal hours
                     }
                 }
-                // Overtime: count decimal hours overtime (not stacked)
+                // Overtime and Night Shift Differential (NSD):
+                // - Overtime starts when actual clock-out is >= 1 hour past scheduled work_end_time
+                // - Hours from work_end_time up to 22:00 are counted as regular OT
+                // - Hours after 22:00 (10 PM) are counted as NSD (OT with +10% bonus)
                 if ($tk->clock_out && $emp->work_end_time) {
                     $workEnd = strtotime($emp->work_end_time);
                     $clockOut = strtotime($tk->clock_out);
                     if ($clockOut >= $workEnd + 3600) { // 1 hour after work_end_time
-                        $overtime_minutes = ($clockOut - $workEnd) / 60 - 59; // subtract 59 minutes (inclusive)
-                        if ($overtime_minutes >= 1) {
-                            $overtime_hours = round($overtime_minutes / 60, 2); // decimal hours
+                        $rawSeconds = $clockOut - $workEnd; // total seconds beyond scheduled end
+
+                        // Split at 22:00 (10 PM) boundary of the same day
+                        $boundary22 = strtotime('22:00:00');
+                        $otStart = $workEnd;
+                        $otEnd = $clockOut;
+
+                        // Pre-22:00 overtime seconds
+                        $pre22Seconds = 0;
+                        if ($otEnd > $otStart) {
+                            $pre22Seconds = max(0, min($otEnd, $boundary22) - $otStart);
+                        }
+                        // Post-22:00 NSD seconds
+                        $post22Seconds = 0;
+                        if ($otEnd > $boundary22) {
+                            $post22Seconds = max(0, $otEnd - max($otStart, $boundary22));
+                        }
+
+                        // Convert to hours with 2-decimals rounding at the end of accumulation
+                        $pre22Hours = $pre22Seconds > 0 ? ($pre22Seconds / 3600) : 0;
+                        $post22Hours = $post22Seconds > 0 ? ($post22Seconds / 3600) : 0;
+
+                        if ($pre22Hours > 0 || $post22Hours > 0) {
                             $dayOfWeek = date('N', strtotime($tk->date)); // 1 (Mon) - 7 (Sun)
-                            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
-                                $pay = round($rate_per_hour * 0.25, 2);
-                                $overtime_count_weekdays += $overtime_hours;
-                                $overtime_pay_weekdays += $pay * $overtime_hours;
-                            } else {
-                                $pay = round($rate_per_hour * 0.30, 2);
-                                $overtime_count_weekends += $overtime_hours;
-                                $overtime_pay_weekends += $pay * $overtime_hours;
+                            $basePayPerHour = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
+                                ? ($rate_per_hour * 0.25)
+                                : ($rate_per_hour * 0.30);
+                            // NSD: add +0.10 of base hourly rate (not +10% of OT rate)
+                            // e.g., weekday: 0.25 + 0.10 = 0.35; weekend: 0.30 + 0.10 = 0.40
+                            $nsdPayPerHour = $basePayPerHour + ($rate_per_hour * 0.10);
+
+                            // Accumulate pay/hours
+                            if ($pre22Hours > 0) {
+                                if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                                    $overtime_count_weekdays += $pre22Hours;
+                                    $overtime_pay_weekdays += $basePayPerHour * $pre22Hours;
+                                } else {
+                                    $overtime_count_weekends += $pre22Hours;
+                                    $overtime_pay_weekends += $basePayPerHour * $pre22Hours;
+                                }
+                            }
+                            if ($post22Hours > 0) {
+                                // NSD hours also count toward overtime hours total
+                                if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                                    $overtime_count_weekdays += $post22Hours;
+                                } else {
+                                    $overtime_count_weekends += $post22Hours;
+                                }
+                                $nsd_hours_total += $post22Hours;
+                                $nsd_pay_total += $nsdPayPerHour * $post22Hours;
                             }
                         }
                     }
                 }
             }
             $overtime_count = $overtime_count_weekdays + $overtime_count_weekends;
-            $overtime_pay_total = $overtime_pay_weekdays + $overtime_pay_weekends;
+            // Total OT pay includes both regular OT pay and NSD pay
+            $overtime_pay_total = $overtime_pay_weekdays + $overtime_pay_weekends + $nsd_pay_total;
 
             return [
                 'base_salary' => $emp->base_salary,
@@ -502,6 +547,8 @@ class TimeKeepingController extends Controller
                 'overtime_count_weekdays' => $overtime_count_weekdays,
                 'overtime_count_weekends' => $overtime_count_weekends,
                 'overtime_pay_total' => $overtime_pay_total,
+                'nsd_hours' => round($nsd_hours_total, 2),
+                'nsd_pay_total' => round($nsd_pay_total, 2),
                 'absences' => $absences,
                 'rate_per_day' => $rate_per_day,
                 'rate_per_hour' => $rate_per_hour,
@@ -627,11 +674,14 @@ class TimeKeepingController extends Controller
 
         $late_count = 0;
         $early_count = 0;
-        $overtime_count = 0;
+    $overtime_count = 0;
         $overtime_count_weekdays = 0;
         $overtime_count_weekends = 0;
         $absences = 0;
-        $overtime_pay_total = 0;
+    $overtime_pay_total = 0;
+    // Night Shift Differential (NSD): hours and pay after 10:00 PM
+    $nsd_hours_total = 0;
+    $nsd_pay_total = 0;
 
         // Use payroll values if available, otherwise fallback to employee
         $base_salary = $payroll ? $payroll->base_salary : $employee->base_salary;
@@ -689,7 +739,10 @@ class TimeKeepingController extends Controller
                     $early_count += ($early_minutes / 60);
                 }
             }
-            // Overtime (decimal hours, start counting after exactly 1 hour past work end time)
+            // Overtime and Night Shift Differential (NSD)
+            // - Overtime starts when actual clock-out is >= 1 hour past scheduled work_end_time
+            // - Hours from work_end_time up to 22:00 are counted as regular OT
+            // - Hours after 22:00 (10 PM) are counted as NSD (OT with +10% bonus)
             if ($tk->clock_out && $employee->work_end_time) {
                 $workEnd = strtotime($employee->work_end_time);
                 $clockOut = strtotime($tk->clock_out);
@@ -697,34 +750,44 @@ class TimeKeepingController extends Controller
                 // Calculate the total raw difference in seconds between actual clock out and scheduled work end
                 $rawOvertimeSeconds = $clockOut - $workEnd;
 
-                // Check if the total raw overtime time is GREATER THAN OR EQUAL TO 1-hour (3600 seconds).
-                // This is the CRITICAL change: use >= instead of >
-                if ($rawOvertimeSeconds >= 3600) {
+                if ($rawOvertimeSeconds >= 3600) { // threshold: at least 1 hour beyond scheduled end
+                    $otStart = $workEnd;
+                    $otEnd = $clockOut;
+                    $boundary22 = strtotime('22:00:00');
 
-                    // NEW LOGIC: If 1 hour or more is reached, count the ENTIRE RAW DIFFERENCE
-                    $overtime_minutes = $rawOvertimeSeconds / 60;
+                    // Pre-22:00 OT seconds and Post-22:00 NSD seconds
+                    $pre22Seconds = max(0, min($otEnd, $boundary22) - $otStart);
+                    $post22Seconds = $otEnd > $boundary22 ? max(0, $otEnd - max($otStart, $boundary22)) : 0;
 
-                    if ($overtime_minutes > 0) {
-                        $overtime_hours = ($overtime_minutes / 60);
+                    $pre22Hours = $pre22Seconds > 0 ? ($pre22Seconds / 3600) : 0;
+                    $post22Hours = $post22Seconds > 0 ? ($post22Seconds / 3600) : 0;
+
+                    if ($pre22Hours > 0 || $post22Hours > 0) {
                         $dayOfWeek = date('N', strtotime($tk->date));
-
-                        // Overtime Pay Calculation
-                        $pay = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
+                        $basePayPerHour = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
                             ? ($rate_per_hour * 0.25)
                             : ($rate_per_hour * 0.30);
+                        // NSD: +10% of base hourly rate on top of the OT rate
+                        $nsdPayPerHour = $basePayPerHour + ($rate_per_hour * 0.10);
 
-                        $overtime_count += $overtime_hours;
-                        $overtime_pay_total += $pay * $overtime_hours;
-
-                        // Overtime Weekend/Weekday count
+                        // Count hours
+                        $overtime_count += ($pre22Hours + $post22Hours);
                         if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
-                            $overtime_count_weekdays += $overtime_hours;
+                            $overtime_count_weekdays += ($pre22Hours + $post22Hours);
                         } else {
-                            $overtime_count_weekends += $overtime_hours;
+                            $overtime_count_weekends += ($pre22Hours + $post22Hours);
                         }
+
+                        // Accumulate pay
+                        $overtime_pay_total += ($basePayPerHour * $pre22Hours);
+                        $overtime_pay_total += ($nsdPayPerHour * $post22Hours);
+
+                        // Track NSD breakdown
+                        $nsd_hours_total += $post22Hours;
+                        $nsd_pay_total += ($nsdPayPerHour * $post22Hours);
                     }
                 }
-                // If $rawOvertimeSeconds is less than 3600 (59 minutes or less), no overtime is counted.
+                // If < 1 hour beyond scheduled end, no overtime/NSD is counted.
             }
         }
 
@@ -975,6 +1038,8 @@ class TimeKeepingController extends Controller
             'rate_per_day' => $rate_per_day,
             'rate_per_hour' => $rate_per_hour,
             'overtime_pay_total' => round($overtime_pay_total, 2),
+            'nsd_hours' => round($nsd_hours_total, 2),
+            'nsd_pay_total' => round($nsd_pay_total, 2),
             'payroll_gross_pay' => $payroll ? $payroll->gross_pay : null,
             'payroll_total_deductions' => $payroll ? $payroll->total_deductions : null,
             'payroll_net_pay' => $payroll ? $payroll->net_pay : null,

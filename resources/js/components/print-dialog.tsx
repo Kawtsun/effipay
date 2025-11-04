@@ -128,7 +128,8 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             tardiness: payroll.tardiness ?? 0,
             undertime: payroll.undertime ?? 0,
             absences: payroll.absences ?? 0,
-            overtime_pay_total: payroll.overtime_pay ?? 0,
+            // Prefer overtime_pay_total if present; fallback to legacy field name
+            overtime_pay_total: (payroll as any).overtime_pay_total ?? (payroll as any).overtime_pay ?? 0,
             adjustment: payroll.adjustments ?? 0,
             ratePerHour: undefined,
             collegeRate: payroll.college_rate ?? 0,
@@ -279,16 +280,16 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             if (rate <= 0) return undefined;
             return parseFloat(((Number(effectiveAbsences) || 0) * rate).toFixed(2));
         })();
-                        // Build overtime pay total with robust fallback: if payroll has a positive value, use it; otherwise compute from hours * rate for non-college
+                        // Build overtime pay total with robust preference: use server monthly-summary value when available (includes NSD)
+                        const serverOTTotal = Number((timekeepingSummary as any)?.overtime_pay_total ?? NaN);
                         const numericOvertimeFromPayroll = Number(data.earnings?.overtime_pay_total ?? NaN);
-                                    // Use the same formula as Attendance/Report Cards for non-college:
-                                    // OT pay = ratePerHour * (0.25 * weekdayOT + 0.30 * weekendOT)
-                                    const computedOTFallback = (!isCollegeOnly && Number(ratePerHour) > 0)
-                                        ? parseFloat((Number(ratePerHour) * ((0.25 * weekdayOT) + (0.30 * weekendOT))).toFixed(2))
+                        // Fallback formula for non-college only when no server/payroll value is available
+                        const computedOTFallback = (!isCollegeOnly && Number(ratePerHour) > 0)
+                            ? parseFloat((Number(ratePerHour) * ((0.25 * weekdayOT) + (0.30 * weekendOT))).toFixed(2))
                             : 0;
-                        const overtime_pay_total = (!isCollegeOnly && Number.isFinite(numericOvertimeFromPayroll) && numericOvertimeFromPayroll > 0)
-                            ? numericOvertimeFromPayroll
-                            : computedOTFallback;
+                        const overtime_pay_total = Number.isFinite(serverOTTotal)
+                            ? Number(serverOTTotal.toFixed(2))
+                            : (Number.isFinite(numericOvertimeFromPayroll) ? Number(numericOvertimeFromPayroll.toFixed(2)) : computedOTFallback);
 
                         setPayrollData({
                 ...data,

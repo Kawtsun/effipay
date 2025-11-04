@@ -207,7 +207,10 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               overtime_hours: isCollegeOnly ? 0 : (metrics.overtime ?? result.payslip.overtime_hours ?? 0),
               overtime_pay_total: (() => {
                 if (isCollegeOnly) return 0;
-                const fromPayroll = Number(result.payslip.overtime_pay ?? 0);
+                // Prefer server-computed overtime that includes Night Shift Differential after 10 PM
+                const summaryOT = Number((summary as any)?.overtime_pay_total ?? 0);
+                if (summaryOT > 0) return summaryOT;
+                const fromPayroll = Number((result as any).payslip.overtime_pay ?? 0);
                 if (fromPayroll > 0) return fromPayroll;
                 const rate = Number(ratePerHour) || 0;
                 const weekdayOT = Number(metrics.overtime_count_weekdays ?? 0) || 0;
