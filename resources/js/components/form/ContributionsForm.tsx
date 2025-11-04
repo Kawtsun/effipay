@@ -36,33 +36,27 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
     const { data, setData, errors, clearErrors } = form;
 
     const [pagIbigError, setPagIbigError] = React.useState<string | null>(null);
-    const isAdmin = React.useMemo(() =>
-        data.roles.split(',').map((r: string) => r.trim()).includes('administrator'),
-        [data.roles]
-    );
-    // Initialize toggles to true if the user is admin OR the employee already has the flag set.
-    const [showSSS, setShowSSS] = React.useState(() => isAdmin || !!data.sss);
-    const [showPhilhealth, setShowPhilhealth] = React.useState(() => isAdmin || !!data.philhealth);
-    const [showPagibig, setShowPagibig] = React.useState(() => isAdmin || !!data.pag_ibig);
+    // Initialize toggles based only on existing values; contributions are optional for all roles
+    const [showSSS, setShowSSS] = React.useState(() => !!data.sss);
+    const [showPhilhealth, setShowPhilhealth] = React.useState(() => !!data.philhealth);
+    const [showPagibig, setShowPagibig] = React.useState(() => !!data.pag_ibig);
 
-    // React to role changes or server-provided values. Keep the toggle shown if either
-    // the user is admin or the stored employee value indicates the contribution is enabled.
+    // React to server-provided values; no special handling by role.
     React.useEffect(() => {
-        setShowSSS(isAdmin || !!data.sss);
-        setShowPhilhealth(isAdmin || !!data.philhealth);
-        setShowPagibig(isAdmin || !!data.pag_ibig);
-    }, [isAdmin, data.sss, data.philhealth, data.pag_ibig]);
+        setShowSSS(!!data.sss);
+        setShowPhilhealth(!!data.philhealth);
+        setShowPagibig(!!data.pag_ibig);
+    }, [data.sss, data.philhealth, data.pag_ibig]);
 
     // Reset all UI toggles and local validation state when parent triggers reset
     React.useEffect(() => {
         if (resetToken === undefined) return;
-        // After a parent reset, the form data will have been cleared; reflect that
-        // but keep contributions visible for admins.
-        setShowSSS(isAdmin || !!data.sss);
-        setShowPhilhealth(isAdmin || !!data.philhealth);
-        setShowPagibig(isAdmin || !!data.pag_ibig);
+        // After a parent reset, reflect cleared form data
+        setShowSSS(!!data.sss);
+        setShowPhilhealth(!!data.philhealth);
+        setShowPagibig(!!data.pag_ibig);
         setPagIbigError(null);
-    }, [resetToken, isAdmin, data.sss, data.philhealth, data.pag_ibig]);
+    }, [resetToken, data.sss, data.philhealth, data.pag_ibig]);
 
     // Effects to clear fields when they are hidden
     React.useEffect(() => {
@@ -138,7 +132,7 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                 size="sm"
                 onClick={() => setter(prev => !prev)}
                 className={`h-8 px-2 ${isShown ? 'text-primary hover:text-primary' : 'text-primary hover:text-primary'}`}
-                disabled={isAdmin && isShown}
+                // Always allow toggling; contributions are optional for all roles
             >
                 {isShown ? <MinusCircle className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
                 <span className="ml-2">{isShown ? 'Remove' : 'Add'}</span>
@@ -155,9 +149,7 @@ export function ContributionsForm({ form, resetToken }: ContributionsFormProps) 
                     </div>
                     <div>
                         <CardTitle>Contributions</CardTitle>
-                        <CardDescription>
-                            {isAdmin ? "Contributions are required for Administrators." : "Optionally add government-mandated contributions."}
-                        </CardDescription>
+                        <CardDescription>Optionally add government-mandated contributions.</CardDescription>
                     </div>
                 </div>
             </CardHeader>
