@@ -36,7 +36,7 @@ class PayrollController extends Controller
         }
         $payrollMonth = $payrollDate->format('Y-m');
 
-        // Get all employees
+    // Get all employees
         $employees = \App\Models\Employees::all();
 
         // If no employees have any timekeeping records for the month, fail early with a clear message.
@@ -52,20 +52,15 @@ class PayrollController extends Controller
             ]);
         }
     $createdCount = 0;
+    $updatedCount = 0;
     foreach ($employees as $employee) {
             // Reset branch-scoped variables per employee to avoid bleed-over between iterations
             $college_rate = null;
             $overtime_hours = 0; $tardiness = 0; $undertime = 0; $absences = 0; $overtime_pay = 0;
             $honorarium = 0; $base_salary = 0; $sss = 0.0; $philhealth = 0.0; $pag_ibig = 0.0; $withholding_tax = 0.0;
 
-            // Enforce only one payroll per employee per month.
-            // If a payroll record already exists for this employee and month, skip.
-            $alreadyHasPayroll = \App\Models\Payroll::where('employee_id', $employee->id)
-                ->where('month', $payrollMonth)
-                ->exists();
-            if ($alreadyHasPayroll) {
-                continue;
-            }
+            // If a payroll record already exists for this employee and month,
+            // we'll rerun and update that record instead of skipping.
 
             // Use the requested payroll date as the record date (normalized earlier),
             // ensuring it stays within the selected month.
@@ -299,7 +294,7 @@ class PayrollController extends Controller
                 })($gross_pay) : 0;
             }
 
-            // Create and save payroll record
+            // Create or update payroll record (rerunnable for the same month)
             // Get all loan and deduction fields from employee
             // Always reference all new fields, fallback to 0 if missing
             $sss_salary_loan = !is_null($employee->sss_salary_loan) ? $employee->sss_salary_loan : 0;
@@ -363,12 +358,35 @@ class PayrollController extends Controller
                 'net_pay' => $net_pay,
             ];
 
-            \Illuminate\Support\Facades\Log::info('[Payroll Debug] Payroll::create array', $payrollData);
-            \App\Models\Payroll::create($payrollData);
-            $createdCount++;
+            \Illuminate\Support\Facades\Log::info('[Payroll Debug] Payroll upsert payload', $payrollData);
+
+            // Prefer updating the latest payroll in this month for the employee (if any),
+            // otherwise create a new one using the normalized payroll_date.
+            $existing = \App\Models\Payroll::where('employee_id', $employee->id)
+                ->where('month', $payrollMonth)
+                ->orderByDesc('payroll_date')
+                ->first();
+
+            if ($existing) {
+                // Keep the existing payroll_date to respect the (employee_id, payroll_date) unique key
+                $keepDate = $existing->payroll_date;
+                $existing->fill(array_merge($payrollData, ['payroll_date' => $keepDate]));
+                $existing->save();
+                $updatedCount++;
+            } else {
+                // No record this month yet: create a new one (unique by employee_id+payroll_date)
+                \App\Models\Payroll::updateOrCreate(
+                    [
+                        'employee_id' => $employee->id,
+                        'payroll_date' => $payrollDateStr,
+                    ],
+                    $payrollData
+                );
+                $createdCount++;
+            }
         }
 
-        if ($createdCount > 0) {
+        if ($createdCount > 0 || $updatedCount > 0) {
             // Audit log: payroll run
             try {
                 $username = Auth::user()->username ?? 'system';
@@ -378,7 +396,12 @@ class PayrollController extends Controller
                     'name'        => $payrollMonth,
                     'entity_type' => 'payroll',
                     'entity_id'   => null,
-                    'details'     => json_encode(['month' => $payrollMonth, 'created_count' => $createdCount, 'payroll_date' => $request->payroll_date]),
+                    'details'     => json_encode([
+                        'month' => $payrollMonth,
+                        'created_count' => $createdCount,
+                        'updated_count' => $updatedCount,
+                        'payroll_date' => $request->payroll_date
+                    ]),
                     'date'        => now('Asia/Manila'),
                 ]);
             } catch (\Throwable $e) {
@@ -386,12 +409,13 @@ class PayrollController extends Controller
             }
             return redirect()->back()->with('flash', [
                 'type' => 'success',
-                'message' => 'Payroll run successfully for ' . date('F Y', strtotime($payrollDateStr)) . '. Payroll records created: ' . $createdCount,
+                'message' => 'Payroll run successfully for ' . date('F Y', strtotime($payrollDateStr)) . 
+                    '. Created: ' . $createdCount . ', Updated: ' . $updatedCount,
                 'at' => now()->timestamp,
             ]);
         } else {
             // No new payrolls were created. Either all eligible employees already have payroll
-            // for this month, or none have timekeeping data yet for this month.
+            // for this month and no updates were needed, or none have timekeeping data yet for this month.
             return redirect()->back()->with('flash', [
                 'type' => 'info',
                 'message' => 'No eligible employees to process payroll for this month.',
