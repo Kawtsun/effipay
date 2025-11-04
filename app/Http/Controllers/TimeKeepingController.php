@@ -97,24 +97,26 @@ class TimeKeepingController extends Controller
                 if ($date && preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $date, $matches)) {
                     $date = sprintf('%04d-%02d-%02d', $matches[3], $matches[1], $matches[2]);
                 }
-                $employee = $employeeId ? \App\Models\Employees::where('id', $employeeId)->first() : null;
-                if (!$employee) {
-                    $errors[] = "Employee ID $employeeId not found.";
-                    continue;
+                // Resolve employee WITHOUT requiring employee_id: prefer First+Last name match; fallback to ID if provided.
+                $employee = null;
+                $fn = is_string($firstName) ? trim($firstName) : null;
+                $ln = is_string($lastName) ? trim($lastName) : null;
+                if ($fn && $ln) {
+                    $employee = \App\Models\Employees::whereRaw('LOWER(TRIM(first_name)) = ?', [strtolower($fn)])
+                        ->whereRaw('LOWER(TRIM(last_name)) = ?', [strtolower($ln)])
+                        ->first();
                 }
-                // Verify first name and last name
-                if (
-                    ($firstName && strtolower(trim($employee->first_name)) !== strtolower(trim($firstName))) ||
-                    ($lastName && strtolower(trim($employee->last_name)) !== strtolower(trim($lastName)))
-                ) {
-                    if (!$shownIdNameError) {
-                        $errors[] = "Import Error: Employee ID $employeeId: DB name '{$employee->first_name} {$employee->last_name}', CSV name '$firstName $lastName' do not match.";
-                        $shownIdNameError = true;
-                    }
+                if (!$employee && $employeeId) {
+                    $employee = \App\Models\Employees::find($employeeId);
+                }
+                if (!$employee) {
+                    $label = trim(($firstName ?? '') . ' ' . ($lastName ?? ''));
+                    $label = $label !== '' ? $label : ($employeeId ? ('ID ' . $employeeId) : 'unknown');
+                    $errors[] = "Employee not found for row $i ($label).";
                     continue;
                 }
                 if (empty($date)) {
-                    $errors[] = "Date missing for Employee ID $employeeId.";
+                    $errors[] = "Date missing for employee #{$employee->id}.";
                     continue;
                 }
                 \App\Models\TimeKeeping::updateOrCreate(
