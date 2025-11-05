@@ -14,6 +14,7 @@ use App\Exports\PayrollExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use App\Support\SalaryFormulas;
 
 class PayrollController extends Controller
 {
@@ -170,13 +171,10 @@ class PayrollController extends Controller
                 // For record-keeping, set base_salary to employee's base_salary or 0 (not used in calculation)
                 $base_salary = !is_null($employee->base_salary) ? $employee->base_salary : 0;
 
-                // Compute SSS/PhilHealth amounts based on gross_pay and employee flags.
-                if (!empty($employee->sss)) {
-                    $sss = round($gross_pay * config('payroll.sss_rate', 0.045), 2);
-                }
-                if (!empty($employee->philhealth)) {
-                    $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2);
-                }
+                // Compute SSS/PhilHealth using formulas and the College GSP (rate * paid hours) as contribution base
+                $college_gsp = max(0.0, (float)$college_rate * max(0.0, (float)$total_hours_worked));
+                if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($college_gsp); }
+                if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($college_gsp); }
 
                 // Compute withholding tax FROM GROSS PAY as total compensation
                 // per request. Other contributions are computed separately.
@@ -220,10 +218,11 @@ class PayrollController extends Controller
 
                 $gross_pay = round($base_salary + $college_gsp + $overtime_pay - $deductions + $honorarium, 2);
 
-                // Statutory contributions
+                // Statutory contributions: compute from base salary plus honorarium (include honorarium per requirement)
                 $sss = 0.0; $philhealth = 0.0; $pag_ibig = $employee->pag_ibig ?? 0.0; $withholding_tax = 0.0;
-                if (!empty($employee->sss)) { $sss = round($gross_pay * config('payroll.sss_rate', 0.045), 2); }
-                if (!empty($employee->philhealth)) { $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2); }
+                $contribBase = max(0.0, (float)$base_salary + (float)$honorarium);
+                if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($contribBase); }
+                if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($contribBase); }
                 $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
                     $totalComp = $gross_pay; // use gross pay directly
                     if ($totalComp <= 20832) return 0;
@@ -289,18 +288,14 @@ class PayrollController extends Controller
                     'gross_pay' => $gross_pay,
                 ]);
 
-                // Statutory contributions: compute numeric amounts based on flags
+                // Statutory contributions: compute from base salary plus honorarium per requirement
                 $sss = 0.0;
                 $philhealth = 0.0;
                 $pag_ibig = $employee->pag_ibig;
                 $withholding_tax = 0.0;
-
-                if (!empty($employee->sss)) {
-                    $sss = round($gross_pay * config('payroll.sss_rate', 0.045), 2);
-                }
-                if (!empty($employee->philhealth)) {
-                    $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2);
-                }
+                $contribBase = max(0.0, (float)$base_salary + (float)$honorarium);
+                if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($contribBase); }
+                if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($contribBase); }
 
                 $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
                     $totalComp = $gross_pay; // use gross pay directly
