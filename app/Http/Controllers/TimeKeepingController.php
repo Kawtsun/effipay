@@ -352,17 +352,15 @@ class TimeKeepingController extends Controller
                     new \DateInterval('P1D'),
                     (new \DateTime($endDate))->modify('+1 day')
                 );
-                // Get leave dates for this employee
-                $leaveStatuses = ['on leave', 'sick leave', 'vacation leave', 'Paid Leave'];
+                // Get leave date intervals for this employee (treat any status as leave)
                 $leaveIntervals = DB::table('leaves')
                     ->where('employee_id', $emp->id)
-                    ->whereIn('status', $leaveStatuses)
                     ->whereNotNull('leave_start_day')
                     ->get(['leave_start_day', 'leave_end_day']);
                 $isInLeaveInterval = function ($date) use ($leaveIntervals) {
                     foreach ($leaveIntervals as $interval) {
-                        $start = $interval->leave_start_date;
-                        $end = $interval->leave_end_date;
+                        $start = $interval->leave_start_day;
+                        $end = $interval->leave_end_day;
                         if ($start && !$end && $date >= $start) return true;
                         if ($start && $end && $date >= $start && $date <= $end) return true;
                     }
@@ -1243,5 +1241,125 @@ class TimeKeepingController extends Controller
             'with_count' => count($with),
             'without_count' => count($without),
         ]);
+    }
+
+    /**
+     * Fetch all leave ranges for a given employee.
+     * GET /api/leaves?employee_id=123
+     */
+    public function getEmployeeLeaves(Request $request)
+    {
+        $employeeId = $request->query('employee_id');
+        if (!$employeeId) {
+            return response()->json(['success' => false, 'error' => 'Missing employee_id'], 400);
+        }
+        try {
+            $rows = DB::table('leaves')
+                ->where('employee_id', $employeeId)
+                ->orderByDesc('leave_start_day')
+                ->get(['id', 'status', 'leave_start_day', 'leave_end_day']);
+            return response()->json(['success' => true, 'leaves' => $rows]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Failed to fetch leaves'], 500);
+        }
+    }
+
+    /**
+     * Create or update a leave range for an employee.
+     * POST /api/leaves/upsert
+     * Body: { leave_id?, employee_id, status, leave_start_day(YYYY-MM-DD), leave_end_day(YYYY-MM-DD|null) }
+     */
+    public function upsertEmployeeLeave(Request $request)
+    {
+        $data = $request->validate([
+            'leave_id' => 'nullable|integer',
+            'employee_id' => 'required|integer|exists:employees,id',
+            'status' => 'required|string|max:255',
+            'leave_start_day' => 'required|date_format:Y-m-d',
+            'leave_end_day' => 'nullable|date_format:Y-m-d|after_or_equal:leave_start_day',
+        ]);
+
+        try {
+            $id = $data['leave_id'] ?? null;
+            unset($data['leave_id']);
+
+            if ($id) {
+                DB::table('leaves')->where('id', $id)->update([
+                    'employee_id' => $data['employee_id'],
+                    'status' => $data['status'],
+                    'leave_start_day' => $data['leave_start_day'],
+                    'leave_end_day' => $data['leave_end_day'] ?? null,
+                    'updated_at' => now('Asia/Manila'),
+                ]);
+                $row = DB::table('leaves')->where('id', $id)->first();
+                // Audit
+                try {
+                    AuditLogs::create([
+                        'username'    => Auth::user()->username ?? 'system',
+                        'action'      => 'update leave',
+                        'name'        => (string)($row->status ?? 'leave'),
+                        'entity_type' => 'leave',
+                        'entity_id'   => $id,
+                        'details'     => json_encode($data),
+                        'date'        => now('Asia/Manila'),
+                    ]);
+                } catch (\Throwable $e) {}
+                return response()->json(['success' => true, 'leave' => $row]);
+            } else {
+                $newId = DB::table('leaves')->insertGetId([
+                    'employee_id' => $data['employee_id'],
+                    'status' => $data['status'],
+                    'leave_start_day' => $data['leave_start_day'],
+                    'leave_end_day' => $data['leave_end_day'] ?? null,
+                    'created_at' => now('Asia/Manila'),
+                    'updated_at' => now('Asia/Manila'),
+                ]);
+                $row = DB::table('leaves')->where('id', $newId)->first();
+                try {
+                    AuditLogs::create([
+                        'username'    => Auth::user()->username ?? 'system',
+                        'action'      => 'create leave',
+                        'name'        => (string)($row->status ?? 'leave'),
+                        'entity_type' => 'leave',
+                        'entity_id'   => $newId,
+                        'details'     => json_encode($data),
+                        'date'        => now('Asia/Manila'),
+                    ]);
+                } catch (\Throwable $e) {}
+                return response()->json(['success' => true, 'leave' => $row]);
+            }
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            return response()->json(['success' => false, 'errors' => $ve->errors()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Failed to save leave'], 500);
+        }
+    }
+
+    /**
+     * Delete a leave by ID.
+     * POST /api/leaves/delete  Body: { leave_id }
+     */
+    public function deleteEmployeeLeave(Request $request)
+    {
+        $request->validate(['leave_id' => 'required|integer|exists:leaves,id']);
+        $id = (int)$request->input('leave_id');
+        try {
+            $row = DB::table('leaves')->where('id', $id)->first();
+            DB::table('leaves')->where('id', $id)->delete();
+            try {
+                AuditLogs::create([
+                    'username'    => Auth::user()->username ?? 'system',
+                    'action'      => 'delete leave',
+                    'name'        => (string)($row->status ?? 'leave'),
+                    'entity_type' => 'leave',
+                    'entity_id'   => $id,
+                    'details'     => json_encode(['id' => $id]),
+                    'date'        => now('Asia/Manila'),
+                ]);
+            } catch (\Throwable $e) {}
+            return response()->json(['success' => true]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Failed to delete leave'], 500);
+        }
     }
 }

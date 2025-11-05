@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { ColumnDef, getCoreRowModel, getSortedRowModel, PaginationState, SortingState, useReactTable } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, Fingerprint, MoreHorizontal } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, Fingerprint, MoreHorizontal, Pencil } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,6 +26,7 @@ type TableTimekeepingProps = {
     onPageSizeChange?: (pageSize: number) => void
     onView: (emp: Employees) => void
     onBTR: (emp: Employees) => void
+    onEdit?: (emp: Employees) => void
 }
 
 const MAX_ROWS = 10
@@ -41,6 +42,7 @@ export default function TableTimekeeping({
     onPageSizeChange,
     onView,
     onBTR,
+    onEdit,
 }: TableTimekeepingProps) {
     const stickyId = true
     const [isAnimating, setIsAnimating] = React.useState(false)
@@ -77,7 +79,7 @@ export default function TableTimekeeping({
         return t ? [{ type: t, role: 'Employee' }] : []
     }, [])
 
-    function ActionsMenu({ emp, onView, onBTR, menuActiveRef }: { emp: Employees; onView: (e: Employees) => void; onBTR: (e: Employees) => void; menuActiveRef: React.MutableRefObject<boolean> }) {
+    function ActionsMenu({ emp, onView, onBTR, onEdit, menuActiveRef }: { emp: Employees; onView: (e: Employees) => void; onBTR: (e: Employees) => void; onEdit?: (e: Employees) => void; menuActiveRef: React.MutableRefObject<boolean> }) {
         const [open, setOpen] = React.useState(false)
         const handleOpenChange = (next: boolean) => {
             menuActiveRef.current = next
@@ -100,6 +102,21 @@ export default function TableTimekeeping({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    {onEdit && (
+                        <DropdownMenuItem
+                            onSelect={(e) => {
+                                e.preventDefault()
+                                menuActiveRef.current = true
+                                setOpen(false)
+                                setTimeout(() => {
+                                    onEdit(emp)
+                                    menuActiveRef.current = false
+                                }, 0)
+                            }}
+                        >
+                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                         onSelect={(e) => {
                             e.preventDefault()
@@ -216,14 +233,14 @@ export default function TableTimekeeping({
                     const emp = row.original
                     return (
                         <div className="whitespace-nowrap px-4 py-2 text-right">
-                            <ActionsMenu emp={emp} onView={onView} onBTR={onBTR} menuActiveRef={menuActiveRef} />
+                            <ActionsMenu emp={emp} onView={onView} onBTR={onBTR} onEdit={onEdit} menuActiveRef={menuActiveRef} />
                         </div>
                     )
                 },
                 size: COLUMN_SIZES.actions,
             },
         ],
-    [onView, onBTR, normalizeEmployeeTypes],
+    [onView, onBTR, onEdit, normalizeEmployeeTypes],
     )
 
     const [pagination, setPagination] = React.useState<PaginationState>({
@@ -412,7 +429,7 @@ export default function TableTimekeeping({
                                                 <CardDescription className="mt-1">ID: {row.original.id}</CardDescription>
                                             </div>
                                             <div className="shrink-0">
-                                                <ActionsMenu emp={row.original} onView={onView} onBTR={onBTR} menuActiveRef={menuActiveRef} />
+                                                <ActionsMenu emp={row.original} onView={onView} onBTR={onBTR} onEdit={onEdit} menuActiveRef={menuActiveRef} />
                                             </div>
                                         </div>
                                     </CardHeader>

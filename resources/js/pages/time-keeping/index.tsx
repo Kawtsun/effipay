@@ -9,6 +9,7 @@ import TableTimekeeping from '@/components/table_timekeeping'
 import EmployeeSearch from '@/components/employee-search'
 import TimeKeepingViewDialog from '@/components/table-dialogs/timekeeping-view-dialog'
 import BTRViewDialog from '@/components/table-dialogs/btr-view-dialog'
+import LeaveEditDialog from '@/components/table-dialogs/leave-edit-dialog'
 import { Button } from '@/components/ui/button'
 
 import AppLayout from '@/layouts/app-layout'
@@ -27,6 +28,7 @@ export default function TimeKeeping() {
     const { csrfToken } = usePage().props as unknown as { csrfToken: string }
     const [selectedEmployee, setSelectedEmployee] = useState<Employees | null>(null)
     const [selectedBtrEmployee, setSelectedBtrEmployee] = useState<Employees | null>(null)
+    const [selectedLeaveEmployee, setSelectedLeaveEmployee] = useState<Employees | null>(null)
     const [calendarOpen, setCalendarOpen] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [pageSize, setPageSize] = useState<number>(10)
@@ -540,12 +542,14 @@ export default function TimeKeeping() {
                         }}
                         onView={(emp) => setSelectedEmployee(emp)}
                         onBTR={(emp) => setSelectedBtrEmployee(emp)}
+                        onEdit={(emp) => setSelectedLeaveEmployee(emp)}
                     />
                 </div>
             </div>
             {/* Floating Modal for Late/Early Departures */}
             {selectedEmployee && <TimeKeepingViewDialog employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />}
             {selectedBtrEmployee && <BTRViewDialog employee={selectedBtrEmployee} onClose={() => setSelectedBtrEmployee(null)} />}
+            {selectedLeaveEmployee && <LeaveEditDialog employee={selectedLeaveEmployee} onClose={() => setSelectedLeaveEmployee(null)} />}
             <CalendarViewDialog open={calendarOpen} onClose={() => setCalendarOpen(false)} />
         </AppLayout>
     )

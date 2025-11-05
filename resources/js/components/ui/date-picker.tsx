@@ -72,7 +72,7 @@ export function DatePicker({
         align="start" 
         side="bottom"
         sideOffset={4}
-        style={{ zIndex: 9999 }}
+        style={{ zIndex: 20000 }}
       >
         <Calendar
           mode="single"
