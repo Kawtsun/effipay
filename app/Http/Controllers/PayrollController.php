@@ -198,18 +198,20 @@ class PayrollController extends Controller
                 if (isset($summaryData['overtime_pay_total']) && is_numeric($summaryData['overtime_pay_total'])) {
                     $overtime_pay = (float)$summaryData['overtime_pay_total'];
                 } else {
-                    // OT buckets: include observances as double-pay bucket
+                    // OT buckets: exclude observances from OT (double pay is handled separately)
                     $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
                     $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
-                    $observance_ot = (float)($metrics['overtime_count_observances'] ?? 0);
-                    $overtime_pay = round($rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot) + (2.00 * $observance_ot)), 2);
+                    $overtime_pay = round($rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
                 }
 
                 $honorarium = !is_null($employee->honorarium) ? (float)$employee->honorarium : 0.0;
                 $college_gsp = ($college_rate > 0 && $college_hours > 0) ? ($college_rate * $college_hours) : 0.0;
                 $deductions = $rate_per_hour * ($tardiness + $undertime + $absences);
+                // Add separate double pay amount (holiday/automated observances) if available
+                $double_pay_amount = isset($summaryData['holiday_double_pay_amount']) && is_numeric($summaryData['holiday_double_pay_amount'])
+                    ? (float)$summaryData['holiday_double_pay_amount'] : 0.0;
 
-                $gross_pay = round($base_salary + $college_gsp + $overtime_pay - $deductions + $honorarium, 2);
+                $gross_pay = round($base_salary + $college_gsp + $overtime_pay + $double_pay_amount - $deductions + $honorarium, 2);
 
                 // Statutory contributions
                 $sss = 0.0; $philhealth = 0.0; $pag_ibig = $employee->pag_ibig ?? 0.0; $withholding_tax = 0.0;
@@ -241,22 +243,26 @@ class PayrollController extends Controller
                 $undertime = $metrics['undertime'];
                 $absences = $metrics['absences'];
                 $overtime_hours = $metrics['overtime'];
+                // Ensure OT bucket variables exist for logging even when server OT total is used
+                $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
+                $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
                 // Prefer overtime pay computed by TimeKeepingController (includes NSD after 10 PM), fallback to bucket formula
                 if (isset($summaryData['overtime_pay_total']) && is_numeric($summaryData['overtime_pay_total'])) {
                     $overtime_pay = (float)$summaryData['overtime_pay_total'];
                 } else {
-                    // Recompute overtime pay from buckets to match UI cards: 0.25x on weekdays, 0.30x on weekends
-                    $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
-                    $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
-                    $observance_ot = (float)($metrics['overtime_count_observances'] ?? 0);
-                    $overtime_pay = round((float)$rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot) + (2.00 * $observance_ot)), 2);
+                    // Recompute overtime pay from buckets: exclude observances; 0.25x on weekdays, 0.30x on weekends
+                    $overtime_pay = round((float)$rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
                 }
 
                 $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
                 // Gross pay: (base_salary + overtime_pay) - (rate_per_hour * tardiness) - (rate_per_hour * undertime) - (rate_per_hour * absences) + honorarium
 
+                // Add separate double pay amount (holiday/automated observances) if available
+                $double_pay_amount = isset($summaryData['holiday_double_pay_amount']) && is_numeric($summaryData['holiday_double_pay_amount'])
+                    ? (float)$summaryData['holiday_double_pay_amount'] : 0.0;
+
                 $gross_pay = round(
-                    ($base_salary + $overtime_pay)
+                    ($base_salary + $overtime_pay + $double_pay_amount)
                         - ($rate_per_hour * $tardiness)
                         - ($rate_per_hour * $undertime)
                         - ($rate_per_hour * $absences)

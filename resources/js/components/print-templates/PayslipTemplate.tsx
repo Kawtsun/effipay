@@ -205,6 +205,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
     overtimeAmount = 0;
   }
 
+
   return (
   <Document>
     <Page size="A4" style={styles.page}>

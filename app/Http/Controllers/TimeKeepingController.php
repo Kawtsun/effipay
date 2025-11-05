@@ -682,6 +682,12 @@ class TimeKeepingController extends Controller
     // Night Shift Differential (NSD): hours and pay after 10:00 PM
     $nsd_hours_total = 0;
     $nsd_pay_total = 0;
+        // Holiday/Observance double-pay bucket
+        $overtime_count_observances = 0; // deprecated: we no longer count observances as OT hours
+        $holidayProcessed = [];
+        $holiday_hours_total = 0; // total worked hours on whole-day/automated observances
+        $holiday_double_pay_amount = 0; // total double-pay amount (2.0x base hourly)
+        $holiday_worked = []; // [{date, type, hours, amount}]
 
         // Use payroll values if available, otherwise fallback to employee
         $base_salary = $payroll ? $payroll->base_salary : $employee->base_salary;
@@ -744,6 +750,50 @@ class TimeKeepingController extends Controller
             // - Hours from work_end_time up to 22:00 are counted as regular OT
             // - Hours after 22:00 (10 PM) are counted as NSD (OT with +10% bonus)
             if ($tk->clock_out && $employee->work_end_time) {
+                $date = $tk->date;
+                // Check holiday/observance: whole-day or automated holiday -> double pay for all worked hours
+                $isObservance = isset($observanceSet[$date]);
+                $isWholeDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day');
+                $isAutomatedHoliday = $isObservance && (!empty($observanceAutomatedMap[$date]));
+                if (($isWholeDay || $isAutomatedHoliday) && !isset($holidayProcessed[$date])) {
+                    // Compute earliest clock_in and latest clock_out for this date
+                    $dayRecs = $records->where('date', $date);
+                    $earliestIn = null; $latestOut = null;
+                    foreach ($dayRecs as $dr) {
+                        if (!empty($dr->clock_in)) {
+                            $t = strtotime($dr->clock_in);
+                            if ($t !== false && ($earliestIn === null || $t < $earliestIn)) $earliestIn = $t;
+                        }
+                        if (!empty($dr->clock_out)) {
+                            $t = strtotime($dr->clock_out);
+                            if ($t !== false && ($latestOut === null || $t > $latestOut)) $latestOut = $t;
+                        }
+                    }
+                    if ($earliestIn !== null && $latestOut !== null) {
+                        $worked = $latestOut - $earliestIn; if ($worked < 0) $worked += 24 * 60 * 60;
+                        // Deduct 1 hour lunch only if shift ended strictly after 13:00 (1 PM)
+                        $breakEnd = strtotime('13:00:00');
+                        $deduct = ($latestOut > $breakEnd) ? 3600 : 0;
+                        $workedSeconds = max(0, $worked - $deduct);
+                        $hours = $workedSeconds / 3600;
+                        if ($hours > 0) {
+                            // Entire worked hours are paid double on holiday/automated observance
+                            // IMPORTANT: Do NOT add to overtime counters or overtime pay totals.
+                            $holiday_hours_total += $hours;
+                            $amount = ($rate_per_hour * 2.0 * $hours);
+                            $holiday_double_pay_amount += $amount;
+                            $holiday_worked[] = [
+                                'date' => $date,
+                                'type' => $isAutomatedHoliday ? 'automated-holiday' : ($observanceTypeMap[$date] ?? 'observance'),
+                                'hours' => round($hours, 2),
+                                'amount' => round($amount, 2),
+                            ];
+                        }
+                    }
+                    $holidayProcessed[$date] = true;
+                    // Skip regular OT/NSD processing for this date to avoid double counting
+                    continue;
+                }
                 $workEnd = strtotime($employee->work_end_time);
                 $clockOut = strtotime($tk->clock_out);
 
@@ -1033,6 +1083,7 @@ class TimeKeepingController extends Controller
             'overtime' => round($overtime_count, 2),
             'overtime_count_weekdays' => round($overtime_count_weekdays, 2),
             'overtime_count_weekends' => round($overtime_count_weekends, 2),
+            'overtime_count_observances' => 0.0, // observance hours are paid separately as Double Pay
             'absences' => round($absences, 2),
             'base_salary' => $base_salary,
             'rate_per_day' => $rate_per_day,
@@ -1040,6 +1091,10 @@ class TimeKeepingController extends Controller
             'overtime_pay_total' => round($overtime_pay_total, 2),
             'nsd_hours' => round($nsd_hours_total, 2),
             'nsd_pay_total' => round($nsd_pay_total, 2),
+            // New: separate double pay fields for whole-day/automated observances
+            'holiday_double_pay_hours' => round($holiday_hours_total, 2),
+            'holiday_double_pay_amount' => round($holiday_double_pay_amount, 2),
+            'holiday_worked' => $holiday_worked,
             'payroll_gross_pay' => $payroll ? $payroll->gross_pay : null,
             'payroll_total_deductions' => $payroll ? $payroll->total_deductions : null,
             'payroll_net_pay' => $payroll ? $payroll->net_pay : null,

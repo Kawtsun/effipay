@@ -66,6 +66,7 @@ interface PayslipData {
         overtime?: number | string;
         overload?: number | string;
         adjustment?: number | string;
+        double_pay?: number | string;
         gross_pay?: number | string;
         net_pay?: number | string;
         totalHours?: number;
@@ -219,7 +220,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 payrollCollegeRate = payroll.college_rate ?? 0;
             }
         } catch { /* ignore error */ }
-        const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
+    const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
         const result = await response.json();
         let btrRecords: BTRRecord[] = [];
         if (result.success && Array.isArray(result.records) && result.records.length > 0) {
@@ -307,7 +308,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                     overtime_hours: overtime,
                     overtime_count_weekdays: isCollegeOnly ? 0 : weekdayOT,
                     overtime_count_weekends: isCollegeOnly ? 0 : weekendOT,
-                    gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
+                                        gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
                     net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
                     adjustment: data.earnings?.adjustment ?? undefined,
                     honorarium: data.earnings?.honorarium ?? undefined,
@@ -495,6 +496,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                     <Printer className="w-4 h-4" />
                                     {loadingBTR ? 'Loading BTR...' : 'Print BTR'}
                                 </Button>
+                                
                             </div>
                             <DialogFooter>
                                 <Button onClick={onClose} variant="secondary">Close</Button>
