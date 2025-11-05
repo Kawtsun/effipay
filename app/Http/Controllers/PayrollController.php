@@ -58,6 +58,9 @@ class PayrollController extends Controller
             $college_rate = null;
             $overtime_hours = 0; $tardiness = 0; $undertime = 0; $absences = 0; $overtime_pay = 0;
             $honorarium = 0; $base_salary = 0; $sss = 0.0; $philhealth = 0.0; $pag_ibig = 0.0; $withholding_tax = 0.0;
+            $rate_per_hour = 0; // default; may be overridden by summary in non-college branches
+        // Initialize weekday/weekend OT hour buckets to prevent undefined variable usage later
+        $weekday_ot = 0; $weekend_ot = 0;
 
             // If a payroll record already exists for this employee and month,
             // we'll rerun and update that record instead of skipping.
@@ -84,6 +87,12 @@ class PayrollController extends Controller
 
             // Compute monthly metrics using the same logic as Attendance Cards
             $metrics = $this->computeMonthlyMetricsPHP($employee, $payrollMonth);
+
+            // Populate weekday/weekend OT buckets from metrics for all branches
+            if (is_array($metrics)) {
+                $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
+                $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
+            }
 
             // Determine if college logic should apply and whether it's college-only vs multi-role
             // - Prefer presence of a college_rate value in employees table
