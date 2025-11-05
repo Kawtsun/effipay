@@ -704,15 +704,17 @@ class TimeKeepingController extends Controller
         // Fetch observances for this month early so we can apply per-date rules (e.g., rainy-day -> 60min grace)
         $observancesRows = DB::table('observances')
             ->where('date', 'like', "$month%")
-            ->get(['date', 'type', 'is_automated'])
+            ->get(['date', 'type', 'is_automated', 'start_time'])
             ->toArray();
         $observanceDates = array_map(function ($o) { return $o->date; }, $observancesRows);
         $observanceSet = array_flip($observanceDates);
         $observanceTypeMap = [];
         $observanceAutomatedMap = [];
+        $observanceStartTimeMap = [];
         foreach ($observancesRows as $orow) {
-            $observanceTypeMap[$orow->date] = $orow->type ?? null;
+            $observanceTypeMap[$orow->date] = isset($orow->type) ? strtolower(trim((string)$orow->type)) : null;
             $observanceAutomatedMap[$orow->date] = isset($orow->is_automated) ? (bool)$orow->is_automated : false;
+            $observanceStartTimeMap[$orow->date] = $orow->start_time ?? null;
         }
 
         foreach ($records as $tk) {
@@ -793,6 +795,58 @@ class TimeKeepingController extends Controller
                     $holidayProcessed[$date] = true;
                     // Skip regular OT/NSD processing for this date to avoid double counting
                     continue;
+                }
+                // Half-day observance handling: apply double pay only for hours worked after the half-day start
+                $isHalfDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'half-day');
+                if ($isHalfDay && !isset($holidayProcessed[$date])) {
+                    // Determine half-day start time; default to 13:00:00 if not provided
+                    $halfStart = $observanceStartTimeMap[$date] ?? '13:00:00';
+                    // Compute earliest clock_in and latest clock_out for this date
+                    $dayRecs = $records->where('date', $date);
+                    $earliestIn = null; $latestOut = null;
+                    foreach ($dayRecs as $dr) {
+                        if (!empty($dr->clock_in)) {
+                            $t = strtotime($dr->clock_in);
+                            if ($t !== false && ($earliestIn === null || $t < $earliestIn)) $earliestIn = $t;
+                        }
+                        if (!empty($dr->clock_out)) {
+                            $t = strtotime($dr->clock_out);
+                            if ($t !== false && ($latestOut === null || $t > $latestOut)) $latestOut = $t;
+                        }
+                    }
+                    if ($earliestIn !== null && $latestOut !== null) {
+                        // Build absolute timestamps for half-day start relative to the same day
+                        $dayStart = strtotime(date('Y-m-d 00:00:00', strtotime($date)));
+                        $halfStartParts = explode(':', $halfStart);
+                        $absHalfStart = $dayStart + ((int)$halfStartParts[0]) * 3600 + ((int)$halfStartParts[1]) * 60 + (isset($halfStartParts[2]) ? (int)$halfStartParts[2] : 0);
+                        // Adjust for overnight shifts
+                        $adjLatestOut = $latestOut;
+                        if ($adjLatestOut < $earliestIn) $adjLatestOut += 24 * 60 * 60;
+                        // Overlap window is from max(earliestIn, absHalfStart) to latestOut
+                        $overlapStart = max($earliestIn, $absHalfStart);
+                        $overlapEnd = $adjLatestOut;
+                        if ($overlapEnd > $overlapStart) {
+                            $overlapSeconds = $overlapEnd - $overlapStart;
+                            // Deduct lunch only if overlap crosses 13:00 and starts before 13:00
+                            $breakEnd = $dayStart + 13 * 3600; // 13:00:00
+                            $deduct = ($overlapEnd > $breakEnd && $overlapStart < $breakEnd) ? 3600 : 0;
+                            $workedSeconds = max(0, $overlapSeconds - $deduct);
+                            $hours = $workedSeconds / 3600;
+                            if ($hours > 0) {
+                                $holiday_hours_total += $hours;
+                                $amount = ($rate_per_hour * 2.0 * $hours);
+                                $holiday_double_pay_amount += $amount;
+                                $holiday_worked[] = [
+                                    'date' => $date,
+                                    'type' => 'half-day',
+                                    'hours' => round($hours, 2),
+                                    'amount' => round($amount, 2),
+                                ];
+                            }
+                        }
+                    }
+                    // Prevent double-processing for the same date but keep OT/NSD logic running
+                    $holidayProcessed[$date] = true;
                 }
                 $workEnd = strtotime($employee->work_end_time);
                 $clockOut = strtotime($tk->clock_out);
