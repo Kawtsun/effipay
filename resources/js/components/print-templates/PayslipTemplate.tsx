@@ -160,16 +160,25 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
     const rolesTokens = (role || '').toLowerCase().split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
   const hasCollegeRole = rolesTokens.some(t => t.includes('college'));
   const isCollegeOnly = hasCollegeRole && (rolesTokens.length > 0 ? rolesTokens.every(t => t.includes('college')) : true);
-  const displayNumHours = isCollegeOnly && typeof totalHours === 'number'
-    ? totalHours.toFixed(2)
+  // Show college hours whenever the employee has any college role (college-only or multi-role)
+  // Coerce totalHours to number to support both numeric and string inputs
+  const totalHoursNum = ((): number | null => {
+    if (totalHours === undefined || totalHours === null) return null;
+    const n = Number(totalHours);
+    return Number.isFinite(n) ? n : null;
+  })();
+  const displayNumHours = (hasCollegeRole && totalHoursNum !== null)
+    ? totalHoursNum.toFixed(2)
     : '-';
-  const displayRatePerHour = isCollegeOnly && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
-    ? collegeRate
-    : '-';
-  // College/GSP value: for college instructor, numHours * ratePerHour
+  // Only show Rate Per Hour if explicitly provided by payroll; do not fallback to collegeRate here
+  const displayRatePerHour = (() => {
+    const nonCollegeRate = getNum(earnings?.ratePerHour);
+    return nonCollegeRate > 0 ? nonCollegeRate : '-';
+  })();
+  // College/GSP value: for any college role, compute numHours * collegeRate
   let displayCollegeGSP: string | number = '-';
-  if (isCollegeOnly && typeof totalHours === 'number' && getNum(collegeRate) > 0) {
-    displayCollegeGSP = parseFloat((totalHours * getNum(collegeRate)).toFixed(2));
+  if (hasCollegeRole && totalHoursNum !== null && getNum(collegeRate) > 0) {
+    displayCollegeGSP = parseFloat((totalHoursNum * getNum(collegeRate)).toFixed(2));
   }
 
   // Overtime and Overload logic (match timekeeping dialog: summary.overtime)
@@ -302,7 +311,7 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginLeft: 16, marginBottom: 2 }}>
               <Text>Rate Per Hour</Text>
-              <Text>{displayRatePerHour}</Text>
+              <Text>{displayRatePerHour === '-' ? '-' : formatWithCommas(displayRatePerHour)}</Text>
             </View>
             {/* College/GSP row */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>

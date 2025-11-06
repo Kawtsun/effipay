@@ -17,12 +17,13 @@ import { Printer, FileText } from 'lucide-react';
 import { MonthPicker } from './ui/month-picker';
 import { Employees } from '@/types';
 import { computeMonthlyMetrics } from '@/utils/computeMonthlyMetrics';
-import { computeRatePerHourForEmployee } from '@/components/table-dialogs/dialog-components/timekeeping-data-provider';
+// import { computeRatePerHourForEmployee } from '@/components/table-dialogs/dialog-components/timekeeping-data-provider';
 
 interface Payroll {
     payroll_date: string;
     base_salary?: number;
     college_rate?: number;
+    honorarium?: number;
     tardiness?: number;
     undertime?: number;
     absences?: number;
@@ -126,13 +127,17 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
     return {
         earnings: {
             monthlySalary: payroll.base_salary ?? 0,
+            honorarium: payroll.honorarium ?? 0,
             tardiness: payroll.tardiness ?? 0,
             undertime: payroll.undertime ?? 0,
             absences: payroll.absences ?? 0,
             // Prefer overtime_pay_total if present; fallback to legacy field name
-            overtime_pay_total: (payroll as any).overtime_pay_total ?? (payroll as any).overtime_pay ?? 0,
+            overtime_pay_total: ((payroll as unknown as { overtime_pay_total?: number; overtime_pay?: number; }).overtime_pay_total
+              ?? (payroll as unknown as { overtime_pay_total?: number; overtime_pay?: number; }).overtime_pay
+              ?? 0),
             adjustment: payroll.adjustments ?? 0,
-            ratePerHour: undefined,
+                        // Only show Rate Per Hour when the payroll record contains it; here we map to college_rate as requested
+                        ratePerHour: payroll.college_rate ?? undefined,
             collegeRate: payroll.college_rate ?? 0,
         },
         deductions: {
@@ -205,7 +210,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             setLoadingPayslip(false);
             return;
         }
-        let payrollCollegeRate = 0;
+    let payrollCollegeRate = 0;
         try {
             const response = await fetch(route('payroll.employee.monthly', {
                 employee_id: employee?.id,
@@ -220,60 +225,86 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                 payrollCollegeRate = payroll.college_rate ?? 0;
             }
         } catch { /* ignore error */ }
-    const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
+        // Fetch BTR records for the month
+        const response = await fetch(`/api/timekeeping/records?employee_id=${employee?.id}&month=${selectedMonth}`);
         const result = await response.json();
-        let btrRecords: BTRRecord[] = [];
+    const btrRecords: BTRRecord[] = [];
+    const btrRecordsForMetrics: Array<{ date: string; time_in?: string; time_out?: string }> = [];
         if (result.success && Array.isArray(result.records) && result.records.length > 0) {
-            // Keep original record fields (clock_in/clock_out or time_in/time_out) and also set normalized time_in/time_out
-            // so computeMonthlyMetrics can parse them correctly.
-            btrRecords = result.records.map((rec: Record<string, unknown>) => {
+            result.records.map((rec: Record<string, unknown>) => {
                 const dateStr = String(rec.date || '');
                 const dateObj = new Date(dateStr);
                 const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
-                const time_in = (rec.clock_in as string) || (rec.time_in as string) || '-';
-                const time_out = (rec.clock_out as string) || (rec.time_out as string) || '-';
-                return {
+                const inRaw = (rec.clock_in as string) || (rec.time_in as string) || '';
+                const outRaw = (rec.clock_out as string) || (rec.time_out as string) || '';
+                const timeInDisplay = inRaw && inRaw.trim() !== '' ? inRaw : '-';
+                const timeOutDisplay = outRaw && outRaw.trim() !== '' ? outRaw : '-';
+                // For computeMonthlyMetrics, use undefined when missing instead of '-'
+                const timeInMetric = inRaw && inRaw.trim() !== '' ? inRaw : undefined;
+                const timeOutMetric = outRaw && outRaw.trim() !== '' ? outRaw : undefined;
+                btrRecordsForMetrics.push({ date: dateStr, time_in: timeInMetric, time_out: timeOutMetric });
+                const displayRec = {
                     ...(rec as object),
                     date: dateStr,
                     dayName,
-                    time_in,
-                    time_out,
+                    timeIn: timeInDisplay,
+                    timeOut: timeOutDisplay,
+                    time_in: timeInMetric,
+                    time_out: timeOutMetric,
                 } as unknown as BTRRecord;
+                btrRecords.push(displayRec);
+                return displayRec;
             });
         }
+        // Fetch observances to ensure parity with Attendance/Report cards
+        let observances: Array<Record<string, unknown>> = [];
+        try {
+            const obsRes = await fetch('/observances');
+            const obsJson = await obsRes.json();
+            observances = Array.isArray(obsJson) ? obsJson : (Array.isArray(obsJson?.observances) ? obsJson.observances : []);
+        } catch { /* ignore */ }
+
         // Compute monthly metrics using the same logic as AttendanceCards
-    const metrics = await computeMonthlyMetrics(employee, selectedMonth, btrRecords);
+        const metrics = await computeMonthlyMetrics(
+            employee,
+            selectedMonth,
+            btrRecordsForMetrics as unknown as Array<{ date: string; time_in?: string; time_out?: string }>,
+            observances as unknown as Array<{ [k: string]: unknown }>
+        );
     const rolesStr = (employee?.roles || '').toLowerCase();
-    const tokens = rolesStr.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
+    const tokens = rolesStr.split(/[,\n]+/).map((s: string) => s.trim()).filter(Boolean);
         const hasCollege = rolesStr.includes('college instructor') || rolesStr.includes('college');
         const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every(t => t.includes('college')) : true);
+    const mObj = metrics as unknown as { college_paid_hours?: number };
+    const collegeHours = typeof mObj.college_paid_hours === 'number' ? Number(mObj.college_paid_hours) : NaN;
 
     const tardinessRaw = metrics.tardiness ?? 0;
-    const undertimeRaw = metrics.undertime ?? 0;
+        const undertimeRaw = metrics.undertime ?? 0;
     // Fallback to monthly summary absences if metrics unexpectedly yields 0/undefined
     const absencesFromSummary = Number(timekeepingSummary?.absences ?? 0) || 0;
     const absences = Number(metrics.absences ?? NaN);
     const effectiveAbsences = Number.isFinite(absences) && absences > 0 ? absences : absencesFromSummary;
         const overtimeRaw = metrics.overtime ?? 0;
-    const totalHoursFromSummary = metrics.total_hours ?? 0;
+        // Hours for College/GSP amount calculation: strictly college-paid hours;
+        // Hours for display: if college-paid hours are missing, fall back to total_hours to avoid showing 0.00
+        const collegeHoursForGSP = Number.isFinite(collegeHours) ? collegeHours : 0;
+        const hoursForDisplayRaw = hasCollege
+            ? (Number.isFinite(collegeHours) ? collegeHours : (metrics.total_hours ?? 0))
+            : (metrics.total_hours ?? 0);
     const weekdayOT = Number(metrics.overtime_count_weekdays ?? 0) || 0;
     const weekendOT = Number(metrics.overtime_count_weekends ?? 0) || 0;
-        const numHours = Number.isFinite(totalHoursFromSummary) ? totalHoursFromSummary : 0;
+        const numHoursDisplay = Number.isFinite(hoursForDisplayRaw) ? hoursForDisplayRaw : 0;
 
         // Apply college-only rule: no tardiness, undertime, or overtime; only absences count
         const tardiness = isCollegeOnly ? 0 : tardinessRaw;
         const undertime = isCollegeOnly ? 0 : undertimeRaw;
-        const overtime = isCollegeOnly ? 0 : overtimeRaw;
+    const overtime = isCollegeOnly ? 0 : overtimeRaw;
 
         const effectiveCollegeRate = (data.earnings.collegeRate ?? payrollCollegeRate ?? 0) as number;
-        const resolvedNonCollegeRate = Number(timekeepingSummary?.rate_per_hour ?? 0) > 0
-            ? Number(timekeepingSummary?.rate_per_hour)
-            : computeRatePerHourForEmployee(employee);
-        const ratePerHour = isCollegeOnly
-            ? effectiveCollegeRate
-            : resolvedNonCollegeRate;
-        const collegeGSP = isCollegeOnly && typeof numHours === 'number'
-            ? parseFloat((numHours * Number(effectiveCollegeRate || 0)).toFixed(2))
+        // Do NOT derive/display non-college rate here; only use what payroll explicitly contains
+        const ratePerHour = (data.earnings?.ratePerHour ?? undefined);
+        const collegeGSP = hasCollege
+            ? parseFloat(((Number.isFinite(collegeHoursForGSP) ? collegeHoursForGSP : 0) * Number(effectiveCollegeRate || 0)).toFixed(2))
             : (data.earnings?.collegeGSP ?? undefined);
         // Compute absences amount explicitly to ensure value is shown
         const absencesAmount = (() => {
@@ -282,7 +313,8 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             return parseFloat(((Number(effectiveAbsences) || 0) * rate).toFixed(2));
         })();
                         // Build overtime pay total with robust preference: use server monthly-summary value when available (includes NSD)
-                        const serverOTTotal = Number((timekeepingSummary as any)?.overtime_pay_total ?? NaN);
+                        const tkExt = (timekeepingSummary as unknown as { overtime_pay_total?: number }) || null;
+                        const serverOTTotal = Number(tkExt?.overtime_pay_total ?? NaN);
                         const numericOvertimeFromPayroll = Number(data.earnings?.overtime_pay_total ?? NaN);
                         // Fallback formula for non-college only when no server/payroll value is available
                         const computedOTFallback = (!isCollegeOnly && Number(ratePerHour) > 0)
@@ -292,11 +324,13 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                             ? Number(serverOTTotal.toFixed(2))
                             : (Number.isFinite(numericOvertimeFromPayroll) ? Number(numericOvertimeFromPayroll.toFixed(2)) : computedOTFallback);
 
-                        setPayrollData({
+                                                setPayrollData({
                 ...data,
                 earnings: {
                     ...data.earnings,
-                    numHours,
+                                        // For College/GSP display, always show college-paid hours when a college role exists
+                                        // Display hours: show college-paid hours if available; otherwise show total monthly hours
+                                        numHours: Number(Number(numHoursDisplay).toFixed(2)),
                     ratePerHour,
                     collegeRate: effectiveCollegeRate,
                     tardiness,
@@ -311,12 +345,11 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                         gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
                     net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
                     adjustment: data.earnings?.adjustment ?? undefined,
-                    honorarium: data.earnings?.honorarium ?? undefined,
+                    honorarium: data.earnings?.honorarium ?? 0,
                     collegeGSP,
                     overload: data.earnings?.overload ?? undefined,
-                    totalHours: hasCollege
-                      ? (Number.isFinite(totalHoursFromSummary) ? totalHoursFromSummary : numHours)
-                      : (typeof numHours === 'number' ? numHours : (numHours ? Number(numHours) : 0)),
+                                                            // For "No. of hours" display, mirror the same logic with 2-decimal rounding
+                                                            totalHours: Number(Number(numHoursDisplay).toFixed(2)),
                 },
             });
         setTimeout(() => {
@@ -382,15 +415,37 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             } else {
                 setLeaveDatesMap({});
             }
-            // Compute and store total hours for BTR output (matches AttendanceCards)
-            const metricsBTR = await computeMonthlyMetrics(employee, selectedMonth, btrRecords);
-            setBtrTotalHours(metricsBTR.total_hours ?? 0);
-            setBtrMetrics({
-                tardiness: metricsBTR.tardiness ?? 0,
-                undertime: metricsBTR.undertime ?? 0,
-                overtime: metricsBTR.overtime ?? 0,
-                absences: metricsBTR.absences ?? 0,
-            });
+                        // Compute and store totals for BTR output using the SAME rules as AttendanceCards:
+                        // - Include observances so hours match cards/reports exactly
+                        // - For college-only employees, display college-paid hours and zero-out T/U/OT
+                        // - Otherwise, use total_hours
+                        let observancesBTR: Array<Record<string, unknown>> = [];
+                        try {
+                            const obsRes = await fetch('/observances');
+                            const obsJson = await obsRes.json();
+                            observancesBTR = Array.isArray(obsJson) ? obsJson : (Array.isArray(obsJson?.observances) ? obsJson.observances : []);
+                        } catch { /* ignore */ }
+                        const metricsBTR = await computeMonthlyMetrics(employee, selectedMonth, btrRecords, observancesBTR as unknown as Array<{ [k: string]: unknown }>);
+                        const rolesStr = (employee?.roles || '').toLowerCase();
+                                    const tokens = rolesStr
+                                        .split(',')
+                                        .flatMap((p) => p.split('\n'))
+                                        .map((s) => s.trim())
+                                        .filter(Boolean);
+                        const hasCollege = rolesStr.includes('college instructor') || rolesStr.includes('college');
+                        const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every((t) => t.includes('college')) : true);
+                        const collegeHoursBTR = Number((metricsBTR as unknown as { college_paid_hours?: number })?.college_paid_hours ?? NaN);
+                        const displayHours = isCollegeOnly && Number.isFinite(collegeHoursBTR)
+                            ? collegeHoursBTR
+                            : (metricsBTR.total_hours ?? 0);
+                        // Round to 2 decimals before rendering to match Attendance/Report cards
+                        setBtrTotalHours(Number(Number(displayHours).toFixed(2)));
+                        setBtrMetrics({
+                                tardiness: isCollegeOnly ? 0 : (metricsBTR.tardiness ?? 0),
+                                undertime: isCollegeOnly ? 0 : (metricsBTR.undertime ?? 0),
+                                overtime: isCollegeOnly ? 0 : (metricsBTR.overtime ?? 0),
+                                absences: metricsBTR.absences ?? 0,
+                        });
 
             const hasRealTime = btrRecords.some(r => (r.timeIn && r.timeIn !== '-') || (r.timeOut && r.timeOut !== '-'));
             const hasLeaves = summaryJson.success && summaryJson._debug && Object.keys(summaryJson._debug.leave_dates_map).length > 0;
