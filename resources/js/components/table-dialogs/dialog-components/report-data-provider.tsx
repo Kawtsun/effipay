@@ -410,6 +410,8 @@ export function ReportDataProvider({
         const hC = (tkComputed && typeof (tkComputed as any).college_paid_hours === 'number') ? Number((tkComputed as any).college_paid_hours) : NaN;
         if (Number.isFinite(hC)) return hC;
       }
+      const tkH = Number((tkComputed as any)?.total_hours ?? NaN);
+      if (Number.isFinite(tkH)) return tkH;
       const sumH = (timekeepingSummary && typeof (timekeepingSummary as { total_hours?: unknown })?.total_hours === 'number')
         ? Number((timekeepingSummary as { total_hours?: number }).total_hours)
         : NaN;

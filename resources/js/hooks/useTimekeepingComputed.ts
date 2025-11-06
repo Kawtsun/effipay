@@ -28,19 +28,22 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
   const [observanceMap, setObservanceMap] = React.useState<ObservanceMap>({});
   const [summaryRates, setSummaryRates] = React.useState<{ rate_per_hour?: number; college_rate?: number } | null>(null);
   const [loading, setLoading] = React.useState(false);
+  // Leave dates within the selected month; used to exclude tardy/under/absences when on leave
+  const [leaveDatesSet, setLeaveDatesSet] = React.useState<Record<string, true>>({});
 
   React.useEffect(() => {
   if (!employee || !month) {
       setRecords([]);
       setObservanceMap({});
       setSummaryRates(null);
+      setLeaveDatesSet({});
       return;
     }
     let cancelled = false;
     async function run() {
       setLoading(true);
       try {
-        const [recRes, obsRes, sumRes] = await Promise.all([
+        const [recRes, obsRes, sumRes, leavesRes] = await Promise.all([
           fetch(`/api/timekeeping/records?employee_id=${employee!.id}&month=${month}`).then(r => r.json()).catch(() => ({ records: [] })),
           fetch(`/observances`).then(r => r.json()).catch(() => ([])),
           (async () => {
@@ -53,6 +56,7 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
               return null;
             }
           })(),
+          fetch(`/api/leaves?employee_id=${employee!.id}`).then(r => r.json()).catch(() => ({ leaves: [] })),
         ]);
         if (cancelled) return;
         const recs = Array.isArray(recRes?.records) ? recRes.records : [];
@@ -72,6 +76,35 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
             : (typeof sumRes.college_rate === 'string' && sumRes.college_rate !== '' ? Number(sumRes.college_rate) : undefined),
         } : null;
         setSummaryRates(sr);
+
+        // Build leave date set for the target month
+        const rows: Array<{ leave_start_day?: string; leave_end_day?: string | null }> = Array.isArray(leavesRes?.leaves) ? leavesRes.leaves : [];
+        const [yStr, mStr] = String(month).split("-");
+        const y = Number(yStr), m = Number(mStr);
+        if (y && m) {
+          const first = new Date(y, m - 1, 1);
+          const last = new Date(y, m, 0);
+          const inMonth = (d: Date) => d >= first && d <= last;
+          const set: Record<string, true> = {};
+          for (const r of rows) {
+            const sStr = r?.leave_start_day ? String(r.leave_start_day).slice(0, 10) : '';
+            const eStrRaw = r?.leave_end_day ? String(r.leave_end_day) : sStr;
+            if (!sStr) continue;
+            const s = new Date(`${sStr}T00:00:00`);
+            const e = new Date(`${(eStrRaw || sStr).slice(0,10)}T00:00:00`);
+            // iterate from max(s, first) to min(e, last)
+            const start = s < first ? first : s;
+            const end = e > last ? last : e;
+            if (!inMonth(start) && !inMonth(end)) continue;
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              set[key] = true;
+            }
+          }
+          setLeaveDatesSet(set);
+        } else {
+          setLeaveDatesSet({});
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -192,6 +225,10 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${yStr}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       const d = new Date(`${dateStr}T00:00:00`);
+      // Skip all metrics on leave days (no tardy/undertime/absences counted)
+      if (leaveDatesSet[dateStr]) {
+        continue;
+      }
       const code = codeFromDate(d);
       const sched = schedByCode[code];
       const rec = map[dateStr];
