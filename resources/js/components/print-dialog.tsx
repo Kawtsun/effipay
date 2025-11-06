@@ -320,24 +320,45 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
     const overtime = isCollegeOnly ? 0 : overtimeRaw;
 
         const effectiveCollegeRate = (data.earnings.collegeRate ?? payrollCollegeRate ?? 0) as number;
-        // Do NOT derive/display non-college rate here; only use what payroll explicitly contains
-        const ratePerHour = (data.earnings?.ratePerHour ?? undefined);
+        // Derive non-college hourly rate from base salary when needed (match backend formula)
+        const rateFromSummary = Number((timekeepingSummary as unknown as { rate_per_hour?: number })?.rate_per_hour ?? NaN);
+        const baseMonthly = Number(data.earnings?.monthlySalary ?? NaN);
+        const whpd = Number(employee?.work_hours_per_day ?? NaN) || 8;
+        const derivedHourly = Number.isFinite(rateFromSummary)
+            ? Number(rateFromSummary)
+            : (Number.isFinite(baseMonthly) && whpd > 0
+                ? Number((((baseMonthly * 12) / 288) / whpd).toFixed(2))
+                : 0);
+        // Display: only show rate per hour for college (from payroll.college_rate); hide for non-college
+        const ratePerHour = hasCollege ? (data.earnings?.ratePerHour ?? undefined) : undefined;
         const collegeGSP = hasCollege
             ? parseFloat(((Number.isFinite(collegeHoursForGSP) ? collegeHoursForGSP : 0) * Number(effectiveCollegeRate || 0)).toFixed(2))
             : (data.earnings?.collegeGSP ?? undefined);
         // Compute absences amount explicitly to ensure value is shown
         const absencesAmount = (() => {
-            const rate = Number(ratePerHour) || 0;
+            const rate = hasCollege ? Number(effectiveCollegeRate || 0) : Number(derivedHourly || 0);
             if (rate <= 0) return undefined;
             return parseFloat(((Number(effectiveAbsences) || 0) * rate).toFixed(2));
+        })();
+        const tardinessAmount = (() => {
+            if (isCollegeOnly) return 0;
+            const rate = Number(derivedHourly || 0);
+            if (rate <= 0) return undefined;
+            return parseFloat(((Number(tardiness) || 0) * rate).toFixed(2));
+        })();
+        const undertimeAmount = (() => {
+            if (isCollegeOnly) return 0;
+            const rate = Number(derivedHourly || 0);
+            if (rate <= 0) return undefined;
+            return parseFloat(((Number(undertime) || 0) * rate).toFixed(2));
         })();
                         // Build overtime pay total with robust preference: use server monthly-summary value when available (includes NSD)
                         const tkExt = (timekeepingSummary as unknown as { overtime_pay_total?: number }) || null;
                         const serverOTTotal = Number(tkExt?.overtime_pay_total ?? NaN);
                         const numericOvertimeFromPayroll = Number(data.earnings?.overtime_pay_total ?? NaN);
                         // Fallback formula for non-college only when no server/payroll value is available
-                        const computedOTFallback = (!isCollegeOnly && Number(ratePerHour) > 0)
-                            ? parseFloat((Number(ratePerHour) * ((0.25 * weekdayOT) + (0.30 * weekendOT))).toFixed(2))
+                        const computedOTFallback = (!isCollegeOnly && Number(derivedHourly) > 0)
+                            ? parseFloat((Number(derivedHourly) * ((0.25 * weekdayOT) + (0.30 * weekendOT))).toFixed(2))
                             : 0;
                         const overtime_pay_total = Number.isFinite(serverOTTotal)
                             ? Number(serverOTTotal.toFixed(2))
@@ -350,12 +371,15 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                         // For College/GSP display, always show college-paid hours when a college role exists
                                         // Display hours: show college-paid hours if available; otherwise show total monthly hours
                                         numHours: Number(Number(numHoursDisplay).toFixed(2)),
+                    // Display Rate Per Hour only for college roles (from payroll). Hide for non-college.
                     ratePerHour,
                     collegeRate: effectiveCollegeRate,
                     tardiness,
                     undertime,
                     absences: effectiveAbsences,
                     absencesAmount,
+                    tardinessAmount,
+                    undertimeAmount,
                                         overtime_pay_total,
                     overtime,
                     overtime_hours: overtime,

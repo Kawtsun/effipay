@@ -203,8 +203,15 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               : Number(Number(metrics.total_hours ?? 0).toFixed(2));
             // Get college_rate from payslip
             const collegeRate = result.payslip.college_rate ?? 0;
-            // Only show Rate Per Hour when the payroll record contains it; map to college_rate as requested
-            const ratePerHour = (result.payslip as unknown as { college_rate?: number }).college_rate;
+            // Derive non-college hourly rate from base salary and summary when needed (match backend formula)
+            const rateFromSummary = Number((summary as unknown as { rate_per_hour?: number })?.rate_per_hour ?? NaN);
+            const baseMonthly = Number(result.payslip.base_salary ?? NaN);
+            const whpd = Number((emp as Employees).work_hours_per_day ?? NaN) || 8;
+            const derivedHourly = Number.isFinite(rateFromSummary)
+              ? Number(rateFromSummary)
+              : (Number.isFinite(baseMonthly) && whpd > 0 ? Number((((baseMonthly * 12) / 288) / whpd).toFixed(2)) : 0);
+            // Display Rate Per Hour only for college roles (from payroll); hide for non-college
+            const ratePerHour = hasCollege ? (result.payslip as unknown as { college_rate?: number }).college_rate : undefined;
             // Compose merged earnings (match single print logic)
             const mergedEarnings = {
               monthlySalary: result.payslip.base_salary,
@@ -219,9 +226,8 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               honorarium: result.payslip.honorarium,
               // Use metrics for consistency
               tardiness: isCollegeOnly ? 0 : (metrics.tardiness ?? 0),
-              tardinessAmount: isCollegeOnly ? 0 : (result.payslip.tardiness_amount ?? result.payslip.tardinessAmount),
               undertime: isCollegeOnly ? 0 : (metrics.undertime ?? 0),
-              undertimeAmount: isCollegeOnly ? 0 : (result.payslip.undertime_amount ?? result.payslip.undertimeAmount),
+              // tardinessAmount and undertimeAmount computed below using derivedHourly for non-college
               absences: (() => {
                 const m = Number(metrics.absences ?? NaN);
                 if (Number.isFinite(m) && m > 0) return m;
@@ -234,9 +240,21 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
                   ? Number(metrics.absences)
                   : (Number(summary?.absences ?? NaN) && Number(summary?.absences) > 0 ? Number(summary?.absences) : Number(result.payslip.absences ?? 0));
                 if (isCollegeOnly) return parseFloat(((abs || 0) * Number(collegeRate || 0)).toFixed(2));
-                const rate = Number(ratePerHour) || 0;
+                const rate = Number(derivedHourly) || 0;
                 if (rate > 0) return parseFloat(((abs || 0) * rate).toFixed(2));
                 return (result.payslip.absences_amount ?? result.payslip.absencesAmount);
+              })(),
+              tardinessAmount: (() => {
+                if (isCollegeOnly) return 0;
+                const rate = Number(derivedHourly) || 0;
+                if (rate > 0) return parseFloat(((Number(metrics.tardiness ?? 0)) * rate).toFixed(2));
+                return (result.payslip.tardiness_amount ?? result.payslip.tardinessAmount);
+              })(),
+              undertimeAmount: (() => {
+                if (isCollegeOnly) return 0;
+                const rate = Number(derivedHourly) || 0;
+                if (rate > 0) return parseFloat(((Number(metrics.undertime ?? 0)) * rate).toFixed(2));
+                return (result.payslip.undertime_amount ?? result.payslip.undertimeAmount);
               })(),
               overtime: isCollegeOnly ? 0 : (metrics.overtime ?? 0),
               overtime_hours: isCollegeOnly ? 0 : (metrics.overtime ?? result.payslip.overtime_hours ?? 0),
@@ -248,7 +266,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
                 if (summaryOT > 0) return summaryOT;
                 const fromPayroll = Number(((result as unknown as { payslip: { overtime_pay?: number } }).payslip?.overtime_pay) ?? 0);
                 if (fromPayroll > 0) return fromPayroll;
-                const rate = Number(ratePerHour) || 0;
+                const rate = Number(derivedHourly) || 0;
                 const weekdayOT = Number(metrics.overtime_count_weekdays ?? 0) || 0;
                 const weekendOT = Number(metrics.overtime_count_weekends ?? 0) || 0;
                 if (rate > 0) {
