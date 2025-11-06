@@ -75,6 +75,7 @@ export function TimeKeepingDataProvider({
   // Loading flags for skeleton control
   const [recordsLoading, setRecordsLoading] = React.useState(false);
   const [observancesLoading, setObservancesLoading] = React.useState(false);
+  const [leavesLoading, setLeavesLoading] = React.useState(false);
   const [summaryLoading, setSummaryLoading] = React.useState(false);
   const [displayLoading, setDisplayLoading] = React.useState(false);
   const loadingStartRef = React.useRef<number | null>(null);
@@ -141,6 +142,54 @@ export function TimeKeepingDataProvider({
       }
     })();
   }, [selectedMonth]);
+
+  // Fetch leaves and build a set of leave dates within the selected month
+  const [leaveDatesSet, setLeaveDatesSet] = React.useState<Record<string, true>>({});
+  React.useEffect(() => {
+    if (!employee || !selectedMonth) {
+      setLeaveDatesSet({});
+      return;
+    }
+    (async () => {
+      setLeavesLoading(true);
+      try {
+        const res = await fetch(`/api/leaves?employee_id=${employee.id}`);
+        const json = await res.json();
+        const rows: Array<{ leave_start_day?: string; leave_end_day?: string | null }> = Array.isArray(json?.leaves) ? json.leaves : [];
+        const monthStart = `${selectedMonth}-01`;
+        const [y, m] = selectedMonth.split('-').map((v) => parseInt(v, 10));
+        const monthEnd = new Date(y, m, 0); // last day of month
+        const monthEndStr = `${monthEnd.getFullYear()}-${String(monthEnd.getMonth() + 1).padStart(2, '0')}-${String(monthEnd.getDate()).padStart(2, '0')}`;
+        const toDate = (s: string) => new Date(`${s}T00:00:00`);
+        const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+        const set: Record<string, true> = {};
+        for (const r of rows) {
+          const startStr = (r?.leave_start_day || '').slice(0, 10);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(startStr)) continue;
+          const endStrRaw = (r?.leave_end_day || '').slice(0, 10);
+          const startBounded = cmp(startStr, monthStart) < 0 ? monthStart : startStr;
+          const endBounded = endStrRaw && /^\d{4}-\d{2}-\d{2}$/.test(endStrRaw)
+            ? (cmp(endStrRaw, monthEndStr) > 0 ? monthEndStr : endStrRaw)
+            : monthEndStr; // open-ended -> cap to month end
+
+          // Expand dates from startBounded..endBounded
+          let cur = toDate(startBounded);
+          const last = toDate(endBounded);
+          for (; cur <= last; cur.setDate(cur.getDate() + 1)) {
+            const d = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+            if (d.startsWith(selectedMonth)) set[d] = true;
+          }
+        }
+        setLeaveDatesSet(set);
+      } catch (e) {
+        console.error('Failed to fetch leaves', e);
+        setLeaveDatesSet({});
+      } finally {
+        setLeavesLoading(false);
+      }
+    })();
+  }, [employee?.id, selectedMonth]);
 
   // Fetch distinct months present in timekeeping records
   const fetchAvailableMonths = React.useCallback(async () => {
@@ -219,7 +268,7 @@ export function TimeKeepingDataProvider({
   };
 
   // Manage displayed skeleton with a small minimum duration to prevent flicker
-  const anyBackendLoading = !selectedMonth || recordsLoading || observancesLoading || summaryLoading;
+  const anyBackendLoading = !selectedMonth || recordsLoading || observancesLoading || leavesLoading || summaryLoading;
   React.useEffect(() => {
     if (anyBackendLoading) {
       if (!displayLoading) {
@@ -462,6 +511,10 @@ export function TimeKeepingDataProvider({
       const code = codeFromDate(d);
       const sched = schedByCode[code];
       const rec = map[dateStr];
+      // Skip all metrics on leave days (no tardy/undertime/absences counted)
+      if (leaveDatesSet[dateStr]) {
+        continue;
+      }
       const timeIn = parseClock(rec?.clock_in ?? rec?.time_in);
       const timeOut = parseClock(rec?.clock_out ?? rec?.time_out);
 

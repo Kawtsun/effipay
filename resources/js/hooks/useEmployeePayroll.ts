@@ -15,6 +15,10 @@ export interface PayrollSummary {
     gross_pay: number;
     college_rate?: number;
     total_hours?: number;
+    // New: expose holiday double pay and breakdown so consumers (reports/printing) can use them
+    holiday_double_pay_amount?: number;
+    holiday_double_pay_hours?: number;
+    holiday_worked?: Array<{ date: string; type?: string; hours?: number; amount?: number }>;
 }
 
 export function useEmployeePayroll(employeeId: number | string | null, month: string | null, employee?: any) {
@@ -95,6 +99,9 @@ export function useEmployeePayroll(employeeId: number | string | null, month: st
                         gross_pay: grossPay,
                         college_rate: isCollege ? college_rate : undefined,
                         total_hours,
+                        holiday_double_pay_amount: typeof result.holiday_double_pay_amount === 'number' ? result.holiday_double_pay_amount : (typeof result.holiday_double_pay_amount === 'string' && result.holiday_double_pay_amount !== '' ? Number(result.holiday_double_pay_amount) : undefined),
+                        holiday_double_pay_hours: typeof result.holiday_double_pay_hours === 'number' ? result.holiday_double_pay_hours : (typeof result.holiday_double_pay_hours === 'string' && result.holiday_double_pay_hours !== '' ? Number(result.holiday_double_pay_hours) : undefined),
+                        holiday_worked: Array.isArray(result.holiday_worked) ? result.holiday_worked : undefined,
                     });
                 } else {
                     setSummary(null);

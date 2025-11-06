@@ -352,17 +352,15 @@ class TimeKeepingController extends Controller
                     new \DateInterval('P1D'),
                     (new \DateTime($endDate))->modify('+1 day')
                 );
-                // Get leave dates for this employee
-                $leaveStatuses = ['on leave', 'sick leave', 'vacation leave', 'Paid Leave'];
+                // Get leave date intervals for this employee (treat any status as leave)
                 $leaveIntervals = DB::table('leaves')
                     ->where('employee_id', $emp->id)
-                    ->whereIn('status', $leaveStatuses)
                     ->whereNotNull('leave_start_day')
                     ->get(['leave_start_day', 'leave_end_day']);
                 $isInLeaveInterval = function ($date) use ($leaveIntervals) {
                     foreach ($leaveIntervals as $interval) {
-                        $start = $interval->leave_start_date;
-                        $end = $interval->leave_end_date;
+                        $start = $interval->leave_start_day;
+                        $end = $interval->leave_end_day;
                         if ($start && !$end && $date >= $start) return true;
                         if ($start && $end && $date >= $start && $date <= $end) return true;
                     }
@@ -682,6 +680,12 @@ class TimeKeepingController extends Controller
     // Night Shift Differential (NSD): hours and pay after 10:00 PM
     $nsd_hours_total = 0;
     $nsd_pay_total = 0;
+        // Holiday/Observance double-pay bucket
+        $overtime_count_observances = 0; // deprecated: we no longer count observances as OT hours
+        $holidayProcessed = [];
+        $holiday_hours_total = 0; // total worked hours on whole-day/automated observances
+        $holiday_double_pay_amount = 0; // total double-pay amount (2.0x base hourly)
+        $holiday_worked = []; // [{date, type, hours, amount}]
 
         // Use payroll values if available, otherwise fallback to employee
         $base_salary = $payroll ? $payroll->base_salary : $employee->base_salary;
@@ -698,15 +702,17 @@ class TimeKeepingController extends Controller
         // Fetch observances for this month early so we can apply per-date rules (e.g., rainy-day -> 60min grace)
         $observancesRows = DB::table('observances')
             ->where('date', 'like', "$month%")
-            ->get(['date', 'type', 'is_automated'])
+            ->get(['date', 'type', 'is_automated', 'start_time'])
             ->toArray();
         $observanceDates = array_map(function ($o) { return $o->date; }, $observancesRows);
         $observanceSet = array_flip($observanceDates);
         $observanceTypeMap = [];
         $observanceAutomatedMap = [];
+        $observanceStartTimeMap = [];
         foreach ($observancesRows as $orow) {
-            $observanceTypeMap[$orow->date] = $orow->type ?? null;
+            $observanceTypeMap[$orow->date] = isset($orow->type) ? strtolower(trim((string)$orow->type)) : null;
             $observanceAutomatedMap[$orow->date] = isset($orow->is_automated) ? (bool)$orow->is_automated : false;
+            $observanceStartTimeMap[$orow->date] = $orow->start_time ?? null;
         }
 
         foreach ($records as $tk) {
@@ -744,6 +750,102 @@ class TimeKeepingController extends Controller
             // - Hours from work_end_time up to 22:00 are counted as regular OT
             // - Hours after 22:00 (10 PM) are counted as NSD (OT with +10% bonus)
             if ($tk->clock_out && $employee->work_end_time) {
+                $date = $tk->date;
+                // Check holiday/observance: whole-day or automated holiday -> double pay for all worked hours
+                $isObservance = isset($observanceSet[$date]);
+                $isWholeDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day');
+                $isAutomatedHoliday = $isObservance && (!empty($observanceAutomatedMap[$date]));
+                if (($isWholeDay || $isAutomatedHoliday) && !isset($holidayProcessed[$date])) {
+                    // Compute earliest clock_in and latest clock_out for this date
+                    $dayRecs = $records->where('date', $date);
+                    $earliestIn = null; $latestOut = null;
+                    foreach ($dayRecs as $dr) {
+                        if (!empty($dr->clock_in)) {
+                            $t = strtotime($dr->clock_in);
+                            if ($t !== false && ($earliestIn === null || $t < $earliestIn)) $earliestIn = $t;
+                        }
+                        if (!empty($dr->clock_out)) {
+                            $t = strtotime($dr->clock_out);
+                            if ($t !== false && ($latestOut === null || $t > $latestOut)) $latestOut = $t;
+                        }
+                    }
+                    if ($earliestIn !== null && $latestOut !== null) {
+                        $worked = $latestOut - $earliestIn; if ($worked < 0) $worked += 24 * 60 * 60;
+                        // Deduct 1 hour lunch only if shift ended strictly after 13:00 (1 PM)
+                        $breakEnd = strtotime('13:00:00');
+                        $deduct = ($latestOut > $breakEnd) ? 3600 : 0;
+                        $workedSeconds = max(0, $worked - $deduct);
+                        $hours = $workedSeconds / 3600;
+                        if ($hours > 0) {
+                            // Entire worked hours are paid double on holiday/automated observance
+                            // IMPORTANT: Do NOT add to overtime counters or overtime pay totals.
+                            $holiday_hours_total += $hours;
+                            $amount = ($rate_per_hour * 2.0 * $hours);
+                            $holiday_double_pay_amount += $amount;
+                            $holiday_worked[] = [
+                                'date' => $date,
+                                'type' => $isAutomatedHoliday ? 'automated-holiday' : ($observanceTypeMap[$date] ?? 'observance'),
+                                'hours' => round($hours, 2),
+                                'amount' => round($amount, 2),
+                            ];
+                        }
+                    }
+                    $holidayProcessed[$date] = true;
+                    // Skip regular OT/NSD processing for this date to avoid double counting
+                    continue;
+                }
+                // Half-day observance handling: apply double pay only for hours worked after the half-day start
+                $isHalfDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'half-day');
+                if ($isHalfDay && !isset($holidayProcessed[$date])) {
+                    // Determine half-day start time; default to 13:00:00 if not provided
+                    $halfStart = $observanceStartTimeMap[$date] ?? '13:00:00';
+                    // Compute earliest clock_in and latest clock_out for this date
+                    $dayRecs = $records->where('date', $date);
+                    $earliestIn = null; $latestOut = null;
+                    foreach ($dayRecs as $dr) {
+                        if (!empty($dr->clock_in)) {
+                            $t = strtotime($dr->clock_in);
+                            if ($t !== false && ($earliestIn === null || $t < $earliestIn)) $earliestIn = $t;
+                        }
+                        if (!empty($dr->clock_out)) {
+                            $t = strtotime($dr->clock_out);
+                            if ($t !== false && ($latestOut === null || $t > $latestOut)) $latestOut = $t;
+                        }
+                    }
+                    if ($earliestIn !== null && $latestOut !== null) {
+                        // Build absolute timestamps for half-day start relative to the same day
+                        $dayStart = strtotime(date('Y-m-d 00:00:00', strtotime($date)));
+                        $halfStartParts = explode(':', $halfStart);
+                        $absHalfStart = $dayStart + ((int)$halfStartParts[0]) * 3600 + ((int)$halfStartParts[1]) * 60 + (isset($halfStartParts[2]) ? (int)$halfStartParts[2] : 0);
+                        // Adjust for overnight shifts
+                        $adjLatestOut = $latestOut;
+                        if ($adjLatestOut < $earliestIn) $adjLatestOut += 24 * 60 * 60;
+                        // Overlap window is from max(earliestIn, absHalfStart) to latestOut
+                        $overlapStart = max($earliestIn, $absHalfStart);
+                        $overlapEnd = $adjLatestOut;
+                        if ($overlapEnd > $overlapStart) {
+                            $overlapSeconds = $overlapEnd - $overlapStart;
+                            // Deduct lunch only if overlap crosses 13:00 and starts before 13:00
+                            $breakEnd = $dayStart + 13 * 3600; // 13:00:00
+                            $deduct = ($overlapEnd > $breakEnd && $overlapStart < $breakEnd) ? 3600 : 0;
+                            $workedSeconds = max(0, $overlapSeconds - $deduct);
+                            $hours = $workedSeconds / 3600;
+                            if ($hours > 0) {
+                                $holiday_hours_total += $hours;
+                                $amount = ($rate_per_hour * 2.0 * $hours);
+                                $holiday_double_pay_amount += $amount;
+                                $holiday_worked[] = [
+                                    'date' => $date,
+                                    'type' => 'half-day',
+                                    'hours' => round($hours, 2),
+                                    'amount' => round($amount, 2),
+                                ];
+                            }
+                        }
+                    }
+                    // Prevent double-processing for the same date but keep OT/NSD logic running
+                    $holidayProcessed[$date] = true;
+                }
                 $workEnd = strtotime($employee->work_end_time);
                 $clockOut = strtotime($tk->clock_out);
 
@@ -1033,6 +1135,7 @@ class TimeKeepingController extends Controller
             'overtime' => round($overtime_count, 2),
             'overtime_count_weekdays' => round($overtime_count_weekdays, 2),
             'overtime_count_weekends' => round($overtime_count_weekends, 2),
+            'overtime_count_observances' => 0.0, // observance hours are paid separately as Double Pay
             'absences' => round($absences, 2),
             'base_salary' => $base_salary,
             'rate_per_day' => $rate_per_day,
@@ -1040,6 +1143,10 @@ class TimeKeepingController extends Controller
             'overtime_pay_total' => round($overtime_pay_total, 2),
             'nsd_hours' => round($nsd_hours_total, 2),
             'nsd_pay_total' => round($nsd_pay_total, 2),
+            // New: separate double pay fields for whole-day/automated observances
+            'holiday_double_pay_hours' => round($holiday_hours_total, 2),
+            'holiday_double_pay_amount' => round($holiday_double_pay_amount, 2),
+            'holiday_worked' => $holiday_worked,
             'payroll_gross_pay' => $payroll ? $payroll->gross_pay : null,
             'payroll_total_deductions' => $payroll ? $payroll->total_deductions : null,
             'payroll_net_pay' => $payroll ? $payroll->net_pay : null,
@@ -1134,5 +1241,125 @@ class TimeKeepingController extends Controller
             'with_count' => count($with),
             'without_count' => count($without),
         ]);
+    }
+
+    /**
+     * Fetch all leave ranges for a given employee.
+     * GET /api/leaves?employee_id=123
+     */
+    public function getEmployeeLeaves(Request $request)
+    {
+        $employeeId = $request->query('employee_id');
+        if (!$employeeId) {
+            return response()->json(['success' => false, 'error' => 'Missing employee_id'], 400);
+        }
+        try {
+            $rows = DB::table('leaves')
+                ->where('employee_id', $employeeId)
+                ->orderByDesc('leave_start_day')
+                ->get(['id', 'status', 'leave_start_day', 'leave_end_day']);
+            return response()->json(['success' => true, 'leaves' => $rows]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Failed to fetch leaves'], 500);
+        }
+    }
+
+    /**
+     * Create or update a leave range for an employee.
+     * POST /api/leaves/upsert
+     * Body: { leave_id?, employee_id, status, leave_start_day(YYYY-MM-DD), leave_end_day(YYYY-MM-DD|null) }
+     */
+    public function upsertEmployeeLeave(Request $request)
+    {
+        $data = $request->validate([
+            'leave_id' => 'nullable|integer',
+            'employee_id' => 'required|integer|exists:employees,id',
+            'status' => 'required|string|max:255',
+            'leave_start_day' => 'required|date_format:Y-m-d',
+            'leave_end_day' => 'nullable|date_format:Y-m-d|after_or_equal:leave_start_day',
+        ]);
+
+        try {
+            $id = $data['leave_id'] ?? null;
+            unset($data['leave_id']);
+
+            if ($id) {
+                DB::table('leaves')->where('id', $id)->update([
+                    'employee_id' => $data['employee_id'],
+                    'status' => $data['status'],
+                    'leave_start_day' => $data['leave_start_day'],
+                    'leave_end_day' => $data['leave_end_day'] ?? null,
+                    'updated_at' => now('Asia/Manila'),
+                ]);
+                $row = DB::table('leaves')->where('id', $id)->first();
+                // Audit
+                try {
+                    AuditLogs::create([
+                        'username'    => Auth::user()->username ?? 'system',
+                        'action'      => 'update leave',
+                        'name'        => (string)($row->status ?? 'leave'),
+                        'entity_type' => 'leave',
+                        'entity_id'   => $id,
+                        'details'     => json_encode($data),
+                        'date'        => now('Asia/Manila'),
+                    ]);
+                } catch (\Throwable $e) {}
+                return response()->json(['success' => true, 'leave' => $row]);
+            } else {
+                $newId = DB::table('leaves')->insertGetId([
+                    'employee_id' => $data['employee_id'],
+                    'status' => $data['status'],
+                    'leave_start_day' => $data['leave_start_day'],
+                    'leave_end_day' => $data['leave_end_day'] ?? null,
+                    'created_at' => now('Asia/Manila'),
+                    'updated_at' => now('Asia/Manila'),
+                ]);
+                $row = DB::table('leaves')->where('id', $newId)->first();
+                try {
+                    AuditLogs::create([
+                        'username'    => Auth::user()->username ?? 'system',
+                        'action'      => 'create leave',
+                        'name'        => (string)($row->status ?? 'leave'),
+                        'entity_type' => 'leave',
+                        'entity_id'   => $newId,
+                        'details'     => json_encode($data),
+                        'date'        => now('Asia/Manila'),
+                    ]);
+                } catch (\Throwable $e) {}
+                return response()->json(['success' => true, 'leave' => $row]);
+            }
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            return response()->json(['success' => false, 'errors' => $ve->errors()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Failed to save leave'], 500);
+        }
+    }
+
+    /**
+     * Delete a leave by ID.
+     * POST /api/leaves/delete  Body: { leave_id }
+     */
+    public function deleteEmployeeLeave(Request $request)
+    {
+        $request->validate(['leave_id' => 'required|integer|exists:leaves,id']);
+        $id = (int)$request->input('leave_id');
+        try {
+            $row = DB::table('leaves')->where('id', $id)->first();
+            DB::table('leaves')->where('id', $id)->delete();
+            try {
+                AuditLogs::create([
+                    'username'    => Auth::user()->username ?? 'system',
+                    'action'      => 'delete leave',
+                    'name'        => (string)($row->status ?? 'leave'),
+                    'entity_type' => 'leave',
+                    'entity_id'   => $id,
+                    'details'     => json_encode(['id' => $id]),
+                    'date'        => now('Asia/Manila'),
+                ]);
+            } catch (\Throwable $e) {}
+            return response()->json(['success' => true]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Failed to delete leave'], 500);
+        }
     }
 }

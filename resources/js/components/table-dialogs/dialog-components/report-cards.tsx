@@ -48,6 +48,8 @@ type Props = {
 		college_rate?: number | null;
 		honorarium?: number | null;
 		total_hours?: number | null;
+		double_pay?: number | null;
+		holiday_worked?: Array<{ date: string; type?: string; hours?: number; amount?: number }> | null;
 	};
 };
 
@@ -465,6 +467,47 @@ export default function ReportCards({
 												</Badge>
 											</div>
 											{/* close flex container */}
+										</div>
+										{/* Double Pay row (after College/GSP) with details popup; icon placed left of value */}
+										<div className="flex items-center justify-between">
+											<span className="text-muted-foreground whitespace-nowrap">Double Pay</span>
+											<div className="inline-flex items-center gap-2">
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<button
+															type="button"
+															aria-label="View Double Pay details"
+															className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-none"
+														>
+															<CircleHelp className="h-3.5 w-3.5" />
+														</button>
+													</TooltipTrigger>
+													<TooltipContent>
+														{(() => {
+															const list = earnings?.holiday_worked ?? null;
+															if (!list || list.length === 0) return <span>No data yet</span>;
+															return (
+																<div className="whitespace-pre-wrap">
+																	{list.map((h, idx) => {
+																		const d = typeof h.date === 'string' ? new Date(h.date) : null;
+																		const dateStr = d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) : String(h.date ?? '');
+																		// Hide internal marker "automated-holiday"; keep any other provided type
+																		const typeRaw = (h.type || '').toString();
+																		const typeStr = typeRaw === 'automated-holiday' ? '' : typeRaw.replace('-', ' ');
+																		const hoursStr = typeof h.hours === 'number' ? `${h.hours.toFixed(2)}h` : '';
+																		const amtStr = typeof h.amount === 'number' ? `₱${Number(h.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '';
+																		return <div key={idx}>{dateStr} {typeStr ? `(${typeStr})` : ''} {hoursStr ? `• ${hoursStr}` : ''} {amtStr ? `= ${amtStr}` : ''}</div>;
+																	})}
+																</div>
+															);
+														})()}
+													</TooltipContent>
+												</Tooltip>
+												<Badge variant="outline" className="gap-1">
+													<PhilippinePeso className="h-3.5 w-3.5" />
+													<span className="font-medium tabular-nums">{formatAmountPlain(earnings?.double_pay ?? null)}</span>
+												</Badge>
+											</div>
 										</div>
 										{/* close space-y wrapper */}
 									</div>
