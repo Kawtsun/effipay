@@ -163,6 +163,17 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               const summaryJson = await summaryRes.json();
               if (summaryJson?.success) summary = summaryJson;
             } catch {/* ignore */}
+            // Fetch monthly payroll to get the exact college hours used by payroll run
+            let payrollCollegeHours: number | undefined = undefined;
+            try {
+              const monthlyRes = await fetch(route('payroll.employee.monthly', { employee_id: emp.id, month: selectedMonth }));
+              const monthlyJson = await monthlyRes.json();
+              if (monthlyJson?.success && Array.isArray(monthlyJson.payrolls) && monthlyJson.payrolls.length > 0) {
+                const latest = (monthlyJson.payrolls as Array<{ payroll_date: string; college_total_hours?: number }>).
+                  reduce((a, b) => new Date(b.payroll_date) > new Date(a.payroll_date) ? b : a, monthlyJson.payrolls[0]);
+                if (typeof latest?.college_total_hours === 'number') payrollCollegeHours = Number(latest.college_total_hours);
+              }
+            } catch { /* ignore */ }
             // Calculate metrics using the same logic as AttendanceCards
             const metrics = await computeMonthlyMetrics(
               emp as Employees,
@@ -181,10 +192,14 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every(t => t.includes('college')) : true);
             const mObj = metrics as unknown as { college_paid_hours?: number };
             const collegeHours = typeof mObj.college_paid_hours === 'number' ? Number(mObj.college_paid_hours) : NaN;
-            // Hours used for College/GSP amount must be college-paid; display hours may fall back to total
-            const collegeHoursForGSP = Number.isFinite(collegeHours) ? Number(collegeHours.toFixed(2)) : 0;
+            // Prefer payroll-computed hours for college roles to match payroll run exactly
+            const collegeHoursForGSP = hasCollege
+              ? (typeof payrollCollegeHours === 'number' ? Number(payrollCollegeHours.toFixed(2)) : (Number.isFinite(collegeHours) ? Number(collegeHours.toFixed(2)) : 0))
+              : 0;
             const displayHours = hasCollege
-              ? (Number.isFinite(collegeHours) ? Number(collegeHours.toFixed(2)) : Number(Number(metrics.total_hours ?? 0).toFixed(2)))
+              ? (typeof payrollCollegeHours === 'number'
+                  ? Number(payrollCollegeHours.toFixed(2))
+                  : (Number.isFinite(collegeHours) ? Number(collegeHours.toFixed(2)) : Number(Number(metrics.total_hours ?? 0).toFixed(2))))
               : Number(Number(metrics.total_hours ?? 0).toFixed(2));
             // Get college_rate from payslip
             const collegeRate = result.payslip.college_rate ?? 0;
@@ -425,6 +440,17 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
 
             // Compute totals using the same logic as AttendanceCards (with observances)
             const metrics = await computeMonthlyMetrics(emp as Employees, selectedMonth, recordsForMetrics, observances);
+            // Fetch monthly payroll to get the exact college hours used by payroll run
+            let payrollCollegeHoursBTR: number | undefined = undefined;
+            try {
+              const monthlyRes = await fetch(route('payroll.employee.monthly', { employee_id: emp.id, month: selectedMonth }));
+              const monthlyJson = await monthlyRes.json();
+              if (monthlyJson?.success && Array.isArray(monthlyJson.payrolls) && monthlyJson.payrolls.length > 0) {
+                const latest = (monthlyJson.payrolls as Array<{ payroll_date: string; college_total_hours?: number }>).
+                  reduce((a, b) => new Date(b.payroll_date) > new Date(a.payroll_date) ? b : a, monthlyJson.payrolls[0]);
+                if (typeof latest?.college_total_hours === 'number') payrollCollegeHoursBTR = Number(latest.college_total_hours);
+              }
+            } catch { /* ignore */ }
             const rolesStr = (emp.roles || '').toLowerCase();
             const tokens = rolesStr
               .split(',')
@@ -434,8 +460,10 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             const hasCollege = rolesStr.includes('college instructor') || rolesStr.includes('college');
             const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every(t => t.includes('college')) : true);
             const collegeHours = Number((metrics as unknown as { college_paid_hours?: number })?.college_paid_hours ?? NaN);
-            const totalHours = isCollegeOnly && Number.isFinite(collegeHours)
-              ? Number(collegeHours.toFixed(2))
+            const totalHours = isCollegeOnly
+              ? (typeof payrollCollegeHoursBTR === 'number'
+                  ? Number(payrollCollegeHoursBTR.toFixed(2))
+                  : (Number.isFinite(collegeHours) ? Number(collegeHours.toFixed(2)) : Number(Number(metrics.total_hours ?? 0).toFixed(2))))
               : Number(Number(metrics.total_hours ?? 0).toFixed(2));
 
             return {

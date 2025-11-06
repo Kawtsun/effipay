@@ -48,6 +48,12 @@ interface Payroll {
     tea?: string | number;
 }
 
+type PayrollWithExtras = Payroll & {
+    college_rate?: number;
+    college_total_hours?: number;
+    total_hours?: number;
+};
+
 interface PayslipData {
     earnings: {
         monthlySalary?: string | number;
@@ -121,9 +127,9 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
     if (!result.success || !result.payrolls || result.payrolls.length === 0) {
         return null;
     }
-    const payroll: Payroll & { college_rate?: number } = result.payrolls.reduce((latest: Payroll, curr: Payroll) => {
+    const payroll: PayrollWithExtras = result.payrolls.reduce((latest: PayrollWithExtras, curr: PayrollWithExtras) => {
         return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
-    }, result.payrolls[0]);
+    }, result.payrolls[0] as PayrollWithExtras);
     return {
         earnings: {
             monthlySalary: payroll.base_salary ?? 0,
@@ -137,8 +143,12 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
               ?? 0),
             adjustment: payroll.adjustments ?? 0,
                         // Only show Rate Per Hour when the payroll record contains it; here we map to college_rate as requested
-                        ratePerHour: payroll.college_rate ?? undefined,
+                                                ratePerHour: payroll.college_rate ?? undefined,
             collegeRate: payroll.college_rate ?? 0,
+                        // Expose the exact hours used by payroll for College/GSP so UI can match payroll run precisely
+                                    totalHours: typeof payroll?.college_total_hours === 'number'
+                                        ? Number(payroll.college_total_hours)
+                            : undefined,
         },
         deductions: {
             sss: payroll.sss ?? '',
@@ -211,6 +221,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             return;
         }
     let payrollCollegeRate = 0;
+    let payrollCollegeHours: number | undefined = undefined;
         try {
             const response = await fetch(route('payroll.employee.monthly', {
                 employee_id: employee?.id,
@@ -218,11 +229,14 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
             }));
             const result = await response.json();
             if (result.success && result.payrolls && result.payrolls.length > 0) {
-                type PayrollType = typeof result.payrolls[0];
+                type PayrollType = PayrollWithExtras;
                 const payroll = result.payrolls.reduce((latest: PayrollType, curr: PayrollType) => {
                     return new Date(curr.payroll_date) > new Date(latest.payroll_date) ? curr : latest;
-                }, result.payrolls[0]);
+                }, result.payrolls[0] as PayrollType);
                 payrollCollegeRate = payroll.college_rate ?? 0;
+                if (typeof payroll?.college_total_hours === 'number') {
+                    payrollCollegeHours = Number(payroll.college_total_hours);
+                }
             }
         } catch { /* ignore error */ }
         // Fetch BTR records for the month
@@ -287,9 +301,14 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         const overtimeRaw = metrics.overtime ?? 0;
         // Hours for College/GSP amount calculation: strictly college-paid hours;
         // Hours for display: if college-paid hours are missing, fall back to total_hours to avoid showing 0.00
-        const collegeHoursForGSP = Number.isFinite(collegeHours) ? collegeHours : 0;
+        // Prefer the exact hours used by payroll for College/GSP when a college role exists
+        const collegeHoursForGSP = hasCollege
+            ? (typeof payrollCollegeHours === 'number' ? payrollCollegeHours : (Number.isFinite(collegeHours) ? collegeHours : 0))
+            : 0;
         const hoursForDisplayRaw = hasCollege
-            ? (Number.isFinite(collegeHours) ? collegeHours : (metrics.total_hours ?? 0))
+            ? (typeof payrollCollegeHours === 'number'
+                ? payrollCollegeHours
+                : (Number.isFinite(collegeHours) ? collegeHours : (metrics.total_hours ?? 0)))
             : (metrics.total_hours ?? 0);
     const weekdayOT = Number(metrics.overtime_count_weekdays ?? 0) || 0;
     const weekendOT = Number(metrics.overtime_count_weekends ?? 0) || 0;
@@ -434,9 +453,21 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                         .filter(Boolean);
                         const hasCollege = rolesStr.includes('college instructor') || rolesStr.includes('college');
                         const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every((t) => t.includes('college')) : true);
+                        // Prefer payroll-computed college hours for display to exactly match payroll run
+                        let payrollCollegeHoursBTR: number | undefined = undefined;
+                        try {
+                            const resp = await fetch(route('payroll.employee.monthly', { employee_id: employee?.id, month: selectedMonth }));
+                            const json = await resp.json();
+                            if (json?.success && Array.isArray(json.payrolls) && json.payrolls.length > 0) {
+                                const latest = (json.payrolls as Array<PayrollWithExtras>).reduce((a, b) => new Date(b.payroll_date) > new Date(a.payroll_date) ? b : a, json.payrolls[0] as PayrollWithExtras);
+                                if (typeof latest?.college_total_hours === 'number') payrollCollegeHoursBTR = Number(latest.college_total_hours);
+                            }
+                        } catch { /* ignore */ }
                         const collegeHoursBTR = Number((metricsBTR as unknown as { college_paid_hours?: number })?.college_paid_hours ?? NaN);
-                        const displayHours = isCollegeOnly && Number.isFinite(collegeHoursBTR)
-                            ? collegeHoursBTR
+                        const displayHours = isCollegeOnly
+                            ? (typeof payrollCollegeHoursBTR === 'number'
+                                ? payrollCollegeHoursBTR
+                                : (Number.isFinite(collegeHoursBTR) ? collegeHoursBTR : (metricsBTR.total_hours ?? 0)))
                             : (metricsBTR.total_hours ?? 0);
                         // Round to 2 decimals before rendering to match Attendance/Report cards
                         setBtrTotalHours(Number(Number(displayHours).toFixed(2)));

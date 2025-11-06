@@ -974,9 +974,26 @@ class PayrollController extends Controller
             ], 404);
         }
 
-        // Only return the actual payroll record fields for that month (do not merge from employee table)
-        $payrollsArray = $payrolls->map(function ($payroll) {
-            return $payroll->toArray();
+        // Compute college-paid hours for the month using the same logic as payroll run,
+        // so frontends can rely on the exact hours used in College/GSP calculation.
+        // This avoids 1-hour discrepancies due to different rounding/break handling on the client.
+        try {
+            $employee = Employees::findOrFail((int)$request->employee_id);
+            $metrics = $this->computeMonthlyMetricsPHP($employee, (string)$request->month);
+            $collegePaidHours = isset($metrics['college_paid_hours']) ? (float)$metrics['college_paid_hours'] : null;
+            $totalHours = isset($metrics['total_hours']) ? (float)$metrics['total_hours'] : null;
+        } catch (\Throwable $e) {
+            $collegePaidHours = null;
+            $totalHours = null;
+        }
+
+        // Only return the actual payroll record fields for that month and append computed hours
+        $payrollsArray = $payrolls->map(function ($payroll) use ($collegePaidHours, $totalHours) {
+            $arr = $payroll->toArray();
+            // Provide explicit hours used for College/GSP so UI can match payroll calculation exactly
+            $arr['college_total_hours'] = $collegePaidHours; // may be null for non-college roles
+            $arr['total_hours'] = $totalHours;               // overall worked hours (for reference)
+            return $arr;
         });
 
         return response()->json([
