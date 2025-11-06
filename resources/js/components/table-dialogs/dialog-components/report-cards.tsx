@@ -29,6 +29,8 @@ type Props = {
 		base_salary?: number | null;
 		college_rate?: number | null;
 		honorarium?: number | null;
+		/** Other adjustments applied to payroll (positive or negative) */
+		adjustments?: number | null;
 		sss?: number | null;
 		philhealth?: number | null;
 		pag_ibig?: number | null;
@@ -509,6 +511,20 @@ export default function ReportCards({
 												</Badge>
 											</div>
 										</div>
+										{/* Adjustments row (conditionally rendered) */}
+										{(() => {
+											const adj = Number(selectedPayroll?.adjustments ?? NaN);
+											if (!Number.isFinite(adj) || adj === 0) return null;
+											return (
+												<div className="flex items-center justify-between">
+													<span className="text-muted-foreground whitespace-nowrap">Adjustments</span>
+													<Badge variant="outline" className="gap-1">
+														<PhilippinePeso className="h-3.5 w-3.5" />
+														<span className="font-medium tabular-nums">{formatAmountPlain(adj)}</span>
+													</Badge>
+												</div>
+											);
+										})()}
 										{/* close space-y wrapper */}
 									</div>
 								</section>

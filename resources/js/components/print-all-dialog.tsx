@@ -156,8 +156,8 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             } catch {
               // ignore
             }
-            // Fetch summary to get rate_per_hour and absences fallback for parity with cards
-            let summary: { rate_per_hour?: number; absences?: number } | null = null;
+            // Fetch summary to get rate_per_hour, absences fallback, and holiday double pay amount
+            let summary: { rate_per_hour?: number; absences?: number; holiday_double_pay_amount?: number } | null = null;
             try {
               const summaryRes = await fetch(`/timekeeping/employee/monthly-summary?employee_id=${emp.id}&month=${selectedMonth}`);
               const summaryJson = await summaryRes.json();
@@ -278,7 +278,17 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               overtime_count_weekends: isCollegeOnly ? 0 : (metrics.overtime_count_weekends ?? 0),
               gross_pay: result.payslip.gross_pay,
               net_pay: result.payslip.net_pay,
-              adjustment: result.payslip.adjustment,
+              // Display double pay under Other: Adjustment by adding it to any manual adjustment
+              adjustment: (() => {
+                const baseAdjRaw = (result.payslip as unknown as { adjustment?: number | string }).adjustment;
+                const baseAdj = baseAdjRaw === undefined || baseAdjRaw === null || baseAdjRaw === ''
+                  ? 0
+                  : (typeof baseAdjRaw === 'string' ? Number(baseAdjRaw) : baseAdjRaw);
+                const dpRaw = summary?.holiday_double_pay_amount ?? 0;
+                const doublePay = typeof dpRaw === 'string' ? Number(dpRaw) : (typeof dpRaw === 'number' ? dpRaw : 0);
+                const totalAdj = (Number.isFinite(baseAdj) ? Number(baseAdj) : 0) + (Number.isFinite(doublePay) ? doublePay : 0);
+                return totalAdj;
+              })(),
               overload: result.payslip.overload,
             };
             // Ensure amounts are numbers with two decimals where needed

@@ -364,6 +364,14 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                             ? Number(serverOTTotal.toFixed(2))
                             : (Number.isFinite(numericOvertimeFromPayroll) ? Number(numericOvertimeFromPayroll.toFixed(2)) : computedOTFallback);
 
+                                                // Include Double Pay (holiday/observance) in Other: Adjustment display
+                                                const doublePayAmount = ((): number => {
+                                                    const ext = (timekeepingSummary as unknown as { holiday_double_pay_amount?: number | string }) || {};
+                                                    const raw = (ext?.holiday_double_pay_amount ?? 0) as number | string;
+                                                    const num = typeof raw === 'string' ? Number(raw) : (typeof raw === 'number' ? raw : 0);
+                                                    return Number.isFinite(num) ? num : 0;
+                                                })();
+
                                                 setPayrollData({
                 ...data,
                 earnings: {
@@ -387,7 +395,15 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                     overtime_count_weekends: isCollegeOnly ? 0 : weekendOT,
                                         gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
                     net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
-                    adjustment: data.earnings?.adjustment ?? undefined,
+                    // Show double pay under "Other: Adjustment" by adding it to any manual adjustment
+                    adjustment: (() => {
+                        const baseAdjRaw = data.earnings?.adjustment as number | string | undefined;
+                        const baseAdj = baseAdjRaw === undefined || baseAdjRaw === null || baseAdjRaw === ''
+                            ? 0
+                            : (typeof baseAdjRaw === 'string' ? Number(baseAdjRaw) : baseAdjRaw);
+                        const totalAdj = (Number.isFinite(baseAdj) ? Number(baseAdj) : 0) + (Number.isFinite(doublePayAmount) ? doublePayAmount : 0);
+                        return totalAdj;
+                    })(),
                     honorarium: data.earnings?.honorarium ?? 0,
                     collegeGSP,
                     overload: data.earnings?.overload ?? undefined,
