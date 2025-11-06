@@ -113,18 +113,10 @@ class StoreEmployeesRequest extends FormRequest
         // Not excluded when not college: we want to allow explicit clearing on create as well.
         $rules['college_rate'] = ['nullable', 'numeric', 'min:0'];
         
-        // Your original contribution logic (unchanged)
-        if ($isAdmin) {
-            // Admins must have SSS and PhilHealth checkboxes set (boolean true/false)
-            $rules['sss'] = 'required|boolean';
-            $rules['philhealth'] = 'required|boolean';
-            $rules['pag_ibig'] = 'required|numeric|min:200|max:2500';
-        } else {
-            // For non-admins these are optional flags
-            $rules['sss'] = 'sometimes|nullable|boolean';
-            $rules['philhealth'] = 'sometimes|nullable|boolean';
-            $rules['pag_ibig'] = 'sometimes|nullable|numeric|min:200|max:2500';
-        }
+        // Contribution fields are optional for all roles
+        $rules['sss'] = 'sometimes|nullable|boolean';
+        $rules['philhealth'] = 'sometimes|nullable|boolean';
+        $rules['pag_ibig'] = 'sometimes|nullable|numeric|min:200|max:2500';
 
         // If the employee is a college instructor, ensure any program that has
         // assigned days also has a corresponding hours value of at least 1.

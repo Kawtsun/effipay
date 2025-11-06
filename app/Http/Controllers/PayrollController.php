@@ -14,6 +14,7 @@ use App\Exports\PayrollExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use App\Support\SalaryFormulas;
 
 class PayrollController extends Controller
 {
@@ -36,7 +37,7 @@ class PayrollController extends Controller
         }
         $payrollMonth = $payrollDate->format('Y-m');
 
-        // Get all employees
+    // Get all employees
         $employees = \App\Models\Employees::all();
 
         // If no employees have any timekeeping records for the month, fail early with a clear message.
@@ -52,20 +53,18 @@ class PayrollController extends Controller
             ]);
         }
     $createdCount = 0;
+    $updatedCount = 0;
     foreach ($employees as $employee) {
             // Reset branch-scoped variables per employee to avoid bleed-over between iterations
             $college_rate = null;
             $overtime_hours = 0; $tardiness = 0; $undertime = 0; $absences = 0; $overtime_pay = 0;
             $honorarium = 0; $base_salary = 0; $sss = 0.0; $philhealth = 0.0; $pag_ibig = 0.0; $withholding_tax = 0.0;
+            $rate_per_hour = 0; // default; may be overridden by summary in non-college branches
+        // Initialize weekday/weekend OT hour buckets to prevent undefined variable usage later
+        $weekday_ot = 0; $weekend_ot = 0;
 
-            // Enforce only one payroll per employee per month.
-            // If a payroll record already exists for this employee and month, skip.
-            $alreadyHasPayroll = \App\Models\Payroll::where('employee_id', $employee->id)
-                ->where('month', $payrollMonth)
-                ->exists();
-            if ($alreadyHasPayroll) {
-                continue;
-            }
+            // If a payroll record already exists for this employee and month,
+            // we'll rerun and update that record instead of skipping.
 
             // Use the requested payroll date as the record date (normalized earlier),
             // ensuring it stays within the selected month.
@@ -89,6 +88,12 @@ class PayrollController extends Controller
 
             // Compute monthly metrics using the same logic as Attendance Cards
             $metrics = $this->computeMonthlyMetricsPHP($employee, $payrollMonth);
+
+            // Populate weekday/weekend OT buckets from metrics for all branches
+            if (is_array($metrics)) {
+                $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
+                $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
+            }
 
             // Determine if college logic should apply and whether it's college-only vs multi-role
             // - Prefer presence of a college_rate value in employees table
@@ -166,13 +171,10 @@ class PayrollController extends Controller
                 // For record-keeping, set base_salary to employee's base_salary or 0 (not used in calculation)
                 $base_salary = !is_null($employee->base_salary) ? $employee->base_salary : 0;
 
-                // Compute SSS/PhilHealth amounts based on gross_pay and employee flags.
-                if (!empty($employee->sss)) {
-                    $sss = round($gross_pay * config('payroll.sss_rate', 0.045), 2);
-                }
-                if (!empty($employee->philhealth)) {
-                    $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2);
-                }
+                // Compute SSS/PhilHealth using formulas and the College GSP (rate * paid hours) as contribution base
+                $college_gsp = max(0.0, (float)$college_rate * max(0.0, (float)$total_hours_worked));
+                if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($college_gsp); }
+                if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($college_gsp); }
 
                 // Compute withholding tax FROM GROSS PAY as total compensation
                 // per request. Other contributions are computed separately.
@@ -199,22 +201,30 @@ class PayrollController extends Controller
 
                 // Resolve non-college base rate per hour
                 $rate_per_hour = isset($summaryData['rate_per_hour']) ? (float)$summaryData['rate_per_hour'] : 0.0;
-                // OT buckets: include observances as double-pay bucket
-                $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
-                $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
-                $observance_ot = (float)($metrics['overtime_count_observances'] ?? 0);
-                $overtime_pay = round($rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot) + (2.00 * $observance_ot)), 2);
+                // Prefer overtime pay computed by TimeKeepingController (includes NSD after 10 PM), fallback to bucket formula
+                if (isset($summaryData['overtime_pay_total']) && is_numeric($summaryData['overtime_pay_total'])) {
+                    $overtime_pay = (float)$summaryData['overtime_pay_total'];
+                } else {
+                    // OT buckets: exclude observances from OT (double pay is handled separately)
+                    $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
+                    $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
+                    $overtime_pay = round($rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
+                }
 
                 $honorarium = !is_null($employee->honorarium) ? (float)$employee->honorarium : 0.0;
                 $college_gsp = ($college_rate > 0 && $college_hours > 0) ? ($college_rate * $college_hours) : 0.0;
                 $deductions = $rate_per_hour * ($tardiness + $undertime + $absences);
+                // Add separate double pay amount (holiday/automated observances) if available
+                $double_pay_amount = isset($summaryData['holiday_double_pay_amount']) && is_numeric($summaryData['holiday_double_pay_amount'])
+                    ? (float)$summaryData['holiday_double_pay_amount'] : 0.0;
 
-                $gross_pay = round($base_salary + $college_gsp + $overtime_pay - $deductions + $honorarium, 2);
+                $gross_pay = round($base_salary + $college_gsp + $overtime_pay + $double_pay_amount - $deductions + $honorarium, 2);
 
-                // Statutory contributions
+                // Statutory contributions: compute from base salary plus honorarium (include honorarium per requirement)
                 $sss = 0.0; $philhealth = 0.0; $pag_ibig = $employee->pag_ibig ?? 0.0; $withholding_tax = 0.0;
-                if (!empty($employee->sss)) { $sss = round($gross_pay * config('payroll.sss_rate', 0.045), 2); }
-                if (!empty($employee->philhealth)) { $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2); }
+                $contribBase = max(0.0, (float)$base_salary + (float)$honorarium);
+                if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($contribBase); }
+                if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($contribBase); }
                 $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
                     $totalComp = $gross_pay; // use gross pay directly
                     if ($totalComp <= 20832) return 0;
@@ -241,17 +251,26 @@ class PayrollController extends Controller
                 $undertime = $metrics['undertime'];
                 $absences = $metrics['absences'];
                 $overtime_hours = $metrics['overtime'];
-                // Recompute overtime pay from buckets to match UI cards: 0.25x on weekdays, 0.30x on weekends
+                // Ensure OT bucket variables exist for logging even when server OT total is used
                 $weekday_ot = (float)($metrics['overtime_count_weekdays'] ?? 0);
                 $weekend_ot = (float)($metrics['overtime_count_weekends'] ?? 0);
-                $observance_ot = (float)($metrics['overtime_count_observances'] ?? 0);
-                $overtime_pay = round((float)$rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot) + (2.00 * $observance_ot)), 2);
+                // Prefer overtime pay computed by TimeKeepingController (includes NSD after 10 PM), fallback to bucket formula
+                if (isset($summaryData['overtime_pay_total']) && is_numeric($summaryData['overtime_pay_total'])) {
+                    $overtime_pay = (float)$summaryData['overtime_pay_total'];
+                } else {
+                    // Recompute overtime pay from buckets: exclude observances; 0.25x on weekdays, 0.30x on weekends
+                    $overtime_pay = round((float)$rate_per_hour * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
+                }
 
                 $honorarium = !is_null($employee->honorarium) ? $employee->honorarium : 0;
                 // Gross pay: (base_salary + overtime_pay) - (rate_per_hour * tardiness) - (rate_per_hour * undertime) - (rate_per_hour * absences) + honorarium
 
+                // Add separate double pay amount (holiday/automated observances) if available
+                $double_pay_amount = isset($summaryData['holiday_double_pay_amount']) && is_numeric($summaryData['holiday_double_pay_amount'])
+                    ? (float)$summaryData['holiday_double_pay_amount'] : 0.0;
+
                 $gross_pay = round(
-                    ($base_salary + $overtime_pay)
+                    ($base_salary + $overtime_pay + $double_pay_amount)
                         - ($rate_per_hour * $tardiness)
                         - ($rate_per_hour * $undertime)
                         - ($rate_per_hour * $absences)
@@ -275,18 +294,14 @@ class PayrollController extends Controller
                     'gross_pay' => $gross_pay,
                 ]);
 
-                // Statutory contributions: compute numeric amounts based on flags
+                // Statutory contributions: compute from base salary plus honorarium per requirement
                 $sss = 0.0;
                 $philhealth = 0.0;
                 $pag_ibig = $employee->pag_ibig;
                 $withholding_tax = 0.0;
-
-                if (!empty($employee->sss)) {
-                    $sss = round($gross_pay * config('payroll.sss_rate', 0.045), 2);
-                }
-                if (!empty($employee->philhealth)) {
-                    $philhealth = round($gross_pay * config('payroll.philhealth_rate', 0.035), 2);
-                }
+                $contribBase = max(0.0, (float)$base_salary + (float)$honorarium);
+                if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($contribBase); }
+                if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($contribBase); }
 
                 $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
                     $totalComp = $gross_pay; // use gross pay directly
@@ -299,7 +314,7 @@ class PayrollController extends Controller
                 })($gross_pay) : 0;
             }
 
-            // Create and save payroll record
+            // Create or update payroll record (rerunnable for the same month)
             // Get all loan and deduction fields from employee
             // Always reference all new fields, fallback to 0 if missing
             $sss_salary_loan = !is_null($employee->sss_salary_loan) ? $employee->sss_salary_loan : 0;
@@ -363,12 +378,35 @@ class PayrollController extends Controller
                 'net_pay' => $net_pay,
             ];
 
-            \Illuminate\Support\Facades\Log::info('[Payroll Debug] Payroll::create array', $payrollData);
-            \App\Models\Payroll::create($payrollData);
-            $createdCount++;
+            \Illuminate\Support\Facades\Log::info('[Payroll Debug] Payroll upsert payload', $payrollData);
+
+            // Prefer updating the latest payroll in this month for the employee (if any),
+            // otherwise create a new one using the normalized payroll_date.
+            $existing = \App\Models\Payroll::where('employee_id', $employee->id)
+                ->where('month', $payrollMonth)
+                ->orderByDesc('payroll_date')
+                ->first();
+
+            if ($existing) {
+                // Keep the existing payroll_date to respect the (employee_id, payroll_date) unique key
+                $keepDate = $existing->payroll_date;
+                $existing->fill(array_merge($payrollData, ['payroll_date' => $keepDate]));
+                $existing->save();
+                $updatedCount++;
+            } else {
+                // No record this month yet: create a new one (unique by employee_id+payroll_date)
+                \App\Models\Payroll::updateOrCreate(
+                    [
+                        'employee_id' => $employee->id,
+                        'payroll_date' => $payrollDateStr,
+                    ],
+                    $payrollData
+                );
+                $createdCount++;
+            }
         }
 
-        if ($createdCount > 0) {
+        if ($createdCount > 0 || $updatedCount > 0) {
             // Audit log: payroll run
             try {
                 $username = Auth::user()->username ?? 'system';
@@ -378,7 +416,12 @@ class PayrollController extends Controller
                     'name'        => $payrollMonth,
                     'entity_type' => 'payroll',
                     'entity_id'   => null,
-                    'details'     => json_encode(['month' => $payrollMonth, 'created_count' => $createdCount, 'payroll_date' => $request->payroll_date]),
+                    'details'     => json_encode([
+                        'month' => $payrollMonth,
+                        'created_count' => $createdCount,
+                        'updated_count' => $updatedCount,
+                        'payroll_date' => $request->payroll_date
+                    ]),
                     'date'        => now('Asia/Manila'),
                 ]);
             } catch (\Throwable $e) {
@@ -386,12 +429,13 @@ class PayrollController extends Controller
             }
             return redirect()->back()->with('flash', [
                 'type' => 'success',
-                'message' => 'Payroll run successfully for ' . date('F Y', strtotime($payrollDateStr)) . '. Payroll records created: ' . $createdCount,
+                'message' => 'Payroll run successfully for ' . date('F Y', strtotime($payrollDateStr)) . 
+                    '. Created: ' . $createdCount . ', Updated: ' . $updatedCount,
                 'at' => now()->timestamp,
             ]);
         } else {
             // No new payrolls were created. Either all eligible employees already have payroll
-            // for this month, or none have timekeeping data yet for this month.
+            // for this month and no updates were needed, or none have timekeeping data yet for this month.
             return redirect()->back()->with('flash', [
                 'type' => 'info',
                 'message' => 'No eligible employees to process payroll for this month.',
@@ -930,9 +974,26 @@ class PayrollController extends Controller
             ], 404);
         }
 
-        // Only return the actual payroll record fields for that month (do not merge from employee table)
-        $payrollsArray = $payrolls->map(function ($payroll) {
-            return $payroll->toArray();
+        // Compute college-paid hours for the month using the same logic as payroll run,
+        // so frontends can rely on the exact hours used in College/GSP calculation.
+        // This avoids 1-hour discrepancies due to different rounding/break handling on the client.
+        try {
+            $employee = Employees::findOrFail((int)$request->employee_id);
+            $metrics = $this->computeMonthlyMetricsPHP($employee, (string)$request->month);
+            $collegePaidHours = isset($metrics['college_paid_hours']) ? (float)$metrics['college_paid_hours'] : null;
+            $totalHours = isset($metrics['total_hours']) ? (float)$metrics['total_hours'] : null;
+        } catch (\Throwable $e) {
+            $collegePaidHours = null;
+            $totalHours = null;
+        }
+
+        // Only return the actual payroll record fields for that month and append computed hours
+        $payrollsArray = $payrolls->map(function ($payroll) use ($collegePaidHours, $totalHours) {
+            $arr = $payroll->toArray();
+            // Provide explicit hours used for College/GSP so UI can match payroll calculation exactly
+            $arr['college_total_hours'] = $collegePaidHours; // may be null for non-college roles
+            $arr['total_hours'] = $totalHours;               // overall worked hours (for reference)
+            return $arr;
         });
 
         return response()->json([

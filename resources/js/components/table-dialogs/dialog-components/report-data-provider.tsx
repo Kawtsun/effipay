@@ -75,6 +75,8 @@ export interface ReportDataRenderProps {
     college_rate?: number | null;
     honorarium?: number | null;
     total_hours?: number | null;
+    double_pay?: number | null;
+    holiday_worked?: Array<{ date: string; type?: string; hours?: number; amount?: number }> | null;
   };
 
   // Loading flags
@@ -116,6 +118,9 @@ export function ReportDataProvider({
     absences?: number;
     college_rate?: number;
     total_hours?: number;
+    overtime_pay_total?: number;
+    holiday_double_pay_amount?: number;
+    holiday_worked?: Array<{ date: string; type?: string; hours?: number; amount?: number }>;
   }
   const { summary: timekeepingSummary } = useEmployeePayroll(employee?.id ?? null, pendingMonth, employee ?? undefined) as {
     summary?: EmployeePayrollSummary | null;
@@ -293,15 +298,25 @@ export function ReportDataProvider({
         return Number.isFinite(rTK) && rTK > 0 ? Number(rTK.toFixed(2)) : 0;
       })();
 
-      // Overtime pay using the same rule as summary cards
-      const weekdayOT = Number(tkComputed?.overtime_count_weekdays ?? timekeepingSummary?.overtime_count_weekdays ?? 0) || 0;
-      const weekendOT = Number(tkComputed?.overtime_count_weekends ?? timekeepingSummary?.overtime_count_weekends ?? 0) || 0;
-      const observanceOT = Number(tkComputed?.overtime_count_observances ?? timekeepingSummary?.overtime_count_observances ?? 0) || 0;
-      const overtimePay = (nonCollegeRate * 0.25 * weekdayOT) + (nonCollegeRate * 0.30 * weekendOT) + (nonCollegeRate * 2.0 * observanceOT);
+  // Overtime pay: prefer server-computed total (includes NSD, excludes holiday double-pay)
+      const serverOTTotal = Number((timekeepingSummary as any)?.overtime_pay_total ?? NaN);
+      const overtimePay = Number.isFinite(serverOTTotal) && serverOTTotal >= 0
+        ? Number(serverOTTotal.toFixed(2))
+        : (() => {
+            const weekdayOT = Number(tkComputed?.overtime_count_weekdays ?? timekeepingSummary?.overtime_count_weekdays ?? 0) || 0;
+            const weekendOT = Number(tkComputed?.overtime_count_weekends ?? timekeepingSummary?.overtime_count_weekends ?? 0) || 0;
+            const weekdayPay = nonCollegeRate * 0.25 * weekdayOT;
+            const weekendPay = nonCollegeRate * 0.30 * weekendOT;
+    return Number((weekdayPay + weekendPay).toFixed(2));
+          })();
+
+  // Separate double pay amount from summary
+  const doublePay = Number((timekeepingSummary as any)?.holiday_double_pay_amount ?? NaN);
+  const doublePayAmount = Number.isFinite(doublePay) && doublePay > 0 ? Number(doublePay.toFixed(2)) : 0;
 
       const collegeGsp = (Number.isFinite(collegeHours) && collegeHours > 0 && collegeRate > 0) ? collegeRate * collegeHours : 0;
       const deductions = nonCollegeRate * (t + u + a);
-      const derivedGross = Number((baseSalary + collegeGsp + overtimePay - deductions + honorarium).toFixed(2));
+  const derivedGross = Number((baseSalary + collegeGsp + overtimePay + doublePayAmount - deductions + honorarium).toFixed(2));
 
       return { ...selectedPayroll, gross_pay: derivedGross };
     } catch {
@@ -328,19 +343,21 @@ export function ReportDataProvider({
     })();
 
     if (type === "overtime") {
+      // Prefer server-computed total from timekeeping monthly summary when available (includes NSD and observance)
+      const serverOTTotal = Number((timekeepingSummary as any)?.overtime_pay_total ?? NaN);
+      if (Number.isFinite(serverOTTotal) && serverOTTotal >= 0) {
+        return `₱${Number(serverOTTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+      // Fallback to local calculation from OT buckets
       const weekdayOT = Number.isFinite(Number(tk?.overtime_count_weekdays))
         ? Number(Number(tk?.overtime_count_weekdays).toFixed(2))
         : Number(Number(payroll?.overtime_count_weekdays ?? 0).toFixed(2));
       const weekendOT = Number.isFinite(Number(tk?.overtime_count_weekends))
         ? Number(Number(tk?.overtime_count_weekends).toFixed(2))
         : Number(Number(payroll?.overtime_count_weekends ?? 0).toFixed(2));
-      const observanceOT = Number.isFinite(Number(tk?.overtime_count_observances))
-        ? Number(Number(tk?.overtime_count_observances).toFixed(2))
-        : Number(Number(payroll?.overtime_count_observances ?? 0).toFixed(2));
       const weekdayPay = baseRatePerHour * 0.25 * weekdayOT;
       const weekendPay = baseRatePerHour * 0.30 * weekendOT;
-      const observancePay = baseRatePerHour * 2.00 * observanceOT; // double pay
-      const overtimePay = weekdayPay + weekendPay + observancePay;
+      const overtimePay = weekdayPay + weekendPay;
       return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
@@ -393,6 +410,8 @@ export function ReportDataProvider({
         const hC = (tkComputed && typeof (tkComputed as any).college_paid_hours === 'number') ? Number((tkComputed as any).college_paid_hours) : NaN;
         if (Number.isFinite(hC)) return hC;
       }
+      const tkH = Number((tkComputed as any)?.total_hours ?? NaN);
+      if (Number.isFinite(tkH)) return tkH;
       const sumH = (timekeepingSummary && typeof (timekeepingSummary as { total_hours?: unknown })?.total_hours === 'number')
         ? Number((timekeepingSummary as { total_hours?: number }).total_hours)
         : NaN;
@@ -400,7 +419,15 @@ export function ReportDataProvider({
       // Final fallback: if college-only and TK computed has hours-only, coerce null when not available
       return null;
     })();
-    return { base_salary, college_rate, honorarium, total_hours };
+    // Double Pay amount to show as a separate line in Earnings
+    const double_pay = (() => {
+      const v = Number((timekeepingSummary as any)?.holiday_double_pay_amount ?? NaN);
+      return Number.isFinite(v) && v > 0 ? Number(v.toFixed(2)) : 0;
+    })();
+    const holiday_worked = Array.isArray((timekeepingSummary as any)?.holiday_worked)
+      ? ((timekeepingSummary as any).holiday_worked as Array<{ date: string; type?: string; hours?: number; amount?: number }>)
+      : null;
+    return { base_salary, college_rate, honorarium, total_hours, double_pay, holiday_worked };
   }, [selectedPayroll, timekeepingSummary, tkComputed]);
 
   // Helper to return hour counts for the summary cards (used for hover swap in UI)
@@ -460,7 +487,7 @@ export function ReportDataProvider({
       isCollegeInstructorPayroll,
       getSummaryCardAmount,
       getSummaryCardHours,
-      earnings,
+  earnings,
       loading,
       minLoading,
       otherAdjustments,

@@ -24,6 +24,10 @@ type Metrics = {
 	overtime_count_weekends?: MetricValue;
 	rate_per_hour?: MetricValue;
 	college_rate?: MetricValue;
+    // Server-computed totals
+    overtime_pay_total?: MetricValue;
+    nsd_hours?: MetricValue;
+    nsd_pay_total?: MetricValue;
 };
 
 type Props = {
@@ -149,6 +153,12 @@ export default function AttendanceCards({ metrics, isEmpty, isLoading, title = "
 			label: "Overtime",
 			value: formatHours(metrics.overtime, isEmpty),
 			money: (() => {
+				// Prefer server-computed overtime total (includes NSD split and rates)
+				const serverOTTotal = Number(metrics.overtime_pay_total ?? NaN);
+				if (Number.isFinite(serverOTTotal) && serverOTTotal >= 0) {
+					return <Money amount={serverOTTotal} />;
+				}
+				// Fallback to local calculation if server total not available
 				if (isEmpty || !Number.isFinite(hourlyRate) || hourlyRate <= 0) return "-";
 				if (!Number.isFinite(overtimeWeekdays) || !Number.isFinite(overtimeWeekends)) return "-";
 				const weekdayPay = hourlyRate * 0.25 * (overtimeWeekdays || 0);

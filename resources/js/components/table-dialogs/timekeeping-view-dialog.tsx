@@ -55,6 +55,10 @@ export default function TimekeepingViewDialog({ employee, onClose }: Props) {
                                                     overtime_count_weekends: computed?.overtime_count_weekends,
                                                     rate_per_hour: computed?.rate_per_hour,
                                                     college_rate: computed?.college_rate,
+                                                    // Prefer server total overtime pay (includes NSD)
+                                                    overtime_pay_total: (computed as any)?.overtime_pay_total,
+                                                    nsd_hours: (computed as any)?.nsd_hours,
+                                                    nsd_pay_total: (computed as any)?.nsd_pay_total,
                                                 }}
                                                 selectedMonth={selectedMonth}
                                                 availableMonths={availableMonths}

@@ -125,26 +125,16 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
         if (!hasPayroll) return '-';
         // Overtime: use new formula
         if (type === 'overtime') {
-            let rate = 0;
-            let weekdayOvertime = 0;
-            let weekendOvertime = 0;
-            if (isCollegeInstructorPayroll && selectedPayroll) {
-                rate = Number(selectedPayroll.college_rate ?? 0);
-                weekdayOvertime = Number(selectedPayroll.overtime_count_weekdays ?? 0);
-                weekendOvertime = Number(selectedPayroll.overtime_count_weekends ?? 0);
-                // If both overtime counts are zero, fallback to timekeepingSummary if available
-                if ((weekdayOvertime + weekendOvertime) === 0 && timekeepingSummary) {
-                    weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
-                    weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
-                }
-                const weekdayPay = rate * 0.25 * weekdayOvertime;
-                const weekendPay = rate * 0.30 * weekendOvertime;
-                const overtimePay = weekdayPay + weekendPay;
-                return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            } else if (timekeepingSummary) {
-                rate = Number(timekeepingSummary.rate_per_hour ?? 0);
-                weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
-                weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
+            // Prefer server-computed overtime total from timekeeping (includes NSD and observance)
+            const serverOTTotal = Number((timekeepingSummary as any)?.overtime_pay_total ?? NaN);
+            if (Number.isFinite(serverOTTotal) && serverOTTotal >= 0) {
+                return `₱${Number(serverOTTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            // Fallback to bucket-based calculation using base rate_per_hour
+            if (timekeepingSummary) {
+                const rate = Number(timekeepingSummary.rate_per_hour ?? 0);
+                const weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
+                const weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
                 const weekdayPay = rate * 0.25 * weekdayOvertime;
                 const weekendPay = rate * 0.30 * weekendOvertime;
                 const overtimePay = weekdayPay + weekendPay;

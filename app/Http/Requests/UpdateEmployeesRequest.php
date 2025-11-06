@@ -112,17 +112,10 @@ class UpdateEmployeesRequest extends FormRequest
         // and EmployeesController@update can set the DB value to null when roles change.
         $rules['college_rate'] = ['nullable', 'numeric', 'min:0'];
 
-        // Contribution logic matching StoreEmployeesRequest
-        if ($isAdmin) {
-            // Admins must have SSS and PhilHealth flags
-            $rules['sss'] = 'required|boolean';
-            $rules['philhealth'] = 'required|boolean';
-            $rules['pag_ibig'] = 'required|numeric|min:200|max:2500';
-        } else {
-            $rules['sss'] = 'sometimes|nullable|boolean';
-            $rules['philhealth'] = 'sometimes|nullable|boolean';
-            $rules['pag_ibig'] = 'sometimes|nullable|numeric|min:200|max:2500';
-        }
+        // Contribution fields are optional for all roles
+        $rules['sss'] = 'sometimes|nullable|boolean';
+        $rules['philhealth'] = 'sometimes|nullable|boolean';
+        $rules['pag_ibig'] = 'sometimes|nullable|numeric|min:200|max:2500';
 
         // If the employee is a college instructor, ensure any program that has
         // assigned days also has a corresponding hours value of at least 1.

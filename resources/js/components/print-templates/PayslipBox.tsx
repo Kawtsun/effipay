@@ -139,16 +139,23 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
     return v;
   };
   // College-only logic (match PayslipTemplate): consider multi-role strings
-  const rolesTokens = (role || '').toLowerCase().split(new RegExp('[,\\n]+')).map((s: string) => s.trim()).filter(Boolean);
+  const rolesTokens = (role || '').toLowerCase().split(/[\r\n,]+/).map((s: string) => s.trim()).filter(Boolean);
   const hasCollegeRole = rolesTokens.some(t => t.includes('college'));
   const isCollegeOnly = hasCollegeRole && (rolesTokens.length > 0 ? rolesTokens.every(t => t.includes('college')) : true);
-  const displayNumHours = isCollegeOnly && typeof totalHours === 'number' ? Number(totalHours).toFixed(2) : '-';
-  const displayRatePerHour = isCollegeOnly && (typeof collegeRate === 'number' || (typeof collegeRate === 'string' && collegeRate !== ''))
-    ? collegeRate
-    : '-';
+  // Coerce totalHours to a number to handle both number and string inputs
+  const totalHoursNum = ((): number | null => {
+    if (totalHours === undefined || totalHours === null || totalHours === '') return null;
+    const n = Number(totalHours);
+    return Number.isFinite(n) ? n : null;
+  })();
+  const displayNumHours = (hasCollegeRole && totalHoursNum !== null) ? totalHoursNum.toFixed(2) : '-';
+  const displayRatePerHour = (() => {
+    const nonCollegeRate = getNum(earnings?.ratePerHour);
+    return nonCollegeRate > 0 ? nonCollegeRate : '-';
+  })();
   let displayCollegeGSP: string | number = '-';
-  if (isCollegeOnly && typeof totalHours === 'number' && getNum(collegeRate) > 0) {
-    displayCollegeGSP = parseFloat((totalHours * getNum(collegeRate)).toFixed(2));
+  if (hasCollegeRole && totalHoursNum !== null && getNum(collegeRate) > 0) {
+    displayCollegeGSP = parseFloat((totalHoursNum * getNum(collegeRate)).toFixed(2));
   }
   const ratePerHour = getNum(earnings?.ratePerHour);
   const tardinessHours = getNum(earnings?.tardiness);
