@@ -17,7 +17,10 @@ interface DatePickerProps {
   onValueChange?: (value: string) => void
   placeholder?: string
   className?: string
+  /** Disable specific dates in the calendar (NOT the whole control) */
   disabled?: (date: Date) => boolean
+  /** When true, the trigger is disabled and the popover cannot be opened */
+  isDisabled?: boolean
 }
 
 export function DatePicker({ 
@@ -25,7 +28,8 @@ export function DatePicker({
   onValueChange, 
   placeholder = "Pick a date", 
   className,
-  disabled 
+  disabled,
+  isDisabled = false
 }: DatePickerProps) {
   const [date, setDate] = React.useState<Date | undefined>(
     value ? new Date(value) : undefined
@@ -62,6 +66,7 @@ export function DatePicker({
             !date && "text-muted-foreground",
             className
           )}
+          disabled={isDisabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? format(date, "PPP") : placeholder}

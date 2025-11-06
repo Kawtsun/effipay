@@ -16,7 +16,6 @@ export type LeaveRow = {
 }
 
 const STATUS_OPTIONS = [
-  'On Leave',
   'Sick Leave',
   'Vacation Leave',
   'Paid Leave',
@@ -126,7 +125,7 @@ export default function LeaveEditDialog({ employee, onClose }: Props) {
     }
   }
 
-  const startNew = () => setEditing({ id: 0, status: 'On Leave', leave_start_day: '', leave_end_day: null })
+  const startNew = () => setEditing({ id: 0, status: '', leave_start_day: '', leave_end_day: null })
 
   return (
     <Dialog open={!!employee} onOpenChange={(v) => !v && onClose()}>
@@ -144,7 +143,7 @@ export default function LeaveEditDialog({ employee, onClose }: Props) {
             <div>
               <Label>Status</Label>
               <Select value={editing?.status || ''} onValueChange={(v) => setEditing((e) => (e ? { ...e, status: v } : e))}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger className="mt-1" disabled={!editing}>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -158,13 +157,23 @@ export default function LeaveEditDialog({ employee, onClose }: Props) {
             <div>
               <Label>Start Date</Label>
               <div className="mt-1">
-                <DatePicker value={editing?.leave_start_day || ''} onValueChange={(v) => setEditing((e) => (e ? { ...e, leave_start_day: v } : e))} disabled={() => false} />
+                <DatePicker 
+                  value={editing?.leave_start_day || ''}
+                  onValueChange={(v) => setEditing((e) => (e ? { ...e, leave_start_day: v } : e))}
+                  disabled={() => false}
+                  isDisabled={!editing}
+                />
               </div>
             </div>
             <div>
               <Label>End Date (optional)</Label>
               <div className="mt-1">
-                <DatePicker value={editing?.leave_end_day || ''} onValueChange={(v) => setEditing((e) => (e ? { ...e, leave_end_day: v } : e))} disabled={() => false} />
+                <DatePicker 
+                  value={editing?.leave_end_day || ''}
+                  onValueChange={(v) => setEditing((e) => (e ? { ...e, leave_end_day: v } : e))}
+                  disabled={() => false}
+                  isDisabled={!editing}
+                />
               </div>
             </div>
           </div>
