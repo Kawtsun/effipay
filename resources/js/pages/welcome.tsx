@@ -41,10 +41,10 @@ export default function Welcome() {
                         <Card className="rounded-2xl w-full">
                             <CardHeader className="pt-8 pb-0 text-center flex flex-col items-center w-full">
                                 <AppLogoIcon className="h-30 w-30 rounded-full object-cover mx-auto" />
-                                <h1 className="text-4xl font-extrabold text-primary mb-3 text-center drop-shadow-md tracking-tight">Effipay</h1>
+                                <h1 className="text-4xl font-extrabold text-primary mb-3 text-center drop-shadow-md tracking-tight">EffiPay</h1>
                                 <h2 className="text-xl font-semibold text-foreground mb-4 text-center drop-shadow-lg">A Web-Based Payroll Management System</h2>
                                 <p className="text-lg text-muted-foreground mb-8 text-center max-w-md">
-                                    Effipay is the official payroll system for Tomas Claudio Colleges, designed to streamline and secure payroll management for the institution.
+                                    EffiPay is the official payroll system for Tomas Claudio Colleges, designed to streamline and secure payroll management for the institution.
                                 </p>
                             </CardHeader>
                             <CardContent className="py-8 w-full">

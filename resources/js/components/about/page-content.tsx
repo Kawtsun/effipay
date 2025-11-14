@@ -43,7 +43,7 @@ export function PageContent() {
                                 initial={{ opacity: 0, y: 15 }}
                                 animate={{ opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.1 } }}
                             >
-                                Welcome to <span className="font-semibold text-foreground">Effipay</span>, a dedicated payroll management system crafted in partnership with <span className="font-semibold text-foreground">Tomas Claudio Colleges</span> to address the unique needs of educational institutions.<br className="hidden md:block" />
+                                Welcome to <span className="font-semibold text-foreground">EffiPay</span>, a dedicated payroll management system crafted in partnership with <span className="font-semibold text-foreground">Tomas Claudio Colleges</span> to address the unique needs of educational institutions.<br className="hidden md:block" />
                                 <span className="block mt-4">Our mission is to streamline payroll from start to finish, providing a <span className="font-semibold text-foreground">secure</span>, <span className=" font-semibold text-foreground">reliable</span>, and <span className="font-semibold text-foreground">efficient</span> platform for managing employee compensation, tracking work days, and processing payments with confidence.</span>
                             </motion.p>
                         </div>
@@ -124,7 +124,7 @@ export function PageContent() {
                                 <img src="/img/tcc_logo2.jpg" alt="Client Logo" className="w-10 h-10 rounded-full object-cover border border-border" />
                             </div>
                             <p className="text-base font-light leading-relaxed text-muted-foreground">
-                                Our client, <span className='font-semibold text-foreground'>Tomas Claudio Colleges</span>, required a modern solution for payroll management. Effipay was developed specifically for them, providing a web-based platform to automate complex calculations, reduce manual work, and ensure operational efficiency.
+                                Our client, <span className='font-semibold text-foreground'>Tomas Claudio Colleges</span>, required a modern solution for payroll management. EffiPay was developed specifically for them, providing a web-based platform to automate complex calculations, reduce manual work, and ensure operational efficiency.
                             </p>
                         </motion.div>
                     </div>
