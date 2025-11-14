@@ -14,7 +14,7 @@ export default function AppLogo() {
             />
             {!isCollapsed && (
                 <div className="ml-1 grid flex-1 text-left">
-                    <span className="mb-0.5 leading-tight font-semibold text-sm">Effipay</span>
+                    <span className="mb-0.5 leading-tight font-semibold text-sm">EffiPay</span>
                 </div>
             )}
         </div>
