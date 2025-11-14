@@ -40,8 +40,8 @@ export default function Index() {
   // Track how categorization was triggered: 'snapshot' | 'payroll' | 'import' | null
   const [categorizeSource, setCategorizeSource] = useState<null | 'snapshot' | 'payroll' | 'import'>(null)
   // Filters (share the same shape as EmployeeFilter)
-  type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string[]; othersRole?: string }
-  const [filters, setFilters] = useState<FilterState>({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
+  type FilterState = { types: string[]; statuses: string[]; roles: string[]; collegeProgram?: string[]; othersRole?: string; basicEducationLevel?: string[] }
+  const [filters, setFilters] = useState<FilterState>({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '', basicEducationLevel: [] })
   const [searchTerm, setSearchTerm] = useState('')
   const hasRoleFilters = filters.roles.length > 0
   const hasAnyFilters = hasRoleFilters || (searchTerm.trim().length > 0)
@@ -421,7 +421,7 @@ export default function Index() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setFilters({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '' })
+                    setFilters({ types: [], statuses: [], roles: [], collegeProgram: [], othersRole: '', basicEducationLevel: [] })
                     setSearchTerm('')
                   }}
                   disabled={!hasAnyFilters}

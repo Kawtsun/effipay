@@ -84,28 +84,41 @@ export default function EmployeeFilter({
     !arraysEqual(basicEducationLevel, selectedBasicEducationLevel)
 
   // sync draft when parent resets
+  // Guard each sync to avoid unnecessary state updates causing render loops
   useEffect(() => {
-    setTypes(selectedTypes)
+    if (!arraysEqual(types, selectedTypes)) {
+      setTypes(selectedTypes)
+    }
   }, [selectedTypes])
 
   useEffect(() => {
-    setStatuses(selectedStatuses)
+    if (!arraysEqual(statuses, selectedStatuses)) {
+      setStatuses(selectedStatuses)
+    }
   }, [selectedStatuses])
 
   useEffect(() => {
-    setRoles(selectedRoles)
+    if (!arraysEqual(roles, selectedRoles)) {
+      setRoles(selectedRoles)
+    }
   }, [selectedRoles])
 
   useEffect(() => {
-    setCollegeProgram(selectedCollegeProgram)
+    if (!arraysEqual(collegeProgram, selectedCollegeProgram)) {
+      setCollegeProgram(selectedCollegeProgram)
+    }
   }, [selectedCollegeProgram])
 
   useEffect(() => {
-    setOthersRole(selectedOthersRole)
+    if ((othersRole || '') !== (selectedOthersRole || '')) {
+      setOthersRole(selectedOthersRole)
+    }
   }, [selectedOthersRole])
 
   useEffect(() => {
-    setBasicEducationLevel(selectedBasicEducationLevel)
+    if (!arraysEqual(basicEducationLevel, selectedBasicEducationLevel)) {
+      setBasicEducationLevel(selectedBasicEducationLevel)
+    }
   }, [selectedBasicEducationLevel])
 
   // toggle single value in array
