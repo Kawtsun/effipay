@@ -6,6 +6,7 @@ export type PayrollFilterState = {
   roles: string[]
   collegeProgram?: string[]
   othersRole?: string
+  basicEducationLevel?: string[]
 }
 
 export interface PayrollFilterButtonProps {
@@ -15,7 +16,7 @@ export interface PayrollFilterButtonProps {
   className?: string
 }
 
-export default function PayrollFilterButton({ value, onChange, othersRoles = [], className }: PayrollFilterButtonProps) {
+export default function PayrollFilterButton({ value, onChange, othersRoles = [] }: PayrollFilterButtonProps) {
   return (
     <EmployeeFilter
       selectedTypes={value.types}
@@ -23,6 +24,7 @@ export default function PayrollFilterButton({ value, onChange, othersRoles = [],
       selectedRoles={value.roles}
       collegeProgram={value.collegeProgram}
       othersRole={value.othersRole}
+      basicEducationLevel={value.basicEducationLevel}
       othersRoles={othersRoles}
       onChange={onChange}
       hideTypes
