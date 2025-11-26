@@ -244,7 +244,15 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
         const workedRaw = hasBoth ? diffMin(timeIn, timeOut) : 0;
         if (sched.noTimes) {
           const expectedDuration = Math.max(0, sched.durationMin);
-          const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
+          const workedRaw = hasBoth ? diffMin(timeIn, timeOut) : 0;
+          // Only deduct lunch if shift spans across the 12:00-13:00 lunch period
+          const lunchStart = 12 * 60; // 12:00
+          const lunchEnd = 13 * 60;   // 13:00
+          let workedMinusBreak = workedRaw;
+          if (hasBoth && timeIn < lunchEnd && timeOut > lunchStart && workedRaw > 60) {
+            workedMinusBreak = Math.max(0, workedRaw - 60);
+          }
+          
           if (obsInfo.isWhole || obsInfo.isHalf) {
             totalWorkedMin += workedRaw;
             if (hasBoth) {

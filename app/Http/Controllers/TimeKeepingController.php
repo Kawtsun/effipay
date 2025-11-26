@@ -1042,46 +1042,60 @@ class TimeKeepingController extends Controller
         $absences = $absent_hours;
 
         $hasData = $records->count() > 0;
-        // Calculate total_hours for all roles: sum of actual hours worked from time in/out (only on scheduled work days, minus 1 hour break per day if worked at least 4 hours)
+        // Calculate total_hours for all roles: sum of actual hours worked from time in/out (using merged schedules)
         $actualHoursWorked = 0;
+        $collegePaidHours = 0; // Track college-paid hours separately
+        
         foreach ($records as $tk) {
             $date = $tk->date;
             $dayOfWeekNum = date('w', strtotime($date));
             $dayOfWeekStr = $phpDayToStr[$dayOfWeekNum];
-            $workDay = $workDaysModels->get($dayOfWeekStr, $workDaysModels->get($dayOfWeekNum));
-            if (!$workDay) continue;
+            
+            // Use merged schedule (includes both work_days and college_schedules)
+            $sched = $schedByCode[$dayOfWeekStr] ?? null;
+            if (!$sched) continue; // Not a scheduled day
+            
             if (!empty($tk->clock_in) && !empty($tk->clock_out)) {
-                // Use scheduled start from workDay if available
-                $scheduledStart = !empty($workDay->work_start_time) ? strtotime($workDay->work_start_time) : null;
                 $in = strtotime($tk->clock_in);
                 $out = strtotime($tk->clock_out);
-                // If clock_in is earlier than scheduled start, use scheduled start
-                if ($scheduledStart && $in < $scheduledStart) {
-                    $in = $scheduledStart;
+                
+                // If schedule has start time and clock_in is earlier, use scheduled start
+                if (isset($sched['start']) && !$sched['noTimes']) {
+                    $scheduledStartSec = floor($sched['start'] / 60) * 3600 + ($sched['start'] % 60) * 60;
+                    $schedStartTime = strtotime(date('Y-m-d', strtotime($date)) . ' ' . gmdate('H:i:s', $scheduledStartSec));
+                    if ($in < $schedStartTime) {
+                        $in = $schedStartTime;
+                    }
                 }
+                
                 $worked = $out - $in;
                 if ($worked < 0) $worked += 24 * 60 * 60;
-                $hours = $worked / 3600;
 
                 // Define the fixed break end time and deduction duration
                 $fixedBreakEnd = strtotime('13:00:00'); // 1:00:00 PM
                 $breakDurationSeconds = 3600;             // 1 hour
 
-                // Check 1: Did the actual clock-out end strictly LATER THAN 1:00 PM?
-                // Note the change from >= to >
+                // Check if shift ends after 1 PM to apply lunch break
                 $actualShiftEndsAfterBreak = ($out > $fixedBreakEnd);
 
                 if ($actualShiftEndsAfterBreak) {
-                    // If yes, deduct the fixed 1 hour.
                     $finalDeductionSeconds = $breakDurationSeconds;
                 } else {
-                    // If no, deduct nothing.
                     $finalDeductionSeconds = 0;
                 }
 
                 $workedSeconds = $worked - $finalDeductionSeconds;
                 $hours = $workedSeconds / 3600;
                 $actualHoursWorked += max(0, $hours);
+                
+                // For college schedules, cap hours by expected duration for college_paid_hours
+                if ($hasCollege && $sched['noTimes']) {
+                    $expectedHours = $sched['durationMin'] / 60;
+                    $collegePaidHours += min(max(0, $hours), $expectedHours);
+                } elseif ($hasCollege) {
+                    // For time-based college schedules, count the hours (already includes lunch deduction)
+                    $collegePaidHours += max(0, $hours);
+                }
             }
         }
 
@@ -1123,6 +1137,7 @@ class TimeKeepingController extends Controller
             'payroll_total_deductions' => $payroll ? $payroll->total_deductions : null,
             'payroll_net_pay' => $payroll ? $payroll->net_pay : null,
             'total_hours' => round($actualHoursWorked, 2),
+            'college_paid_hours' => $hasCollege ? round($collegePaidHours, 2) : null,
             // Including work_hours_per_day for front-end conditional logic
             'work_hours_per_day' => $employee->work_hours_per_day,
 

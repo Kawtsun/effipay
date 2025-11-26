@@ -578,8 +578,18 @@ class PayrollController extends Controller
                 // If schedule is hours-only (noTimes), treat expected as durationMin
                 if (!empty($sched['noTimes'])) {
                     $expected = (int)($sched['durationMin'] ?? 0);
-                    $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
                     if (!$hasBoth) { $absentMin += $expected; continue; }
+                    
+                    // Calculate worked minutes with proper lunch break handling
+                    $worked = $hasBoth ? $this->diffMin($timeIn, $timeOut) : 0;
+                    // Only deduct lunch if shift spans across the 12:00-13:00 lunch period
+                    $lunchStart = 12 * 60; // 12:00
+                    $lunchEnd = 13 * 60;   // 13:00
+                    $workedMinusBreak = $worked;
+                    if ($timeIn < $lunchEnd && $timeOut > $lunchStart && $worked > 60) {
+                        $workedMinusBreak = max(0, $worked - 60);
+                    }
+                    
                     $totalWorkedMin += $workedMinusBreak;
                     // College-paid hours for college schedules without explicit times: cap by expected
                     $collegePaidMin += min($workedMinusBreak, $expected);
