@@ -142,13 +142,13 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
             }
             return '-';
         }
-        // Other types: keep old logic
-        if (isCollegeInstructorPayroll && selectedPayroll) {
-            const value = Number(selectedPayroll[type]) || 0;
-            const rate = selectedPayroll.college_rate ?? 0;
-            return `₱${(value * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        } else if (timekeepingSummary && typeof timekeepingSummary[type] === 'number' && typeof timekeepingSummary.rate_per_hour === 'number') {
-            return `₱${(timekeepingSummary[type] * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        // Other types: use timekeeping summary (live calculation) instead of stored payroll
+        if (timekeepingSummary && typeof timekeepingSummary[type] === 'number' && typeof timekeepingSummary.rate_per_hour === 'number') {
+            // For college instructors, use college rate if available
+            const rate = (isCollegeInstructorPayroll && selectedPayroll?.college_rate) 
+                ? selectedPayroll.college_rate 
+                : timekeepingSummary.rate_per_hour;
+            return `₱${(timekeepingSummary[type] * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
         return '-';
     };

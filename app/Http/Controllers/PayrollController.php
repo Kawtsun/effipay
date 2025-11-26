@@ -583,10 +583,9 @@ class PayrollController extends Controller
                     $totalWorkedMin += $workedMinusBreak;
                     // College-paid hours for college schedules without explicit times: cap by expected
                     $collegePaidMin += min($workedMinusBreak, $expected);
-                    if ($hasCollege) {
-                        $deficit = max(0, $expected - $workedMinusBreak);
-                        $absentMin += $deficit;
-                    } else {
+                    // Employee clocked in/out, so they are present - no absence added
+                    // Non-college roles can track undertime
+                    if (!$hasCollege) {
                         $under = max(0, $expected - $workedMinusBreak);
                         $underMin += $under;
                     }
@@ -638,17 +637,11 @@ class PayrollController extends Controller
                     $collegePaidMin += min($remain, $extra);
                 }
 
-                if ($hasCollege && ($isCollegeOnly || ($isCollegeMulti && ((int)($sched['extraCollegeDurMin'] ?? 0)) > (int)($sched['durationMin'] ?? 0)))) {
-                    $expected = (int)($sched['durationMin'] ?? 0);
-                    if ($isCollegeMulti && isset($sched['extraCollegeDurMin']) && $sched['extraCollegeDurMin'] > 0) {
-                        $expected = max($expected, (int)$sched['extraCollegeDurMin']);
-                    }
-                    $deficit = max(0, $expected - $workedMinusBreak);
-                    $absentMin += $deficit;
-                    if (!$isCollegeOnly) {
-                        $over = max(0, $workedMinusBreak - $expected);
-                        $otMin += $over; $otWeekdayMin += $over;
-                    }
+                // Multi-role with college schedule: allow overtime but no deficit as absence since they clocked in/out
+                if ($isCollegeMulti && ((int)($sched['extraCollegeDurMin'] ?? 0)) > (int)($sched['durationMin'] ?? 0)) {
+                    $expected = max((int)($sched['durationMin'] ?? 0), (int)($sched['extraCollegeDurMin'] ?? 0));
+                    $over = max(0, $workedMinusBreak - $expected);
+                    $otMin += $over; $otWeekdayMin += $over;
                     continue;
                 }
 

@@ -231,6 +231,9 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
       }
       const code = codeFromDate(d);
       const sched = schedByCode[code];
+      // Skip days that are not in the work schedule
+      if (!sched) continue;
+      
       const rec = map[dateStr];
       const timeIn = parseClock(rec?.clock_in ?? rec?.time_in);
       const timeOut = parseClock(rec?.clock_out ?? rec?.time_out);
@@ -253,14 +256,12 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           totalWorkedMin += workedMinusBreak;
           // College/GSP paid hours for no-times entries: cap actual worked by expected college minutes
           collegePaidMin += Math.min(workedMinusBreak, expectedDuration);
-          if (isCollegeOnly || isCollegeMulti) {
-            const deficit = Math.max(0, expectedDuration - workedMinusBreak);
-            absentMin += deficit;
-            if (!isCollegeOnly) {
-              const over = Math.max(0, workedMinusBreak - expectedDuration);
-              otMin += over; if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
-            }
-          } else {
+          // Employee clocked in/out, so they are present - no absence added
+          // Allow overtime for multi-role
+          if (isCollegeMulti) {
+            const over = Math.max(0, workedMinusBreak - expectedDuration);
+            otMin += over; if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
+          } else if (!isCollegeOnly) {
             const under = Math.max(0, expectedDuration - workedMinusBreak);
             const over = Math.max(0, workedMinusBreak - expectedDuration);
             underMin += under; otMin += over; if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
@@ -310,11 +311,11 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           collegePaidMin += paidToday;
         }
 
-        if (isCollegeOnly || (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > sched.durationMin))) {
-          const expected = (isCollegeMulti && (sched.extraCollegeDurMin ?? 0) > 0) ? Math.max(sched.durationMin, sched.extraCollegeDurMin || 0) : sched.durationMin;
-          const deficit = Math.max(0, expected - workedMinusBreak);
-          absentMin += deficit;
-          if (!isCollegeOnly) { const over = Math.max(0, workedMinusBreak - expected); otMin += over; otWeekdayMin += over; }
+        if (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > sched.durationMin)) {
+          const expected = Math.max(sched.durationMin, sched.extraCollegeDurMin || 0);
+          // Employee clocked in/out, so they are present - no deficit counted as absence
+          const over = Math.max(0, workedMinusBreak - expected);
+          otMin += over; otWeekdayMin += over;
           continue;
         }
 

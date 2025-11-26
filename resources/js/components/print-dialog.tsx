@@ -314,10 +314,9 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
     const weekendOT = Number(metrics.overtime_count_weekends ?? 0) || 0;
         const numHoursDisplay = Number.isFinite(hoursForDisplayRaw) ? hoursForDisplayRaw : 0;
 
-        // Apply college-only rule: no tardiness, undertime, or overtime; only absences count
-        const tardiness = isCollegeOnly ? 0 : tardinessRaw;
-        const undertime = isCollegeOnly ? 0 : undertimeRaw;
-    const overtime = isCollegeOnly ? 0 : overtimeRaw;
+        const tardiness = tardinessRaw;
+        const undertime = undertimeRaw;
+    const overtime = overtimeRaw;
 
         const effectiveCollegeRate = (data.earnings.collegeRate ?? payrollCollegeRate ?? 0) as number;
         // Derive non-college hourly rate from base salary when needed (match backend formula)
@@ -512,9 +511,9 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                         // Round to 2 decimals before rendering to match Attendance/Report cards
                         setBtrTotalHours(Number(Number(displayHours).toFixed(2)));
                         setBtrMetrics({
-                                tardiness: isCollegeOnly ? 0 : (metricsBTR.tardiness ?? 0),
-                                undertime: isCollegeOnly ? 0 : (metricsBTR.undertime ?? 0),
-                                overtime: isCollegeOnly ? 0 : (metricsBTR.overtime ?? 0),
+                                tardiness: (metricsBTR.tardiness ?? 0),
+                                undertime: (metricsBTR.undertime ?? 0),
+                                overtime: (metricsBTR.overtime ?? 0),
                                 absences: metricsBTR.absences ?? 0,
                         });
 

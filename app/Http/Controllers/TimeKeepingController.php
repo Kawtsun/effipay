@@ -1035,36 +1035,8 @@ class TimeKeepingController extends Controller
                 continue;
             }
 
-            // If worked, compute deficit for college roles and treat as absence hours
-            if (!empty($sched['noTimes'])) {
-                // No explicit start/end: use total worked minus 1h break if any
-                $first = $tk->first(); $last = $tk->last();
-                $in = strtotime((string)($first->clock_in ?? $first->time_in ?? ''));
-                $out = strtotime((string)($last->clock_out ?? $last->time_out ?? ''));
-                if ($in && $out) {
-                    $worked = $out - $in; if ($worked < 0) $worked += 24*60*60;
-                    $workedMinusBreak = max(0, ($worked - 3600) / 60); // minutes
-                    if ($hasCollege) {
-                        $deficitMin = max(0, $expectedMin - (int)round($workedMinusBreak));
-                        $absent_hours += round($deficitMin / 60, 2);
-                    }
-                }
-                continue;
-            }
-
-            // Time-based schedule: compute workedMinusBreak and deficit when college
-            $first = $tk->first(); $last = $tk->last();
-            $in = strtotime((string)($first->clock_in ?? $first->time_in ?? ''));
-            $out = strtotime((string)($last->clock_out ?? $last->time_out ?? ''));
-            if ($in && $out) {
-                $worked = $out - $in; if ($worked < 0) $worked += 24*60*60;
-                $workedMinusBreak = max(0, ($worked - 3600)); // seconds
-                $workedMin = (int)round($workedMinusBreak / 60);
-                if ($hasCollege) {
-                    $deficitMin = max(0, $expectedMin - $workedMin);
-                    $absent_hours += round($deficitMin / 60, 2);
-                }
-            }
+            // If employee clocked in/out, they are present - no absence hours added
+            // Deficit handling (tardiness/undertime) is tracked separately above
         }
 
         $absences = $absent_hours;

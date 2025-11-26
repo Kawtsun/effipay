@@ -560,17 +560,14 @@ export function TimeKeepingDataProvider({
           totalWorkedMin += workedMinusBreak;
           // College-paid: cap by expected duration for college-only hour schedules
           collegePaidMin += Math.min(workedMinusBreak, expectedDuration);
-          if (isCollegeOnly || isCollegeMulti) {
-            // College schedules: deficit -> Absences
-            const deficit = Math.max(0, expectedDuration - workedMinusBreak);
-            absentMin += deficit;
-            // For multi-role, still allow overtime when exceeding expected duration
-            if (!isCollegeOnly) {
-              const over = Math.max(0, workedMinusBreak - expectedDuration);
-              otMin += over;
-              if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
-            }
-          } else {
+          // Employee clocked in/out, so they are present
+          // Allow overtime calculation for multi-role
+          if (isCollegeMulti) {
+            const over = Math.max(0, workedMinusBreak - expectedDuration);
+            otMin += over;
+            if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
+          } else if (!isCollegeOnly) {
+            // Non-college roles get undertime/overtime tracking
             const under = Math.max(0, expectedDuration - workedMinusBreak);
             const over = Math.max(0, workedMinusBreak - expectedDuration);
             underMin += under;
@@ -656,24 +653,14 @@ export function TimeKeepingDataProvider({
 
         collegePaidMin += dayCollegePaid;
 
-        // College-dominant expectation rule:
-        // - College-only employees
-        // - OR multi-role days where the time-based schedule is from College, OR the extra college hours exceed the admin span.
-        // In those cases, treat shortfall as Absences (college policy) and suppress tardiness/undertime.
-        // Otherwise (e.g., admin span >= extra college hours), compute regular tardiness/undertime for the admin schedule.
-        if (isCollegeOnly || (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > sched.durationMin))) {
-          // College-only: treat shortfall as absence; suppress tardiness/undertime/OT
-          const expected = (isCollegeMulti && (sched.extraCollegeDurMin ?? 0) > 0)
-            ? Math.max(sched.durationMin, sched.extraCollegeDurMin || 0)
-            : sched.durationMin;
-          const deficit = Math.max(0, expected - workedMinusBreak);
-          absentMin += deficit;
-          // Preserve overtime for multi-role college schedules
-          if (!isCollegeOnly) {
-            const over = Math.max(0, workedMinusBreak - expected);
-            otMin += over;
-            if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
-          }
+        // Multi-role handling for college schedules
+        if (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > sched.durationMin)) {
+          // Multi-role with college schedule: allow overtime calculation
+          const expected = Math.max(sched.durationMin, sched.extraCollegeDurMin || 0);
+          const over = Math.max(0, workedMinusBreak - expected);
+          otMin += over;
+          if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
+          // Employee clocked in/out, so they are present - no absence added
           continue;
         }
 
