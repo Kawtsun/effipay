@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { Employees } from "@/types";
 
-export type ObservanceMap = Record<string, { type?: string; start_time?: string }>
+export type ObservanceMap = Record<string, { type?: string | null; label?: string; start_time?: string }>
 
 export type TimeKeepingMetrics = {
   tardiness: number;
@@ -66,7 +66,7 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
         for (const o of arr) {
           const d = (o?.date || "").slice(0, 10);
           if (!d || (month && d.slice(0, 7) !== month.slice(0, 7))) continue;
-          map[d] = { type: o?.type || o?.label, start_time: o?.start_time };
+          map[d] = { type: o?.type, label: o?.label, start_time: o?.start_time };
         }
         setObservanceMap(map);
         const sr = sumRes && sumRes.success ? {
@@ -148,7 +148,9 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
       const isHalfByKeyword = type.includes("half") || type.includes("eve");
       const isWholeByKeyword = type.includes("whole");
       const isHalf = hasStart || isHalfByKeyword;
-      const isWhole = isWholeByKeyword || (!isHalf && type.includes("holiday"));
+      // Treat as whole-day if: explicit "whole" keyword, OR "holiday" keyword, OR observance exists with null/undefined/empty type
+      const hasNoType = obs && !obs.type; // Covers null, undefined, and empty string
+      const isWhole = isWholeByKeyword || (!isHalf && type.includes("holiday")) || (!isHalf && hasNoType);
       return { isHalf, isWhole, startMin: hasStart ? startMinVal : undefined } as const;
     };
 
@@ -254,9 +256,9 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           }
           
           if (obsInfo.isWhole || obsInfo.isHalf) {
-            totalWorkedMin += workedRaw;
+            totalWorkedMin += workedMinusBreak;
             if (hasBoth) {
-              otMin += workedRaw; otObservanceMin += workedRaw; // Observance: double pay bucket
+              otMin += workedMinusBreak; otObservanceMin += workedMinusBreak; // Observance: double pay bucket
             }
             continue;
           }
@@ -277,8 +279,16 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           continue;
         }
 
-  if (obsInfo.isWhole) { if (hasBoth) { totalWorkedMin += workedRaw; otMin += workedRaw; otObservanceMin += workedRaw; } continue; }
-  if (obsInfo.isHalf) { if (hasBoth) { totalWorkedMin += workedRaw; otMin += workedRaw; otObservanceMin += workedRaw; } continue; }
+  if (obsInfo.isWhole) { 
+    const workedMinusBreakObs = hasBoth ? Math.max(0, workedRaw - 60) : 0;
+    if (hasBoth) { totalWorkedMin += workedMinusBreakObs; otMin += workedMinusBreakObs; otObservanceMin += workedMinusBreakObs; } 
+    continue; 
+  }
+  if (obsInfo.isHalf) { 
+    const workedMinusBreakObs = hasBoth ? Math.max(0, workedRaw - 60) : 0;
+    if (hasBoth) { totalWorkedMin += workedMinusBreakObs; otMin += workedMinusBreakObs; otObservanceMin += workedMinusBreakObs; } 
+    continue; 
+  }
 
         const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
         totalWorkedMin += workedMinusBreak;

@@ -9,7 +9,7 @@ export type TimeRecordLike = {
   time_out?: string | null;
 };
 
-export type ObservanceEntry = { date?: string; type?: string; label?: string; start_time?: string };
+export type ObservanceEntry = { date?: string; type?: string; label?: string; start_time?: string; is_automated?: boolean };
 
 export type MonthlyMetrics = {
   tardiness: number;
@@ -129,11 +129,11 @@ export async function computeMonthlyMetrics(
       obsArr = [];
     }
   }
-  const obsMap: Record<string, { type?: string; start_time?: string }> = {};
+  const obsMap: Record<string, { type?: string; start_time?: string; is_automated?: boolean }> = {};
   for (const o of obsArr) {
     const d = (o?.date || "").slice(0, 10);
     if (!d || d.slice(0, 7) !== selectedMonth) continue;
-    obsMap[d] = { type: o?.type || o?.label, start_time: o?.start_time };
+    obsMap[d] = { type: o?.type || o?.label, start_time: o?.start_time, is_automated: !!o?.is_automated };
   }
 
   const [yStr, mStr] = selectedMonth.split("-");
@@ -163,8 +163,12 @@ export async function computeMonthlyMetrics(
       const workedRaw = hasBoth ? diffMin(timeIn, timeOut) : 0;
       const obs = obsMap[dateStr];
       const obsType = obs?.type?.toLowerCase?.() || "";
+      const isAutomatedHoliday = !!obs?.is_automated;
 
-      if (obsType.includes("whole")) {
+      // Match backend: treat as whole-day if type is 'whole-day', or type is null/empty (automated holidays)
+      // Also skip if is_automated flag is set
+      const isWholeDay = obsType.includes("whole") || (obs && obsType === "") || isAutomatedHoliday;
+      if (isWholeDay) {
         const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
         totalWorkedMin += workedMinusBreak;
         if (hasBoth) {
@@ -175,25 +179,13 @@ export async function computeMonthlyMetrics(
       }
 
       if (obsType.includes("half")) {
-        const suspMinVal = hmToMin(obs?.start_time);
-        const suspMin = Number.isNaN(suspMinVal) ? 12 * 60 : suspMinVal; // default 12:00
-        const expectedEnd = Math.max(sched.start, Math.min(suspMin, sched.end));
-        const expectedDuration = Math.max(0, expectedEnd - sched.start);
-
-        if (!hasBoth) {
-          absentMin += expectedDuration;
-          continue;
+        // Match backend: treat half-day same as whole-day - all worked hours (minus lunch) as observance overtime
+        const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
+        totalWorkedMin += workedMinusBreak;
+        if (hasBoth) {
+          otMin += workedMinusBreak;
+          otObservanceMin += workedMinusBreak; // Observance: double pay bucket
         }
-
-        totalWorkedMin += workedRaw; // no lunch deduction for half-day expectation
-        const tard = Math.max(0, timeIn - sched.start);
-        const under = Math.max(0, expectedEnd - timeOut);
-        const over = Math.max(0, timeOut - Math.max(timeIn, expectedEnd));
-
-        tardMin += tard;
-        underMin += under;
-        otMin += over;
-        otObservanceMin += over; // Observance: double pay bucket
         continue;
       }
 

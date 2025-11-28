@@ -46,6 +46,22 @@ Route::middleware('auth')->group(function () {
         ];
     });
 
+    // DEBUG: Test overtime calculation
+    Route::get('/debug/overtime/{employee_id}/{month}', function ($employee_id, $month) {
+        $employee = \App\Models\Employees::find($employee_id);
+        if (!$employee) return ['error' => 'Employee not found'];
+        
+        $service = new \App\Services\AttendanceCalculationService();
+        $metrics = $service->computeMonthlyMetrics($employee, $month);
+        
+        return [
+            'employee_id' => $employee_id,
+            'month' => $month,
+            'metrics' => $metrics,
+            'breakdown_sum' => $metrics['overtime_count_weekdays'] + $metrics['overtime_count_weekends'] + $metrics['overtime_count_observances'],
+        ];
+    });
+
     // API: Get daily biometric records for employee and month
     Route::get('/api/timekeeping/records', [TimeKeepingController::class, 'getEmployeeRecordsForMonth']);
     // API: Get monthly summary for employee and month (ADD THIS LINE)

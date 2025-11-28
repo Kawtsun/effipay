@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employees;
 use App\Models\Payroll;
 use App\Models\Salary;
+use App\Services\AttendanceCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
@@ -87,7 +88,7 @@ class PayrollController extends Controller
             $summaryData = $summary->getData(true);
 
             // Compute monthly metrics using the same logic as Attendance Cards
-            $metrics = $this->computeMonthlyMetricsPHP($employee, $payrollMonth);
+            $metrics = AttendanceCalculationService::computeMonthlyMetrics($employee, $payrollMonth);
 
             // Populate weekday/weekend OT buckets from metrics for all branches
             if (is_array($metrics)) {
@@ -531,7 +532,7 @@ class PayrollController extends Controller
         $obsMap = [];
         foreach ($obsArr as $o) {
             $d = substr((string)$o->date, 0, 10);
-            $obsMap[$d] = ['type' => $o->type ?: $o->label, 'start_time' => $o->start_time ? $o->start_time->format('H:i') : null];
+            $obsMap[$d] = ['type' => $o->type, 'label' => $o->label, 'start_time' => $o->start_time ? $o->start_time->format('H:i') : null];
         }
 
         [$y, $m] = array_map('intval', explode('-', $selectedMonth));
@@ -560,9 +561,12 @@ class PayrollController extends Controller
                 $workedRaw = $hasBoth ? $this->diffMin($timeIn, $timeOut) : 0;
                 $obs = $obsMap[$dateStr] ?? null;
                 $obsType = $obs && isset($obs['type']) ? strtolower((string)$obs['type']) : '';
+                
+                // Check if this is a whole-day observance (either by type or if observance exists without type)
+                $isWholeDayObs = (strpos($obsType, 'whole') !== false) || ($obs && !$obsType);
 
                 // Whole-day or half-day observances: if worked, add as OT (observance), else skip expectations
-                if (strpos($obsType, 'whole') !== false) {
+                if ($isWholeDayObs) {
                     $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
                     $totalWorkedMin += $workedMinusBreak;
                     if ($hasBoth) { $otMin += $workedMinusBreak; $otObservanceMin += $workedMinusBreak; }
@@ -982,7 +986,7 @@ class PayrollController extends Controller
         // This avoids 1-hour discrepancies due to different rounding/break handling on the client.
         try {
             $employee = Employees::findOrFail((int)$request->employee_id);
-            $metrics = $this->computeMonthlyMetricsPHP($employee, (string)$request->month);
+            $metrics = AttendanceCalculationService::computeMonthlyMetrics($employee, (string)$request->month);
             $collegePaidHours = isset($metrics['college_paid_hours']) ? (float)$metrics['college_paid_hours'] : null;
             $totalHours = isset($metrics['total_hours']) ? (float)$metrics['total_hours'] : null;
         } catch (\Throwable $e) {

@@ -27,6 +27,7 @@ interface Payroll {
     tardiness?: number;
     undertime?: number;
     absences?: number;
+    overtime?: number; // overtime hours stored in payroll
     overtime_pay?: number;
     adjustments?: number;
     sss?: string;
@@ -137,6 +138,8 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             tardiness: payroll.tardiness ?? 0,
             undertime: payroll.undertime ?? 0,
             absences: payroll.absences ?? 0,
+            // Overtime hours stored in the payroll record
+            overtime: payroll.overtime ?? 0,
             // Prefer overtime_pay_total if present; fallback to legacy field name
             overtime_pay_total: ((payroll as unknown as { overtime_pay_total?: number; overtime_pay?: number; }).overtime_pay_total
               ?? (payroll as unknown as { overtime_pay_total?: number; overtime_pay?: number; }).overtime_pay
@@ -292,13 +295,13 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
     const mObj = metrics as unknown as { college_paid_hours?: number };
     const collegeHours = typeof mObj.college_paid_hours === 'number' ? Number(mObj.college_paid_hours) : NaN;
 
-    const tardinessRaw = metrics.tardiness ?? 0;
-        const undertimeRaw = metrics.undertime ?? 0;
-    // Fallback to monthly summary absences if metrics unexpectedly yields 0/undefined
-    const absencesFromSummary = Number(timekeepingSummary?.absences ?? 0) || 0;
-    const absences = Number(metrics.absences ?? NaN);
-    const effectiveAbsences = Number.isFinite(absences) && absences > 0 ? absences : absencesFromSummary;
-        const overtimeRaw = metrics.overtime ?? 0;
+    // Use timekeepingSummary (from backend API) as the source of truth for payslip display
+    // This ensures payslip always matches what the Timekeeping Details/Report dialog shows
+    // The backend API correctly handles observances/holidays and excludes them from absences
+    const tardinessRaw = Number(timekeepingSummary?.tardiness ?? 0) || 0;
+    const undertimeRaw = Number(timekeepingSummary?.undertime ?? 0) || 0;
+    const effectiveAbsences = Number(timekeepingSummary?.absences ?? 0) || 0;
+    const overtimeRaw = Number(timekeepingSummary?.overtime ?? 0) || 0;
         // Hours for College/GSP amount calculation: strictly college-paid hours;
         // Hours for display: if college-paid hours are missing, fall back to total_hours to avoid showing 0.00
         // Prefer the exact hours used by payroll for College/GSP when a college role exists

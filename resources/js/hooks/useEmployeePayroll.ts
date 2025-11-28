@@ -85,6 +85,20 @@ export function useEmployeePayroll(employeeId: number | string | null, month: st
                             undertime,
                             absences
                         );
+                    // Debug logging for employee 11
+                    if (employeeId === 11 || employeeId === '11') {
+                        console.log('useEmployeePayroll API Response for Employee 11:', {
+                            overtime: result.overtime,
+                            overtime_count_weekdays: result.overtime_count_weekdays,
+                            overtime_count_weekends: result.overtime_count_weekends,
+                            overtime_count_observances: result.overtime_count_observances,
+                        });
+                        console.log('useEmployeePayroll - Setting overtime value:', {
+                            result_overtime: result.overtime,
+                            parsed_overtime: Number(result.overtime ?? 0),
+                            result_total_hours: result.total_hours,
+                        });
+                    }
                     setSummary({
                         tardiness: result.tardiness ?? 0,
                         undertime: result.undertime ?? 0,

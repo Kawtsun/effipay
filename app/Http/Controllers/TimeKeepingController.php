@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TimeKeeping;
 use App\Http\Requests\StoreTimeKeepingRequest;
 use App\Http\Requests\UpdateTimeKeepingRequest;
+use App\Services\AttendanceCalculationService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -657,6 +658,9 @@ class TimeKeepingController extends Controller
             return response()->json(['success' => false, 'error' => 'Employee not found']);
         }
 
+        // Use unified attendance calculation service for core metrics
+        $unifiedMetrics = AttendanceCalculationService::computeMonthlyMetrics($employee, $month);
+
         // Fetch payroll data for this employee and month
         $payroll = \App\Models\Payroll::where('employee_id', $employeeId)
             ->where('month', $month)
@@ -1009,7 +1013,9 @@ class TimeKeepingController extends Controller
 
             // Skip whole-day or automated observances
             $isObservance = isset($observanceSet[$date]);
-            $isWholeDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day');
+            $obsType = isset($observanceTypeMap[$date]) ? $observanceTypeMap[$date] : null;
+            // Treat as whole-day if: explicit 'whole-day' type, OR observance exists with null type
+            $isWholeDay = $isObservance && ($obsType === 'whole-day' || $obsType === null);
             $isAutomatedHoliday = $isObservance && (!empty($observanceAutomatedMap[$date]));
             if ($isWholeDay || $isAutomatedHoliday) continue;
 
@@ -1116,13 +1122,13 @@ class TimeKeepingController extends Controller
 
         $response = [
             'success' => $hasData,
-            'tardiness' => round($late_count, 2),
-            'undertime' => round($early_count, 2),
-            'overtime' => round($overtime_count, 2),
-            'overtime_count_weekdays' => round($overtime_count_weekdays, 2),
-            'overtime_count_weekends' => round($overtime_count_weekends, 2),
-            'overtime_count_observances' => 0.0, // observance hours are paid separately as Double Pay
-            'absences' => round($absences, 2),
+            'tardiness' => $unifiedMetrics['tardiness'], // Use unified calculation
+            'undertime' => $unifiedMetrics['undertime'], // Use unified calculation
+            'overtime' => $unifiedMetrics['overtime'], // Use unified calculation
+            'overtime_count_weekdays' => $unifiedMetrics['overtime_count_weekdays'], // Use unified calculation
+            'overtime_count_weekends' => $unifiedMetrics['overtime_count_weekends'], // Use unified calculation
+            'overtime_count_observances' => $unifiedMetrics['overtime_count_observances'], // Use unified calculation
+            'absences' => $unifiedMetrics['absences'], // Use unified calculation
             'base_salary' => $base_salary,
             'rate_per_day' => $rate_per_day,
             'rate_per_hour' => $rate_per_hour,
@@ -1136,8 +1142,8 @@ class TimeKeepingController extends Controller
             'payroll_gross_pay' => $payroll ? $payroll->gross_pay : null,
             'payroll_total_deductions' => $payroll ? $payroll->total_deductions : null,
             'payroll_net_pay' => $payroll ? $payroll->net_pay : null,
-            'total_hours' => round($actualHoursWorked, 2),
-            'college_paid_hours' => $hasCollege ? round($collegePaidHours, 2) : null,
+            'total_hours' => $unifiedMetrics['total_hours'], // Use unified calculation
+            'college_paid_hours' => $unifiedMetrics['college_paid_hours'], // Use unified calculation
             // Including work_hours_per_day for front-end conditional logic
             'work_hours_per_day' => $employee->work_hours_per_day,
 
