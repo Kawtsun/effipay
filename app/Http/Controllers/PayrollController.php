@@ -172,22 +172,21 @@ class PayrollController extends Controller
                 // For record-keeping, set base_salary to employee's base_salary or 0 (not used in calculation)
                 $base_salary = !is_null($employee->base_salary) ? $employee->base_salary : 0;
 
-                // Compute SSS/PhilHealth using formulas and the College GSP (rate * paid hours) as contribution base
-                $college_gsp = max(0.0, (float)$college_rate * max(0.0, (float)$total_hours_worked));
-                if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($college_gsp); }
-                if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($college_gsp); }
+                // Compute SSS/PhilHealth using honorarium as contribution base for college instructors
+                $contribBase = max(0.0, (float)$honorarium);
+                if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($contribBase); }
+                if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($contribBase); }
 
-                // Compute withholding tax FROM GROSS PAY as total compensation
-                // per request. Other contributions are computed separately.
-                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
-                    $totalComp = $gross_pay; // use gross pay directly
+                // Compute withholding tax using total compensation = gross_pay - sss - philhealth - pag_ibig
+                $totalComp = max(0.0, $gross_pay - $sss - $philhealth - $pag_ibig);
+                $withholding_tax = $totalComp > 0 ? (function ($totalComp) {
                     if ($totalComp <= 20832) return 0;
                     if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
                     if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
                     if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
                     if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
                     return 183541.80 + 0.35 * ($totalComp - 666667);
-                })($gross_pay) : 0;
+                })($totalComp) : 0;
             } elseif ($isCollegeInstructor && $isCollegeMulti) {
                 // Multi-role with College Instructor:
                 // Gross = Base Salary + College GSP + OT - non-college rate * (T+U+A) + honorarium
