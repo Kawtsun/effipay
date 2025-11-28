@@ -43,7 +43,8 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                 DB::raw('ROUND(payrolls.honorarium, 2) as honorarium'),
                 DB::raw('ROUND(employees.base_salary, 2) as rate_per_month'),
                 DB::raw('ROUND(employees.base_salary / 22, 2) as rate_per_day'),
-                DB::raw('ROUND(((payrolls.tardiness + payrolls.undertime + payrolls.absences) * ((employees.base_salary * 12 / 288) / NULLIF(employees.work_hours_per_day,0))), 2) as total_late_absences'),
+                // Use 262 divisor for Basic Education roles, 288 for others
+                DB::raw('ROUND(((payrolls.tardiness + payrolls.undertime + payrolls.absences) * ((employees.base_salary * 12 / CASE WHEN LOWER(employees.roles) LIKE \'%basic education%\' THEN 262 ELSE 288 END) / NULLIF(employees.work_hours_per_day,0))), 2) as total_late_absences'),
                 DB::raw('ROUND(payrolls.gross_pay, 2) as gross_pay'),
                 DB::raw('ROUND(payrolls.sss, 2) as sss_premium'),
                 DB::raw('ROUND(payrolls.sss_salary_loan, 2) as sss_salary_loan'),

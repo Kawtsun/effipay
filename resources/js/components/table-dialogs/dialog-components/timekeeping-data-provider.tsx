@@ -374,7 +374,10 @@ export function computeRatePerHourForEmployee(employee: Employees | null): numbe
   const baseSalary = Number(employee.base_salary ?? 0) || 0;
   const honorarium = Number(employee.honorarium ?? 0) || 0;
   const monthly = baseSalary + honorarium;
-  const ratePerDay = (monthly * 12) / 288;
+  // Use 262 divisor for Basic Education roles, 288 for others
+  const isBasicEducation = rolesStr.includes('basic education');
+  const divisor = isBasicEducation ? 262 : 288;
+  const ratePerDay = (monthly * 12) / divisor;
   // Try to infer hours per day from the first valid work_day; fallback to 8
   const wd: WorkDayTime[] = Array.isArray(employee.work_days) ? employee.work_days! : [];
   const hmToMin = (t?: string) => {

@@ -44,7 +44,11 @@ class TimeKeepingController extends Controller
         $base_salary = $employee ? $employee->base_salary : 0;
         // Use the employee's specific schedule, fallback to 8
         $work_hours_per_day = $employee && $employee->work_hours_per_day ? $employee->work_hours_per_day : 8;
-        $rate_per_day = ($base_salary * 12) / 288;
+        // Use 262 divisor for Basic Education roles, 288 for others
+        $rolesStr = $employee && isset($employee->roles) ? strtolower($employee->roles) : '';
+        $isBasicEducation = strpos($rolesStr, 'basic education') !== false;
+        $divisor = $isBasicEducation ? 262 : 288;
+        $rate_per_day = ($base_salary * 12) / $divisor;
         $rate_per_hour = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
 
         // Format clock_in and clock_out as 12-hour time (h:i A)
@@ -301,7 +305,11 @@ class TimeKeepingController extends Controller
                 }
             };
             // Calculate rate per day and rate per hour
-            $rate_per_day = ($emp->base_salary * 12) / 288;
+            // Use 262 divisor for Basic Education roles, 288 for others
+            $rolesStr = isset($emp->roles) ? strtolower($emp->roles) : '';
+            $isBasicEducation = strpos($rolesStr, 'basic education') !== false;
+            $divisor = $isBasicEducation ? 262 : 288;
+            $rate_per_day = ($emp->base_salary * 12) / $divisor;
             $rate_per_hour = $rate_per_day / 8;
             $latestTK = \App\Models\TimeKeeping::where('employee_id', $emp->id)
                 ->orderByDesc('date')
@@ -696,7 +704,11 @@ class TimeKeepingController extends Controller
         // Use the employee's specific schedule, fallback to 8
         $work_hours_per_day = $employee->work_hours_per_day ?? 8;
 
-        $rate_per_day = ($base_salary * 12) / 288;
+        // Use 262 divisor for Basic Education roles, 288 for others
+        $rolesStr = isset($employee->roles) ? strtolower($employee->roles) : '';
+        $isBasicEducation = strpos($rolesStr, 'basic education') !== false;
+        $divisor = $isBasicEducation ? 262 : 288;
+        $rate_per_day = ($base_salary * 12) / $divisor;
         $rate_per_hour = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
         $work_start_time = $employee->work_start_time;
         $work_end_time = $employee->work_end_time;

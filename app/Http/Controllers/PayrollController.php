@@ -172,8 +172,8 @@ class PayrollController extends Controller
                 // For record-keeping, set base_salary to employee's base_salary or 0 (not used in calculation)
                 $base_salary = !is_null($employee->base_salary) ? $employee->base_salary : 0;
 
-                // Compute SSS/PhilHealth using honorarium as contribution base for college instructors
-                $contribBase = max(0.0, (float)$honorarium);
+                // Compute SSS/PhilHealth: use honorarium if present, otherwise use gross pay
+                $contribBase = $honorarium > 0 ? (float)$honorarium : max(0.0, (float)$gross_pay);
                 if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($contribBase); }
                 if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($contribBase); }
 
@@ -303,15 +303,16 @@ class PayrollController extends Controller
                 if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($contribBase); }
                 if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($contribBase); }
 
-                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
-                    $totalComp = $gross_pay; // use gross pay directly
+                // Compute withholding tax using total compensation = gross_pay - sss - philhealth - pag_ibig
+                $totalComp = max(0.0, $gross_pay - $sss - $philhealth - $pag_ibig);
+                $withholding_tax = $totalComp > 0 ? (function ($totalComp) {
                     if ($totalComp <= 20832) return 0;
                     if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
                     if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
                     if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
                     if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
                     return 183541.80 + 0.35 * ($totalComp - 666667);
-                })($gross_pay) : 0;
+                })($totalComp) : 0;
             }
 
             // Create or update payroll record (rerunnable for the same month)
@@ -753,7 +754,11 @@ class PayrollController extends Controller
 
             // --- UNIFIED HOURLY RATE FORMULA ---
             // This formula now exactly matches your TimeKeepingController.
-            $rate_per_day = ($baseSalaryForMonth * 12) / 288;
+            // Use 262 divisor for Basic Education roles, 288 for others
+            $rolesStr = isset($employee->roles) ? strtolower($employee->roles) : '';
+            $isBasicEducation = strpos($rolesStr, 'basic education') !== false;
+            $divisor = $isBasicEducation ? 262 : 288;
+            $rate_per_day = ($baseSalaryForMonth * 12) / $divisor;
             $hourlyRate = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
             // --- END UNIFIED FORMULA ---
 

@@ -326,10 +326,13 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
         const rateFromSummary = Number((timekeepingSummary as unknown as { rate_per_hour?: number })?.rate_per_hour ?? NaN);
         const baseMonthly = Number(data.earnings?.monthlySalary ?? NaN);
         const whpd = Number(employee?.work_hours_per_day ?? NaN) || 8;
+        // Use 262 divisor for Basic Education roles, 288 for others
+        const isBasicEducation = rolesStr.includes('basic education');
+        const divisor = isBasicEducation ? 262 : 288;
         const derivedHourly = Number.isFinite(rateFromSummary)
             ? Number(rateFromSummary)
             : (Number.isFinite(baseMonthly) && whpd > 0
-                ? Number((((baseMonthly * 12) / 288) / whpd).toFixed(2))
+                ? Number((((baseMonthly * 12) / divisor) / whpd).toFixed(2))
                 : 0);
         // Display: only show rate per hour for college (from payroll.college_rate); hide for non-college
         const ratePerHour = hasCollege ? (data.earnings?.ratePerHour ?? undefined) : undefined;

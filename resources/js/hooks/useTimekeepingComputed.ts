@@ -365,7 +365,10 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
       return undefined;
     })();
 
-    const ratePerDay = isCollege ? undefined : Number(((baseSalary * 12) / 288).toFixed(2));
+    // Use 262 divisor for Basic Education roles, 288 for others
+    const isBasicEducation = rolesStr.includes('basic education');
+    const divisor = isBasicEducation ? 262 : 288;
+    const ratePerDay = isCollege ? undefined : Number(((baseSalary * 12) / divisor).toFixed(2));
     const ratePerHour = isCollege ? (collegeRate ?? 0) : Number((((ratePerDay ?? 0)) / (hoursPerDay || 8)).toFixed(2));
 
     return {
