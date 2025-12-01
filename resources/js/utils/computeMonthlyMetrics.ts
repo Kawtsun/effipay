@@ -224,6 +224,18 @@ export async function computeMonthlyMetrics(
     }
   }
 
+  // For college-only employees: convert tardiness and undertime to absences
+  const rolesStr = String((employee as any).roles ?? '').toLowerCase();
+  const roleTokens = rolesStr.split(/[\,\n]+/).map((s: string) => s.trim()).filter(Boolean);
+  const hasCollege = rolesStr.includes('college instructor');
+  const isCollegeOnly = hasCollege && (roleTokens.length > 0 ? roleTokens.every((t: string) => t.includes('college instructor')) : true);
+  
+  if (isCollegeOnly) {
+    absentMin += tardMin + underMin;
+    tardMin = 0;
+    underMin = 0;
+  }
+
   return {
     tardiness: toH(tardMin),
     undertime: toH(underMin),

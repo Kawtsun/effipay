@@ -234,10 +234,21 @@ class AttendanceCalculationService
                     $totalWorkedMin += $workedMinusBreak;
                     $collegePaidMin += min($workedMinusBreak, $expected);
                     
-                    // Non-college roles can track undertime
-                    if (!$hasCollege) {
-                        $under = max(0, $expected - $workedMinusBreak);
-                        $underMin += $under;
+                    // Track undertime for all roles (for college, it will be added to absences)
+                    $under = max(0, $expected - $workedMinusBreak);
+                    $underMin += $under;
+                    
+                    // For college-only: track overtime when worked hours exceed scheduled hours by at least 1 hour
+                    if ($isCollegeOnly) {
+                        $excess = $workedMinusBreak - $expected;
+                        // Only count overtime if excess is at least 1 hour (60 minutes), then count full excess
+                        $over = $excess >= 60 ? $excess : 0;
+                        $otMin += $over;
+                        if ($code === 'sat' || $code === 'sun') {
+                            $otWeekendMin += $over;
+                        } else {
+                            $otWeekdayMin += $over;
+                        }
                     }
                     continue;
                 }
@@ -297,6 +308,27 @@ class AttendanceCalculationService
                     continue;
                 }
 
+                // College-only: track tardiness, undertime, and overtime
+                if ($isCollegeOnly && isset($sched['start']) && isset($sched['end'])) {
+                    $tard = max(0, $timeIn - (int)$sched['start']);
+                    $under = max(0, (int)$sched['end'] - $timeOut);
+                    $tardMin += $tard;
+                    $underMin += $under;
+                    
+                    // Track overtime when worked hours exceed scheduled hours by at least 1 hour
+                    $expected = (int)($sched['durationMin'] ?? 0);
+                    $excess = $workedMinusBreak - $expected;
+                    // Only count overtime if excess is at least 1 hour (60 minutes), then count full excess
+                    $over = $excess >= 60 ? $excess : 0;
+                    $otMin += $over;
+                    if ($code === 'sat' || $code === 'sun') {
+                        $otWeekendMin += $over;
+                    } else {
+                        $otWeekdayMin += $over;
+                    }
+                    continue;
+                }
+
                 // Non-college: standard tardiness/undertime/OT
                 $tard = max(0, $timeIn - (int)$sched['start']);
                 $under = max(0, (int)$sched['end'] - $timeOut);
@@ -323,6 +355,13 @@ class AttendanceCalculationService
         $toH = function ($min) {
             return round($min / 60, 2);
         };
+
+        // For college-only employees: convert tardiness and undertime to absences
+        if ($isCollegeOnly) {
+            $absentMin += $tardMin + $underMin;
+            $tardMin = 0;
+            $underMin = 0;
+        }
 
         // Ensure overtime breakdown equals total (for consistency)
         $calculatedOtMin = $otWeekdayMin + $otWeekendMin + $otObservanceMin;

@@ -266,15 +266,16 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           totalWorkedMin += workedMinusBreak;
           // College/GSP paid hours for no-times entries: cap actual worked by expected college minutes
           collegePaidMin += Math.min(workedMinusBreak, expectedDuration);
-          // Employee clocked in/out, so they are present - no absence added
-          // Allow overtime for multi-role
-          if (isCollegeMulti) {
-            const over = Math.max(0, workedMinusBreak - expectedDuration);
-            otMin += over; if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
-          } else if (!isCollegeOnly) {
-            const under = Math.max(0, expectedDuration - workedMinusBreak);
-            const over = Math.max(0, workedMinusBreak - expectedDuration);
-            underMin += under; otMin += over; if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
+          // Track undertime for all roles (for college, it will be added to absences)
+          const under = Math.max(0, expectedDuration - workedMinusBreak);
+          underMin += under;
+          // Track overtime when worked hours exceed scheduled hours
+          // For college-only: only count if excess is at least 1 hour (60 minutes), then count full excess
+          const excess = workedMinusBreak - expectedDuration;
+          const over = isCollegeOnly ? (excess >= 60 ? excess : 0) : Math.max(0, excess);
+          if (over > 0) {
+            otMin += over;
+            if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
           }
           continue;
         }
@@ -337,6 +338,24 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           continue;
         }
 
+        // College-only with time-based schedule: track tardiness, undertime, and overtime
+        if (isCollegeOnly && !Number.isNaN(sched.start) && !Number.isNaN(sched.end)) {
+          const tard = Math.max(0, timeIn - sched.start);
+          const under = Math.max(0, sched.end - timeOut);
+          tardMin += tard;
+          underMin += under;
+          // Track overtime when worked hours exceed scheduled hours by at least 1 hour
+          const expected = sched.durationMin;
+          const excess = workedMinusBreak - expected;
+          // Only count overtime if excess is at least 1 hour (60 minutes), then count full excess
+          const over = excess >= 60 ? excess : 0;
+          if (over > 0) {
+            otMin += over;
+            if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
+          }
+          continue;
+        }
+
         const tard = Math.max(0, timeIn - sched.start);
         const under = Math.max(0, sched.end - timeOut);
         const over = Math.max(0, workedMinusBreak - sched.durationMin);
@@ -347,6 +366,13 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
     }
 
     const toH = (min: number) => Number((min/60).toFixed(2));
+
+    // For college-only employees: convert tardiness and undertime to absences
+    if (isCollegeOnly) {
+      absentMin += tardMin + underMin;
+      tardMin = 0;
+      underMin = 0;
+    }
 
     const baseSalary = Number(employee.base_salary ?? 0) || 0;
     const schedDurations = Object.values(schedByCode).map(s => s.durationMin);

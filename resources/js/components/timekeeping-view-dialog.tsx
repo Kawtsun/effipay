@@ -85,9 +85,14 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
     const collegeRatePerHour = Number(summary.college_rate ?? 0);
 
         // Prefer locally computed metrics when available to reflect UI logic
-        const tardiness = Number((computed?.tardiness ?? summary.tardiness) ?? 0);
-        const undertime = Number((computed?.undertime ?? summary.undertime) ?? 0);
-        const absences = Number((computed?.absences ?? summary.absences) ?? 0);
+        const rawTardiness = Number((computed?.tardiness ?? summary.tardiness) ?? 0);
+        const rawUndertime = Number((computed?.undertime ?? summary.undertime) ?? 0);
+        const rawAbsences = Number((computed?.absences ?? summary.absences) ?? 0);
+        
+        // For college-only: tardiness and undertime are counted as absences
+        const tardiness = isCollegeOnly ? 0 : rawTardiness;
+        const undertime = isCollegeOnly ? 0 : rawUndertime;
+        const absences = isCollegeOnly ? (rawAbsences + rawTardiness + rawUndertime) : rawAbsences;
     const totalHours = Number((computed?.total_hours ?? summary.total_hours) ?? 0);
     const collegeHours = Number(((computed as any)?.college_paid_hours ?? summary.total_hours) ?? 0);
 
@@ -95,11 +100,10 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
 
         if (isCollegeOnly) {
             // College-only: use college rate and hours for all
+            // Tardiness and undertime are already added to absences above
             return (
                 (collegeRatePerHour * collegeHours)
                 + overtimePay
-                - (collegeRatePerHour * tardiness)
-                - (collegeRatePerHour * undertime)
                 - (collegeRatePerHour * absences)
             );
         }
@@ -562,11 +566,28 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                     transition={{ duration: 0.25 }}
                                                 >
                                                     {/* Dynamically render timekeeping cards based on computed metrics */}
+                                                    {/* For college-only employees, tardiness and undertime are counted as absences */}
+                                                    {(() => {
+                                                        const rolesStr = String((employee as any)?.roles || '').toLowerCase();
+                                                        const roleTokens = rolesStr.split(/[\,\n]+/).map((s: string) => s.trim()).filter(Boolean);
+                                                        const hasCollege = rolesStr.includes('college instructor');
+                                                        const isCollegeOnly = hasCollege && (roleTokens.length > 0 ? roleTokens.every((t: string) => t.includes('college instructor')) : true);
+                                                        
+                                                        const rawTardiness = Number((computed?.tardiness ?? summary?.tardiness) ?? 0);
+                                                        const rawUndertime = Number((computed?.undertime ?? summary?.undertime) ?? 0);
+                                                        const rawAbsences = Number((computed?.absences ?? summary?.absences) ?? 0);
+                                                        
+                                                        // For college-only: convert tardiness and undertime to absences
+                                                        const displayTardiness = isCollegeOnly ? 0 : rawTardiness;
+                                                        const displayUndertime = isCollegeOnly ? 0 : rawUndertime;
+                                                        const displayAbsences = isCollegeOnly ? (rawAbsences + rawTardiness + rawUndertime) : rawAbsences;
+                                                        
+                                                        return (
                                                     <div className="grid grid-cols-4 gap-6 mb-6 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
                                                         {[
                                                             {
                                                                 label: 'Tardiness',
-                                                                value: records.length === 0 ? '-' : `${Number((computed?.tardiness ?? summary?.tardiness) ?? 0).toFixed(2)} hr(s)`,
+                                                                value: records.length === 0 ? '-' : `${displayTardiness.toFixed(2)} hr(s)`,
                                                                 bg: 'bg-orange-50 dark:bg-orange-900/20',
                                                                 border: 'border-orange-200 dark:border-orange-800',
                                                                 text: 'text-orange-600',
@@ -574,7 +595,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             },
                                                             {
                                                                 label: 'Undertime',
-                                                                value: records.length === 0 ? '-' : `${Number((computed?.undertime ?? summary?.undertime) ?? 0).toFixed(2)} hr(s)`,
+                                                                value: records.length === 0 ? '-' : `${displayUndertime.toFixed(2)} hr(s)`,
                                                                 bg: 'bg-red-50 dark:bg-red-900/20',
                                                                 border: 'border-red-200 dark:border-red-800',
                                                                 text: 'text-red-600',
@@ -591,7 +612,7 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             },
                                                             {
                                                                 label: 'Absences',
-                                                                value: records.length === 0 ? '-' : `${Number((computed?.absences ?? summary?.absences) ?? 0).toFixed(2)} hr(s)`,
+                                                                value: records.length === 0 ? '-' : `${displayAbsences.toFixed(2)} hr(s)`,
                                                                 bg: 'bg-gray-50 dark:bg-gray-800',
                                                                 border: 'border-gray-200 dark:border-gray-700',
                                                                 text: 'text-gray-600',
@@ -618,6 +639,8 @@ export default function TimeKeepingViewDialog({ employee, onClose, activeRoles }
                                                             </motion.div>
                                                         ))}
                                                     </div>
+                                                        );
+                                                    })()}
                                                     <div className="grid grid-cols-2 gap-10 max-[900px]:grid-cols-1">
                                                         <div>
                                                             <h5 className="font-semibold text-base mb-4 text-gray-700 dark:text-gray-300">Pay Summary</h5>

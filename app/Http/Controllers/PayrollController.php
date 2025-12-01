@@ -119,9 +119,11 @@ class PayrollController extends Controller
                 $overtime_hours = $metrics['overtime'];
                 $weekday_ot = $metrics['overtime_count_weekdays'];
                 $weekend_ot = $metrics['overtime_count_weekends'];
-                // College instructors work by hourly schedule only: they should not have
-                // tardiness, undertime, or overtime adjustments applied to gross pay.
-                // Keep absences, which still reduce pay.
+                // College instructors work by hourly schedule only: tardiness and undertime
+                // are counted as absences (deducted from pay) rather than tracked separately.
+                // Overtime is not applicable for college-only employees.
+                // Add tardiness and undertime to absences
+                $absences = $absences + $tardiness + $undertime;
                 $tardiness = 0;
                 $undertime = 0;
                 $overtime_hours = 0;
