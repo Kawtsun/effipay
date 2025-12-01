@@ -361,9 +361,11 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                         const tkExt = (timekeepingSummary as unknown as { overtime_pay_total?: number }) || null;
                         const serverOTTotal = Number(tkExt?.overtime_pay_total ?? NaN);
                         const numericOvertimeFromPayroll = Number(data.earnings?.overtime_pay_total ?? NaN);
-                        // Fallback formula for non-college only when no server/payroll value is available
-                        const computedOTFallback = (!isCollegeOnly && Number(derivedHourly) > 0)
-                            ? parseFloat((Number(derivedHourly) * ((0.25 * weekdayOT) + (0.30 * weekendOT))).toFixed(2))
+                        // Fallback formula when no server/payroll value is available
+                        // Use college rate for college-only, otherwise use derived hourly rate
+                        const fallbackRate = isCollegeOnly ? Number(effectiveCollegeRate) : Number(derivedHourly);
+                        const computedOTFallback = (fallbackRate > 0)
+                            ? parseFloat((fallbackRate * ((0.25 * weekdayOT) + (0.30 * weekendOT))).toFixed(2))
                             : 0;
                         const overtime_pay_total = Number.isFinite(serverOTTotal)
                             ? Number(serverOTTotal.toFixed(2))
@@ -396,8 +398,8 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                         overtime_pay_total,
                     overtime,
                     overtime_hours: overtime,
-                    overtime_count_weekdays: isCollegeOnly ? 0 : weekdayOT,
-                    overtime_count_weekends: isCollegeOnly ? 0 : weekendOT,
+                    overtime_count_weekdays: weekdayOT,
+                    overtime_count_weekends: weekendOT,
                                         gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
                     net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
                     // Show double pay under "Other: Adjustment" by adding it to any manual adjustment

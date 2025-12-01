@@ -121,13 +121,18 @@ class PayrollController extends Controller
                 $weekend_ot = $metrics['overtime_count_weekends'];
                 // College instructors work by hourly schedule only: tardiness and undertime
                 // are counted as absences (deducted from pay) rather than tracked separately.
-                // Overtime is not applicable for college-only employees.
                 // Add tardiness and undertime to absences
                 $absences = $absences + $tardiness + $undertime;
                 $tardiness = 0;
                 $undertime = 0;
-                $overtime_hours = 0;
-                $overtime_pay = 0; // explicitly ignore OT for college branch
+                // Compute overtime pay for college-only employees using the college rate
+                // Prefer overtime pay computed by TimeKeepingController (includes NSD after 10 PM), fallback to bucket formula
+                if (isset($summaryData['overtime_pay_total']) && is_numeric($summaryData['overtime_pay_total'])) {
+                    $overtime_pay = (float)$summaryData['overtime_pay_total'];
+                } else {
+                    // OT buckets: 0.25x on weekdays, 0.30x on weekends using college rate
+                    $overtime_pay = round($college_rate * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
+                }
                 $honorarium = !is_null($employee->honorarium) ? floatval($employee->honorarium) : 0;
 
                 // Statutory contributions: initialize numeric variables and read flags
@@ -166,7 +171,10 @@ class PayrollController extends Controller
                     'absences_summary' => isset($summaryData['absences']) && is_numeric($summaryData['absences']) ? (float)$summaryData['absences'] : null,
                     'tardiness_hours' => 0,
                     'undertime_hours' => 0,
-                    'overtime_pay' => 0,
+                    'overtime_hours' => $overtime_hours,
+                    'overtime_pay' => $overtime_pay,
+                    'weekday_ot' => $weekday_ot,
+                    'weekend_ot' => $weekend_ot,
                     'honorarium' => $honorarium,
                     'gross_pay' => $gross_pay,
                 ]);

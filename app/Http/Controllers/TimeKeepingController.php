@@ -713,6 +713,14 @@ class TimeKeepingController extends Controller
         $work_start_time = $employee->work_start_time;
         $work_end_time = $employee->work_end_time;
 
+        // Determine if this is a college-only instructor for overtime computation
+        $tokens = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStr)));
+        $hasCollegeRole = strpos($rolesStr, 'college instructor') !== false;
+        $isCollegeOnlyForOT = $hasCollegeRole && (count($tokens) > 0 ? (count(array_filter($tokens, function($t){ return strpos($t, 'college instructor') !== false; })) === count($tokens)) : true);
+        // For college-only instructors, use college_rate for overtime computation
+        $college_rate = isset($employee->college_rate) ? floatval($employee->college_rate) : 0;
+        $overtime_rate = $isCollegeOnlyForOT && $college_rate > 0 ? $college_rate : $rate_per_hour;
+
         $grace_period_default_minutes = 15;
 
         // Fetch observances for this month early so we can apply per-date rules (e.g., rainy-day -> 60min grace)
@@ -882,11 +890,12 @@ class TimeKeepingController extends Controller
 
                     if ($pre22Hours > 0 || $post22Hours > 0) {
                         $dayOfWeek = date('N', strtotime($tk->date));
+                        // Use overtime_rate for college-only instructors (uses college_rate), otherwise use rate_per_hour
                         $basePayPerHour = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
-                            ? ($rate_per_hour * 0.25)
-                            : ($rate_per_hour * 0.30);
+                            ? ($overtime_rate * 0.25)
+                            : ($overtime_rate * 0.30);
                         // NSD: +10% of base hourly rate on top of the OT rate
-                        $nsdPayPerHour = $basePayPerHour + ($rate_per_hour * 0.10);
+                        $nsdPayPerHour = $basePayPerHour + ($overtime_rate * 0.10);
 
                         // Count hours
                         $overtime_count += ($pre22Hours + $post22Hours);
@@ -1131,6 +1140,16 @@ class TimeKeepingController extends Controller
             'leave_dates_map' => $leaveDatesMap,
         ];
         // --- END DEBUG BLOCK ---
+
+        // For college-only instructors without work_end_time, the overtime_pay_total loop won't calculate anything.
+        // Use the unified metrics overtime hours to compute overtime pay if the loop didn't calculate it.
+        if ($overtime_pay_total == 0 && $isCollegeOnlyForOT && $college_rate > 0) {
+            $otWeekdayHours = (float)($unifiedMetrics['overtime_count_weekdays'] ?? 0);
+            $otWeekendHours = (float)($unifiedMetrics['overtime_count_weekends'] ?? 0);
+            // overtime_weekday = college_rate * 0.25 * hours
+            // overtime_weekend = college_rate * 0.30 * hours
+            $overtime_pay_total = ($college_rate * 0.25 * $otWeekdayHours) + ($college_rate * 0.30 * $otWeekendHours);
+        }
 
         $response = [
             'success' => $hasData,
