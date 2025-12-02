@@ -658,8 +658,8 @@ class TesterSeeder extends Seeder
             ],
             // ### 18
             [
-                'first_name' => 'Kang',
-                'last_name' => 'Liu',
+                'first_name' => 'Liu',
+                'last_name' => 'Kang',
                 'middle_name' => '',
                 'role' => 'college instructor',
                 'type' => 'Full Time',
@@ -696,8 +696,8 @@ class TesterSeeder extends Seeder
             ],
             // ### 19
             [
-                'first_name' => 'Lao',
-                'last_name' => 'Kung',
+                'first_name' => 'Kung',
+                'last_name' => 'Lao',
                 'middle_name' => '',
                 'role' => 'college instructor',
                 'type' => 'Full Time',
@@ -735,8 +735,8 @@ class TesterSeeder extends Seeder
             ],
             // ### 20
             [
-                'first_name' => 'Cage',
-                'last_name' => 'Johnny',
+                'first_name' => 'Johnny',
+                'last_name' => 'Cage',
                 'middle_name' => '',
                 'role' => 'college instructor',
                 'type' => 'Full Time',
@@ -774,8 +774,8 @@ class TesterSeeder extends Seeder
             ],
             // ### 21
             [
-                'first_name' => 'Zix',
-                'last_name' => 'Kha',
+                'first_name' => 'Kha',
+                'last_name' => 'Zix',
                 'middle_name' => '',
                 'role' => 'college instructor',
                 'type' => 'Full Time',
@@ -813,8 +813,8 @@ class TesterSeeder extends Seeder
             ],
             // ### 22
             [
-                'first_name' => 'Gath',
-                'last_name' => 'Cho',
+                'first_name' => 'Cho',
+                'last_name' => 'Gath',
                 'middle_name' => '',
                 'role' => 'college instructor',
                 'type' => 'Full Time',
@@ -853,8 +853,8 @@ class TesterSeeder extends Seeder
             ],
             // ### 23
             [
-                'first_name' => 'Bear',
-                'last_name' => 'Voli',
+                'first_name' => 'Voli',
+                'last_name' => 'Bear',
                 'middle_name' => '',
                 'role' => 'college instructor',
                 'type' => 'Full Time',
@@ -891,8 +891,8 @@ class TesterSeeder extends Seeder
             ],
             // ### 24
             [
-                'first_name' => 'Willump',
-                'last_name' => 'Nunu',
+                'first_name' => 'Nunu',
+                'last_name' => 'Willump',
                 'middle_name' => '',
                 'role' => 'college instructor',
                 'type' => 'Full Time',
@@ -929,8 +929,8 @@ class TesterSeeder extends Seeder
             ],
             // ### 25
             [
-                'first_name' => 'Polnareff',
-                'last_name' => 'Jean',
+                'first_name' => 'Jean',
+                'last_name' => 'Polnareff',
                 'middle_name' => '',
                 'role' => 'college instructor',
                 'type' => 'Full Time',
