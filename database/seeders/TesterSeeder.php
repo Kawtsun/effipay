@@ -270,7 +270,7 @@ class TesterSeeder extends Seeder
                 // Loans & Deductions
                 'sss_salary_loan' => 1845.80,
                 'sss_calamity_loan' => null,
-                'pagibig_multi_loan' => 4500.87,
+                'pagibig_multi_loan' => 4500.67,
                 'pagibig_calamity_loan' => null,
                 'tuition' => null,
                 'china_bank' => 6891.86,
@@ -556,7 +556,7 @@ class TesterSeeder extends Seeder
                 'sss_salary_loan' => 1799.65,
                 'sss_calamity_loan' => null,
                 'pagibig_multi_loan' => 1495.26,
-                'pagibig_calamity_loan' => 445.32,
+                'pagibig_calamity_loan' => null,
                 'tuition' => null,
                 'china_bank' => null,
                 'tea' => null,
@@ -676,7 +676,7 @@ class TesterSeeder extends Seeder
                 'withholding_tax' => true,
 
                 // Contributions (Amount)
-                'pag_ibig' => 200,
+                'pag_ibig' => null,
 
                 // Loans & Deductions
                 'sss_salary_loan' => null,
@@ -702,7 +702,7 @@ class TesterSeeder extends Seeder
                 'role' => 'college instructor',
                 'type' => 'Full Time',
                 'base_salary' => null,
-                'college_rate' => 362.69,
+                'college_rate' => 362.59,
                 'honorarium' => null,
 
                 //Role Level
@@ -753,7 +753,7 @@ class TesterSeeder extends Seeder
                 'withholding_tax' => true,
 
                 // Contributions (Amount)
-                'pag_ibig' => 200,
+                'pag_ibig' => null,
 
                 // Loans & Deductions
                 'sss_salary_loan' => null,
@@ -797,7 +797,7 @@ class TesterSeeder extends Seeder
                 // Loans & Deductions
                 'sss_salary_loan' => 830.61,
                 'sss_calamity_loan' => 415.30,
-                'pagibig_multi_loan' => 1819.27,
+                'pagibig_multi_loan' => -1819.27,
                 'pagibig_calamity_loan' => 782.96,
                 'tuition' => 3000.00,
                 'china_bank' => 11607.34,
