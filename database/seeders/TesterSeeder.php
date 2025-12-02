@@ -707,7 +707,7 @@ class TesterSeeder extends Seeder
                 'honorarium' => null,
 
                 //Role Level
-                'college_program' => 'BSCS',
+                'college_program' => 'BSN',
 
                 // Contributions (Boolean)
                 'sss' => false,
@@ -727,11 +727,279 @@ class TesterSeeder extends Seeder
                 'tea' => null,
 
                 'work_schedule' => [
-                    ['day' => 'mon', 'work_start_time' => '08:00:00', 'work_end_time' => '17:00:00'],
-                    ['day' => 'tue', 'work_start_time' => '08:00:00', 'work_end_time' => '17:00:00'],
-                    ['day' => 'wed', 'work_start_time' => '08:00:00', 'work_end_time' => '17:00:00'],
-                    ['day' => 'thu', 'work_start_time' => '08:00:00', 'work_end_time' => '17:00:00'],
-                    ['day' => 'fri', 'work_start_time' => '08:00:00', 'work_end_time' => '17:00:00'],
+                    ['day' => 'mon', 'hours_per_day' => 2],
+                ],
+                'work_hours_per_day' => 8,
+                'work_start_time' => '08:00:00',
+                'work_end_time' => '17:00:00',
+            ],
+            // ### 19
+            [
+                'first_name' => 'Lao',
+                'last_name' => 'Kung',
+                'middle_name' => '',
+                'role' => 'college instructor',
+                'type' => 'Regular',
+                'base_salary' => null,
+                'college_rate' => 362.69,
+                'honorarium' => null,
+
+                //Role Level
+                'college_program' => 'BSBA', 'BSA',
+
+                // Contributions (Boolean)
+                'sss' => false,
+                'philhealth' => false,
+                'withholding_tax' => true,
+
+                // Contributions (Amount)
+                'pag_ibig' => null,
+
+                // Loans & Deductions
+                'sss_salary_loan' => null,
+                'sss_calamity_loan' => null,
+                'pagibig_multi_loan' => null,
+                'pagibig_calamity_loan' => null,
+                'tuition' => null,
+                'china_bank' => null,
+                'tea' => null,
+
+                'work_schedule' => [
+                    ['day' => 'mon', 'hours_per_day' => 2],
+                    ['day' => 'tue', 'hours_per_day' => 2],
+                ],
+                'work_hours_per_day' => 8,
+                'work_start_time' => '08:00:00',
+                'work_end_time' => '17:00:00',
+            ],
+            // ### 20
+            [
+                'first_name' => 'Cage',
+                'last_name' => 'Johnny',
+                'middle_name' => '',
+                'role' => 'college instructor',
+                'type' => 'Regular',
+                'base_salary' => null,
+                'college_rate' => 330.00,
+                'honorarium' => null,
+
+                //Role Level
+                'college_program' => 'COELA',
+
+                // Contributions (Boolean)
+                'sss' => true,
+                'philhealth' => false,
+                'withholding_tax' => true,
+
+                // Contributions (Amount)
+                'pag_ibig' => 200,
+
+                // Loans & Deductions
+                'sss_salary_loan' => null,
+                'sss_calamity_loan' => null,
+                'pagibig_multi_loan' => null,
+                'pagibig_calamity_loan' => null,
+                'tuition' => null,
+                'china_bank' => null,
+                'tea' => null,
+
+                'work_schedule' => [
+                    ['day' => 'mon', 'hours_per_day' => 1],
+                    ['day' => 'fri', 'hours_per_day' => 1]
+                ],
+                'work_hours_per_day' => 8,
+                'work_start_time' => '08:00:00',
+                'work_end_time' => '17:00:00',
+            ],
+            // ### 21
+            [
+                'first_name' => 'Zix',
+                'last_name' => 'Kha',
+                'middle_name' => '',
+                'role' => 'college instructor',
+                'type' => 'Regular',
+                'base_salary' => null,
+                'college_rate' => 240.09,
+                'honorarium' => 10000.00,
+
+                //Role Level
+                'college_program' => 'COELA',
+
+                // Contributions (Boolean)
+                'sss' => true,
+                'philhealth' => true,
+                'withholding_tax' => true,
+
+                // Contributions (Amount)
+                'pag_ibig' => 200.00,
+
+                // Loans & Deductions
+                'sss_salary_loan' => 830.61,
+                'sss_calamity_loan' => 415.30,
+                'pagibig_multi_loan' => 1819.27,
+                'pagibig_calamity_loan' => 782.96,
+                'tuition' => 3000.00,
+                'china_bank' => 11607.34,
+                'tea' => 1500.00,
+
+                'work_schedule' => [
+                    ['day' => 'mon', 'hours_per_day' => 7],
+                    ['day' => 'tue', 'hours_per_day' => 7]
+                ],
+                'work_hours_per_day' => 8,
+                'work_start_time' => '08:00:00',
+                'work_end_time' => '17:00:00',
+            ],
+            // ### 22
+            [
+                'first_name' => 'Gath',
+                'last_name' => 'Cho',
+                'middle_name' => '',
+                'role' => 'college instructor',
+                'type' => 'Regular',
+                'base_salary' => null,
+                'college_rate' => 330.00,
+                'honorarium' => null,
+
+                //Role Level
+                'college_program' => 'COELA',
+
+                // Contributions (Boolean)
+                'sss' => true,
+                'philhealth' => true,
+                'withholding_tax' => true,
+
+                // Contributions (Amount)
+                'pag_ibig' => 500.00,
+
+                // Loans & Deductions
+                'sss_salary_loan' => 1845.80,
+                'sss_calamity_loan' => null,
+                'pagibig_multi_loan' => 3813.09,
+                'pagibig_calamity_loan' => null,
+                'tuition' => null,
+                'china_bank' => null,
+                'tea' => 3000.00,
+
+                'work_schedule' => [
+                    ['day' => 'mon', 'hours_per_day' => 4],
+                    ['day' => 'tue', 'hours_per_day' => 4],
+                    ['day' => 'fri', 'hours_per_day' => 4]
+                ],
+                'work_hours_per_day' => 8,
+                'work_start_time' => '08:00:00',
+                'work_end_time' => '17:00:00',
+            ],
+            // ### 23
+            [
+                'first_name' => 'Bear',
+                'last_name' => 'Voli',
+                'middle_name' => '',
+                'role' => 'college instructor',
+                'type' => 'Regular',
+                'base_salary' => null,
+                'college_rate' => 805.26,
+                'honorarium' => null,
+
+                //Role Level
+                'college_program' => 'BSCRIM',
+
+                // Contributions (Boolean)
+                'sss' => false,
+                'philhealth' => false,
+                'withholding_tax' => true,
+
+                // Contributions (Amount)
+                'pag_ibig' => null,
+
+                // Loans & Deductions
+                'sss_salary_loan' => null,
+                'sss_calamity_loan' => null,
+                'pagibig_multi_loan' => null,
+                'pagibig_calamity_loan' => null,
+                'tuition' => null,
+                'china_bank' => null,
+                'tea' => null,
+
+                'work_schedule' => [
+                    ['day' => 'tue', 'hours_per_day' => 6]
+                ],
+                'work_hours_per_day' => 8,
+                'work_start_time' => '08:00:00',
+                'work_end_time' => '17:00:00',
+            ],
+            // ### 24
+            [
+                'first_name' => 'Willump',
+                'last_name' => 'Nunu',
+                'middle_name' => '',
+                'role' => 'college instructor',
+                'type' => 'Regular',
+                'base_salary' => null,
+                'college_rate' => 163.70,
+                'honorarium' => null,
+
+                //Role Level
+                'college_program' => 'BSCRIM',
+
+                // Contributions (Boolean)
+                'sss' => true,
+                'philhealth' => true,
+                'withholding_tax' => true,
+
+                // Contributions (Amount)
+                'pag_ibig' => null,
+
+                // Loans & Deductions
+                'sss_salary_loan' => null,
+                'sss_calamity_loan' => null,
+                'pagibig_multi_loan' => null,
+                'pagibig_calamity_loan' => null,
+                'tuition' => null,
+                'china_bank' => null,
+                'tea' => null,
+
+                'work_schedule' => [
+                    ['day' => 'fri', 'hours_per_day' => 6]
+                ],
+                'work_hours_per_day' => 8,
+                'work_start_time' => '08:00:00',
+                'work_end_time' => '17:00:00',
+            ],
+            // ### 25
+            [
+                'first_name' => 'Polnareff',
+                'last_name' => 'Jean',
+                'middle_name' => '',
+                'role' => 'college instructor',
+                'type' => 'Regular',
+                'base_salary' => null,
+                'college_rate' => 998.25,
+                'honorarium' => null,
+
+                //Role Level
+                'college_program' => 'JD',
+
+                // Contributions (Boolean)
+                'sss' => false,
+                'philhealth' => false,
+                'withholding_tax' => true,
+
+                // Contributions (Amount)
+                'pag_ibig' => null,
+
+                // Loans & Deductions
+                'sss_salary_loan' => null,
+                'sss_calamity_loan' => null,
+                'pagibig_multi_loan' => null,
+                'pagibig_calamity_loan' => null,
+                'tuition' => null,
+                'china_bank' => null,
+                'tea' => null,
+
+                'work_schedule' => [
+                    ['day' => 'mon', 'hours_per_day' => 2],
+                    ['day' => 'fri', 'hours_per_day' => 2]
                 ],
                 'work_hours_per_day' => 8,
                 'work_start_time' => '08:00:00',
@@ -746,7 +1014,7 @@ class TesterSeeder extends Seeder
                 'middle_name' => $empData['middle_name'] ?? '',
                 'employee_status' => 'Active',
                 'roles' => $empData['role'],
-                'college_program' => null, // Admin doesn't have college program
+                'college_program' => $empData['college_program'] ?? null,
                 'basic_edu_level' => $empData['basic_edu_level'] ?? null,
                 'base_salary' => $empData['base_salary'],
                 'college_rate' => $empData['college_rate'] ?? null,
@@ -779,16 +1047,41 @@ class TesterSeeder extends Seeder
             ]);
 
             // Create work days
-            foreach ($empData['work_schedule'] as $workDay) {
-                DB::table('work_days')->insert([
-                    'employee_id' => $employee->id,
-                    'role' => $empData['role'],
-                    'day' => $workDay['day'],
-                    'work_start_time' => $workDay['work_start_time'],
-                    'work_end_time' => $workDay['work_end_time'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            // Support multiple roles: split by comma and create per-role schedule rows
+            $rolesList = array_values(array_filter(array_map('trim', explode(',', (string) $empData['role']))));
+            if (empty($rolesList)) { $rolesList = [null]; }
+
+            foreach ($rolesList as $roleForDay) {
+                $isCollegeRole = is_string($roleForDay) && stripos($roleForDay, 'college') !== false;
+
+                if ($isCollegeRole) {
+                    // For college roles, use employee_college_program_schedules instead of work_days
+                    // Ensure we have a program; fall back to a random one if somehow null
+                    $programCode = $empData['college_program'] ?? null;
+                    foreach ($empData['work_schedule'] as $workDay) {
+                        DB::table('employee_college_program_schedules')->insert([
+                            'employee_id' => $employee->id,
+                            'program_code' => $programCode,
+                            'day' => $workDay['day'],
+                            'hours_per_day' => $workDay['hours_per_day'] ?? $empData['work_hours_per_day'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                } else {
+                    // Non-college roles go to work_days with the role column populated
+                    foreach ($empData['work_schedule'] as $workDay) {
+                        DB::table('work_days')->insert([
+                            'employee_id' => $employee->id,
+                            'role' => $roleForDay,
+                            'day' => $workDay['day'],
+                            'work_start_time' => $workDay['work_start_time'],
+                            'work_end_time' => $workDay['work_end_time'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
             }
         }
     }
