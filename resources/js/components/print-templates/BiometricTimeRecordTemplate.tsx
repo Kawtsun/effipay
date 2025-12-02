@@ -141,7 +141,7 @@ const getPayPeriodString = (period?: string) => {
     const match = period.match(/^(\d{4})-(\d{2})/);
     if (match) {
       year = parseInt(period.substring(0, 4), 10);
-      month = parseInt(match[1], 10);
+      month = parseInt(match[2], 10);
     }
   }
   const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' });
