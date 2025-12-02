@@ -164,7 +164,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     const [minLoading, setMinLoading] = useState(false);
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
     const [otherAdjustments, setOtherAdjustments] = useState<number | null>(null);
-    const [lastAdjustmentType, setLastAdjustmentType] = useState<'add'|'deduct'|null>(null);
+    const [lastAdjustmentType, setLastAdjustmentType] = useState<'add' | 'deduct' | null>(null);
 
     useEffect(() => {
         if (employee && (typeof (ReportViewDialog as any).open === 'boolean' ? (ReportViewDialog as any).open : true)) {

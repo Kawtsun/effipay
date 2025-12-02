@@ -24,6 +24,7 @@ export interface PayrollData {
   absences?: number;
   gross_pay: number;
   adjustments?: number | null;
+  thirteenth_month_pay?: number | null;
   sss_salary_loan?: number;
   sss_calamity_loan?: number;
   pagibig_multi_loan?: number;
