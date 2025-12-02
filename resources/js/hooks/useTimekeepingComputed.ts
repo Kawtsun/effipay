@@ -258,7 +258,8 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           if (obsInfo.isWhole || obsInfo.isHalf) {
             totalWorkedMin += workedMinusBreak;
             if (hasBoth) {
-              otMin += workedMinusBreak; otObservanceMin += workedMinusBreak; // Observance: double pay bucket
+              // Holiday hours go to double pay bucket only, NOT to overtime
+              otObservanceMin += workedMinusBreak;
             }
             continue;
           }
@@ -282,12 +283,14 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
 
   if (obsInfo.isWhole) { 
     const workedMinusBreakObs = hasBoth ? Math.max(0, workedRaw - 60) : 0;
-    if (hasBoth) { totalWorkedMin += workedMinusBreakObs; otMin += workedMinusBreakObs; otObservanceMin += workedMinusBreakObs; } 
+    // Holiday hours go to double pay bucket only, NOT to overtime
+    if (hasBoth) { totalWorkedMin += workedMinusBreakObs; otObservanceMin += workedMinusBreakObs; } 
     continue; 
   }
   if (obsInfo.isHalf) { 
     const workedMinusBreakObs = hasBoth ? Math.max(0, workedRaw - 60) : 0;
-    if (hasBoth) { totalWorkedMin += workedMinusBreakObs; otMin += workedMinusBreakObs; otObservanceMin += workedMinusBreakObs; } 
+    // Holiday hours go to double pay bucket only, NOT to overtime
+    if (hasBoth) { totalWorkedMin += workedMinusBreakObs; otObservanceMin += workedMinusBreakObs; } 
     continue; 
   }
 

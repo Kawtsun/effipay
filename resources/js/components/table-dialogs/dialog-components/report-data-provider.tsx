@@ -436,21 +436,18 @@ export function ReportDataProvider({
     const tk = (tkComputed || timekeepingSummary) as (EmployeePayrollSummary | null | undefined);
     // Prefer TK hours
     if (type === "overtime") {
+      // Exclude observance hours from overtime display - they are shown separately as Double Pay
       const weekdayOT = Number(tk?.overtime_count_weekdays ?? NaN);
       const weekendOT = Number(tk?.overtime_count_weekends ?? NaN);
-      const observanceOT = Number(tk?.overtime_count_observances ?? NaN);
-      if (Number.isFinite(weekdayOT) || Number.isFinite(weekendOT) || Number.isFinite(observanceOT)) {
+      if (Number.isFinite(weekdayOT) || Number.isFinite(weekendOT)) {
         const w = Number.isFinite(weekdayOT) ? Number(weekdayOT.toFixed(2)) : 0;
         const e = Number.isFinite(weekendOT) ? Number(weekendOT.toFixed(2)) : 0;
-        const o = Number.isFinite(observanceOT) ? Number(observanceOT.toFixed(2)) : 0;
-        return `${(w + e + o).toFixed(2)} hr(s)`;
+        return `${(w + e).toFixed(2)} hr(s)`;
       }
       const wP = Number(selectedPayroll?.overtime_count_weekdays ?? NaN);
       const eP = Number(selectedPayroll?.overtime_count_weekends ?? NaN);
-      const oP = Number(selectedPayroll?.overtime_count_observances ?? NaN);
       const total = (Number.isFinite(wP) ? Number(wP.toFixed(2)) : 0)
-        + (Number.isFinite(eP) ? Number(eP.toFixed(2)) : 0)
-        + (Number.isFinite(oP) ? Number(oP.toFixed(2)) : 0);
+        + (Number.isFinite(eP) ? Number(eP.toFixed(2)) : 0);
       return `${total.toFixed(2)} hr(s)`;
     }
     const vTK = tk ? (() => {

@@ -191,12 +191,12 @@ class AttendanceCalculationService
                 // Check if this is a whole-day observance (either by type or if observance exists without type)
                 $isWholeDayObs = (strpos($obsType, 'whole') !== false) || ($obs && !$obsType);
 
-                // Whole-day observances: if worked, add as OT (observance), else skip expectations
+                // Whole-day observances: worked hours go to double pay bucket only, NOT to overtime
                 if ($isWholeDayObs) {
                     $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
                     $totalWorkedMin += $workedMinusBreak;
                     if ($hasBoth) {
-                        $otMin += $workedMinusBreak;
+                        // Holiday hours go to double pay bucket only, NOT to overtime
                         $otObservanceMin += $workedMinusBreak;
                     }
                     continue;
@@ -207,7 +207,7 @@ class AttendanceCalculationService
                     $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
                     $totalWorkedMin += $workedMinusBreak;
                     if ($hasBoth) {
-                        $otMin += $workedMinusBreak;
+                        // Holiday hours go to double pay bucket only, NOT to overtime
                         $otObservanceMin += $workedMinusBreak;
                     }
                     continue;

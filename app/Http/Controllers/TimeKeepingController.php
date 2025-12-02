@@ -390,8 +390,9 @@ class TimeKeepingController extends Controller
                 $observanceExcludeMap = [];
                 foreach ($observancesForPeriod as $o) {
                     $d = $o->date;
-                    // exclude if whole-day suspension OR automated holiday
-                    if ((isset($o->type) && strtolower(trim((string)$o->type)) === 'whole-day') || (!empty($o->is_automated))) {
+                    // exclude if whole-day suspension, official holiday (null type), OR automated holiday
+                    $oType = isset($o->type) ? strtolower(trim((string)$o->type)) : null;
+                    if ($oType === 'whole-day' || $oType === null || $oType === '' || (!empty($o->is_automated))) {
                         $observanceExcludeMap[$d] = true;
                     }
                 }
@@ -433,9 +434,10 @@ class TimeKeepingController extends Controller
                 // Tardiness: count decimal hours late (not stacked)
                 if ($tk->clock_in && $emp->work_start_time) {
                     $obsType = $observanceTypeMap[$tk->date] ?? null;
-                    // Skip tardiness entirely on whole-day suspension
-                    if ($obsType && strtolower(trim($obsType)) === 'whole-day') {
-                        // do not add tardiness for whole-day suspension
+                    $obsTypeLower = $obsType !== null ? strtolower(trim($obsType)) : null;
+                    // Skip tardiness entirely on whole-day suspension or official holidays (null type)
+                    if ($obsTypeLower === 'whole-day' || ($obsType === null && isset($observanceTypeMap[$tk->date]))) {
+                        // do not add tardiness for whole-day suspension or official holidays
                     } else {
                         // Determine grace minutes: rainy-day gets 60, otherwise default 15
                         $graceMinutes = 15;
@@ -743,9 +745,11 @@ class TimeKeepingController extends Controller
             // Tardiness (decimal hours)
             if ($tk->clock_in && $work_start_time) {
                 $date = $tk->date;
-                // Skip tardiness entirely on whole-day suspension
-                if (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day') {
-                    // no tardiness on whole-day observance
+                // Skip tardiness entirely on whole-day suspension or official holidays (null type)
+                $obsTypeForTard = $observanceTypeMap[$date] ?? null;
+                $isWholeDayForTard = isset($observanceSet[$date]) && ($obsTypeForTard === 'whole-day' || $obsTypeForTard === null || $obsTypeForTard === '');
+                if ($isWholeDayForTard) {
+                    // no tardiness on whole-day observance or official holidays
                 } else {
                     // default grace, override for rainy-day observance
                     $grace = $grace_period_default_minutes;
@@ -762,11 +766,18 @@ class TimeKeepingController extends Controller
                     }
                 }
             }
-            // Undertime (decimal hours)
+            // Undertime (decimal hours) - skip on holidays
             if ($tk->clock_out && $employee->work_end_time && strtotime($tk->clock_out) < strtotime($employee->work_end_time)) {
-                $early_minutes = (strtotime($employee->work_end_time) - strtotime($tk->clock_out)) / 60;
-                if ($early_minutes > 0) {
-                    $early_count += ($early_minutes / 60);
+                $date = $tk->date;
+                $obsTypeForUnder = $observanceTypeMap[$date] ?? null;
+                $isWholeDayForUnder = isset($observanceSet[$date]) && ($obsTypeForUnder === 'whole-day' || $obsTypeForUnder === null || $obsTypeForUnder === '');
+                $isAutomatedForUnder = isset($observanceSet[$date]) && (!empty($observanceAutomatedMap[$date]));
+                // Skip undertime on whole-day observances or official holidays
+                if (!$isWholeDayForUnder && !$isAutomatedForUnder) {
+                    $early_minutes = (strtotime($employee->work_end_time) - strtotime($tk->clock_out)) / 60;
+                    if ($early_minutes > 0) {
+                        $early_count += ($early_minutes / 60);
+                    }
                 }
             }
             // Overtime and Night Shift Differential (NSD)
@@ -777,7 +788,9 @@ class TimeKeepingController extends Controller
                 $date = $tk->date;
                 // Check holiday/observance: whole-day or automated holiday -> double pay for all worked hours
                 $isObservance = isset($observanceSet[$date]);
-                $isWholeDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day');
+                // Treat as whole-day if type is explicitly 'whole-day' OR if type is null/empty (official holidays like New Year's Day)
+                $obsType = $observanceTypeMap[$date] ?? null;
+                $isWholeDay = $isObservance && ($obsType === 'whole-day' || $obsType === null || $obsType === '');
                 $isAutomatedHoliday = $isObservance && (!empty($observanceAutomatedMap[$date]));
                 if (($isWholeDay || $isAutomatedHoliday) && !isset($holidayProcessed[$date])) {
                     // Compute earliest clock_in and latest clock_out for this date

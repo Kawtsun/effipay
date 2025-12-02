@@ -172,8 +172,8 @@ export async function computeMonthlyMetrics(
         const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
         totalWorkedMin += workedMinusBreak;
         if (hasBoth) {
-          otMin += workedMinusBreak;
-          otObservanceMin += workedMinusBreak; // Observance: double pay bucket
+          // Holiday hours go to double pay bucket only, NOT to overtime
+          otObservanceMin += workedMinusBreak;
         }
         continue;
       }
@@ -183,8 +183,8 @@ export async function computeMonthlyMetrics(
         const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
         totalWorkedMin += workedMinusBreak;
         if (hasBoth) {
-          otMin += workedMinusBreak;
-          otObservanceMin += workedMinusBreak; // Observance: double pay bucket
+          // Holiday hours go to double pay bucket only, NOT to overtime
+          otObservanceMin += workedMinusBreak;
         }
         continue;
       }
