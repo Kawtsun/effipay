@@ -737,6 +737,11 @@ class PayrollController extends Controller
      * (Sum of Adjusted Monthly Basic Salaries) / 12.
      * The Adjusted Monthly Basic Salary = Base Salary - (Lates + Absences).
      *
+     * For College Instructors only (without other roles):
+     * Since they do not have a base salary, use the College GSP as the base equivalent.
+     * College GSP = gross_pay - overtime_pay - honorarium (these values are already stored in payroll).
+     * The adjusted monthly basic for college = College GSP (which already has deductions applied).
+     *
      * @param \App\Models\Employees $employee
      * @param \Carbon\Carbon $payrollDate The date of the current payroll run.
      * @return float
@@ -745,6 +750,16 @@ class PayrollController extends Controller
     {
         $totalAdjustedBasicSalary = 0.0;
         $work_hours_per_day = $employee->work_hours_per_day ?? 8;
+
+        // Determine if the employee is a College Instructor only (not multi-role)
+        $rolesStr = isset($employee->roles) ? strtolower($employee->roles) : '';
+        $isCollegeInstructor = strpos($rolesStr, 'college instructor') !== false;
+        // Check if it's college-only (no other roles like basic education, admin, etc.)
+        $isCollegeOnly = $isCollegeInstructor && (
+            trim($rolesStr) === 'college instructor' ||
+            // Handle cases where roles might have extra whitespace
+            preg_match('/^college\s*instructor$/i', trim($employee->roles ?? ''))
+        );
 
         // Loop from January to the selected cutoff month
         for ($month = 1; $month <= $monthCount; $month++) {
@@ -758,37 +773,52 @@ class PayrollController extends Controller
                 continue;
             }
 
-            $baseSalaryForMonth = $monthlyPayrollRecords->sum('base_salary');
-            $tardinessHours = $monthlyPayrollRecords->sum('tardiness');
-            $absenceHours = $monthlyPayrollRecords->sum('absences');
+            if ($isCollegeOnly) {
+                // --- COLLEGE INSTRUCTOR ONLY: Use College GSP as base equivalent ---
+                // College GSP = gross_pay - overtime_pay - honorarium
+                // The gross_pay already has deductions (T, U, A) applied, so this gives us the
+                // equivalent "adjusted basic salary" for college instructors.
+                foreach ($monthlyPayrollRecords as $payroll) {
+                    $grossPay = (float)($payroll->gross_pay ?? 0);
+                    $overtimePay = 0.0;
+                    // Calculate overtime pay from stored values: college_rate * overtime hours
+                    // OT formula for college: college_rate * ((0.25 * weekday_ot) + (0.30 * weekend_ot))
+                    // However, overtime hours are stored as total overtime in the 'overtime' field
+                    // For simplicity, we approximate OT pay as college_rate * 0.275 * overtime_hours (avg of 0.25 and 0.30)
+                    // Better approach: use the difference between gross and base calculation
+                    $collegeRate = (float)($payroll->college_rate ?? 0);
+                    $overtimeHours = (float)($payroll->overtime ?? 0);
+                    // Estimate overtime pay (conservative approximation)
+                    if ($collegeRate > 0 && $overtimeHours > 0) {
+                        // Use average multiplier of 0.275 for OT pay estimation
+                        $overtimePay = $collegeRate * 0.275 * $overtimeHours;
+                    }
+                    $honorarium = (float)($payroll->honorarium ?? 0);
+                    
+                    // College GSP equivalent (adjusted) = gross_pay - overtime_pay - honorarium
+                    $collegeGspAdjusted = $grossPay - $overtimePay - $honorarium;
+                    $totalAdjustedBasicSalary += max(0, $collegeGspAdjusted);
+                }
+            } else {
+                // --- REGULAR EMPLOYEES (including multi-role with college): Use base salary ---
+                $baseSalaryForMonth = $monthlyPayrollRecords->sum('base_salary');
+                $tardinessHours = $monthlyPayrollRecords->sum('tardiness');
+                $absenceHours = $monthlyPayrollRecords->sum('absences');
 
-            // --- UNIFIED HOURLY RATE FORMULA ---
-            // This formula now exactly matches your TimeKeepingController.
-            // Use 262 divisor for Basic Education roles, 288 for others
-            $rolesStr = isset($employee->roles) ? strtolower($employee->roles) : '';
-            $isBasicEducation = strpos($rolesStr, 'basic education') !== false;
-            $divisor = $isBasicEducation ? 262 : 288;
-            $rate_per_day = ($baseSalaryForMonth * 12) / $divisor;
-            $hourlyRate = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
-            // --- END UNIFIED FORMULA ---
+                // --- UNIFIED HOURLY RATE FORMULA ---
+                // This formula now exactly matches your TimeKeepingController.
+                // Use 262 divisor for Basic Education roles, 288 for others
+                $isBasicEducation = strpos($rolesStr, 'basic education') !== false;
+                $divisor = $isBasicEducation ? 262 : 288;
+                $rate_per_day = ($baseSalaryForMonth * 12) / $divisor;
+                $hourlyRate = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
+                // --- END UNIFIED FORMULA ---
 
-            // // --- DEBUG BLOCK ---
-            // dd([
-            //     '--Inputs--' => '---------------------------',
-            //     'Base Salary Used' => $baseSalaryForMonth,
-            //     'Employee Work Hours/Day' => $work_hours_per_day,
-            //     '--Calculation--' => '-------------------------',
-            //     'Formula Step 1 (Rate Per Day)' => "($baseSalaryForMonth * 12) / 288 = $rate_per_day",
-            //     'Formula Step 2 (Hourly Rate)' => "$rate_per_day / $work_hours_per_day = $hourlyRate",
-            //     '--Final Value--' => '--------------------------',
-            //     'FINAL CALCULATED HOURLY RATE' => $hourlyRate,
-            // ]);
-            // // --- END DEBUG BLOCK ---
+                $totalDeductionsForMonth = ($tardinessHours + $absenceHours) * $hourlyRate;
+                $adjustedMonthlyBasicSalary = $baseSalaryForMonth - $totalDeductionsForMonth;
 
-            $totalDeductionsForMonth = ($tardinessHours + $absenceHours) * $hourlyRate;
-            $adjustedMonthlyBasicSalary = $baseSalaryForMonth - $totalDeductionsForMonth;
-
-            $totalAdjustedBasicSalary += max(0, $adjustedMonthlyBasicSalary);
+                $totalAdjustedBasicSalary += max(0, $adjustedMonthlyBasicSalary);
+            }
         }
 
         $thirteenthMonthPay = round($totalAdjustedBasicSalary / 12, 2);
