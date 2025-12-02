@@ -145,17 +145,22 @@ class PayrollController extends Controller
                 // gross pay and statutory contributions below.
                 $withholding_tax = 0.0;
 
+                // Add separate double pay amount (holiday/automated observances) if available
+                $double_pay_amount = isset($summaryData['holiday_double_pay_amount']) && is_numeric($summaryData['holiday_double_pay_amount'])
+                    ? (float)$summaryData['holiday_double_pay_amount'] : 0.0;
+
                 // Gross pay: (college_rate * total_hours_worked)
                 //          - (college_rate * tardiness)
                 //          - (college_rate * undertime)
                 //          - (college_rate * absences)
-                //          + overtime_pay + honorarium
+                //          + overtime_pay + double_pay_amount + honorarium
                 $gross_pay = round(
                     ($college_rate * $total_hours_worked)
                         - ($college_rate * $tardiness)
                         - ($college_rate * $undertime)
                         - ($college_rate * $absences)
                         + $overtime_pay
+                        + $double_pay_amount
                         + $honorarium,
                     2
                 );
@@ -173,6 +178,7 @@ class PayrollController extends Controller
                     'undertime_hours' => 0,
                     'overtime_hours' => $overtime_hours,
                     'overtime_pay' => $overtime_pay,
+                    'double_pay_amount' => $double_pay_amount,
                     'weekday_ot' => $weekday_ot,
                     'weekend_ot' => $weekend_ot,
                     'honorarium' => $honorarium,
@@ -300,6 +306,7 @@ class PayrollController extends Controller
                     'weekday_ot_hours' => $weekday_ot,
                     'weekend_ot_hours' => $weekend_ot,
                     'overtime_pay' => $overtime_pay,
+                    'double_pay_amount' => $double_pay_amount,
                     'honorarium' => $honorarium,
                     'gross_pay' => $gross_pay,
                 ]);
@@ -348,6 +355,19 @@ class PayrollController extends Controller
                 + $peraa_con + $tuition + $china_bank + $tea // Honorarium is an earning, not deduction
                 + $salary_loan + $calamity_loan + $multipurpose_loan
             );
+
+            // Check if there's an existing payroll with 13th month pay to preserve
+            $existingForThirteenth = \App\Models\Payroll::where('employee_id', $employee->id)
+                ->where('month', $payrollMonth)
+                ->orderByDesc('payroll_date')
+                ->first();
+            $existing_thirteenth_month_pay = 0;
+            if ($existingForThirteenth && !is_null($existingForThirteenth->thirteenth_month_pay)) {
+                $existing_thirteenth_month_pay = (float)$existingForThirteenth->thirteenth_month_pay;
+            }
+
+            // Add 13th month pay to gross_pay if it was previously set
+            $gross_pay = $gross_pay + $existing_thirteenth_month_pay;
             $net_pay = $gross_pay - $total_deductions;
 
             \Illuminate\Support\Facades\Log::info([
@@ -368,6 +388,8 @@ class PayrollController extends Controller
                 'undertime' => $undertime,
                 'absences' => $absences,
                 'gross_pay' => $gross_pay,
+                // Preserve existing 13th month pay when re-running payroll
+                'thirteenth_month_pay' => $existing_thirteenth_month_pay > 0 ? $existing_thirteenth_month_pay : null,
                 // Store NULL in the payroll record if the employee did not opt-in
                 // for SSS/PhilHealth so the frontend can render a "-".
                 'sss' => !empty($employee->sss) ? $sss : null,
