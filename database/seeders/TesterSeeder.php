@@ -853,13 +853,13 @@ class TesterSeeder extends Seeder
             ],
             // ### 23
             [
-                'first_name' => 'Voli',
-                'last_name' => 'Bear',
+                'first_name' => 'Funny',
+                'last_name' => 'Valentine',
                 'middle_name' => '',
                 'role' => 'college instructor',
                 'type' => 'Full Time',
                 'base_salary' => null,
-                'college_rate' => 805.26,
+                'college_rate' => 196.43,
                 'honorarium' => null,
 
                 //Role Level
@@ -883,45 +883,7 @@ class TesterSeeder extends Seeder
                 'tea' => null,
 
                 'work_schedule' => [
-                    ['day' => 'tue', 'hours_per_day' => 6]
-                ],
-                'work_hours_per_day' => 8,
-                'work_start_time' => '08:00:00',
-                'work_end_time' => '17:00:00',
-            ],
-            // ### 24
-            [
-                'first_name' => 'Nunu',
-                'last_name' => 'Willump',
-                'middle_name' => '',
-                'role' => 'college instructor',
-                'type' => 'Full Time',
-                'base_salary' => null,
-                'college_rate' => 163.70,
-                'honorarium' => null,
-
-                //Role Level
-                'college_program' => 'BSCRIM',
-
-                // Contributions (Boolean)
-                'sss' => true,
-                'philhealth' => true,
-                'withholding_tax' => true,
-
-                // Contributions (Amount)
-                'pag_ibig' => null,
-
-                // Loans & Deductions
-                'sss_salary_loan' => null,
-                'sss_calamity_loan' => null,
-                'pagibig_multi_loan' => null,
-                'pagibig_calamity_loan' => null,
-                'tuition' => null,
-                'china_bank' => null,
-                'tea' => null,
-
-                'work_schedule' => [
-                    ['day' => 'fri', 'hours_per_day' => 6]
+                    ['day' => 'fri', 'hours_per_day' => 3]
                 ],
                 'work_hours_per_day' => 8,
                 'work_start_time' => '08:00:00',
