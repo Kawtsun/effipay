@@ -597,14 +597,20 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = (props) => {
                 }
               </Text>
             </View>
-            {/* Cashier Signature Section */}
-            <View style={{ marginTop: 16, paddingTop: 12, borderTop: '1 solid #ccc' }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 20 }}>
-                <View style={{ width: 150, alignItems: 'center' }}>
-                  <View style={{ borderBottom: '1 solid #000', width: '100%', height: 40 }} />
-                  <Text style={{ marginTop: 4, fontSize: 7, fontWeight: 'bold' }}>Cashier Signature</Text>
-                </View>
-              </View>
+          </View>
+        </View>
+
+        {/* Cashier Signature Section and System Generated Message - Below Both Columns */}
+        <View style={{ marginTop: 16, paddingTop: 12, borderTop: '1 solid #ccc' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 20 }}>
+            {/* Cashier Signature - Left Side */}
+            <View style={{ width: 150, alignItems: 'center' }}>
+              <View style={{ borderBottom: '1 solid #000', width: '100%', height: 40 }} />
+              <Text style={{ marginTop: 4, fontSize: 7, fontWeight: 'bold' }}>Cashier Signature</Text>
+            </View>
+            {/* System Generated Message - Right Side */}
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={{ fontSize: 7, fontStyle: 'italic', color: '#666' }}>This is a system generated payslip</Text>
             </View>
           </View>
         </View>
