@@ -554,6 +554,15 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
               }
             </Text>
           </View>
+          {/* Cashier Signature Section */}
+          <View style={{ marginTop: 16, paddingTop: 12, borderTop: '1 solid #ccc' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 20 }}>
+              <View style={{ width: 150, alignItems: 'center' }}>
+                <View style={{ borderBottom: '1 solid #000', width: '100%', height: 40 }} />
+                <Text style={{ marginTop: 4, fontSize: 7, fontWeight: 'bold' }}>Cashier Signature</Text>
+              </View>
+            </View>
+          </View>
         </View>
       </View>
     </View>
