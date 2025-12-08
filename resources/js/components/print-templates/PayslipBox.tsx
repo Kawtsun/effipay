@@ -566,7 +566,7 @@ const PayslipBox: React.FC<PayslipBoxProps> = ({ payPeriod, employeeName = '-', 
           </View>
           {/* System Generated Message - Right Side */}
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 7, fontStyle: 'italic', color: '#666' }}>This is a system generated payslip</Text>
+            <Text style={{ fontSize: 7, fontStyle: 'italic', color: '#666' }}>This is a system generated report.</Text>
           </View>
         </View>
       </View>
