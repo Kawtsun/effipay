@@ -502,12 +502,14 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                         const isCollegeOnly = hasCollege && (tokens.length > 0 ? tokens.every((t) => t.includes('college')) : true);
                         // Prefer payroll-computed college hours for display to exactly match payroll run
                         let payrollCollegeHoursBTR: number | undefined = undefined;
+                        let payrollAbsencesBTR: number | undefined = undefined;
                         try {
                             const resp = await fetch(route('payroll.employee.monthly', { employee_id: employee?.id, month: selectedMonth }));
                             const json = await resp.json();
                             if (json?.success && Array.isArray(json.payrolls) && json.payrolls.length > 0) {
                                 const latest = (json.payrolls as Array<PayrollWithExtras>).reduce((a, b) => new Date(b.payroll_date) > new Date(a.payroll_date) ? b : a, json.payrolls[0] as PayrollWithExtras);
                                 if (typeof latest?.college_total_hours === 'number') payrollCollegeHoursBTR = Number(latest.college_total_hours);
+                                if (typeof latest?.absences === 'number') payrollAbsencesBTR = Number(latest.absences);
                             }
                         } catch { /* ignore */ }
                         const collegeHoursBTR = Number((metricsBTR as unknown as { college_paid_hours?: number })?.college_paid_hours ?? NaN);
@@ -522,7 +524,7 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                 tardiness: (metricsBTR.tardiness ?? 0),
                                 undertime: (metricsBTR.undertime ?? 0),
                                 overtime: (metricsBTR.overtime ?? 0),
-                                absences: metricsBTR.absences ?? 0,
+                                absences: payrollAbsencesBTR !== undefined ? payrollAbsencesBTR : (metricsBTR.absences ?? 0),
                         });
 
             const hasRealTime = btrRecords.some(r => (r.timeIn && r.timeIn !== '-') || (r.timeOut && r.timeOut !== '-'));
