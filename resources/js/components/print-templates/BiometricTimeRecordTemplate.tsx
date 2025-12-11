@@ -363,7 +363,7 @@ const BiometricTimeRecordTemplate: React.FC<BiometricTimeRecordTemplateProps> = 
 
       {/* System Generated Message - Bottom Right */}
       <View style={{ marginTop: 7, alignItems: 'flex-end' }}>
-        <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>This is a system generated document</Text>
+        <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>This is a system generated report.</Text>
       </View>
     </Page>
   </Document>
