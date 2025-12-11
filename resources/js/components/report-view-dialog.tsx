@@ -123,32 +123,20 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     // Helper for summary card values (must be after hasPayroll, selectedPayroll, etc)
     const getSummaryCardAmount = (type: 'tardiness' | 'undertime' | 'overtime' | 'absences') => {
         if (!hasPayroll) return '-';
-        // Overtime: use new formula
-        if (type === 'overtime') {
-            // Prefer server-computed overtime total from timekeeping (includes NSD and observance)
-            const serverOTTotal = Number((timekeepingSummary as any)?.overtime_pay_total ?? NaN);
-            if (Number.isFinite(serverOTTotal) && serverOTTotal >= 0) {
-                return `₱${Number(serverOTTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            }
-            // Fallback to bucket-based calculation using base rate_per_hour
-            if (timekeepingSummary) {
-                const rate = Number(timekeepingSummary.rate_per_hour ?? 0);
-                const weekdayOvertime = Number(timekeepingSummary.overtime_count_weekdays ?? 0);
-                const weekendOvertime = Number(timekeepingSummary.overtime_count_weekends ?? 0);
-                const weekdayPay = rate * 0.25 * weekdayOvertime;
-                const weekendPay = rate * 0.30 * weekendOvertime;
-                const overtimePay = weekdayPay + weekendPay;
-                return `₱${overtimePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            }
-            return '-';
+        // Debug logging for employee 11 overtime
+        if (employee?.id === 11 && type === 'overtime') {
+            console.log('Report Dialog - Overtime Display for Employee 11:', {
+                timekeepingSummary_overtime: timekeepingSummary?.overtime,
+                timekeepingSummary_weekdays: timekeepingSummary?.overtime_count_weekdays,
+                timekeepingSummary_weekends: timekeepingSummary?.overtime_count_weekends,
+                timekeepingSummary_observances: (timekeepingSummary as any)?.overtime_count_observances,
+                type_value: timekeepingSummary?.[type],
+            });
         }
-        // Other types: keep old logic
-        if (isCollegeInstructorPayroll && selectedPayroll) {
-            const value = Number(selectedPayroll[type]) || 0;
-            const rate = selectedPayroll.college_rate ?? 0;
-            return `₱${(value * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        } else if (timekeepingSummary && typeof timekeepingSummary[type] === 'number' && typeof timekeepingSummary.rate_per_hour === 'number') {
-            return `₱${(timekeepingSummary[type] * timekeepingSummary.rate_per_hour).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        // For all types: display hours from timekeeping summary
+        if (timekeepingSummary && typeof timekeepingSummary[type] === 'number') {
+            const hours = Number(timekeepingSummary[type]);
+            return `${hours.toFixed(2)} hr(s)`;
         }
         return '-';
     };
@@ -176,7 +164,7 @@ export default function ReportViewDialog({ employee, onClose, activeRoles }: Pro
     const [minLoading, setMinLoading] = useState(false);
     const minLoadingTimeout = useRef<NodeJS.Timeout | null>(null);
     const [otherAdjustments, setOtherAdjustments] = useState<number | null>(null);
-    const [lastAdjustmentType, setLastAdjustmentType] = useState<'add'|'deduct'|null>(null);
+    const [lastAdjustmentType, setLastAdjustmentType] = useState<'add' | 'deduct' | null>(null);
 
     useEffect(() => {
         if (employee && (typeof (ReportViewDialog as any).open === 'boolean' ? (ReportViewDialog as any).open : true)) {

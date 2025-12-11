@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employees;
 use App\Models\Payroll;
 use App\Models\Salary;
+use App\Services\AttendanceCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
@@ -87,7 +88,7 @@ class PayrollController extends Controller
             $summaryData = $summary->getData(true);
 
             // Compute monthly metrics using the same logic as Attendance Cards
-            $metrics = $this->computeMonthlyMetricsPHP($employee, $payrollMonth);
+            $metrics = AttendanceCalculationService::computeMonthlyMetrics($employee, $payrollMonth);
 
             // Populate weekday/weekend OT buckets from metrics for all branches
             if (is_array($metrics)) {
@@ -118,13 +119,20 @@ class PayrollController extends Controller
                 $overtime_hours = $metrics['overtime'];
                 $weekday_ot = $metrics['overtime_count_weekdays'];
                 $weekend_ot = $metrics['overtime_count_weekends'];
-                // College instructors work by hourly schedule only: they should not have
-                // tardiness, undertime, or overtime adjustments applied to gross pay.
-                // Keep absences, which still reduce pay.
+                // College instructors work by hourly schedule only: tardiness and undertime
+                // are counted as absences (deducted from pay) rather than tracked separately.
+                // Add tardiness and undertime to absences
+                $absences = $absences + $tardiness + $undertime;
                 $tardiness = 0;
                 $undertime = 0;
-                $overtime_hours = 0;
-                $overtime_pay = 0; // explicitly ignore OT for college branch
+                // Compute overtime pay for college-only employees using the college rate
+                // Prefer overtime pay computed by TimeKeepingController (includes NSD after 10 PM), fallback to bucket formula
+                if (isset($summaryData['overtime_pay_total']) && is_numeric($summaryData['overtime_pay_total'])) {
+                    $overtime_pay = (float)$summaryData['overtime_pay_total'];
+                } else {
+                    // OT buckets: 0.25x on weekdays, 0.30x on weekends using college rate
+                    $overtime_pay = round($college_rate * ((0.25 * $weekday_ot) + (0.30 * $weekend_ot)), 2);
+                }
                 $honorarium = !is_null($employee->honorarium) ? floatval($employee->honorarium) : 0;
 
                 // Statutory contributions: initialize numeric variables and read flags
@@ -137,17 +145,22 @@ class PayrollController extends Controller
                 // gross pay and statutory contributions below.
                 $withholding_tax = 0.0;
 
+                // Add separate double pay amount (holiday/automated observances) if available
+                $double_pay_amount = isset($summaryData['holiday_double_pay_amount']) && is_numeric($summaryData['holiday_double_pay_amount'])
+                    ? (float)$summaryData['holiday_double_pay_amount'] : 0.0;
+
                 // Gross pay: (college_rate * total_hours_worked)
                 //          - (college_rate * tardiness)
                 //          - (college_rate * undertime)
                 //          - (college_rate * absences)
-                //          + overtime_pay + honorarium
+                //          + overtime_pay + double_pay_amount + honorarium
                 $gross_pay = round(
                     ($college_rate * $total_hours_worked)
                         - ($college_rate * $tardiness)
                         - ($college_rate * $undertime)
                         - ($college_rate * $absences)
                         + $overtime_pay
+                        + $double_pay_amount
                         + $honorarium,
                     2
                 );
@@ -163,7 +176,11 @@ class PayrollController extends Controller
                     'absences_summary' => isset($summaryData['absences']) && is_numeric($summaryData['absences']) ? (float)$summaryData['absences'] : null,
                     'tardiness_hours' => 0,
                     'undertime_hours' => 0,
-                    'overtime_pay' => 0,
+                    'overtime_hours' => $overtime_hours,
+                    'overtime_pay' => $overtime_pay,
+                    'double_pay_amount' => $double_pay_amount,
+                    'weekday_ot' => $weekday_ot,
+                    'weekend_ot' => $weekend_ot,
                     'honorarium' => $honorarium,
                     'gross_pay' => $gross_pay,
                 ]);
@@ -171,22 +188,21 @@ class PayrollController extends Controller
                 // For record-keeping, set base_salary to employee's base_salary or 0 (not used in calculation)
                 $base_salary = !is_null($employee->base_salary) ? $employee->base_salary : 0;
 
-                // Compute SSS/PhilHealth using formulas and the College GSP (rate * paid hours) as contribution base
-                $college_gsp = max(0.0, (float)$college_rate * max(0.0, (float)$total_hours_worked));
-                if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($college_gsp); }
-                if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($college_gsp); }
+                // Compute SSS/PhilHealth: use honorarium if present, otherwise use gross pay
+                $contribBase = $honorarium > 0 ? (float)$honorarium : max(0.0, (float)$gross_pay);
+                if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($contribBase); }
+                if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($contribBase); }
 
-                // Compute withholding tax FROM GROSS PAY as total compensation
-                // per request. Other contributions are computed separately.
-                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
-                    $totalComp = $gross_pay; // use gross pay directly
+                // Compute withholding tax using total compensation = gross_pay - sss - philhealth - pag_ibig
+                $totalComp = max(0.0, $gross_pay - $sss - $philhealth - $pag_ibig);
+                $withholding_tax = $totalComp > 0 ? (function ($totalComp) {
                     if ($totalComp <= 20832) return 0;
                     if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
                     if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
                     if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
                     if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
                     return 183541.80 + 0.35 * ($totalComp - 666667);
-                })($gross_pay) : 0;
+                })($totalComp) : 0;
             } elseif ($isCollegeInstructor && $isCollegeMulti) {
                 // Multi-role with College Instructor:
                 // Gross = Base Salary + College GSP + OT - non-college rate * (T+U+A) + honorarium
@@ -290,6 +306,7 @@ class PayrollController extends Controller
                     'weekday_ot_hours' => $weekday_ot,
                     'weekend_ot_hours' => $weekend_ot,
                     'overtime_pay' => $overtime_pay,
+                    'double_pay_amount' => $double_pay_amount,
                     'honorarium' => $honorarium,
                     'gross_pay' => $gross_pay,
                 ]);
@@ -303,15 +320,16 @@ class PayrollController extends Controller
                 if (!empty($employee->sss)) { $sss = SalaryFormulas::calculateSSS($contribBase); }
                 if (!empty($employee->philhealth)) { $philhealth = SalaryFormulas::calculatePhilHealth($contribBase); }
 
-                $withholding_tax = $gross_pay > 0 ? (function ($gross_pay) {
-                    $totalComp = $gross_pay; // use gross pay directly
+                // Compute withholding tax using total compensation = gross_pay - sss - philhealth - pag_ibig
+                $totalComp = max(0.0, $gross_pay - $sss - $philhealth - $pag_ibig);
+                $withholding_tax = $totalComp > 0 ? (function ($totalComp) {
                     if ($totalComp <= 20832) return 0;
                     if ($totalComp <= 33332) return 0.15 * ($totalComp - 20833);
                     if ($totalComp <= 66666) return 1875 + 0.20 * ($totalComp - 33333);
                     if ($totalComp <= 166666) return 8541.80 + 0.25 * ($totalComp - 66667);
                     if ($totalComp <= 666666) return 33541.80 + 0.30 * ($totalComp - 166667);
                     return 183541.80 + 0.35 * ($totalComp - 666667);
-                })($gross_pay) : 0;
+                })($totalComp) : 0;
             }
 
             // Create or update payroll record (rerunnable for the same month)
@@ -337,6 +355,19 @@ class PayrollController extends Controller
                 + $peraa_con + $tuition + $china_bank + $tea // Honorarium is an earning, not deduction
                 + $salary_loan + $calamity_loan + $multipurpose_loan
             );
+
+            // Check if there's an existing payroll with 13th month pay to preserve
+            $existingForThirteenth = \App\Models\Payroll::where('employee_id', $employee->id)
+                ->where('month', $payrollMonth)
+                ->orderByDesc('payroll_date')
+                ->first();
+            $existing_thirteenth_month_pay = 0;
+            if ($existingForThirteenth && !is_null($existingForThirteenth->thirteenth_month_pay)) {
+                $existing_thirteenth_month_pay = (float)$existingForThirteenth->thirteenth_month_pay;
+            }
+
+            // Add 13th month pay to gross_pay if it was previously set
+            $gross_pay = $gross_pay + $existing_thirteenth_month_pay;
             $net_pay = $gross_pay - $total_deductions;
 
             \Illuminate\Support\Facades\Log::info([
@@ -357,6 +388,8 @@ class PayrollController extends Controller
                 'undertime' => $undertime,
                 'absences' => $absences,
                 'gross_pay' => $gross_pay,
+                // Preserve existing 13th month pay when re-running payroll
+                'thirteenth_month_pay' => $existing_thirteenth_month_pay > 0 ? $existing_thirteenth_month_pay : null,
                 // Store NULL in the payroll record if the employee did not opt-in
                 // for SSS/PhilHealth so the frontend can render a "-".
                 'sss' => !empty($employee->sss) ? $sss : null,
@@ -531,7 +564,7 @@ class PayrollController extends Controller
         $obsMap = [];
         foreach ($obsArr as $o) {
             $d = substr((string)$o->date, 0, 10);
-            $obsMap[$d] = ['type' => $o->type ?: $o->label, 'start_time' => $o->start_time ? $o->start_time->format('H:i') : null];
+            $obsMap[$d] = ['type' => $o->type, 'label' => $o->label, 'start_time' => $o->start_time ? $o->start_time->format('H:i') : null];
         }
 
         [$y, $m] = array_map('intval', explode('-', $selectedMonth));
@@ -560,9 +593,12 @@ class PayrollController extends Controller
                 $workedRaw = $hasBoth ? $this->diffMin($timeIn, $timeOut) : 0;
                 $obs = $obsMap[$dateStr] ?? null;
                 $obsType = $obs && isset($obs['type']) ? strtolower((string)$obs['type']) : '';
+                
+                // Check if this is a whole-day observance (either by type or if observance exists without type)
+                $isWholeDayObs = (strpos($obsType, 'whole') !== false) || ($obs && !$obsType);
 
                 // Whole-day or half-day observances: if worked, add as OT (observance), else skip expectations
-                if (strpos($obsType, 'whole') !== false) {
+                if ($isWholeDayObs) {
                     $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
                     $totalWorkedMin += $workedMinusBreak;
                     if ($hasBoth) { $otMin += $workedMinusBreak; $otObservanceMin += $workedMinusBreak; }
@@ -578,15 +614,24 @@ class PayrollController extends Controller
                 // If schedule is hours-only (noTimes), treat expected as durationMin
                 if (!empty($sched['noTimes'])) {
                     $expected = (int)($sched['durationMin'] ?? 0);
-                    $workedMinusBreak = $hasBoth ? max(0, $workedRaw - 60) : 0;
                     if (!$hasBoth) { $absentMin += $expected; continue; }
+                    
+                    // Calculate worked minutes with proper lunch break handling
+                    $worked = $hasBoth ? $this->diffMin($timeIn, $timeOut) : 0;
+                    // Only deduct lunch if shift spans across the 12:00-13:00 lunch period
+                    $lunchStart = 12 * 60; // 12:00
+                    $lunchEnd = 13 * 60;   // 13:00
+                    $workedMinusBreak = $worked;
+                    if ($timeIn < $lunchEnd && $timeOut > $lunchStart && $worked > 60) {
+                        $workedMinusBreak = max(0, $worked - 60);
+                    }
+                    
                     $totalWorkedMin += $workedMinusBreak;
                     // College-paid hours for college schedules without explicit times: cap by expected
                     $collegePaidMin += min($workedMinusBreak, $expected);
-                    if ($hasCollege) {
-                        $deficit = max(0, $expected - $workedMinusBreak);
-                        $absentMin += $deficit;
-                    } else {
+                    // Employee clocked in/out, so they are present - no absence added
+                    // Non-college roles can track undertime
+                    if (!$hasCollege) {
                         $under = max(0, $expected - $workedMinusBreak);
                         $underMin += $under;
                     }
@@ -638,17 +683,11 @@ class PayrollController extends Controller
                     $collegePaidMin += min($remain, $extra);
                 }
 
-                if ($hasCollege && ($isCollegeOnly || ($isCollegeMulti && ((int)($sched['extraCollegeDurMin'] ?? 0)) > (int)($sched['durationMin'] ?? 0)))) {
-                    $expected = (int)($sched['durationMin'] ?? 0);
-                    if ($isCollegeMulti && isset($sched['extraCollegeDurMin']) && $sched['extraCollegeDurMin'] > 0) {
-                        $expected = max($expected, (int)$sched['extraCollegeDurMin']);
-                    }
-                    $deficit = max(0, $expected - $workedMinusBreak);
-                    $absentMin += $deficit;
-                    if (!$isCollegeOnly) {
-                        $over = max(0, $workedMinusBreak - $expected);
-                        $otMin += $over; $otWeekdayMin += $over;
-                    }
+                // Multi-role with college schedule: allow overtime but no deficit as absence since they clocked in/out
+                if ($isCollegeMulti && ((int)($sched['extraCollegeDurMin'] ?? 0)) > (int)($sched['durationMin'] ?? 0)) {
+                    $expected = max((int)($sched['durationMin'] ?? 0), (int)($sched['extraCollegeDurMin'] ?? 0));
+                    $over = max(0, $workedMinusBreak - $expected);
+                    $otMin += $over; $otWeekdayMin += $over;
                     continue;
                 }
 
@@ -720,6 +759,11 @@ class PayrollController extends Controller
      * (Sum of Adjusted Monthly Basic Salaries) / 12.
      * The Adjusted Monthly Basic Salary = Base Salary - (Lates + Absences).
      *
+     * For College Instructors only (without other roles):
+     * Since they do not have a base salary, use the College GSP as the base equivalent.
+     * College GSP = gross_pay - overtime_pay - honorarium (these values are already stored in payroll).
+     * The adjusted monthly basic for college = College GSP (which already has deductions applied).
+     *
      * @param \App\Models\Employees $employee
      * @param \Carbon\Carbon $payrollDate The date of the current payroll run.
      * @return float
@@ -728,6 +772,16 @@ class PayrollController extends Controller
     {
         $totalAdjustedBasicSalary = 0.0;
         $work_hours_per_day = $employee->work_hours_per_day ?? 8;
+
+        // Determine if the employee is a College Instructor only (not multi-role)
+        $rolesStr = isset($employee->roles) ? strtolower($employee->roles) : '';
+        $isCollegeInstructor = strpos($rolesStr, 'college instructor') !== false;
+        // Check if it's college-only (no other roles like basic education, admin, etc.)
+        $isCollegeOnly = $isCollegeInstructor && (
+            trim($rolesStr) === 'college instructor' ||
+            // Handle cases where roles might have extra whitespace
+            preg_match('/^college\s*instructor$/i', trim($employee->roles ?? ''))
+        );
 
         // Loop from January to the selected cutoff month
         for ($month = 1; $month <= $monthCount; $month++) {
@@ -741,33 +795,52 @@ class PayrollController extends Controller
                 continue;
             }
 
-            $baseSalaryForMonth = $monthlyPayrollRecords->sum('base_salary');
-            $tardinessHours = $monthlyPayrollRecords->sum('tardiness');
-            $absenceHours = $monthlyPayrollRecords->sum('absences');
+            if ($isCollegeOnly) {
+                // --- COLLEGE INSTRUCTOR ONLY: Use College GSP as base equivalent ---
+                // College GSP = gross_pay - overtime_pay - honorarium
+                // The gross_pay already has deductions (T, U, A) applied, so this gives us the
+                // equivalent "adjusted basic salary" for college instructors.
+                foreach ($monthlyPayrollRecords as $payroll) {
+                    $grossPay = (float)($payroll->gross_pay ?? 0);
+                    $overtimePay = 0.0;
+                    // Calculate overtime pay from stored values: college_rate * overtime hours
+                    // OT formula for college: college_rate * ((0.25 * weekday_ot) + (0.30 * weekend_ot))
+                    // However, overtime hours are stored as total overtime in the 'overtime' field
+                    // For simplicity, we approximate OT pay as college_rate * 0.275 * overtime_hours (avg of 0.25 and 0.30)
+                    // Better approach: use the difference between gross and base calculation
+                    $collegeRate = (float)($payroll->college_rate ?? 0);
+                    $overtimeHours = (float)($payroll->overtime ?? 0);
+                    // Estimate overtime pay (conservative approximation)
+                    if ($collegeRate > 0 && $overtimeHours > 0) {
+                        // Use average multiplier of 0.275 for OT pay estimation
+                        $overtimePay = $collegeRate * 0.275 * $overtimeHours;
+                    }
+                    $honorarium = (float)($payroll->honorarium ?? 0);
+                    
+                    // College GSP equivalent (adjusted) = gross_pay - overtime_pay - honorarium
+                    $collegeGspAdjusted = $grossPay - $overtimePay - $honorarium;
+                    $totalAdjustedBasicSalary += max(0, $collegeGspAdjusted);
+                }
+            } else {
+                // --- REGULAR EMPLOYEES (including multi-role with college): Use base salary ---
+                $baseSalaryForMonth = $monthlyPayrollRecords->sum('base_salary');
+                $tardinessHours = $monthlyPayrollRecords->sum('tardiness');
+                $absenceHours = $monthlyPayrollRecords->sum('absences');
 
-            // --- UNIFIED HOURLY RATE FORMULA ---
-            // This formula now exactly matches your TimeKeepingController.
-            $rate_per_day = ($baseSalaryForMonth * 12) / 288;
-            $hourlyRate = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
-            // --- END UNIFIED FORMULA ---
+                // --- UNIFIED HOURLY RATE FORMULA ---
+                // This formula now exactly matches your TimeKeepingController.
+                // Use 262 divisor for Basic Education roles, 288 for others
+                $isBasicEducation = strpos($rolesStr, 'basic education') !== false;
+                $divisor = $isBasicEducation ? 262 : 288;
+                $rate_per_day = ($baseSalaryForMonth * 12) / $divisor;
+                $hourlyRate = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
+                // --- END UNIFIED FORMULA ---
 
-            // // --- DEBUG BLOCK ---
-            // dd([
-            //     '--Inputs--' => '---------------------------',
-            //     'Base Salary Used' => $baseSalaryForMonth,
-            //     'Employee Work Hours/Day' => $work_hours_per_day,
-            //     '--Calculation--' => '-------------------------',
-            //     'Formula Step 1 (Rate Per Day)' => "($baseSalaryForMonth * 12) / 288 = $rate_per_day",
-            //     'Formula Step 2 (Hourly Rate)' => "$rate_per_day / $work_hours_per_day = $hourlyRate",
-            //     '--Final Value--' => '--------------------------',
-            //     'FINAL CALCULATED HOURLY RATE' => $hourlyRate,
-            // ]);
-            // // --- END DEBUG BLOCK ---
+                $totalDeductionsForMonth = ($tardinessHours + $absenceHours) * $hourlyRate;
+                $adjustedMonthlyBasicSalary = $baseSalaryForMonth - $totalDeductionsForMonth;
 
-            $totalDeductionsForMonth = ($tardinessHours + $absenceHours) * $hourlyRate;
-            $adjustedMonthlyBasicSalary = $baseSalaryForMonth - $totalDeductionsForMonth;
-
-            $totalAdjustedBasicSalary += max(0, $adjustedMonthlyBasicSalary);
+                $totalAdjustedBasicSalary += max(0, $adjustedMonthlyBasicSalary);
+            }
         }
 
         $thirteenthMonthPay = round($totalAdjustedBasicSalary / 12, 2);
@@ -979,7 +1052,7 @@ class PayrollController extends Controller
         // This avoids 1-hour discrepancies due to different rounding/break handling on the client.
         try {
             $employee = Employees::findOrFail((int)$request->employee_id);
-            $metrics = $this->computeMonthlyMetricsPHP($employee, (string)$request->month);
+            $metrics = AttendanceCalculationService::computeMonthlyMetrics($employee, (string)$request->month);
             $collegePaidHours = isset($metrics['college_paid_hours']) ? (float)$metrics['college_paid_hours'] : null;
             $totalHours = isset($metrics['total_hours']) ? (float)$metrics['total_hours'] : null;
         } catch (\Throwable $e) {

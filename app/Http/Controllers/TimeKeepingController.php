@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TimeKeeping;
 use App\Http\Requests\StoreTimeKeepingRequest;
 use App\Http\Requests\UpdateTimeKeepingRequest;
+use App\Services\AttendanceCalculationService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -43,7 +44,11 @@ class TimeKeepingController extends Controller
         $base_salary = $employee ? $employee->base_salary : 0;
         // Use the employee's specific schedule, fallback to 8
         $work_hours_per_day = $employee && $employee->work_hours_per_day ? $employee->work_hours_per_day : 8;
-        $rate_per_day = ($base_salary * 12) / 288;
+        // Use 262 divisor for Basic Education roles, 288 for others
+        $rolesStr = $employee && isset($employee->roles) ? strtolower($employee->roles) : '';
+        $isBasicEducation = strpos($rolesStr, 'basic education') !== false;
+        $divisor = $isBasicEducation ? 262 : 288;
+        $rate_per_day = ($base_salary * 12) / $divisor;
         $rate_per_hour = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
 
         // Format clock_in and clock_out as 12-hour time (h:i A)
@@ -300,7 +305,11 @@ class TimeKeepingController extends Controller
                 }
             };
             // Calculate rate per day and rate per hour
-            $rate_per_day = ($emp->base_salary * 12) / 288;
+            // Use 262 divisor for Basic Education roles, 288 for others
+            $rolesStr = isset($emp->roles) ? strtolower($emp->roles) : '';
+            $isBasicEducation = strpos($rolesStr, 'basic education') !== false;
+            $divisor = $isBasicEducation ? 262 : 288;
+            $rate_per_day = ($emp->base_salary * 12) / $divisor;
             $rate_per_hour = $rate_per_day / 8;
             $latestTK = \App\Models\TimeKeeping::where('employee_id', $emp->id)
                 ->orderByDesc('date')
@@ -381,8 +390,9 @@ class TimeKeepingController extends Controller
                 $observanceExcludeMap = [];
                 foreach ($observancesForPeriod as $o) {
                     $d = $o->date;
-                    // exclude if whole-day suspension OR automated holiday
-                    if ((isset($o->type) && strtolower(trim((string)$o->type)) === 'whole-day') || (!empty($o->is_automated))) {
+                    // exclude if whole-day suspension, official holiday (null type), OR automated holiday
+                    $oType = isset($o->type) ? strtolower(trim((string)$o->type)) : null;
+                    if ($oType === 'whole-day' || $oType === null || $oType === '' || (!empty($o->is_automated))) {
                         $observanceExcludeMap[$d] = true;
                     }
                 }
@@ -424,9 +434,10 @@ class TimeKeepingController extends Controller
                 // Tardiness: count decimal hours late (not stacked)
                 if ($tk->clock_in && $emp->work_start_time) {
                     $obsType = $observanceTypeMap[$tk->date] ?? null;
-                    // Skip tardiness entirely on whole-day suspension
-                    if ($obsType && strtolower(trim($obsType)) === 'whole-day') {
-                        // do not add tardiness for whole-day suspension
+                    $obsTypeLower = $obsType !== null ? strtolower(trim($obsType)) : null;
+                    // Skip tardiness entirely on whole-day suspension or official holidays (null type)
+                    if ($obsTypeLower === 'whole-day' || ($obsType === null && isset($observanceTypeMap[$tk->date]))) {
+                        // do not add tardiness for whole-day suspension or official holidays
                     } else {
                         // Determine grace minutes: rainy-day gets 60, otherwise default 15
                         $graceMinutes = 15;
@@ -657,6 +668,9 @@ class TimeKeepingController extends Controller
             return response()->json(['success' => false, 'error' => 'Employee not found']);
         }
 
+        // Use unified attendance calculation service for core metrics
+        $unifiedMetrics = AttendanceCalculationService::computeMonthlyMetrics($employee, $month);
+
         // Fetch payroll data for this employee and month
         $payroll = \App\Models\Payroll::where('employee_id', $employeeId)
             ->where('month', $month)
@@ -692,10 +706,22 @@ class TimeKeepingController extends Controller
         // Use the employee's specific schedule, fallback to 8
         $work_hours_per_day = $employee->work_hours_per_day ?? 8;
 
-        $rate_per_day = ($base_salary * 12) / 288;
+        // Use 262 divisor for Basic Education roles, 288 for others
+        $rolesStr = isset($employee->roles) ? strtolower($employee->roles) : '';
+        $isBasicEducation = strpos($rolesStr, 'basic education') !== false;
+        $divisor = $isBasicEducation ? 262 : 288;
+        $rate_per_day = ($base_salary * 12) / $divisor;
         $rate_per_hour = ($work_hours_per_day > 0) ? ($rate_per_day / $work_hours_per_day) : 0;
         $work_start_time = $employee->work_start_time;
         $work_end_time = $employee->work_end_time;
+
+        // Determine if this is a college-only instructor for overtime computation
+        $tokens = array_filter(array_map('trim', preg_split('/[,\n]+/', $rolesStr)));
+        $hasCollegeRole = strpos($rolesStr, 'college instructor') !== false;
+        $isCollegeOnlyForOT = $hasCollegeRole && (count($tokens) > 0 ? (count(array_filter($tokens, function($t){ return strpos($t, 'college instructor') !== false; })) === count($tokens)) : true);
+        // For college-only instructors, use college_rate for overtime computation
+        $college_rate = isset($employee->college_rate) ? floatval($employee->college_rate) : 0;
+        $overtime_rate = $isCollegeOnlyForOT && $college_rate > 0 ? $college_rate : $rate_per_hour;
 
         $grace_period_default_minutes = 15;
 
@@ -719,9 +745,11 @@ class TimeKeepingController extends Controller
             // Tardiness (decimal hours)
             if ($tk->clock_in && $work_start_time) {
                 $date = $tk->date;
-                // Skip tardiness entirely on whole-day suspension
-                if (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day') {
-                    // no tardiness on whole-day observance
+                // Skip tardiness entirely on whole-day suspension or official holidays (null type)
+                $obsTypeForTard = $observanceTypeMap[$date] ?? null;
+                $isWholeDayForTard = isset($observanceSet[$date]) && ($obsTypeForTard === 'whole-day' || $obsTypeForTard === null || $obsTypeForTard === '');
+                if ($isWholeDayForTard) {
+                    // no tardiness on whole-day observance or official holidays
                 } else {
                     // default grace, override for rainy-day observance
                     $grace = $grace_period_default_minutes;
@@ -738,11 +766,18 @@ class TimeKeepingController extends Controller
                     }
                 }
             }
-            // Undertime (decimal hours)
+            // Undertime (decimal hours) - skip on holidays
             if ($tk->clock_out && $employee->work_end_time && strtotime($tk->clock_out) < strtotime($employee->work_end_time)) {
-                $early_minutes = (strtotime($employee->work_end_time) - strtotime($tk->clock_out)) / 60;
-                if ($early_minutes > 0) {
-                    $early_count += ($early_minutes / 60);
+                $date = $tk->date;
+                $obsTypeForUnder = $observanceTypeMap[$date] ?? null;
+                $isWholeDayForUnder = isset($observanceSet[$date]) && ($obsTypeForUnder === 'whole-day' || $obsTypeForUnder === null || $obsTypeForUnder === '');
+                $isAutomatedForUnder = isset($observanceSet[$date]) && (!empty($observanceAutomatedMap[$date]));
+                // Skip undertime on whole-day observances or official holidays
+                if (!$isWholeDayForUnder && !$isAutomatedForUnder) {
+                    $early_minutes = (strtotime($employee->work_end_time) - strtotime($tk->clock_out)) / 60;
+                    if ($early_minutes > 0) {
+                        $early_count += ($early_minutes / 60);
+                    }
                 }
             }
             // Overtime and Night Shift Differential (NSD)
@@ -753,7 +788,9 @@ class TimeKeepingController extends Controller
                 $date = $tk->date;
                 // Check holiday/observance: whole-day or automated holiday -> double pay for all worked hours
                 $isObservance = isset($observanceSet[$date]);
-                $isWholeDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day');
+                // Treat as whole-day if type is explicitly 'whole-day' OR if type is null/empty (official holidays like New Year's Day)
+                $obsType = $observanceTypeMap[$date] ?? null;
+                $isWholeDay = $isObservance && ($obsType === 'whole-day' || $obsType === null || $obsType === '');
                 $isAutomatedHoliday = $isObservance && (!empty($observanceAutomatedMap[$date]));
                 if (($isWholeDay || $isAutomatedHoliday) && !isset($holidayProcessed[$date])) {
                     // Compute earliest clock_in and latest clock_out for this date
@@ -866,11 +903,12 @@ class TimeKeepingController extends Controller
 
                     if ($pre22Hours > 0 || $post22Hours > 0) {
                         $dayOfWeek = date('N', strtotime($tk->date));
+                        // Use overtime_rate for college-only instructors (uses college_rate), otherwise use rate_per_hour
                         $basePayPerHour = ($dayOfWeek >= 1 && $dayOfWeek <= 5)
-                            ? ($rate_per_hour * 0.25)
-                            : ($rate_per_hour * 0.30);
+                            ? ($overtime_rate * 0.25)
+                            : ($overtime_rate * 0.30);
                         // NSD: +10% of base hourly rate on top of the OT rate
-                        $nsdPayPerHour = $basePayPerHour + ($rate_per_hour * 0.10);
+                        $nsdPayPerHour = $basePayPerHour + ($overtime_rate * 0.10);
 
                         // Count hours
                         $overtime_count += ($pre22Hours + $post22Hours);
@@ -1009,7 +1047,9 @@ class TimeKeepingController extends Controller
 
             // Skip whole-day or automated observances
             $isObservance = isset($observanceSet[$date]);
-            $isWholeDay = $isObservance && (isset($observanceTypeMap[$date]) && $observanceTypeMap[$date] === 'whole-day');
+            $obsType = isset($observanceTypeMap[$date]) ? $observanceTypeMap[$date] : null;
+            // Treat as whole-day if: explicit 'whole-day' type, OR observance exists with null type
+            $isWholeDay = $isObservance && ($obsType === 'whole-day' || $obsType === null);
             $isAutomatedHoliday = $isObservance && (!empty($observanceAutomatedMap[$date]));
             if ($isWholeDay || $isAutomatedHoliday) continue;
 
@@ -1035,81 +1075,67 @@ class TimeKeepingController extends Controller
                 continue;
             }
 
-            // If worked, compute deficit for college roles and treat as absence hours
-            if (!empty($sched['noTimes'])) {
-                // No explicit start/end: use total worked minus 1h break if any
-                $first = $tk->first(); $last = $tk->last();
-                $in = strtotime((string)($first->clock_in ?? $first->time_in ?? ''));
-                $out = strtotime((string)($last->clock_out ?? $last->time_out ?? ''));
-                if ($in && $out) {
-                    $worked = $out - $in; if ($worked < 0) $worked += 24*60*60;
-                    $workedMinusBreak = max(0, ($worked - 3600) / 60); // minutes
-                    if ($hasCollege) {
-                        $deficitMin = max(0, $expectedMin - (int)round($workedMinusBreak));
-                        $absent_hours += round($deficitMin / 60, 2);
-                    }
-                }
-                continue;
-            }
-
-            // Time-based schedule: compute workedMinusBreak and deficit when college
-            $first = $tk->first(); $last = $tk->last();
-            $in = strtotime((string)($first->clock_in ?? $first->time_in ?? ''));
-            $out = strtotime((string)($last->clock_out ?? $last->time_out ?? ''));
-            if ($in && $out) {
-                $worked = $out - $in; if ($worked < 0) $worked += 24*60*60;
-                $workedMinusBreak = max(0, ($worked - 3600)); // seconds
-                $workedMin = (int)round($workedMinusBreak / 60);
-                if ($hasCollege) {
-                    $deficitMin = max(0, $expectedMin - $workedMin);
-                    $absent_hours += round($deficitMin / 60, 2);
-                }
-            }
+            // If employee clocked in/out, they are present - no absence hours added
+            // Deficit handling (tardiness/undertime) is tracked separately above
         }
 
         $absences = $absent_hours;
 
         $hasData = $records->count() > 0;
-        // Calculate total_hours for all roles: sum of actual hours worked from time in/out (only on scheduled work days, minus 1 hour break per day if worked at least 4 hours)
+        // Calculate total_hours for all roles: sum of actual hours worked from time in/out (using merged schedules)
         $actualHoursWorked = 0;
+        $collegePaidHours = 0; // Track college-paid hours separately
+        
         foreach ($records as $tk) {
             $date = $tk->date;
             $dayOfWeekNum = date('w', strtotime($date));
             $dayOfWeekStr = $phpDayToStr[$dayOfWeekNum];
-            $workDay = $workDaysModels->get($dayOfWeekStr, $workDaysModels->get($dayOfWeekNum));
-            if (!$workDay) continue;
+            
+            // Use merged schedule (includes both work_days and college_schedules)
+            $sched = $schedByCode[$dayOfWeekStr] ?? null;
+            if (!$sched) continue; // Not a scheduled day
+            
             if (!empty($tk->clock_in) && !empty($tk->clock_out)) {
-                // Use scheduled start from workDay if available
-                $scheduledStart = !empty($workDay->work_start_time) ? strtotime($workDay->work_start_time) : null;
                 $in = strtotime($tk->clock_in);
                 $out = strtotime($tk->clock_out);
-                // If clock_in is earlier than scheduled start, use scheduled start
-                if ($scheduledStart && $in < $scheduledStart) {
-                    $in = $scheduledStart;
+                
+                // If schedule has start time and clock_in is earlier, use scheduled start
+                if (isset($sched['start']) && !$sched['noTimes']) {
+                    $scheduledStartSec = floor($sched['start'] / 60) * 3600 + ($sched['start'] % 60) * 60;
+                    $schedStartTime = strtotime(date('Y-m-d', strtotime($date)) . ' ' . gmdate('H:i:s', $scheduledStartSec));
+                    if ($in < $schedStartTime) {
+                        $in = $schedStartTime;
+                    }
                 }
+                
                 $worked = $out - $in;
                 if ($worked < 0) $worked += 24 * 60 * 60;
-                $hours = $worked / 3600;
 
                 // Define the fixed break end time and deduction duration
                 $fixedBreakEnd = strtotime('13:00:00'); // 1:00:00 PM
                 $breakDurationSeconds = 3600;             // 1 hour
 
-                // Check 1: Did the actual clock-out end strictly LATER THAN 1:00 PM?
-                // Note the change from >= to >
+                // Check if shift ends after 1 PM to apply lunch break
                 $actualShiftEndsAfterBreak = ($out > $fixedBreakEnd);
 
                 if ($actualShiftEndsAfterBreak) {
-                    // If yes, deduct the fixed 1 hour.
                     $finalDeductionSeconds = $breakDurationSeconds;
                 } else {
-                    // If no, deduct nothing.
                     $finalDeductionSeconds = 0;
                 }
 
                 $workedSeconds = $worked - $finalDeductionSeconds;
                 $hours = $workedSeconds / 3600;
                 $actualHoursWorked += max(0, $hours);
+                
+                // For college schedules, cap hours by expected duration for college_paid_hours
+                if ($hasCollege && $sched['noTimes']) {
+                    $expectedHours = $sched['durationMin'] / 60;
+                    $collegePaidHours += min(max(0, $hours), $expectedHours);
+                } elseif ($hasCollege) {
+                    // For time-based college schedules, count the hours (already includes lunch deduction)
+                    $collegePaidHours += max(0, $hours);
+                }
             }
         }
 
@@ -1128,15 +1154,25 @@ class TimeKeepingController extends Controller
         ];
         // --- END DEBUG BLOCK ---
 
+        // For college-only instructors without work_end_time, the overtime_pay_total loop won't calculate anything.
+        // Use the unified metrics overtime hours to compute overtime pay if the loop didn't calculate it.
+        if ($overtime_pay_total == 0 && $isCollegeOnlyForOT && $college_rate > 0) {
+            $otWeekdayHours = (float)($unifiedMetrics['overtime_count_weekdays'] ?? 0);
+            $otWeekendHours = (float)($unifiedMetrics['overtime_count_weekends'] ?? 0);
+            // overtime_weekday = college_rate * 0.25 * hours
+            // overtime_weekend = college_rate * 0.30 * hours
+            $overtime_pay_total = ($college_rate * 0.25 * $otWeekdayHours) + ($college_rate * 0.30 * $otWeekendHours);
+        }
+
         $response = [
             'success' => $hasData,
-            'tardiness' => round($late_count, 2),
-            'undertime' => round($early_count, 2),
-            'overtime' => round($overtime_count, 2),
-            'overtime_count_weekdays' => round($overtime_count_weekdays, 2),
-            'overtime_count_weekends' => round($overtime_count_weekends, 2),
-            'overtime_count_observances' => 0.0, // observance hours are paid separately as Double Pay
-            'absences' => round($absences, 2),
+            'tardiness' => $unifiedMetrics['tardiness'], // Use unified calculation
+            'undertime' => $unifiedMetrics['undertime'], // Use unified calculation
+            'overtime' => $unifiedMetrics['overtime'], // Use unified calculation
+            'overtime_count_weekdays' => $unifiedMetrics['overtime_count_weekdays'], // Use unified calculation
+            'overtime_count_weekends' => $unifiedMetrics['overtime_count_weekends'], // Use unified calculation
+            'overtime_count_observances' => $unifiedMetrics['overtime_count_observances'], // Use unified calculation
+            'absences' => $unifiedMetrics['absences'], // Use unified calculation
             'base_salary' => $base_salary,
             'rate_per_day' => $rate_per_day,
             'rate_per_hour' => $rate_per_hour,
@@ -1150,7 +1186,8 @@ class TimeKeepingController extends Controller
             'payroll_gross_pay' => $payroll ? $payroll->gross_pay : null,
             'payroll_total_deductions' => $payroll ? $payroll->total_deductions : null,
             'payroll_net_pay' => $payroll ? $payroll->net_pay : null,
-            'total_hours' => round($actualHoursWorked, 2),
+            'total_hours' => $unifiedMetrics['total_hours'], // Use unified calculation
+            'college_paid_hours' => $unifiedMetrics['college_paid_hours'], // Use unified calculation
             // Including work_hours_per_day for front-end conditional logic
             'work_hours_per_day' => $employee->work_hours_per_day,
 

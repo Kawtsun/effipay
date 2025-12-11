@@ -156,8 +156,19 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             } catch {
               // ignore
             }
-            // Fetch summary to get rate_per_hour, absences fallback, and holiday double pay amount
-            let summary: { rate_per_hour?: number; absences?: number; holiday_double_pay_amount?: number } | null = null;
+            // Fetch summary to get all attendance metrics from backend API
+            // This is the same source used by the Timekeeping Details dialog
+            let summary: {
+              rate_per_hour?: number;
+              tardiness?: number;
+              undertime?: number;
+              absences?: number;
+              overtime?: number;
+              overtime_count_weekdays?: number;
+              overtime_count_weekends?: number;
+              overtime_pay_total?: number;
+              holiday_double_pay_amount?: number;
+            } | null = null;
             try {
               const summaryRes = await fetch(`/timekeeping/employee/monthly-summary?employee_id=${emp.id}&month=${selectedMonth}`);
               const summaryJson = await summaryRes.json();
@@ -207,9 +218,12 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             const rateFromSummary = Number((summary as unknown as { rate_per_hour?: number })?.rate_per_hour ?? NaN);
             const baseMonthly = Number(result.payslip.base_salary ?? NaN);
             const whpd = Number((emp as Employees).work_hours_per_day ?? NaN) || 8;
+            // Use 262 divisor for Basic Education roles, 288 for others
+            const isBasicEducation = rolesStr.includes('basic education');
+            const divisor = isBasicEducation ? 262 : 288;
             const derivedHourly = Number.isFinite(rateFromSummary)
               ? Number(rateFromSummary)
-              : (Number.isFinite(baseMonthly) && whpd > 0 ? Number((((baseMonthly * 12) / 288) / whpd).toFixed(2)) : 0);
+              : (Number.isFinite(baseMonthly) && whpd > 0 ? Number((((baseMonthly * 12) / divisor) / whpd).toFixed(2)) : 0);
             // Display Rate Per Hour only for college roles (from payroll); hide for non-college
             const ratePerHour = hasCollege ? (result.payslip as unknown as { college_rate?: number }).college_rate : undefined;
             // Compose merged earnings (match single print logic)
@@ -224,58 +238,42 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
                 ? parseFloat((collegeHoursForGSP * Number(result.payslip.college_rate)).toFixed(2))
                 : undefined,
               honorarium: result.payslip.honorarium,
-              // Use metrics for consistency
-              tardiness: isCollegeOnly ? 0 : (metrics.tardiness ?? 0),
-              undertime: isCollegeOnly ? 0 : (metrics.undertime ?? 0),
+              // Use summary (from backend API) as the source of truth for attendance metrics
+              // This ensures print-all matches what the Timekeeping Details/Report dialog shows
+              // The backend API correctly handles observances/holidays
+              tardiness: Number(summary?.tardiness ?? 0) || 0,
+              undertime: Number(summary?.undertime ?? 0) || 0,
               // tardinessAmount and undertimeAmount computed below using derivedHourly for non-college
-              absences: (() => {
-                const m = Number(metrics.absences ?? NaN);
-                if (Number.isFinite(m) && m > 0) return m;
-                const s = Number(summary?.absences ?? NaN);
-                if (Number.isFinite(s) && s > 0) return s;
-                return Number(result.payslip.absences ?? 0) || 0;
-              })(),
+              absences: Number(summary?.absences ?? 0) || 0,
               absencesAmount: (() => {
-                const abs = (Number(metrics.absences ?? NaN) && Number(metrics.absences) > 0)
-                  ? Number(metrics.absences)
-                  : (Number(summary?.absences ?? NaN) && Number(summary?.absences) > 0 ? Number(summary?.absences) : Number(result.payslip.absences ?? 0));
+                const abs = Number(summary?.absences ?? 0) || 0;
                 if (isCollegeOnly) return parseFloat(((abs || 0) * Number(collegeRate || 0)).toFixed(2));
                 const rate = Number(derivedHourly) || 0;
                 if (rate > 0) return parseFloat(((abs || 0) * rate).toFixed(2));
-                return (result.payslip.absences_amount ?? result.payslip.absencesAmount);
+                return 0;
               })(),
               tardinessAmount: (() => {
-                if (isCollegeOnly) return 0;
-                const rate = Number(derivedHourly) || 0;
-                if (rate > 0) return parseFloat(((Number(metrics.tardiness ?? 0)) * rate).toFixed(2));
-                return (result.payslip.tardiness_amount ?? result.payslip.tardinessAmount);
+                const tard = Number(summary?.tardiness ?? 0) || 0;
+                const rate = isCollegeOnly ? Number(collegeRate || 0) : Number(derivedHourly) || 0;
+                if (rate > 0) return parseFloat((tard * rate).toFixed(2));
+                return 0;
               })(),
               undertimeAmount: (() => {
-                if (isCollegeOnly) return 0;
-                const rate = Number(derivedHourly) || 0;
-                if (rate > 0) return parseFloat(((Number(metrics.undertime ?? 0)) * rate).toFixed(2));
-                return (result.payslip.undertime_amount ?? result.payslip.undertimeAmount);
+                const under = Number(summary?.undertime ?? 0) || 0;
+                const rate = isCollegeOnly ? Number(collegeRate || 0) : Number(derivedHourly) || 0;
+                if (rate > 0) return parseFloat((under * rate).toFixed(2));
+                return 0;
               })(),
-              overtime: isCollegeOnly ? 0 : (metrics.overtime ?? 0),
-              overtime_hours: isCollegeOnly ? 0 : (metrics.overtime ?? result.payslip.overtime_hours ?? 0),
+              overtime: Number(summary?.overtime ?? 0) || 0,
+              overtime_hours: Number(summary?.overtime ?? 0) || 0,
               overtime_pay_total: (() => {
-                if (isCollegeOnly) return 0;
                 // Prefer server-computed overtime that includes Night Shift Differential after 10 PM
                 const summaryExt = (summary as unknown as { overtime_pay_total?: number }) || null;
                 const summaryOT = Number(summaryExt?.overtime_pay_total ?? 0);
-                if (summaryOT > 0) return summaryOT;
-                const fromPayroll = Number(((result as unknown as { payslip: { overtime_pay?: number } }).payslip?.overtime_pay) ?? 0);
-                if (fromPayroll > 0) return fromPayroll;
-                const rate = Number(derivedHourly) || 0;
-                const weekdayOT = Number(metrics.overtime_count_weekdays ?? 0) || 0;
-                const weekendOT = Number(metrics.overtime_count_weekends ?? 0) || 0;
-                if (rate > 0) {
-                  return parseFloat((rate * ((0.25 * weekdayOT) + (0.30 * weekendOT))).toFixed(2));
-                }
-                return 0;
+                return summaryOT;
               })(),
-              overtime_count_weekdays: isCollegeOnly ? 0 : (metrics.overtime_count_weekdays ?? 0),
-              overtime_count_weekends: isCollegeOnly ? 0 : (metrics.overtime_count_weekends ?? 0),
+              overtime_count_weekdays: Number((summary as unknown as { overtime_count_weekdays?: number })?.overtime_count_weekdays ?? 0) || 0,
+              overtime_count_weekends: Number((summary as unknown as { overtime_count_weekends?: number })?.overtime_count_weekends ?? 0) || 0,
               gross_pay: result.payslip.gross_pay,
               net_pay: result.payslip.net_pay,
               // Display double pay under Other: Adjustment by adding it to any manual adjustment
@@ -502,9 +500,9 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               payPeriod: selectedMonth,
               records,
               totalHours,
-              tardiness: isCollegeOnly ? 0 : (metrics.tardiness ?? 0),
-              undertime: isCollegeOnly ? 0 : (metrics.undertime ?? 0),
-              overtime: isCollegeOnly ? 0 : (metrics.overtime ?? 0),
+              tardiness: (metrics.tardiness ?? 0),
+              undertime: (metrics.undertime ?? 0),
+              overtime: (metrics.overtime ?? 0),
               absences: metrics.absences ?? 0,
             };
           } catch (err) {

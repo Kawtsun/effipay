@@ -31,6 +31,8 @@ type Props = {
 		honorarium?: number | null;
 		/** Other adjustments applied to payroll (positive or negative) */
 		adjustments?: number | null;
+		/** 13th month pay */
+		thirteenth_month_pay?: number | null;
 		sss?: number | null;
 		philhealth?: number | null;
 		pag_ibig?: number | null;
@@ -521,6 +523,20 @@ export default function ReportCards({
 													<Badge variant="outline" className="gap-1">
 														<PhilippinePeso className="h-3.5 w-3.5" />
 														<span className="font-medium tabular-nums">{formatAmountPlain(adj)}</span>
+													</Badge>
+												</div>
+											);
+										})()}
+										{/* 13th Month Pay row (conditionally rendered - shown below adjustments if present, else below double pay) */}
+										{(() => {
+											const thirteenthMonth = Number(selectedPayroll?.thirteenth_month_pay ?? NaN);
+											if (!Number.isFinite(thirteenthMonth) || thirteenthMonth === 0) return null;
+											return (
+												<div className="flex items-center justify-between">
+													<span className="text-muted-foreground whitespace-nowrap">13th Month Pay</span>
+													<Badge variant="outline" className="gap-1">
+														<PhilippinePeso className="h-3.5 w-3.5" />
+														<span className="font-medium tabular-nums">{formatAmountPlain(thirteenthMonth)}</span>
 													</Badge>
 												</div>
 											);

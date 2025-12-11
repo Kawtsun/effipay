@@ -43,11 +43,13 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                 DB::raw('ROUND(payrolls.honorarium, 2) as honorarium'),
                 DB::raw('ROUND(employees.base_salary, 2) as rate_per_month'),
                 DB::raw('ROUND(employees.base_salary / 22, 2) as rate_per_day'),
-                DB::raw('ROUND(((payrolls.tardiness + payrolls.absences) * (employees.base_salary / 22 / NULLIF(employees.work_hours_per_day,0))), 2) as total_late_absences'),
+                // Use 262 divisor for Basic Education roles, 288 for others
+                DB::raw('ROUND(((payrolls.tardiness + payrolls.undertime + payrolls.absences) * ((employees.base_salary * 12 / CASE WHEN LOWER(employees.roles) LIKE \'%basic education%\' THEN 262 ELSE 288 END) / NULLIF(employees.work_hours_per_day,0))), 2) as total_late_absences'),
                 DB::raw('ROUND(payrolls.gross_pay, 2) as gross_pay'),
                 DB::raw('ROUND(payrolls.sss, 2) as sss_premium'),
                 DB::raw('ROUND(payrolls.sss_salary_loan, 2) as sss_salary_loan'),
                 DB::raw('ROUND(payrolls.sss_calamity_loan, 2) as sss_calamity_loan'),
+                DB::raw('ROUND(payrolls.pag_ibig, 2) as pagibig_contribution'),
                 DB::raw('ROUND(payrolls.pagibig_multi_loan, 2) as pagibig_salary_loan'),
                 DB::raw('ROUND(payrolls.pagibig_calamity_loan, 2) as pagibig_calamity_loan'),
                 DB::raw('ROUND(payrolls.philhealth, 2) as philhealth_premium'),
@@ -89,6 +91,7 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                 'sss_premium' => $r->sss_premium,
                 'sss_salary_loan' => $r->sss_salary_loan,
                 'sss_calamity_loan' => $r->sss_calamity_loan,
+                'pagibig_contribution' => $r->pagibig_contribution,
                 'pagibig_salary_loan' => $r->pagibig_salary_loan,
                 'pagibig_calamity_loan' => $r->pagibig_calamity_loan,
                 'philhealth_premium' => $r->philhealth_premium,
@@ -105,7 +108,7 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
 
         // Compute totals for each group
         $colKeys = [
-            'honorarium','rate_per_month','rate_per_day','total_late_absences','gross_pay','sss_premium','sss_salary_loan','sss_calamity_loan','pagibig_salary_loan','pagibig_calamity_loan','philhealth_premium','withholding_tax','cash_advance','ar_tuition','chinabank_loan','loan','fees','total_deductions','net_pay'
+            'honorarium','rate_per_month','rate_per_day','total_late_absences','gross_pay','sss_premium','sss_salary_loan','sss_calamity_loan','pagibig_contribution','pagibig_salary_loan','pagibig_calamity_loan','philhealth_premium','withholding_tax','cash_advance','ar_tuition','chinabank_loan','loan','fees','total_deductions','net_pay'
         ];
 
         $sumGroup = function ($rows) use ($colKeys) {
@@ -216,7 +219,7 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                 $sheet->getPageMargins()->setTop(0.75)->setRight(0.25)->setLeft(0.25)->setBottom(0.75);
 
                 // --- CUSTOM HEADERS (ROWS 1-3) ---
-                $highestColumn = 'T'; // Manually define highest column based on new layout
+                $highestColumn = 'U'; // Manually define highest column based on new layout
                 $sheet->setCellValue('A1', 'TOMAS CLAUDIO COLLEGES');
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(12);
 
@@ -244,23 +247,23 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                 // --- CREATE MULTI-ROW TABLE HEADERS (ROW 5-6) ---
                 $headersRow6 = [
                     'A' => 'NAME', 'B' => 'HONORARIUM', 'C' => 'RATE PER MONTH', 'D' => 'RATE PER DAY', 'E' => 'TOTAL LATE & ABSENCES',
-                    'F' => 'GROSS', 'G' => 'SSS PREMIUM', 'H' => 'SSS SALARY LOAN', 'I' => 'SSS CALAMITY LOAN', 'J' => 'PAG-IBIG SALARY LOAN',
-                    'K' => 'PAG-IBIG CALAMITY', 'L' => 'PHILHEALTH PREMIUM', 'M' => 'WITHOLDING TAX', 'N' => 'CASH ADVANCE', 'O' => 'A/R-Tuition',
-                    'P' => 'CHINABANK LOAN', 'Q' => 'TEA', 'S' => 'TOTAL DEDUCTIONS', 'T' => 'NET PAY'
+                    'F' => 'GROSS', 'G' => 'SSS PREMIUM', 'H' => 'SSS SALARY LOAN', 'I' => 'SSS CALAMITY LOAN', 'J' => 'PAG-IBIG CONTRIBUTION',
+                    'K' => 'PAG-IBIG SALARY LOAN', 'L' => 'PAG-IBIG CALAMITY', 'M' => 'PHILHEALTH PREMIUM', 'N' => 'WITHOLDING TAX', 'O' => 'CASH ADVANCE', 'P' => 'A/R-Tuition',
+                    'Q' => 'CHINABANK LOAN', 'R' => 'TEA', 'T' => 'TOTAL DEDUCTIONS', 'U' => 'NET PAY'
                 ];
                 foreach ($headersRow6 as $col => $text) {
                     $sheet->setCellValue($col . '6', $text);
                 }
-                $sheet->setCellValue('Q7', 'LOAN');
-                $sheet->setCellValue('R7', 'FEES');
+                $sheet->setCellValue('R7', 'LOAN');
+                $sheet->setCellValue('S7', 'FEES');
                 
                 // Merge cells for single headers (spanning rows 5 and 6)
-                $singleHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'S', 'T'];
+                $singleHeaders = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'T', 'U'];
                 foreach ($singleHeaders as $col) {
                     $sheet->mergeCells("{$col}6:{$col}7");
                 }
                 // Merge cell for the "TEA" parent header
-                $sheet->mergeCells('Q6:R6');
+                $sheet->mergeCells('R6:S6');
 
                 // --- GLOBAL & HEADER STYLES ---
                 $sheet->getParent()->getDefaultStyle()->getFont()->setName('Arial')->setSize(10);
@@ -276,7 +279,9 @@ class AdminBasicEdPayrollExport implements FromCollection, WithTitle, WithEvents
                 $sheet->getStyle('A6:' . $highestColumn . '7')->applyFromArray($headerStyle);
                 // Set font color for deduction header columns to red
                 $sheet->getStyle('E6:E7')->getFont()->getColor()->setRGB('FF0000');
-                $sheet->getStyle('G6:S7')->getFont()->getColor()->setRGB('FF0000');
+                $sheet->getStyle('G6:T7')->getFont()->getColor()->setRGB('FF0000');
+                // Set font size 9 for Pag-IBIG Contribution header (column J)
+                $sheet->getStyle('J6:J7')->getFont()->setSize(9);
 
 
                 // --- COLUMN WIDTHS ---

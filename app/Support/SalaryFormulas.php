@@ -89,7 +89,7 @@ class SalaryFormulas
     public static function calculatePhilHealth(float $baseSalary): float
     {
         $val = ($baseSalary * 0.05) / 2.0; // 5% total; employee share is half
-        $val = max(250.0, min(2500.0, $val));
+        $val = max(250.0, min(2500.0, $val)); // Enforce minimum ₱250 and maximum ₱2,500
         return round($val, 2);
     }
 }

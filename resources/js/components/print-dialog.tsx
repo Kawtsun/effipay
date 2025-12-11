@@ -27,6 +27,7 @@ interface Payroll {
     tardiness?: number;
     undertime?: number;
     absences?: number;
+    overtime?: number; // overtime hours stored in payroll
     overtime_pay?: number;
     adjustments?: number;
     sss?: string;
@@ -137,6 +138,8 @@ const fetchPayrollData = async (employeeId: number, month: string): Promise<Pays
             tardiness: payroll.tardiness ?? 0,
             undertime: payroll.undertime ?? 0,
             absences: payroll.absences ?? 0,
+            // Overtime hours stored in the payroll record
+            overtime: payroll.overtime ?? 0,
             // Prefer overtime_pay_total if present; fallback to legacy field name
             overtime_pay_total: ((payroll as unknown as { overtime_pay_total?: number; overtime_pay?: number; }).overtime_pay_total
               ?? (payroll as unknown as { overtime_pay_total?: number; overtime_pay?: number; }).overtime_pay
@@ -292,13 +295,13 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
     const mObj = metrics as unknown as { college_paid_hours?: number };
     const collegeHours = typeof mObj.college_paid_hours === 'number' ? Number(mObj.college_paid_hours) : NaN;
 
-    const tardinessRaw = metrics.tardiness ?? 0;
-        const undertimeRaw = metrics.undertime ?? 0;
-    // Fallback to monthly summary absences if metrics unexpectedly yields 0/undefined
-    const absencesFromSummary = Number(timekeepingSummary?.absences ?? 0) || 0;
-    const absences = Number(metrics.absences ?? NaN);
-    const effectiveAbsences = Number.isFinite(absences) && absences > 0 ? absences : absencesFromSummary;
-        const overtimeRaw = metrics.overtime ?? 0;
+    // Use timekeepingSummary (from backend API) as the source of truth for payslip display
+    // This ensures payslip always matches what the Timekeeping Details/Report dialog shows
+    // The backend API correctly handles observances/holidays and excludes them from absences
+    const tardinessRaw = Number(timekeepingSummary?.tardiness ?? 0) || 0;
+    const undertimeRaw = Number(timekeepingSummary?.undertime ?? 0) || 0;
+    const effectiveAbsences = Number(timekeepingSummary?.absences ?? 0) || 0;
+    const overtimeRaw = Number(timekeepingSummary?.overtime ?? 0) || 0;
         // Hours for College/GSP amount calculation: strictly college-paid hours;
         // Hours for display: if college-paid hours are missing, fall back to total_hours to avoid showing 0.00
         // Prefer the exact hours used by payroll for College/GSP when a college role exists
@@ -314,20 +317,22 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
     const weekendOT = Number(metrics.overtime_count_weekends ?? 0) || 0;
         const numHoursDisplay = Number.isFinite(hoursForDisplayRaw) ? hoursForDisplayRaw : 0;
 
-        // Apply college-only rule: no tardiness, undertime, or overtime; only absences count
-        const tardiness = isCollegeOnly ? 0 : tardinessRaw;
-        const undertime = isCollegeOnly ? 0 : undertimeRaw;
-    const overtime = isCollegeOnly ? 0 : overtimeRaw;
+        const tardiness = tardinessRaw;
+        const undertime = undertimeRaw;
+    const overtime = overtimeRaw;
 
         const effectiveCollegeRate = (data.earnings.collegeRate ?? payrollCollegeRate ?? 0) as number;
         // Derive non-college hourly rate from base salary when needed (match backend formula)
         const rateFromSummary = Number((timekeepingSummary as unknown as { rate_per_hour?: number })?.rate_per_hour ?? NaN);
         const baseMonthly = Number(data.earnings?.monthlySalary ?? NaN);
         const whpd = Number(employee?.work_hours_per_day ?? NaN) || 8;
+        // Use 262 divisor for Basic Education roles, 288 for others
+        const isBasicEducation = rolesStr.includes('basic education');
+        const divisor = isBasicEducation ? 262 : 288;
         const derivedHourly = Number.isFinite(rateFromSummary)
             ? Number(rateFromSummary)
             : (Number.isFinite(baseMonthly) && whpd > 0
-                ? Number((((baseMonthly * 12) / 288) / whpd).toFixed(2))
+                ? Number((((baseMonthly * 12) / divisor) / whpd).toFixed(2))
                 : 0);
         // Display: only show rate per hour for college (from payroll.college_rate); hide for non-college
         const ratePerHour = hasCollege ? (data.earnings?.ratePerHour ?? undefined) : undefined;
@@ -356,9 +361,11 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                         const tkExt = (timekeepingSummary as unknown as { overtime_pay_total?: number }) || null;
                         const serverOTTotal = Number(tkExt?.overtime_pay_total ?? NaN);
                         const numericOvertimeFromPayroll = Number(data.earnings?.overtime_pay_total ?? NaN);
-                        // Fallback formula for non-college only when no server/payroll value is available
-                        const computedOTFallback = (!isCollegeOnly && Number(derivedHourly) > 0)
-                            ? parseFloat((Number(derivedHourly) * ((0.25 * weekdayOT) + (0.30 * weekendOT))).toFixed(2))
+                        // Fallback formula when no server/payroll value is available
+                        // Use college rate for college-only, otherwise use derived hourly rate
+                        const fallbackRate = isCollegeOnly ? Number(effectiveCollegeRate) : Number(derivedHourly);
+                        const computedOTFallback = (fallbackRate > 0)
+                            ? parseFloat((fallbackRate * ((0.25 * weekdayOT) + (0.30 * weekendOT))).toFixed(2))
                             : 0;
                         const overtime_pay_total = Number.isFinite(serverOTTotal)
                             ? Number(serverOTTotal.toFixed(2))
@@ -391,8 +398,8 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                                         overtime_pay_total,
                     overtime,
                     overtime_hours: overtime,
-                    overtime_count_weekdays: isCollegeOnly ? 0 : weekdayOT,
-                    overtime_count_weekends: isCollegeOnly ? 0 : weekendOT,
+                    overtime_count_weekdays: weekdayOT,
+                    overtime_count_weekends: weekendOT,
                                         gross_pay: (data.totalEarnings !== undefined && data.totalEarnings !== null && data.totalEarnings !== '') ? data.totalEarnings : (typeof data.earnings?.gross_pay !== 'undefined' ? data.earnings.gross_pay : undefined),
                     net_pay: (data.netPay !== undefined && data.netPay !== null && data.netPay !== '') ? data.netPay : (typeof data.earnings?.net_pay !== 'undefined' ? data.earnings.net_pay : undefined),
                     // Show double pay under "Other: Adjustment" by adding it to any manual adjustment
@@ -512,9 +519,9 @@ export default function PrintDialog({ open, onClose, employee }: PrintDialogProp
                         // Round to 2 decimals before rendering to match Attendance/Report cards
                         setBtrTotalHours(Number(Number(displayHours).toFixed(2)));
                         setBtrMetrics({
-                                tardiness: isCollegeOnly ? 0 : (metricsBTR.tardiness ?? 0),
-                                undertime: isCollegeOnly ? 0 : (metricsBTR.undertime ?? 0),
-                                overtime: isCollegeOnly ? 0 : (metricsBTR.overtime ?? 0),
+                                tardiness: (metricsBTR.tardiness ?? 0),
+                                undertime: (metricsBTR.undertime ?? 0),
+                                overtime: (metricsBTR.overtime ?? 0),
                                 absences: metricsBTR.absences ?? 0,
                         });
 
