@@ -468,13 +468,15 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
             const metrics = await computeMonthlyMetrics(emp as Employees, selectedMonth, recordsForMetrics, observances);
             // Fetch monthly payroll to get the exact college hours used by payroll run
             let payrollCollegeHoursBTR: number | undefined = undefined;
+            let payrollAbsencesBTR: number | undefined = undefined;
             try {
               const monthlyRes = await fetch(route('payroll.employee.monthly', { employee_id: emp.id, month: selectedMonth }));
               const monthlyJson = await monthlyRes.json();
               if (monthlyJson?.success && Array.isArray(monthlyJson.payrolls) && monthlyJson.payrolls.length > 0) {
-                const latest = (monthlyJson.payrolls as Array<{ payroll_date: string; college_total_hours?: number }>).
+                const latest = (monthlyJson.payrolls as Array<{ payroll_date: string; college_total_hours?: number; absences?: number }>).
                   reduce((a, b) => new Date(b.payroll_date) > new Date(a.payroll_date) ? b : a, monthlyJson.payrolls[0]);
                 if (typeof latest?.college_total_hours === 'number') payrollCollegeHoursBTR = Number(latest.college_total_hours);
+                if (typeof latest?.absences === 'number') payrollAbsencesBTR = Number(latest.absences);
               }
             } catch { /* ignore */ }
             const rolesStr = (emp.roles || '').toLowerCase();
@@ -503,7 +505,7 @@ const PrintAllDialog: React.FC<PrintAllDialogProps> = ({ open, onClose }) => {
               tardiness: (metrics.tardiness ?? 0),
               undertime: (metrics.undertime ?? 0),
               overtime: (metrics.overtime ?? 0),
-              absences: metrics.absences ?? 0,
+              absences: payrollAbsencesBTR !== undefined ? payrollAbsencesBTR : (metrics.absences ?? 0),
             };
           } catch (err) {
             console.error(`Error fetching BTR for employee ${emp.id}:`, err);
