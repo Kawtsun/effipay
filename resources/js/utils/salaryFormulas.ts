@@ -48,15 +48,17 @@ export function calculateOvertimePay(date: string, baseAmount: number): number {
     }
 }
 // Calculates rate per day (default: base salary)
-export function calculateRatePerDay(baseSalary: number): number {
-    // Formula: (baseSalary * 12) / 288
-    return parseFloat(((baseSalary * 12) / 288).toFixed(2));
+// Use divisor 262 for Basic Education roles, 288 for others
+export function calculateRatePerDay(baseSalary: number, role?: string): number {
+    const isBasicEducation = role ? role.toLowerCase().includes('basic education') : false;
+    const divisor = isBasicEducation ? 262 : 288;
+    return parseFloat(((baseSalary * 12) / divisor).toFixed(2));
 }
 
 // Calculates rate per hour (base salary divided by work hours per day)
-export function calculateRatePerHour(baseSalary: number, workHoursPerDay: number): number {
+export function calculateRatePerHour(baseSalary: number, workHoursPerDay: number, role?: string): number {
     // Formula: rate per day divided by 8
-    const ratePerDay = calculateRatePerDay(baseSalary);
+    const ratePerDay = calculateRatePerDay(baseSalary, role);
     return parseFloat((ratePerDay / 8).toFixed(2));
 }
 export function calculateSSS(base_salary: number): number {
@@ -130,7 +132,8 @@ export function calculateSSS(base_salary: number): number {
 }
 
 export function calculatePhilHealth(baseSalary: number): number {
-    return parseFloat(Math.max(250, Math.min(2500, (baseSalary * 0.05) / 2)).toFixed(2));
+    const val = (baseSalary * 0.05) / 2;
+    return parseFloat(Math.max(250, Math.min(2500, val)).toFixed(2)); // Enforce minimum ₱250 and maximum ₱2,500
 }
 
 export function calculateWithholdingTax(baseSalary: number, sss: number, pagIbig: number, philhealth: number): number {

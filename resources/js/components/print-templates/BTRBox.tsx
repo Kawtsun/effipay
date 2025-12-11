@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   },
   tableContainer: {
     marginTop: 12,
-    marginBottom: 18,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 8,
@@ -61,8 +61,8 @@ const styles = StyleSheet.create({
   },
   tableHeaderCell: {
     fontWeight: 'bold',
-    fontSize: 8,
-    padding: 6,
+    fontSize: 7,
+    padding: 5,
     color: '#222',
     flex: 1,
     textAlign: 'left',
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 16,
+    minHeight: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
@@ -87,8 +87,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   tableCell: {
-    padding: 6,
-    fontSize: 8,
+    padding: 5,
+    fontSize: 7,
     flex: 1,
     textAlign: 'left',
     color: '#222',
@@ -150,7 +150,7 @@ const getPayPeriodString = (period?: string) => {
     const match = period.match(/^(\d{4})-(\d{2})/);
     if (match) {
       year = parseInt(period.substring(0, 4), 10);
-      month = parseInt(match[1], 10);
+      month = parseInt(match[2], 10);
     }
   }
   const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' });
@@ -261,7 +261,7 @@ const BTRBox: React.FC<BTRBoxProps> = ({
         <View style={styles.tableHeaderRow}>
           <Text style={[styles.tableHeaderCell, styles.tableHeaderCellLeft, styles.dateCell]}>Date</Text>
           <Text style={styles.tableHeaderCell}>Time In</Text>
-          <Text style={[styles.tableHeaderCell, styles.tableHeaderCellRight]}>Time Out</Text>
+          <Text style={styles.tableHeaderCell}>Time Out</Text>
         </View>
         {Array.from({ length: daysInMonth }, (_, i) => {
           const day = i + 1;
@@ -299,9 +299,9 @@ const BTRBox: React.FC<BTRBoxProps> = ({
         })}
       </View>
       <View style={{marginBottom: 2 }}>
-        <Text style={{ fontWeight: 'bold', fontSize: 8 }}>Summary:</Text>
+        <Text style={{ fontWeight: 'bold', fontSize: 7 }}>Summary:</Text>
       </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 0, marginBottom: 0, fontSize: 8 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 0, marginBottom: 0, fontSize: 7 }}>
         <Text style={{ flex: 1, textAlign: 'left' }}>
           TOTAL HOURS: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(totalHours))}</Text>
         </Text>
@@ -318,29 +318,35 @@ const BTRBox: React.FC<BTRBoxProps> = ({
           ABSENCES: <Text style={{ fontWeight: 'bold' }}>{formatWithCommas(getNum(absences))}</Text>
         </Text>
       </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 20, marginBottom: 0 }}>
+
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 18, marginBottom: 0 }}>
         <View style={{ flex: 1, alignItems: 'flex-start' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text>CONFORME:</Text>
-            <View style={{ borderBottomWidth: 1, borderColor: '#222', minWidth: 120, marginLeft: 4, marginRight: 4 }}>
-              <Text style={{ color: 'transparent' }}>{' '.repeat(32)}</Text>
+            <Text style={{ fontSize: 7 }}>CONFORME:</Text>
+            <View style={{ borderBottomWidth: 1, borderColor: '#222', minWidth: 80, marginLeft: 2, marginRight: 2 }}>
+              <Text style={{ color: 'transparent', fontSize: 7 }}>{' '.repeat(20)}</Text>
             </View>
           </View>
-          <View style={{ alignItems: 'center', marginTop: 2, minWidth: 120, marginLeft: 60 }}>
-            <Text style={{ fontSize: 7 }}>(Signature over Printed Name)</Text>
+          <View style={{ alignItems: 'center', marginTop: 1, minWidth: 80, marginLeft: 50 }}>
+            <Text style={{ fontSize: 6 }}>(Signature over Printed Name)</Text>
           </View>
         </View>
-        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+        <View style={{ flex: 1, alignItems: 'flex-end'}}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <Text>VERIFIED:</Text>
-            <View style={{ borderBottomWidth: 1, borderColor: '#222', minWidth: 120, marginLeft: 4, marginRight: 4 }}>
-              <Text style={{ color: 'transparent' }}>{' '.repeat(32)}</Text>
+            <Text style={{ fontSize: 7 }}>VERIFIED:</Text>
+            <View style={{ borderBottomWidth: 1, borderColor: '#222', minWidth: 80, marginLeft: 2, marginRight: 2 }}>
+              <Text style={{ color: 'transparent', fontSize: 7 }}>{' '.repeat(20)}</Text>
             </View>
           </View>
-          <View style={{ alignItems: 'center', marginTop: 2, minWidth: 120, marginRight: 0 }}>
-            <Text style={{ fontSize: 7 }}>(Signature over Printed Name)</Text>
+          <View style={{ alignItems: 'center', marginTop: 2, minWidth: 80, marginRight: 0 }}>
+            <Text style={{ fontSize: 6 }}>(Signature over Printed Name)</Text>
           </View>
         </View>
+      </View>
+
+      {/* System Generated Message - Bottom Right */}
+      <View style={{ marginTop: 7, alignItems: 'flex-end' }}>
+        <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>This is a system generated document</Text>
       </View>
     </View>
   );

@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { Employees } from "@/types";
 
-export type ObservanceMap = Record<string, { type?: string; start_time?: string }>
+export type ObservanceMap = Record<string, { type?: string | null; label?: string; start_time?: string }>
 
 export type TimeKeepingMetrics = {
   tardiness: number;
@@ -66,7 +66,7 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
         for (const o of arr) {
           const d = (o?.date || "").slice(0, 10);
           if (!d || (month && d.slice(0, 7) !== month.slice(0, 7))) continue;
-          map[d] = { type: o?.type || o?.label, start_time: o?.start_time };
+          map[d] = { type: o?.type, label: o?.label, start_time: o?.start_time };
         }
         setObservanceMap(map);
         const sr = sumRes && sumRes.success ? {
@@ -148,7 +148,9 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
       const isHalfByKeyword = type.includes("half") || type.includes("eve");
       const isWholeByKeyword = type.includes("whole");
       const isHalf = hasStart || isHalfByKeyword;
-      const isWhole = isWholeByKeyword || (!isHalf && type.includes("holiday"));
+      // Treat as whole-day if: explicit "whole" keyword, OR "holiday" keyword, OR observance exists with null/undefined/empty type
+      const hasNoType = obs && !obs.type; // Covers null, undefined, and empty string
+      const isWhole = isWholeByKeyword || (!isHalf && type.includes("holiday")) || (!isHalf && hasNoType);
       return { isHalf, isWhole, startMin: hasStart ? startMinVal : undefined } as const;
     };
 
@@ -231,6 +233,9 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
       }
       const code = codeFromDate(d);
       const sched = schedByCode[code];
+      // Skip days that are not in the work schedule
+      if (!sched) continue;
+      
       const rec = map[dateStr];
       const timeIn = parseClock(rec?.clock_in ?? rec?.time_in);
       const timeOut = parseClock(rec?.clock_out ?? rec?.time_out);
@@ -241,11 +246,20 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
         const workedRaw = hasBoth ? diffMin(timeIn, timeOut) : 0;
         if (sched.noTimes) {
           const expectedDuration = Math.max(0, sched.durationMin);
-          const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
+          const workedRaw = hasBoth ? diffMin(timeIn, timeOut) : 0;
+          // Only deduct lunch if shift spans across the 12:00-13:00 lunch period
+          const lunchStart = 12 * 60; // 12:00
+          const lunchEnd = 13 * 60;   // 13:00
+          let workedMinusBreak = workedRaw;
+          if (hasBoth && timeIn < lunchEnd && timeOut > lunchStart && workedRaw > 60) {
+            workedMinusBreak = Math.max(0, workedRaw - 60);
+          }
+          
           if (obsInfo.isWhole || obsInfo.isHalf) {
-            totalWorkedMin += workedRaw;
+            totalWorkedMin += workedMinusBreak;
             if (hasBoth) {
-              otMin += workedRaw; otObservanceMin += workedRaw; // Observance: double pay bucket
+              // Holiday hours go to double pay bucket only, NOT to overtime
+              otObservanceMin += workedMinusBreak;
             }
             continue;
           }
@@ -253,23 +267,32 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           totalWorkedMin += workedMinusBreak;
           // College/GSP paid hours for no-times entries: cap actual worked by expected college minutes
           collegePaidMin += Math.min(workedMinusBreak, expectedDuration);
-          if (isCollegeOnly || isCollegeMulti) {
-            const deficit = Math.max(0, expectedDuration - workedMinusBreak);
-            absentMin += deficit;
-            if (!isCollegeOnly) {
-              const over = Math.max(0, workedMinusBreak - expectedDuration);
-              otMin += over; if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
-            }
-          } else {
-            const under = Math.max(0, expectedDuration - workedMinusBreak);
-            const over = Math.max(0, workedMinusBreak - expectedDuration);
-            underMin += under; otMin += over; if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
+          // Track undertime for all roles (for college, it will be added to absences)
+          const under = Math.max(0, expectedDuration - workedMinusBreak);
+          underMin += under;
+          // Track overtime when worked hours exceed scheduled hours
+          // For college-only: only count if excess is at least 1 hour (60 minutes), then count full excess
+          const excess = workedMinusBreak - expectedDuration;
+          const over = isCollegeOnly ? (excess >= 60 ? excess : 0) : Math.max(0, excess);
+          if (over > 0) {
+            otMin += over;
+            if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
           }
           continue;
         }
 
-  if (obsInfo.isWhole) { if (hasBoth) { totalWorkedMin += workedRaw; otMin += workedRaw; otObservanceMin += workedRaw; } continue; }
-  if (obsInfo.isHalf) { if (hasBoth) { totalWorkedMin += workedRaw; otMin += workedRaw; otObservanceMin += workedRaw; } continue; }
+  if (obsInfo.isWhole) { 
+    const workedMinusBreakObs = hasBoth ? Math.max(0, workedRaw - 60) : 0;
+    // Holiday hours go to double pay bucket only, NOT to overtime
+    if (hasBoth) { totalWorkedMin += workedMinusBreakObs; otObservanceMin += workedMinusBreakObs; } 
+    continue; 
+  }
+  if (obsInfo.isHalf) { 
+    const workedMinusBreakObs = hasBoth ? Math.max(0, workedRaw - 60) : 0;
+    // Holiday hours go to double pay bucket only, NOT to overtime
+    if (hasBoth) { totalWorkedMin += workedMinusBreakObs; otObservanceMin += workedMinusBreakObs; } 
+    continue; 
+  }
 
         const workedMinusBreak = hasBoth ? Math.max(0, workedRaw - 60) : 0;
         totalWorkedMin += workedMinusBreak;
@@ -310,11 +333,29 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
           collegePaidMin += paidToday;
         }
 
-        if (isCollegeOnly || (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > sched.durationMin))) {
-          const expected = (isCollegeMulti && (sched.extraCollegeDurMin ?? 0) > 0) ? Math.max(sched.durationMin, sched.extraCollegeDurMin || 0) : sched.durationMin;
-          const deficit = Math.max(0, expected - workedMinusBreak);
-          absentMin += deficit;
-          if (!isCollegeOnly) { const over = Math.max(0, workedMinusBreak - expected); otMin += over; otWeekdayMin += over; }
+        if (isCollegeMulti && (sched.isCollege || (sched.extraCollegeDurMin ?? 0) > sched.durationMin)) {
+          const expected = Math.max(sched.durationMin, sched.extraCollegeDurMin || 0);
+          // Employee clocked in/out, so they are present - no deficit counted as absence
+          const over = Math.max(0, workedMinusBreak - expected);
+          otMin += over; otWeekdayMin += over;
+          continue;
+        }
+
+        // College-only with time-based schedule: track tardiness, undertime, and overtime
+        if (isCollegeOnly && !Number.isNaN(sched.start) && !Number.isNaN(sched.end)) {
+          const tard = Math.max(0, timeIn - sched.start);
+          const under = Math.max(0, sched.end - timeOut);
+          tardMin += tard;
+          underMin += under;
+          // Track overtime when worked hours exceed scheduled hours by at least 1 hour
+          const expected = sched.durationMin;
+          const excess = workedMinusBreak - expected;
+          // Only count overtime if excess is at least 1 hour (60 minutes), then count full excess
+          const over = excess >= 60 ? excess : 0;
+          if (over > 0) {
+            otMin += over;
+            if (code === 'sat' || code === 'sun') otWeekendMin += over; else otWeekdayMin += over;
+          }
           continue;
         }
 
@@ -328,6 +369,13 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
     }
 
     const toH = (min: number) => Number((min/60).toFixed(2));
+
+    // For college-only employees: convert tardiness and undertime to absences
+    if (isCollegeOnly) {
+      absentMin += tardMin + underMin;
+      tardMin = 0;
+      underMin = 0;
+    }
 
     const baseSalary = Number(employee.base_salary ?? 0) || 0;
     const schedDurations = Object.values(schedByCode).map(s => s.durationMin);
@@ -346,7 +394,10 @@ export function useTimekeepingComputed(employee: Employees | null, month: string
       return undefined;
     })();
 
-    const ratePerDay = isCollege ? undefined : Number(((baseSalary * 12) / 288).toFixed(2));
+    // Use 262 divisor for Basic Education roles, 288 for others
+    const isBasicEducation = rolesStr.includes('basic education');
+    const divisor = isBasicEducation ? 262 : 288;
+    const ratePerDay = isCollege ? undefined : Number(((baseSalary * 12) / divisor).toFixed(2));
     const ratePerHour = isCollege ? (collegeRate ?? 0) : Number((((ratePerDay ?? 0)) / (hoursPerDay || 8)).toFixed(2));
 
     return {
